@@ -231,18 +231,15 @@ module.exports = module.exports = async function handler(req, res) {
       currentValue: parseInt(contact.properties[creditField]) || 0
     });
 
-    // Step 5: Create booking with token_used property, conditional fields, AND mock exam data
+    // Step 5: Create booking with token_used property and conditional fields
     const bookingData = {
       bookingId,
       name: sanitizedName,
       email: sanitizedEmail,
-      tokenUsed: tokenUsed,
-      // FIX: Include mock exam data directly on booking for immediate retrieval
-      mockType: mock_type,
-      examDate: exam_date,
-      location: mockExam.properties.location || 'Mississauga',
-      startTime: mockExam.properties.start_time,
-      endTime: mockExam.properties.end_time
+      tokenUsed: tokenUsed
+      // FIX: Removed calculated properties (mockType, examDate, location, startTime, endTime)
+      // These are now calculated/rollup properties in HubSpot from the associated Mock Exam
+      // Setting them directly causes "READ_ONLY_VALUE" errors
     };
 
     // Add conditional fields based on exam type

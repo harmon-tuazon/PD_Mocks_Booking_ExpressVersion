@@ -280,23 +280,9 @@ class HubSpotService {
       ...(bookingData.tokenUsed ? { token_used: bookingData.tokenUsed } : {})
     };
 
-    // FIX: Store mock exam data directly on booking for immediate retrieval
-    // This ensures bookings appear in lists without waiting for association queries
-    if (bookingData.mockType) {
-      properties.mock_type = bookingData.mockType;
-    }
-    if (bookingData.examDate) {
-      properties.exam_date = bookingData.examDate;
-    }
-    if (bookingData.location) {
-      properties.location = bookingData.location;
-    }
-    if (bookingData.startTime) {
-      properties.start_time = bookingData.startTime;
-    }
-    if (bookingData.endTime) {
-      properties.end_time = bookingData.endTime;
-    }
+    // FIX: Removed calculated properties (mock_type, exam_date, location, start_time, end_time)
+    // These are now calculated/rollup properties in HubSpot from the associated Mock Exam
+    // Setting them directly causes "READ_ONLY_VALUE" errors
 
     // Add conditional fields based on what's provided
     if (bookingData.dominantHand !== undefined) {
