@@ -249,13 +249,11 @@ describe('HubSpotBatchService', () => {
         { from: { id: '1' }, to: [{ toObjectId: '10' }] },
         { from: { id: '2' }, to: [{ toObjectId: '20' }] }
       ];
-      // Mock response structure: extractSuccessfulResults extracts r.value.results,
-      // then batchReadAssociations does .flatMap(r => r.results || [])
-      // So each item in r.value.results needs a results property
+      // FIXED: Mock correct HubSpot API response structure
+      // The v4 batch associations API returns { results: [...] }
+      // where each result has { from: {id}, to: [{toObjectId, ...}] }
       mockHubSpot.apiCall.mockResolvedValue({
-        results: [
-          { results: mockAssociations }
-        ]
+        results: mockAssociations
       });
 
       const result = await batchService.batchReadAssociations('0-1', ids, '2-50158943');
@@ -273,7 +271,7 @@ describe('HubSpotBatchService', () => {
       const ids = Array.from({ length: 1000 }, (_, i) => String(i));
       const mockAssociations = ids.map(id => ({ from: { id }, to: [] }));
       mockHubSpot.apiCall.mockResolvedValue({
-        results: [{ results: mockAssociations }]
+        results: mockAssociations
       });
 
       const result = await batchService.batchReadAssociations('contacts', ids, 'bookings');
@@ -289,9 +287,9 @@ describe('HubSpotBatchService', () => {
       const chunk3 = ids.slice(2000, 2500).map(id => ({ from: { id }, to: [] }));
 
       mockHubSpot.apiCall
-        .mockResolvedValueOnce({ results: [{ results: chunk1 }] })
-        .mockResolvedValueOnce({ results: [{ results: chunk2 }] })
-        .mockResolvedValueOnce({ results: [{ results: chunk3 }] });
+        .mockResolvedValueOnce({ results: chunk1 })
+        .mockResolvedValueOnce({ results: chunk2 })
+        .mockResolvedValueOnce({ results: chunk3 });
 
       const result = await batchService.batchReadAssociations('contacts', ids, 'bookings');
 
@@ -307,7 +305,7 @@ describe('HubSpotBatchService', () => {
       ];
 
       mockHubSpot.apiCall.mockResolvedValue({
-        results: [{ results: mockAssociations }]
+        results: mockAssociations
       });
 
       const result = await batchService.batchReadAssociations('contacts', ids, 'bookings');
@@ -322,7 +320,7 @@ describe('HubSpotBatchService', () => {
       const successfulAssociations = [{ from: { id: '1' }, to: [] }];
 
       mockHubSpot.apiCall
-        .mockResolvedValueOnce({ results: [{ results: successfulAssociations }] })
+        .mockResolvedValueOnce({ results: successfulAssociations })
         .mockRejectedValueOnce(new Error('Network error'));
 
       const result = await batchService.batchReadAssociations('contacts', ids, 'bookings');
