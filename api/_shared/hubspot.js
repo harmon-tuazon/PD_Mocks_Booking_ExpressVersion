@@ -236,6 +236,39 @@ class HubSpotService {
   }
 
   /**
+   * Map frontend location values to HubSpot expected values
+   */
+  mapLocationToHubSpot(location) {
+    // Ensure we handle the input safely
+    if (!location) {
+      console.warn(`⚠️ No location value provided`);
+      return null;
+    }
+
+    // Convert to lowercase for consistent matching
+    const normalizedLocation = location.toLowerCase();
+
+    const locationMapping = {
+      'mississauga': 'Mississauga',
+      'calgary': 'Calgary',
+      'vancouver': 'Vancouver',
+      'montreal': 'Montreal',
+      'richmond_hill': 'Richmond Hill',
+      'online': 'Online'  // Add support for Online option (used by HubSpot)
+    };
+
+    const mappedLocation = locationMapping[normalizedLocation];
+
+    if (!mappedLocation) {
+      console.warn(`⚠️ Unknown location value: ${location}, using original value`);
+      return location;
+    }
+
+    console.log(`📍 Mapped location: ${location} → ${mappedLocation}`);
+    return mappedLocation;
+  }
+
+  /**
    * Create a new booking
    */
   async createBooking(bookingData) {
@@ -251,12 +284,28 @@ class HubSpotService {
     if (bookingData.dominantHand !== undefined) {
       properties.dominant_hand = bookingData.dominantHand.toString();
     }
-    
+
     if (bookingData.attendingLocation) {
-      properties.attending_location = bookingData.attendingLocation;
+      // Transform the location value to match HubSpot's expected format
+      const originalLocation = bookingData.attendingLocation;
+      const mappedLocation = this.mapLocationToHubSpot(originalLocation);
+      properties.attending_location = mappedLocation;
+
+      console.log(`📍 Location mapping for booking:`, {
+        original: originalLocation,
+        mapped: mappedLocation,
+        bookingId: bookingData.bookingId
+      });
     }
 
     const payload = { properties };
+
+    console.log(`📝 Creating booking with properties:`, {
+      ...properties,
+      // Mask sensitive data in logs
+      name: properties.name ? `${properties.name.substring(0, 2)}***` : undefined,
+      email: properties.email ? `${properties.email.substring(0, 3)}***` : undefined
+    });
 
     return await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}`, payload);
   }

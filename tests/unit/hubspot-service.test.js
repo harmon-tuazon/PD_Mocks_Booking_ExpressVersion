@@ -91,7 +91,7 @@ describe('HubSpotService - Booking Operations', () => {
           data: expect.objectContaining({
             properties: expect.objectContaining({
               booking_id: 'BOOK-12345',
-              attending_location: 'mississauga'
+              attending_location: 'Mississauga'  // Now expects transformed value
             })
           })
         })
@@ -100,25 +100,25 @@ describe('HubSpotService - Booking Operations', () => {
 
     test('should handle all valid locations', async () => {
       const validLocations = [
-        'mississauga',
-        'calgary',
-        'vancouver',
-        'montreal',
-        'richmond_hill'
+        { input: 'mississauga', expected: 'Mississauga' },
+        { input: 'calgary', expected: 'Calgary' },
+        { input: 'vancouver', expected: 'Vancouver' },
+        { input: 'montreal', expected: 'Montreal' },
+        { input: 'richmond_hill', expected: 'Richmond Hill' }
       ];
 
       axios.mockResolvedValue({
         data: { id: 'booking-123', properties: {} }
       });
 
-      for (const location of validLocations) {
+      for (const locationTest of validLocations) {
         jest.clearAllMocks();
 
         const bookingData = {
           bookingId: 'BOOK-12345',
           name: 'Test Student',
           email: 'test@example.com',
-          attendingLocation: location
+          attendingLocation: locationTest.input
         };
 
         await hubspotService.createBooking(bookingData);
@@ -127,7 +127,7 @@ describe('HubSpotService - Booking Operations', () => {
           expect.objectContaining({
             data: expect.objectContaining({
               properties: expect.objectContaining({
-                attending_location: location
+                attending_location: locationTest.expected  // Expect transformed value
               })
             })
           })
@@ -186,7 +186,7 @@ describe('HubSpotService - Booking Operations', () => {
       });
 
       callArgs = axios.mock.calls[0][0];
-      expect(callArgs.data.properties).toHaveProperty('attending_location', 'calgary');
+      expect(callArgs.data.properties).toHaveProperty('attending_location', 'Calgary');  // Expect transformed value
       expect(callArgs.data.properties).not.toHaveProperty('dominant_hand');
     });
 
@@ -210,7 +210,7 @@ describe('HubSpotService - Booking Operations', () => {
           data: expect.objectContaining({
             properties: expect.objectContaining({
               token_used: 'SJ-TOKEN-123',
-              attending_location: 'vancouver'
+              attending_location: 'Vancouver'  // Expect transformed value
             })
           })
         })
