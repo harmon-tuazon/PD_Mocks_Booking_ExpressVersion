@@ -79,7 +79,7 @@ const BookingForm = () => {
       return;
     }
 
-    // Update booking data with all required information from session
+    // Create booking payload with all required information
     const bookingPayload = {
       name: userSession?.studentName || 'Student',
       studentId: userSession?.studentId || '',
@@ -93,9 +93,18 @@ const BookingForm = () => {
       bookingPayload.attending_location = attendingLocation;
     }
 
-    updateBookingData(bookingPayload);
+    // Debug logging to trace the flow
+    console.log('🎯 handleSubmitBooking - Payload prepared:', {
+      mockType,
+      isClinicalSkills,
+      isLocationBased,
+      attendingLocation,
+      dominantHand,
+      bookingPayload
+    });
 
-    const result = await submitBooking();
+    // Pass the payload directly to submitBooking instead of relying on state updates
+    const result = await submitBooking(bookingPayload);
     if (result) {
 
       // Use a fallback booking ID if the one from the result is undefined

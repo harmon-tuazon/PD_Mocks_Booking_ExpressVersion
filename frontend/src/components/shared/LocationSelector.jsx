@@ -31,7 +31,10 @@ const LocationSelector = ({ value, onChange, required = false }) => {
               name="location"
               value={location.value}
               checked={value === location.value}
-              onChange={(e) => onChange(e.target.value)}
+              onChange={(e) => {
+                console.log('📍 LocationSelector onChange called with:', e.target.value);
+                onChange(e.target.value);
+              }}
               className="sr-only"
               required={required}
             />

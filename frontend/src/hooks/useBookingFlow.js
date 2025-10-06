@@ -142,14 +142,32 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     }
   }, [bookingData.mockType]);
 
-  // Submit booking
-  const submitBooking = useCallback(async () => {
+  // Submit booking - accepts optional overrides for immediate data that hasn't been committed to state yet
+  const submitBooking = useCallback(async (immediateData = {}) => {
     setLoading(true);
     setError(null);
     setStep('confirming');
 
+    // Merge immediate data with existing booking data (immediate data takes priority)
+    const mergedData = { ...bookingData, ...immediateData };
+
+    // Debug logging to trace the issue
+    console.log('🔍 submitBooking called with:', {
+      immediateData,
+      bookingData: {
+        mockType: bookingData.mockType,
+        attending_location: bookingData.attending_location,
+        dominant_hand: bookingData.dominant_hand
+      },
+      mergedData: {
+        mockType: mergedData.mockType,
+        attending_location: mergedData.attending_location,
+        dominant_hand: mergedData.dominant_hand
+      }
+    });
+
     // Validate name
-    if (!bookingData.name || bookingData.name.trim().length < 2) {
+    if (!mergedData.name || mergedData.name.trim().length < 2) {
       setError('Please enter your full name');
       setStep('details');
       setLoading(false);
@@ -158,21 +176,26 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
 
     try {
       const bookingPayload = {
-        mock_exam_id: bookingData.mockExamId,
-        contact_id: bookingData.contactId,
-        student_id: bookingData.studentId,
-        name: bookingData.name.trim(),
-        email: bookingData.email,
-        mock_type: bookingData.mockType,
-        exam_date: bookingData.examDate,
+        mock_exam_id: mergedData.mockExamId,
+        contact_id: mergedData.contactId,
+        student_id: mergedData.studentId,
+        name: mergedData.name.trim(),
+        email: mergedData.email,
+        mock_type: mergedData.mockType,
+        exam_date: mergedData.examDate,
       };
 
       // Add conditional fields based on mock type
-      if (bookingData.mockType === 'Clinical Skills') {
-        bookingPayload.dominant_hand = bookingData.dominant_hand !== undefined ? bookingData.dominant_hand : bookingData.dominantHand;
-      } else if (bookingData.mockType === 'Situational Judgment' || bookingData.mockType === 'Mini-mock') {
-        bookingPayload.attending_location = bookingData.attending_location;
+      if (mergedData.mockType === 'Clinical Skills') {
+        bookingPayload.dominant_hand = mergedData.dominant_hand !== undefined ? mergedData.dominant_hand : mergedData.dominantHand;
+        console.log('🔧 Adding dominant_hand to payload:', bookingPayload.dominant_hand);
+      } else if (mergedData.mockType === 'Situational Judgment' || mergedData.mockType === 'Mini-mock') {
+        bookingPayload.attending_location = mergedData.attending_location;
+        console.log('📍 Adding attending_location to payload:', bookingPayload.attending_location);
       }
+
+      // Final payload logging before API call
+      console.log('📤 Final booking payload being sent to API:', bookingPayload);
 
 
       const result = await apiService.bookings.create(bookingPayload);
@@ -222,9 +245,9 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
         booking_record_id: result.data.booking_record_id
       });
 
-      // Create updated booking data with proper null checking
+      // Create updated booking data with proper null checking, using mergedData as base
       const updatedBookingData = {
-        ...bookingData,
+        ...mergedData,  // Use mergedData instead of bookingData to include immediate updates
         bookingId: result.data?.booking_id || null,
         bookingRecordId: result.data?.booking_record_id || null,
         confirmationMessage: result.data?.confirmation_message || 'Booking confirmed successfully',
@@ -266,7 +289,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     } finally {
       setLoading(false);
     }
-  }, [bookingData]);
+  }, [bookingData]);  // submitBooking now accepts immediateData parameter
 
   // Go back to previous step
   const goBack = useCallback(() => {
