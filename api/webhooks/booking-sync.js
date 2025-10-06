@@ -47,36 +47,47 @@ function verifyWebhookSignature(req) {
 }
 
 /**
- * Extract mock exam IDs from webhook payload
+ * Extract mock exam IDs from webhook payload - BATCH OPTIMIZED
  */
 async function extractMockExamIds(events, hubspot) {
   const mockExamIds = new Set();
 
-  for (const event of events) {
-    if (event.subscriptionType === 'contact.associationChange' ||
-        event.subscriptionType === 'contact.deletion' ||
-        event.subscriptionType === 'contact.propertyChange') {
+  // Step 1: Extract all booking IDs from events
+  const bookingIds = events
+    .filter(event =>
+      event.subscriptionType === 'contact.associationChange' ||
+      event.subscriptionType === 'contact.deletion' ||
+      event.subscriptionType === 'contact.propertyChange'
+    )
+    .map(event => event.objectId);
 
-      const objectId = event.objectId;
+  if (bookingIds.length === 0) {
+    return [];
+  }
 
-      try {
-        // Get associations for this booking to find related mock exams
-        const associations = await hubspot.apiCall(
-          'GET',
-          `/crm/v4/objects/${HUBSPOT_OBJECTS.bookings}/${objectId}/associations/${HUBSPOT_OBJECTS.mock_exams}`
-        );
+  console.log(`📦 Batch reading associations for ${bookingIds.length} booking event(s)`);
 
-        if (associations?.results) {
-          associations.results.forEach(assoc => {
-            mockExamIds.add(assoc.toObjectId);
-          });
-        }
-      } catch (error) {
-        // If booking is deleted, we might not be able to get associations
-        // In this case, we'll need to sync all active mock exams
-        console.error(`Could not get associations for booking ${objectId}:`, error.message);
+  try {
+    // Step 2: Batch read all associations at once (1-2 API calls instead of N calls)
+    const associations = await hubspot.batch.batchReadAssociations(
+      '2-50158943', // bookings
+      bookingIds,
+      '2-50158913'  // mock_exams
+    );
+
+    // Step 3: Extract unique mock exam IDs from all associations
+    for (const assoc of associations) {
+      if (assoc.to && assoc.to.length > 0) {
+        assoc.to.forEach(toAssoc => {
+          mockExamIds.add(toAssoc.toObjectId);
+        });
       }
     }
+
+    console.log(`✅ Found ${mockExamIds.size} unique mock exam(s) requiring capacity updates`);
+  } catch (error) {
+    console.error(`❌ Batch association read failed:`, error.message);
+    // Continue with empty set - will skip capacity updates
   }
 
   return Array.from(mockExamIds);

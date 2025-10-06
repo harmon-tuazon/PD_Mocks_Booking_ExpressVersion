@@ -6,6 +6,7 @@
 // Import dependencies
 require('dotenv').config();
 const { HubSpotService, HUBSPOT_OBJECTS } = require('../_shared/hubspot');
+const { getCache } = require('../_shared/cache');
 const { schemas, validateInput } = require('../_shared/validation');
 const {
   setCorsHeaders,
@@ -114,9 +115,22 @@ async function handler(req, res) {
 
     // Step 3: Get bookings using the improved associations-focused approach
     try {
-      console.log(`📋 Retrieving bookings via HubSpot associations API (filter: ${filter}, page: ${page}, limit: ${limit})`);
+      // Check cache first
+      const cache = getCache();
+      const cacheKey = `bookings:contact:${contactHsObjectId}:${filter}:page${page}:limit${limit}`;
 
-      const bookingsData = await hubspot.getBookingsForContact(contactHsObjectId, { filter, page, limit });
+      let bookingsData = cache.get(cacheKey);
+
+      if (bookingsData) {
+        console.log(`🎯 Cache HIT for ${cacheKey}`);
+      } else {
+        console.log(`📋 Cache MISS - Retrieving bookings via HubSpot associations API (filter: ${filter}, page: ${page}, limit: ${limit})`);
+        bookingsData = await hubspot.getBookingsForContact(contactHsObjectId, { filter, page, limit });
+
+        // Store in cache with 5-minute TTL
+        cache.set(cacheKey, bookingsData, 5 * 60);
+        console.log(`💾 Cached bookings data with key: ${cacheKey}`);
+      }
 
       console.log(`📊 [API DEBUG] Booking retrieval summary:`, {
         filter: filter,

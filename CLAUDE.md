@@ -173,11 +173,8 @@ execute-prd PRDs/[feature-name].md
 
 **Critical Files to Understand:**
 - `README.md` - Complete framework overview (MAIN GUIDE)
-- `DEVELOPMENT_CHECKPOINT.md` - Current state (check daily)
-- `FEATURE_TRACKER.md` - Active features pipeline
-- `DEVELOPMENT_WORKFLOW.md` - Detailed workflow process
 - `AGENT_DEVELOPER_COORDINATION_RULES.md` - How agents collaborate
-- `INITIAL.md` - Reference feature implementation
+-  Memories under Serena (.serena\memories)
 
 ## Global Development Rules
 

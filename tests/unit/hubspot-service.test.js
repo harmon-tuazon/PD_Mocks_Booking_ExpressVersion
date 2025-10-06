@@ -273,4 +273,196 @@ describe('HubSpotService - Booking Operations', () => {
       );
     });
   });
+
+  describe('createAssociation with Type 1292', () => {
+    const HUBSPOT_OBJECTS = {
+      bookings: '2-50158943',
+      mock_exams: '2-50158913',
+      contacts: '0-1'
+    };
+
+    test('should use Type 1292 for Booking to Mock Exam associations', async () => {
+      const bookingId = 'booking-123';
+      const mockExamId = 'exam-456';
+
+      axios.mockResolvedValue({
+        data: { status: 'COMPLETE' }
+      });
+
+      await hubspotService.createAssociation(
+        HUBSPOT_OBJECTS.bookings,
+        bookingId,
+        HUBSPOT_OBJECTS.mock_exams,
+        mockExamId
+      );
+
+      expect(axios).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'PUT',
+          url: expect.stringContaining(
+            `/crm/v4/objects/${HUBSPOT_OBJECTS.bookings}/${bookingId}/associations/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}`
+          ),
+          data: [
+            {
+              associationCategory: 'USER_DEFINED',
+              associationTypeId: 1292
+            }
+          ]
+        })
+      );
+    });
+
+    test('should use Type 1292 for Mock Exam to Booking associations (reverse)', async () => {
+      const mockExamId = 'exam-456';
+      const bookingId = 'booking-123';
+
+      axios.mockResolvedValue({
+        data: { status: 'COMPLETE' }
+      });
+
+      await hubspotService.createAssociation(
+        HUBSPOT_OBJECTS.mock_exams,
+        mockExamId,
+        HUBSPOT_OBJECTS.bookings,
+        bookingId
+      );
+
+      expect(axios).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'PUT',
+          url: expect.stringContaining(
+            `/crm/v4/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}/associations/${HUBSPOT_OBJECTS.bookings}/${bookingId}`
+          ),
+          data: [
+            {
+              associationCategory: 'USER_DEFINED',
+              associationTypeId: 1292
+            }
+          ]
+        })
+      );
+    });
+
+    test('should use empty payload for non-booking associations', async () => {
+      const contactId = 'contact-123';
+      const bookingId = 'booking-456';
+
+      axios.mockResolvedValue({
+        data: { status: 'COMPLETE' }
+      });
+
+      await hubspotService.createAssociation(
+        HUBSPOT_OBJECTS.contacts,
+        contactId,
+        HUBSPOT_OBJECTS.bookings,
+        bookingId
+      );
+
+      expect(axios).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'PUT',
+          data: []
+        })
+      );
+    });
+  });
+
+  describe('getActiveBookingsCount logic alignment', () => {
+    test('should exclude Cancelled bookings', () => {
+      const bookings = [
+        { id: '1', properties: { is_active: 'Active' } },
+        { id: '2', properties: { is_active: 'Cancelled' } },
+        { id: '3', properties: { is_active: 'cancelled' } },
+        { id: '4', properties: { is_active: 'Active' } }
+      ];
+
+      const activeCount = bookings.filter(booking => {
+        const isActive = booking.properties.is_active;
+        const isCancelled = isActive === 'Cancelled' || isActive === 'cancelled';
+        const isFalse = isActive === false || isActive === 'false';
+
+        return !isCancelled && !isFalse;
+      }).length;
+
+      expect(activeCount).toBe(2);
+    });
+
+    test('should COUNT Completed bookings (not exclude them)', () => {
+      const bookings = [
+        { id: '1', properties: { is_active: 'Active' } },
+        { id: '2', properties: { is_active: 'Completed' } },
+        { id: '3', properties: { is_active: 'completed' } },
+        { id: '4', properties: { is_active: 'Active' } }
+      ];
+
+      const activeCount = bookings.filter(booking => {
+        const isActive = booking.properties.is_active;
+        const isCancelled = isActive === 'Cancelled' || isActive === 'cancelled';
+        const isFalse = isActive === false || isActive === 'false';
+
+        return !isCancelled && !isFalse;
+      }).length;
+
+      expect(activeCount).toBe(4); // All 4 bookings should be counted
+    });
+
+    test('should exclude false/false string values', () => {
+      const bookings = [
+        { id: '1', properties: { is_active: 'Active' } },
+        { id: '2', properties: { is_active: false } },
+        { id: '3', properties: { is_active: 'false' } },
+        { id: '4', properties: { is_active: 'Active' } }
+      ];
+
+      const activeCount = bookings.filter(booking => {
+        const isActive = booking.properties.is_active;
+        const isCancelled = isActive === 'Cancelled' || isActive === 'cancelled';
+        const isFalse = isActive === false || isActive === 'false';
+
+        return !isCancelled && !isFalse;
+      }).length;
+
+      expect(activeCount).toBe(2);
+    });
+
+    test('should count all Active bookings when no exclusions', () => {
+      const bookings = [
+        { id: '1', properties: { is_active: 'Active' } },
+        { id: '2', properties: { is_active: 'active' } },
+        { id: '3', properties: { is_active: 'Active' } }
+      ];
+
+      const activeCount = bookings.filter(booking => {
+        const isActive = booking.properties.is_active;
+        const isCancelled = isActive === 'Cancelled' || isActive === 'cancelled';
+        const isFalse = isActive === false || isActive === 'false';
+
+        return !isCancelled && !isFalse;
+      }).length;
+
+      expect(activeCount).toBe(3);
+    });
+
+    test('should handle mixed statuses correctly - Completed counted, Cancelled excluded', () => {
+      const bookings = [
+        { id: '1', properties: { is_active: 'Active' } },
+        { id: '2', properties: { is_active: 'Cancelled' } },
+        { id: '3', properties: { is_active: 'Completed' } },
+        { id: '4', properties: { is_active: false } },
+        { id: '5', properties: { is_active: 'Active' } },
+        { id: '6', properties: { is_active: 'completed' } },
+        { id: '7', properties: { is_active: 'Active' } }
+      ];
+
+      const activeCount = bookings.filter(booking => {
+        const isActive = booking.properties.is_active;
+        const isCancelled = isActive === 'Cancelled' || isActive === 'cancelled';
+        const isFalse = isActive === false || isActive === 'false';
+
+        return !isCancelled && !isFalse;
+      }).length;
+
+      expect(activeCount).toBe(5); // Active(3) + Completed(2) = 5
+    });
+  });
 });

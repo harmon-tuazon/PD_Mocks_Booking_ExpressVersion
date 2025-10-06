@@ -58,7 +58,8 @@
       "Bash(npm run pre-deploy:*)",
       "Bash(git add:*)",
       "Read(//c/**)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "WebFetch(domain:developers.hubspot.com)"
     ],
     "deny": []
   }

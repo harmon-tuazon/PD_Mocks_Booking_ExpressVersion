@@ -125,9 +125,7 @@ const schemas = {
         then: Joi.required().messages({
           'any.required': 'Dominant hand selection is required for Clinical Skills exams'
         }),
-        otherwise: Joi.forbidden().messages({
-          'any.unknown': 'Dominant hand is only applicable for Clinical Skills exams'
-        })
+        otherwise: Joi.optional().strip()
       }),
     attending_location: Joi.string()
       .valid('mississauga', 'calgary', 'vancouver', 'montreal', 'richmond_hill')
@@ -137,9 +135,7 @@ const schemas = {
           'any.required': 'Attending location is required for Situational Judgment and Mini-mock exams',
           'any.only': 'Location must be one of: Mississauga, Calgary, Vancouver, Montreal, or Richmond Hill'
         }),
-        otherwise: Joi.forbidden().messages({
-          'any.unknown': 'Attending location is only applicable for Situational Judgment and Mini-mock exams'
-        })
+        otherwise: Joi.optional().strip()
       })
   }),
 

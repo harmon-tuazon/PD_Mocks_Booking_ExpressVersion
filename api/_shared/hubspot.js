@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { HubSpotBatchService } = require('./batch');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -25,6 +26,9 @@ class HubSpotService {
     if (!this.token) {
       throw new Error('HS_PRIVATE_APP_TOKEN environment variable is required');
     }
+
+    // Initialize batch service for optimized operations
+    this.batch = new HubSpotBatchService(this);
   }
 
   /**
@@ -317,13 +321,32 @@ class HubSpotService {
   async createAssociation(fromObjectType, fromObjectId, toObjectType, toObjectId) {
     const path = `/crm/v4/objects/${fromObjectType}/${fromObjectId}/associations/${toObjectType}/${toObjectId}`;
 
-    // CRITICAL FIX: Use empty payload to let HubSpot use default association types
-    // Previous attempts with USER_DEFINED category and specific type IDs were failing
-    // Empty array tells HubSpot to create a default association
-    const payload = [];
+    // Determine if we need to use a specific association type
+    // For Booking → Mock Exam associations, ALWAYS use Type 1292 ("Mock Bookings")
+    let payload = [];
 
-    console.log(`🔗 Creating association: ${fromObjectType}(${fromObjectId}) → ${toObjectType}(${toObjectId})`);
-    console.log(`📋 Using default HubSpot association (empty payload)`);
+    // Check if this is a Booking → Mock Exam association
+    const isBookingToMockExam = (
+      (fromObjectType === HUBSPOT_OBJECTS.bookings && toObjectType === HUBSPOT_OBJECTS.mock_exams) ||
+      (fromObjectType === HUBSPOT_OBJECTS.mock_exams && toObjectType === HUBSPOT_OBJECTS.bookings)
+    );
+
+    if (isBookingToMockExam) {
+      // CRITICAL: Use Type 1292 "Mock Bookings" for all new booking associations
+      // This ensures consistency and proper labeling in HubSpot
+      payload = [
+        {
+          associationCategory: 'USER_DEFINED',
+          associationTypeId: 1292  // "Mock Bookings" label
+        }
+      ];
+      console.log(`🔗 Creating association: ${fromObjectType}(${fromObjectId}) → ${toObjectType}(${toObjectId})`);
+      console.log(`📋 Using Type 1292 "Mock Bookings" association (labeled)`);
+    } else {
+      // For other associations, use empty payload to let HubSpot use default
+      console.log(`🔗 Creating association: ${fromObjectType}(${fromObjectId}) → ${toObjectType}(${toObjectId})`);
+      console.log(`📋 Using default HubSpot association (empty payload)`);
+    }
 
     const result = await this.apiCall('PUT', path, payload);
     console.log(`✅ Association created successfully:`, result);
@@ -461,10 +484,15 @@ class HubSpotService {
         return 0;
       }
 
-      // Filter out cancelled bookings - only count bookings where is_active is "Active"
+      // ALIGNED LOGIC: Count bookings that are NOT cancelled
+      // This matches the logic in api/mock-exams/available.js
       const activeBookings = bookingsResponse.results.filter(booking => {
         const isActive = booking.properties.is_active;
-        return isActive === 'Active' || isActive === 'active';
+        // Exclude only Cancelled bookings (Completed bookings ARE counted)
+        const isCancelled = isActive === 'Cancelled' || isActive === 'cancelled';
+        const isFalse = isActive === false || isActive === 'false';
+
+        return !isCancelled && !isFalse;
       });
 
       const activeBookingsCount = activeBookings.length;
@@ -592,6 +620,64 @@ class HubSpotService {
       if (error.response?.status === 404) {
         console.log(`Contact ${contactId} not found or has no booking associations`);
         return [];
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Get paginated booking associations for a contact with HubSpot after-token support
+   * 
+   * @param {string} contactId - Contact ID
+   * @param {Object} options - Pagination options
+   * @param {number} options.limit - Max associations to fetch (default: 100, max: 500)
+   * @param {string} options.after - HubSpot after token for pagination
+   * @returns {Promise<{bookingIds: string[], paging: Object}>} - Booking IDs and paging info
+   */
+  async getContactBookingAssociationsPaginated(contactId, { limit = 100, after = null } = {}) {
+    try {
+      // Ensure limit doesn't exceed HubSpot max
+      const fetchLimit = Math.min(limit, 500);
+      
+      let url = `/crm/v4/objects/${HUBSPOT_OBJECTS.contacts}/${contactId}/associations/${HUBSPOT_OBJECTS.bookings}?limit=${fetchLimit}`;
+      
+      if (after) {
+        url += `&after=${after}`;
+      }
+      
+      console.log(`🔗 Getting paginated booking associations for contact ${contactId} (limit: ${fetchLimit}, after: ${after || 'none'})`);
+
+      const associations = await this.apiCall('GET', url);
+
+      if (!associations?.results || associations.results.length === 0) {
+        console.log(`No booking associations found for contact ${contactId}`);
+        return {
+          bookingIds: [],
+          paging: null
+        };
+      }
+
+      // Extract booking IDs from associations
+      const bookingIds = associations.results.map(assoc => assoc.toObjectId);
+      
+      console.log(`✅ Found ${bookingIds.length} booking associations for contact ${contactId}`);
+      
+      if (associations.paging?.next?.after) {
+        console.log(`📄 More associations available (next token: ${associations.paging.next.after})`);
+      }
+
+      return {
+        bookingIds,
+        paging: associations.paging || null
+      };
+
+    } catch (error) {
+      console.error(`❌ Error getting paginated booking associations for contact ${contactId}:`, error);
+      
+      if (error.response?.status === 404) {
+        console.log(`Contact ${contactId} not found or has no booking associations`);
+        return { bookingIds: [], paging: null };
       }
       
       throw error;
@@ -841,29 +927,37 @@ class HubSpotService {
         const mockExamIds = new Set();
         const bookingToMockExamMap = new Map();
 
-        // Get associations for all bookings that need it
+        // Get associations for all bookings that need it - BATCH OPTIMIZED
         console.log(`🔍 Fetching mock exam associations for ${bookingsNeedingMockExamData.length} bookings...`);
 
-        for (const booking of bookingsNeedingMockExamData) {
-          try {
-            const mockExamAssocs = await this.apiCall(
-              'GET',
-              `/crm/v4/objects/${HUBSPOT_OBJECTS.bookings}/${booking.id}/associations/${HUBSPOT_OBJECTS.mock_exams}`
-            );
+        try {
+          // Batch read all associations in 1-2 API calls instead of N calls
+          const bookingIds = bookingsNeedingMockExamData.map(b => b.id);
+          const associations = await this.batch.batchReadAssociations(
+            HUBSPOT_OBJECTS.bookings,
+            bookingIds,
+            HUBSPOT_OBJECTS.mock_exams
+          );
 
-            if (mockExamAssocs?.results && mockExamAssocs.results.length > 0) {
-              const mockExamId = mockExamAssocs.results[0].toObjectId;
+          // Build maps from association results
+          for (const assoc of associations) {
+            if (assoc.to && assoc.to.length > 0) {
+              const mockExamId = assoc.to[0].toObjectId;
               mockExamIds.add(mockExamId);
-              bookingToMockExamMap.set(booking.id, mockExamId);
+              bookingToMockExamMap.set(assoc.from.id, mockExamId);
             } else {
-              console.warn(`⚠️ No mock exam association found for booking ${booking.id} (${booking.properties.booking_id})`);
+              const bookingId = assoc.from?.id;
+              if (bookingId) {
+                console.warn(`⚠️ No mock exam association found for booking ${bookingId}`);
+              }
             }
-          } catch (error) {
-            console.error(`❌ Failed to get mock exam association for booking ${booking.id}:`, error.message);
           }
-        }
 
-        console.log(`✅ Found ${mockExamIds.size} mock exam associations`);
+          console.log(`✅ Found ${mockExamIds.size} mock exam associations`);
+        } catch (error) {
+          console.error(`❌ Failed to batch read associations:`, error.message);
+          // Continue with empty associations rather than failing completely
+        }
 
         // Batch fetch all unique mock exams
         if (mockExamIds.size > 0) {
