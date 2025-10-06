@@ -163,10 +163,16 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
         student_id: bookingData.studentId,
         name: bookingData.name.trim(),
         email: bookingData.email,
-        dominant_hand: bookingData.dominantHand,
         mock_type: bookingData.mockType,
         exam_date: bookingData.examDate,
       };
+
+      // Add conditional fields based on mock type
+      if (bookingData.mockType === 'Clinical Skills') {
+        bookingPayload.dominant_hand = bookingData.dominant_hand !== undefined ? bookingData.dominant_hand : bookingData.dominantHand;
+      } else if (bookingData.mockType === 'Situational Judgment' || bookingData.mockType === 'Mini-mock') {
+        bookingPayload.attending_location = bookingData.attending_location;
+      }
 
 
       const result = await apiService.bookings.create(bookingPayload);
