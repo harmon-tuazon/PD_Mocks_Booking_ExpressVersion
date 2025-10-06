@@ -45,6 +45,11 @@ const BookingConfirmation = () => {
     if (refreshSignal.studentId && refreshSignal.email) {
       console.log('🎯 [BookingConfirmation] Setting localStorage refresh signal:', refreshSignal);
       localStorage.setItem('bookingCreated', JSON.stringify(refreshSignal));
+
+      // Also dispatch a custom event as backup mechanism
+      const event = new CustomEvent('bookingCreated', { detail: refreshSignal });
+      window.dispatchEvent(event);
+      console.log('📢 [BookingConfirmation] Dispatched custom bookingCreated event');
     } else {
       console.warn('🎯 [BookingConfirmation] Missing studentId or email, cannot set refresh signal');
     }

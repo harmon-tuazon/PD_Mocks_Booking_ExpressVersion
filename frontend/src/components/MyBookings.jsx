@@ -214,6 +214,23 @@ const MyBookings = () => {
       });
 
       if (response.success) {
+        // Emit localStorage signal for other components to refresh
+        const refreshSignal = {
+          studentId: userSession?.studentId,
+          email: userSession?.email,
+          bookingId: objectId,
+          timestamp: Date.now(),
+          action: 'cancelled'
+        };
+
+        console.log('🎯 Setting localStorage refresh signal for cancellation:', refreshSignal);
+        localStorage.setItem('bookingCancelled', JSON.stringify(refreshSignal));
+
+        // Also dispatch a custom event as backup mechanism
+        const event = new CustomEvent('bookingCancelled', { detail: refreshSignal });
+        window.dispatchEvent(event);
+        console.log('📢 Dispatched custom bookingCancelled event');
+
         // Close modal
         setDeleteModalOpen(false);
         setBookingToDelete(null);

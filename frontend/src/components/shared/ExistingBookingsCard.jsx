@@ -176,24 +176,26 @@ const ExistingBookingsCard = ({
   // Listen for localStorage-based refresh signals
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === 'bookingCreated' && e.newValue) {
-        console.log('🔍 [ExistingBookingsCard] Detected new booking via localStorage:', e.newValue);
+      // Handle both bookingCreated and bookingCancelled events
+      if ((e.key === 'bookingCreated' || e.key === 'bookingCancelled') && e.newValue) {
+        console.log(`🔍 [ExistingBookingsCard] Detected ${e.key} via localStorage:`, e.newValue);
 
         // Parse the value to check if it's for our user
         try {
           const bookingInfo = JSON.parse(e.newValue);
           if (bookingInfo.studentId === studentId) {
-            console.log('🔍 [ExistingBookingsCard] New booking is for current user, refreshing with delay');
+            const eventType = e.key === 'bookingCreated' ? 'new booking' : 'cancelled booking';
+            console.log(`🔍 [ExistingBookingsCard] ${eventType} is for current user, refreshing with delay`);
 
             // Add delay for HubSpot sync
             setTimeout(() => {
-              console.log('🔍 [ExistingBookingsCard] Executing delayed refresh after new booking');
+              console.log(`🔍 [ExistingBookingsCard] Executing delayed refresh after ${eventType}`);
               setRefreshKey(prev => prev + 1); // Force component refresh
               fetchBookings(true);
             }, 2500); // 2.5 second delay for HubSpot
 
             // Clear the signal
-            localStorage.removeItem('bookingCreated');
+            localStorage.removeItem(e.key);
           }
         } catch (err) {
           console.error('Error parsing booking signal:', err);
@@ -201,26 +203,62 @@ const ExistingBookingsCard = ({
       }
     };
 
-    // Check for pending refresh on mount
-    const pendingRefresh = localStorage.getItem('bookingCreated');
-    if (pendingRefresh) {
-      try {
-        const bookingInfo = JSON.parse(pendingRefresh);
-        if (bookingInfo.studentId === studentId) {
-          console.log('🔍 [ExistingBookingsCard] Found pending refresh signal on mount');
-          setTimeout(() => {
-            setRefreshKey(prev => prev + 1);
-            fetchBookings(true);
-          }, 1500);
-          localStorage.removeItem('bookingCreated');
+    // Check for pending refresh signals on mount
+    const checkPendingRefresh = (key) => {
+      const pendingRefresh = localStorage.getItem(key);
+      if (pendingRefresh) {
+        try {
+          const bookingInfo = JSON.parse(pendingRefresh);
+          if (bookingInfo.studentId === studentId) {
+            console.log(`🔍 [ExistingBookingsCard] Found pending ${key} signal on mount`);
+            setTimeout(() => {
+              setRefreshKey(prev => prev + 1);
+              fetchBookings(true);
+            }, 1500);
+            localStorage.removeItem(key);
+          }
+        } catch (err) {
+          console.error(`Error handling pending ${key} refresh:`, err);
         }
-      } catch (err) {
-        console.error('Error handling pending refresh:', err);
       }
-    }
+    };
+
+    // Check both types of pending refresh
+    checkPendingRefresh('bookingCreated');
+    checkPendingRefresh('bookingCancelled');
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
+  }, [studentId, fetchBookings]);
+
+  // Listen for custom events as backup mechanism
+  useEffect(() => {
+    const handleBookingUpdate = (e) => {
+      console.log('🔍 [ExistingBookingsCard] Received custom booking update event:', e.detail);
+
+      // Check if the event is for the current user
+      if (e.detail && e.detail.studentId === studentId) {
+        console.log('🔍 [ExistingBookingsCard] Custom event is for current user, refreshing');
+
+        // Add delay for HubSpot sync
+        setTimeout(() => {
+          console.log('🔍 [ExistingBookingsCard] Executing delayed refresh after custom event');
+          setRefreshKey(prev => prev + 1);
+          fetchBookings(true);
+        }, 2500);
+      }
+    };
+
+    // Listen for custom events
+    window.addEventListener('bookingUpdated', handleBookingUpdate);
+    window.addEventListener('bookingCreated', handleBookingUpdate);
+    window.addEventListener('bookingCancelled', handleBookingUpdate);
+
+    return () => {
+      window.removeEventListener('bookingUpdated', handleBookingUpdate);
+      window.removeEventListener('bookingCreated', handleBookingUpdate);
+      window.removeEventListener('bookingCancelled', handleBookingUpdate);
+    };
   }, [studentId, fetchBookings]);
 
   // Periodic polling for updates (every 30 seconds when visible)

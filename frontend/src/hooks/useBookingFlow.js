@@ -128,12 +128,14 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     } catch (err) {
       console.error('Credit verification error:', err);
 
-      // Pass the error object with code instead of just message string
-      if (err.code) {
-        setError({ code: err.code, message: err.message });
-      } else {
-        setError(err.message || 'An error occurred during verification');
-      }
+      // FIX: Always create error object with code property for consistent handling
+      const errorObj = {
+        code: err.code || null,
+        message: err.message || 'An error occurred during verification'
+      };
+
+      console.log('📋 Setting error object in verifyCredits:', errorObj);
+      setError(errorObj);
 
       return false;
     } finally {
@@ -167,7 +169,10 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
 
     // Validate name
     if (!mergedData.name || mergedData.name.trim().length < 2) {
-      setError('Please enter your full name');
+      setError({
+        code: 'VALIDATION_ERROR',
+        message: 'Please enter your full name'
+      });
       setStep('details');
       setLoading(false);
       return false;
@@ -303,20 +308,38 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
         hasCode: !!err.code,
         code: err.code,
         message: err.message,
+        responseData: err.response?.data,
         fullError: err
       });
 
+      // FIX: Extract error code from response data if not directly on error object
+      // This handles cases where axios interceptor might not have set error.code
+      let errorCode = err.code;
+      let errorMessage = err.message;
+
+      // Check if error code is in response data but not on error object
+      if (!errorCode && err.response?.data?.code) {
+        errorCode = err.response.data.code;
+        console.log('📌 Extracted error code from response.data.code:', errorCode);
+      }
+
+      // Check if error message is in response data
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+        console.log('📌 Using error message from response.data.error:', errorMessage);
+      }
+
       // FIX: Always pass error object with code for better error display
       const errorObj = {
-        code: err.code || null,
-        message: err.message || 'An error occurred while creating your booking'
+        code: errorCode || null,
+        message: errorMessage || 'An error occurred while creating your booking'
       };
 
-      console.log('📋 Setting error object:', errorObj);
+      console.log('📋 Setting error object in submitBooking:', errorObj);
       setError(errorObj);
 
       // Special handling for insufficient credits - go back to verify step
-      if (err.code === 'INSUFFICIENT_CREDITS') {
+      if (errorCode === 'INSUFFICIENT_CREDITS') {
         setStep('verify');
       } else {
         setStep('details');
