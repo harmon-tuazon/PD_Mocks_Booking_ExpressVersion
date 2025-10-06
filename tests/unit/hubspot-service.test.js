@@ -274,14 +274,14 @@ describe('HubSpotService - Booking Operations', () => {
     });
   });
 
-  describe('createAssociation with correct Type IDs', () => {
+  describe('createAssociation with Type 1292', () => {
     const HUBSPOT_OBJECTS = {
       bookings: '2-50158943',
       mock_exams: '2-50158913',
       contacts: '0-1'
     };
 
-    test('should use Type 1291 for Booking to Mock Exam associations', async () => {
+    test('should use Type 1292 for Booking to Mock Exam associations', async () => {
       const bookingId = 'booking-123';
       const mockExamId = 'exam-456';
 
@@ -305,7 +305,7 @@ describe('HubSpotService - Booking Operations', () => {
           data: [
             {
               associationCategory: 'USER_DEFINED',
-              associationTypeId: 1291  // Correct type for Booking → Mock Exam
+              associationTypeId: 1292
             }
           ]
         })
@@ -336,7 +336,7 @@ describe('HubSpotService - Booking Operations', () => {
           data: [
             {
               associationCategory: 'USER_DEFINED',
-              associationTypeId: 1292  // Correct type for Mock Exam → Booking
+              associationTypeId: 1292
             }
           ]
         })
