@@ -370,37 +370,42 @@ class HubSpotService {
   async createAssociation(fromObjectType, fromObjectId, toObjectType, toObjectId) {
     const path = `/crm/v4/objects/${fromObjectType}/${fromObjectId}/associations/${toObjectType}/${toObjectId}`;
 
-    // Determine if we need to use a specific association type
-    // For Booking → Mock Exam associations, ALWAYS use Type 1292 ("Mock Bookings")
-    let payload = [];
+    // IMPORTANT: After thorough testing, we've determined:
+    // - Type 1292 ("Mock Bookings") creates associations BUT breaks retrieval
+    // - Type 1277 (unlabeled/default) works for both creation AND retrieval
+    // - Using empty payload defaults to Type 1277 which works correctly
 
-    // Check if this is a Booking → Mock Exam association
+    // For ALL associations, use empty payload to let HubSpot use the default Type 1277
+    const payload = [];
+
+    console.log(`🔗 Creating association: ${fromObjectType}(${fromObjectId}) → ${toObjectType}(${toObjectId})`);
+
+    // Log specific details for Booking ↔ Mock Exam associations
     const isBookingToMockExam = (
       (fromObjectType === HUBSPOT_OBJECTS.bookings && toObjectType === HUBSPOT_OBJECTS.mock_exams) ||
       (fromObjectType === HUBSPOT_OBJECTS.mock_exams && toObjectType === HUBSPOT_OBJECTS.bookings)
     );
 
     if (isBookingToMockExam) {
-      // CRITICAL: Use Type 1292 "Mock Bookings" for all new booking associations
-      // This ensures consistency and proper labeling in HubSpot
-      payload = [
-        {
-          associationCategory: 'USER_DEFINED',
-          associationTypeId: 1292  // "Mock Bookings" label
-        }
-      ];
-      console.log(`🔗 Creating association: ${fromObjectType}(${fromObjectId}) → ${toObjectType}(${toObjectId})`);
-      console.log(`📋 Using Type 1292 "Mock Bookings" association (labeled)`);
+      console.log(`📋 Booking ↔ Mock Exam association - Using default Type 1277 (proven working)`);
     } else {
-      // For other associations, use empty payload to let HubSpot use default
-      console.log(`🔗 Creating association: ${fromObjectType}(${fromObjectId}) → ${toObjectType}(${toObjectId})`);
-      console.log(`📋 Using default HubSpot association (empty payload)`);
+      console.log(`📋 Using default HubSpot association type`);
     }
 
-    const result = await this.apiCall('PUT', path, payload);
-    console.log(`✅ Association created successfully:`, result);
-
-    return result;
+    try {
+      const result = await this.apiCall('PUT', path, payload);
+      console.log(`✅ Association created successfully:`, result);
+      return result;
+    } catch (error) {
+      console.error(`❌ Failed to create association:`, {
+        from: `${fromObjectType}(${fromObjectId})`,
+        to: `${toObjectType}(${toObjectId})`,
+        error: error.message,
+        status: error.response?.status,
+        details: error.response?.data
+      });
+      throw error;
+    }
   }
 
   /**
