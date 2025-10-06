@@ -7,10 +7,10 @@
 const ERROR_MESSAGES = {
   // Booking-specific errors
   DUPLICATE_BOOKING: {
-    title: 'Booking Already Exists',
-    message: 'You already have a booking for this exam date. Please choose a different date or cancel your existing booking.',
-    action: 'View My Bookings',
-    actionType: 'view-bookings',
+    title: 'Duplicate Booking Detected',
+    message: 'You already have a booking for this exam on this date. Each student can only book one session per exam date. Please view your existing bookings or choose a different date.',
+    action: null,  // No action button - user should choose different date
+    actionType: null,
     severity: 'warning'
   },
 

@@ -16,6 +16,14 @@ const ErrorDisplay = ({
   // Parse error to get user-friendly message
   const errorInfo = parseErrorMessage(error);
 
+  // FIX: Log error parsing for debugging
+  console.log('🔍 ErrorDisplay received:', {
+    rawError: error,
+    parsedErrorInfo: errorInfo,
+    hasAction: !!errorInfo.action,
+    actionType: errorInfo.actionType
+  });
+
   // Override variant if severity is provided in error info
   const displayVariant = errorInfo.severity || variant;
 

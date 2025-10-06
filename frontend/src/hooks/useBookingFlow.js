@@ -296,20 +296,29 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
       return updatedBookingData;
 
     } catch (err) {
-      console.error('Booking submission error:', err);
+      console.error('🚨 Booking submission error:', err);
 
-      // Pass the error object with code for better error display
-      if (err.code) {
-        setError({ code: err.code, message: err.message });
+      // FIX: Enhanced error logging for debugging
+      console.error('🔍 Error details:', {
+        hasCode: !!err.code,
+        code: err.code,
+        message: err.message,
+        fullError: err
+      });
 
-        // Special handling for insufficient credits - go back to verify step
-        if (err.code === 'INSUFFICIENT_CREDITS') {
-          setStep('verify');
-        } else {
-          setStep('details');
-        }
+      // FIX: Always pass error object with code for better error display
+      const errorObj = {
+        code: err.code || null,
+        message: err.message || 'An error occurred while creating your booking'
+      };
+
+      console.log('📋 Setting error object:', errorObj);
+      setError(errorObj);
+
+      // Special handling for insufficient credits - go back to verify step
+      if (err.code === 'INSUFFICIENT_CREDITS') {
+        setStep('verify');
       } else {
-        setError(err.message || 'An error occurred while creating your booking');
         setStep('details');
       }
 
