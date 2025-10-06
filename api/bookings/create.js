@@ -268,6 +268,9 @@ module.exports = module.exports = async function handler(req, res) {
     // Associate with Mock Exam
     try {
       console.log(`Attempting to associate booking ${createdBookingId} with mock exam ${mock_exam_id}`);
+      console.log(`📊 Mock Exam Association details: Booking(${createdBookingId}) → MockExam(${mock_exam_id})`);
+      console.log(`🔍 Object types being used: fromType=${HUBSPOT_OBJECTS.bookings}, toType=${HUBSPOT_OBJECTS.mock_exams}`);
+
       const mockExamAssociation = await hubspot.createAssociation(
         HUBSPOT_OBJECTS.bookings,
         createdBookingId,
@@ -278,14 +281,16 @@ module.exports = module.exports = async function handler(req, res) {
       associationResults.push({ type: 'mock_exam', success: true, result: mockExamAssociation });
     } catch (err) {
       console.error('❌ Failed to associate with mock exam:', err);
-      console.error('Mock exam association error details:', {
+      console.error('🔍 CRITICAL: Mock exam association error details:', {
         fromObject: HUBSPOT_OBJECTS.bookings,
         fromId: createdBookingId,
         toObject: HUBSPOT_OBJECTS.mock_exams,
         toId: mock_exam_id,
         error: err.message,
         status: err.response?.status,
-        data: err.response?.data
+        data: err.response?.data,
+        context: err.response?.data?.context,
+        fullError: err.toString()
       });
       associationResults.push({ type: 'mock_exam', success: false, error: err.message });
     }

@@ -99,11 +99,13 @@ class HubSpotService {
         message: errorMessage,
         fullResponse: error.response?.data,
         url: error.config?.url,
-        method: error.config?.method
+        method: error.config?.method,
+        requestData: error.config?.data ? JSON.parse(error.config.data) : null
       });
 
       const customError = new Error(errorMessage);
       customError.status = statusCode;
+      customError.response = error.response; // Preserve original response for debugging
       throw customError;
     }
   }
@@ -370,37 +372,56 @@ class HubSpotService {
   async createAssociation(fromObjectType, fromObjectId, toObjectType, toObjectId) {
     const path = `/crm/v4/objects/${fromObjectType}/${fromObjectId}/associations/${toObjectType}/${toObjectId}`;
 
+    // Log the full API path being called
+    console.log(`🔗 Creating association with full path: ${this.baseURL}${path}`);
+
     // Determine if we need to use a specific association type
-    // For Booking → Mock Exam associations, ALWAYS use Type 1292 ("Mock Bookings")
+    // For Booking → Mock Exam associations, use Type 1291 ("Mock Bookings")
+    // For Mock Exam → Booking associations, use Type 1292 ("Mock Bookings")
     let payload = [];
 
     // Check if this is a Booking → Mock Exam association
-    const isBookingToMockExam = (
-      (fromObjectType === HUBSPOT_OBJECTS.bookings && toObjectType === HUBSPOT_OBJECTS.mock_exams) ||
-      (fromObjectType === HUBSPOT_OBJECTS.mock_exams && toObjectType === HUBSPOT_OBJECTS.bookings)
-    );
+    const isBookingToMockExam = (fromObjectType === HUBSPOT_OBJECTS.bookings && toObjectType === HUBSPOT_OBJECTS.mock_exams);
+    const isMockExamToBooking = (fromObjectType === HUBSPOT_OBJECTS.mock_exams && toObjectType === HUBSPOT_OBJECTS.bookings);
 
     if (isBookingToMockExam) {
-      // CRITICAL: Use Type 1292 "Mock Bookings" for all new booking associations
-      // This ensures consistency and proper labeling in HubSpot
+      // Use Type 1291 "Mock Bookings" for Booking → Mock Exam direction
       payload = [
         {
           associationCategory: 'USER_DEFINED',
-          associationTypeId: 1292  // "Mock Bookings" label
+          associationTypeId: 1291  // "Mock Bookings" label for this direction
         }
       ];
       console.log(`🔗 Creating association: ${fromObjectType}(${fromObjectId}) → ${toObjectType}(${toObjectId})`);
-      console.log(`📋 Using Type 1292 "Mock Bookings" association (labeled)`);
+      console.log(`📋 Using Type 1291 "Mock Bookings" association (Booking → Mock Exam)`);
+      console.log(`📦 Payload being sent:`, JSON.stringify(payload));
+    } else if (isMockExamToBooking) {
+      // Use Type 1292 "Mock Bookings" for Mock Exam → Booking direction
+      payload = [
+        {
+          associationCategory: 'USER_DEFINED',
+          associationTypeId: 1292  // "Mock Bookings" label for reverse direction
+        }
+      ];
+      console.log(`🔗 Creating association: ${fromObjectType}(${fromObjectId}) → ${toObjectType}(${toObjectId})`);
+      console.log(`📋 Using Type 1292 "Mock Bookings" association (Mock Exam → Booking)`);
+      console.log(`📦 Payload being sent:`, JSON.stringify(payload));
     } else {
       // For other associations, use empty payload to let HubSpot use default
       console.log(`🔗 Creating association: ${fromObjectType}(${fromObjectId}) → ${toObjectType}(${toObjectId})`);
       console.log(`📋 Using default HubSpot association (empty payload)`);
+      console.log(`📦 Payload being sent:`, JSON.stringify(payload));
     }
 
-    const result = await this.apiCall('PUT', path, payload);
-    console.log(`✅ Association created successfully:`, result);
-
-    return result;
+    try {
+      const result = await this.apiCall('PUT', path, payload);
+      console.log(`✅ Association created successfully:`, JSON.stringify(result));
+      return result;
+    } catch (error) {
+      console.error(`❌ Association API call failed for path: ${path}`);
+      console.error(`Error response:`, error.response?.data || error.message);
+      throw error;
+    }
   }
 
   /**

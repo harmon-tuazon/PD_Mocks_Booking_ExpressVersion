@@ -60,11 +60,11 @@ async function createAssociationWithType(bookingId, mockExamId) {
 
   const path = `/crm/v4/objects/${HUBSPOT_OBJECTS.bookings}/${bookingId}/associations/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}`;
 
-  // Use Type 1292 "Mock Bookings" association
+  // Use Type 1291 "Mock Bookings" association for Booking → Mock Exam
   const payload = [
     {
       associationCategory: 'USER_DEFINED',
-      associationTypeId: 1292  // "Mock Bookings" label
+      associationTypeId: 1291  // "Mock Bookings" label for this direction
     }
   ];
 
@@ -104,7 +104,7 @@ async function verifyAssociationType(bookingId, mockExamId) {
         console.log(`      Category: ${type.category}`);
         console.log(`      Label: ${type.label || 'Unlabeled'}`);
 
-        if (type.typeId === 1292 && type.label === 'Mock Bookings') {
+        if (type.typeId === 1291 && type.label === 'Mock Bookings') {
           hasCorrectType = true;
           console.log(`      ✅ CORRECT TYPE!`);
         }
@@ -114,10 +114,10 @@ async function verifyAssociationType(bookingId, mockExamId) {
     console.log('');
 
     if (hasCorrectType) {
-      console.log('✅ VERIFICATION PASSED: Association uses Type 1292 "Mock Bookings"\n');
+      console.log('✅ VERIFICATION PASSED: Association uses Type 1291 "Mock Bookings"\n');
       return true;
     } else {
-      console.log('❌ VERIFICATION FAILED: Association does NOT use Type 1292 "Mock Bookings"\n');
+      console.log('❌ VERIFICATION FAILED: Association does NOT use Type 1291 "Mock Bookings"\n');
       return false;
     }
 
@@ -198,10 +198,10 @@ async function runVerification() {
     console.log('='.repeat(80) + '\n');
 
     if (isCorrect) {
-      console.log('✅ VERIFICATION COMPLETE: Association type is correctly set to Type 1292\n');
+      console.log('✅ VERIFICATION COMPLETE: Association type is correctly set to Type 1291\n');
       console.log('💡 New bookings will use the "Mock Bookings" labeled association.\n');
     } else {
-      console.log('❌ VERIFICATION FAILED: Association type is NOT Type 1292\n');
+      console.log('❌ VERIFICATION FAILED: Association type is NOT Type 1291\n');
       console.log('⚠️  Check the createAssociation implementation in api/_shared/hubspot.js\n');
     }
 
