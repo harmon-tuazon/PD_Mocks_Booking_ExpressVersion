@@ -241,8 +241,25 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
 
       console.log('✅ API Response validation passed:', {
         booking_id: result.data.booking_id,
-        booking_record_id: result.data.booking_record_id
+        booking_record_id: result.data.booking_record_id,
+        credit_details: result.data.credit_details
       });
+
+      // FIX: Enhanced logging to debug token display issue
+      console.log('💳 Frontend received credit_details:', {
+        raw_credit_details: result.data?.credit_details,
+        remaining_credits: result.data?.credit_details?.remaining_credits,
+        credit_breakdown: result.data?.credit_details?.credit_breakdown,
+        has_breakdown: !!result.data?.credit_details?.credit_breakdown
+      });
+
+      // FIX: Validate that credit_breakdown exists
+      if (!result.data?.credit_details?.credit_breakdown) {
+        console.error('🚨 FRONTEND ERROR: credit_breakdown is missing from API response!', {
+          full_response: result.data,
+          credit_details: result.data?.credit_details
+        });
+      }
 
       // Create updated booking data with proper null checking, using mergedData as base
       const updatedBookingData = {
@@ -253,7 +270,19 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
         // Safe access with fallback values
         examLocation: result.data?.exam_details?.location || 'Mississauga',
         remainingCredits: result.data?.credit_details?.remaining_credits || 0,
+        // Include the full credit breakdown from API response
+        creditBreakdown: result.data?.credit_details?.credit_breakdown || {
+          specific_credits: 0,
+          shared_credits: 0
+        },
       };
+
+      // FIX: Log what will be passed to BookingConfirmation
+      console.log('💳 BookingData being passed to confirmation:', {
+        remainingCredits: updatedBookingData.remainingCredits,
+        creditBreakdown: updatedBookingData.creditBreakdown,
+        mockType: updatedBookingData.mockType
+      });
 
       // Update state with confirmation data
       setBookingData(updatedBookingData);

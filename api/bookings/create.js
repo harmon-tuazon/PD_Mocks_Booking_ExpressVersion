@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { HubSpotService, HUBSPOT_OBJECTS } = require('../_shared/hubspot');
 const { schemas } = require('../_shared/validation');
+const { getCache } = require('../_shared/cache');
 const {
   setCorsHeaders,
   handleOptionsRequest,
@@ -171,6 +172,16 @@ module.exports = module.exports = async function handler(req, res) {
       throw error;
     }
 
+    // FIX: Log the raw credit values fetched from HubSpot for debugging
+    console.log('💳 Raw HubSpot Credit Properties:', {
+      contact_id,
+      student_id: contact.properties.student_id,
+      sj_credits: contact.properties.sj_credits,
+      cs_credits: contact.properties.cs_credits,
+      sjmini_credits: contact.properties.sjmini_credits,
+      shared_mock_credits: contact.properties.shared_mock_credits
+    });
+
     // Calculate available credits
     let specificCredits = 0;
     let sharedCredits = parseInt(contact.properties.shared_mock_credits) || 0;
@@ -187,6 +198,14 @@ module.exports = module.exports = async function handler(req, res) {
         sharedCredits = 0; // Don't use shared credits for mini-mock
         break;
     }
+
+    // FIX: Log parsed credit values
+    console.log('💳 Parsed Credit Values:', {
+      mock_type,
+      specificCredits,
+      sharedCredits,
+      totalCredits: specificCredits + sharedCredits
+    });
 
     const totalCredits = specificCredits + sharedCredits;
 
@@ -212,12 +231,18 @@ module.exports = module.exports = async function handler(req, res) {
       currentValue: parseInt(contact.properties[creditField]) || 0
     });
 
-    // Step 5: Create booking with token_used property and conditional fields
+    // Step 5: Create booking with token_used property, conditional fields, AND mock exam data
     const bookingData = {
       bookingId,
       name: sanitizedName,
       email: sanitizedEmail,
-      tokenUsed: tokenUsed
+      tokenUsed: tokenUsed,
+      // FIX: Include mock exam data directly on booking for immediate retrieval
+      mockType: mock_type,
+      examDate: exam_date,
+      location: mockExam.properties.location || 'Mississauga',
+      startTime: mockExam.properties.start_time,
+      endTime: mockExam.properties.end_time
     };
 
     // Add conditional fields based on exam type
@@ -310,6 +335,14 @@ module.exports = module.exports = async function handler(req, res) {
     const currentCreditValue = parseInt(contact.properties[creditField]) || 0;
     const newCreditValue = Math.max(0, currentCreditValue - 1);
 
+    // FIX: Log credit deduction details
+    console.log('💳 Credit Deduction:', {
+      creditField,
+      currentValue: currentCreditValue,
+      newValue: newCreditValue,
+      deducted: currentCreditValue - newCreditValue
+    });
+
     await hubspot.updateContactCredits(contact_id, creditField, newCreditValue);
 
     // Step 9: Create Note in Contact timeline (async, non-blocking)
@@ -345,6 +378,30 @@ module.exports = module.exports = async function handler(req, res) {
       associationWarnings.push('Mock exam association failed - exam may not show booking count update');
     }
 
+    // Calculate AFTER deduction credit breakdown for TokenCard display
+    let specificCreditsAfter = specificCredits;
+    let sharedCreditsAfter = sharedCredits;
+
+    // Determine which credit was deducted and update accordingly
+    if (creditField === 'shared_mock_credits') {
+      // Shared credit was deducted
+      sharedCreditsAfter = newCreditValue;
+    } else {
+      // Specific credit was deducted (sj_credits, cs_credits, or sjmini_credits)
+      specificCreditsAfter = newCreditValue;
+    }
+
+    // FIX: Log the AFTER deduction credit breakdown for debugging
+    console.log('💳 Credit Breakdown AFTER Deduction:', {
+      creditField,
+      specificCredits_BEFORE: specificCredits,
+      sharedCredits_BEFORE: sharedCredits,
+      specificCredits_AFTER: specificCreditsAfter,
+      sharedCredits_AFTER: sharedCreditsAfter,
+      newCreditValue,
+      totalAfter: specificCreditsAfter + sharedCreditsAfter
+    });
+
     // Prepare response - booking is successful regardless of association issues
     const responseData = {
       booking_id: bookingId,
@@ -360,9 +417,16 @@ module.exports = module.exports = async function handler(req, res) {
         credit_field_deducted: creditField,
         remaining_credits: newCreditValue,
         credit_breakdown: {
-          specific_credits_before_deduction: specificCredits,
-          shared_credits_before_deduction: sharedCredits,
-          used_field: creditField
+          // Use correct property names for TokenCard component
+          specific_credits: specificCreditsAfter,  // AFTER deduction
+          shared_credits: sharedCreditsAfter       // AFTER deduction
+        },
+        // Keep detailed info for logging/debugging
+        deduction_details: {
+          specific_credits_before: specificCredits,
+          shared_credits_before: sharedCredits,
+          field_used: creditField,
+          amount_deducted: 1
         }
       },
       associations: {
@@ -372,11 +436,55 @@ module.exports = module.exports = async function handler(req, res) {
       }
     };
 
+    // FIX: Validate that credit_details is properly structured before sending response
+    if (!responseData.credit_details || !responseData.credit_details.credit_breakdown) {
+      console.error('🚨 CRITICAL: credit_details or credit_breakdown is missing from response!', responseData);
+      throw new Error('Internal error: credit_details not properly generated');
+    }
+
+    // FIX: Log the complete credit_details being sent to frontend
+    console.log('📤 Sending credit_details to frontend:', {
+      remaining_credits: responseData.credit_details.remaining_credits,
+      credit_breakdown: responseData.credit_details.credit_breakdown,
+      deduction_details: responseData.credit_details.deduction_details
+    });
+
     // Log success with any warnings
     if (associationWarnings.length > 0) {
       console.log('⚠️ Booking successful with association warnings:', associationWarnings);
     } else {
       console.log('✅ Booking and all associations successful');
+    }
+
+    // FIX: Invalidate booking cache for this contact to ensure immediate updates
+    try {
+      const cache = getCache();
+      // Invalidate all booking caches for this contact (all filters, pages)
+      const cacheKeyPatterns = [
+        `bookings:contact:${contact_id}:all:`,
+        `bookings:contact:${contact_id}:upcoming:`,
+        `bookings:contact:${contact_id}:past:`,
+        `bookings:contact:${contact_id}:cancelled:`
+      ];
+
+      // Get all cache keys
+      const allKeys = cache.keys();
+      let invalidatedCount = 0;
+
+      // Delete matching keys
+      for (const key of allKeys) {
+        for (const pattern of cacheKeyPatterns) {
+          if (key.startsWith(pattern)) {
+            cache.del(key);
+            invalidatedCount++;
+          }
+        }
+      }
+
+      console.log(`🗑️ Invalidated ${invalidatedCount} cache entries for contact ${contact_id}`);
+    } catch (cacheError) {
+      console.error('⚠️ Cache invalidation failed (non-critical):', cacheError.message);
+      // Don't throw - cache invalidation is nice-to-have, not critical
     }
 
     // FIXED: Correct parameter order - (data, message) not (message, data)

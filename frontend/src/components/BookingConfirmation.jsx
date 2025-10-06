@@ -11,11 +11,44 @@ const BookingConfirmation = () => {
 
   const bookingData = location.state?.bookingData || {};
 
+  // FIX: Enhanced logging to debug token display issue
+  console.log('📊 BookingConfirmation received data:', {
+    remainingCredits: bookingData.remainingCredits,
+    creditBreakdown: bookingData.creditBreakdown,
+    mockType: bookingData.mockType,
+    has_creditBreakdown: !!bookingData.creditBreakdown,
+    full_bookingData: bookingData
+  });
+
+  // FIX: Warn if credit breakdown is missing
+  if (bookingData.remainingCredits !== undefined && !bookingData.creditBreakdown) {
+    console.warn('⚠️ BookingConfirmation: creditBreakdown is missing but remainingCredits exists. This may cause incorrect token display.');
+  }
+
 
   // Use backend-generated booking ID from bookingData state, fallback to URL parameter
   const bookingId = bookingData.bookingId || urlBookingId;
 
   const handleBookAnother = () => {
+    console.log('🎯 [BookingConfirmation] Book Another clicked, navigating with refresh flag');
+    console.log('🎯 [BookingConfirmation] Available booking data:', bookingData);
+
+    // Also set localStorage signal for extra reliability
+    // Note: bookingData has studentId (not student_id) based on useBookingFlow return
+    const refreshSignal = {
+      studentId: bookingData.studentId || bookingData.student_id,
+      email: bookingData.email,
+      bookingId: bookingData.bookingId || bookingId,
+      timestamp: Date.now()
+    };
+
+    if (refreshSignal.studentId && refreshSignal.email) {
+      console.log('🎯 [BookingConfirmation] Setting localStorage refresh signal:', refreshSignal);
+      localStorage.setItem('bookingCreated', JSON.stringify(refreshSignal));
+    } else {
+      console.warn('🎯 [BookingConfirmation] Missing studentId or email, cannot set refresh signal');
+    }
+
     navigate('/book/exam-types', { state: { refreshBookings: true } });
   };
 
@@ -92,10 +125,17 @@ const BookingConfirmation = () => {
           {/* Remaining Credits Display */}
           {bookingData.remainingCredits !== undefined && bookingData.mockType && (
             <div className="mb-8">
+              {!bookingData.creditBreakdown && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    ⚠️ Credit breakdown data is missing. Token display may not be accurate.
+                  </p>
+                </div>
+              )}
               <TokenCard
-                creditBreakdown={{
+                creditBreakdown={bookingData.creditBreakdown || {
                   specific_credits: bookingData.remainingCredits || 0,
-                  shared_credits: 0  // We don't have breakdown data in confirmation, so just show remaining as specific
+                  shared_credits: 0  // Fallback if creditBreakdown is not available
                 }}
                 mockType={bookingData.mockType}
                 compact={true}
