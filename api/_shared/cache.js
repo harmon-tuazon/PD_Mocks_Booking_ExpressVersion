@@ -93,6 +93,15 @@ class CacheService {
   }
 
   /**
+   * Get all cache keys
+   *
+   * @returns {Array<string>} Array of all cache keys
+   */
+  keys() {
+    return Array.from(this.cache.keys());
+  }
+
+  /**
    * Remove all expired entries
    */
   cleanExpired() {

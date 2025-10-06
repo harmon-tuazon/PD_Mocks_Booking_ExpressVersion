@@ -471,19 +471,30 @@ module.exports = module.exports = async function handler(req, res) {
       const allKeys = cache.keys();
       let invalidatedCount = 0;
 
+      console.log(`🔍 Searching for cache keys matching patterns for contact ${contact_id}:`, cacheKeyPatterns);
+      console.log(`📋 Total cache keys to check: ${allKeys.length}`);
+
       // Delete matching keys
       for (const key of allKeys) {
         for (const pattern of cacheKeyPatterns) {
           if (key.startsWith(pattern)) {
-            cache.del(key);
+            cache.delete(key);  // FIX: Changed from cache.del() to cache.delete()
             invalidatedCount++;
+            console.log(`  🗑️ Deleted cache key: ${key}`);
           }
         }
       }
 
-      console.log(`🗑️ Invalidated ${invalidatedCount} cache entries for contact ${contact_id}`);
+      console.log(`🗑️ Successfully invalidated ${invalidatedCount} cache entries for contact ${contact_id}`);
+
+      if (invalidatedCount === 0) {
+        console.warn(`⚠️ No cache entries found to invalidate. This may indicate a cache key mismatch.`);
+      }
     } catch (cacheError) {
-      console.error('⚠️ Cache invalidation failed (non-critical):', cacheError.message);
+      console.error('❌ Cache invalidation failed:', {
+        error: cacheError.message,
+        stack: cacheError.stack
+      });
       // Don't throw - cache invalidation is nice-to-have, not critical
     }
 
