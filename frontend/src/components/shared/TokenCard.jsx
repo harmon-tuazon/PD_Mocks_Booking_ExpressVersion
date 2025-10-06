@@ -1,6 +1,6 @@
 import React from 'react';
 
-const TokenCard = ({ creditBreakdown, mockType, compact = false, className = "" }) => {
+const TokenCard = ({ creditBreakdown, mockType, compact = false, className = "", isAfterBooking = false }) => {
   if (!creditBreakdown) {
     return null;
   }
@@ -42,8 +42,12 @@ const TokenCard = ({ creditBreakdown, mockType, compact = false, className = "" 
     return (
       <div className={`bg-white border rounded-lg overflow-hidden shadow-sm ${className}`}>
         <div className="px-3 py-2 border-b">
-          <h3 className="font-subheading text-sm font-medium text-primary-900">Available Tokens</h3>
-          <p className="font-body text-xs text-primary-600 mt-0.5">Your current balance</p>
+          <h3 className="font-subheading text-sm font-medium text-primary-900">
+            {isAfterBooking ? 'Remaining Tokens' : 'Available Tokens'}
+          </h3>
+          <p className="font-body text-xs text-primary-600 mt-0.5">
+            {isAfterBooking ? 'Your current balance after booking' : 'Your current balance'}
+          </p>
         </div>
         <div className="p-3">
           <div className="space-y-1.5">
@@ -81,8 +85,8 @@ const TokenCard = ({ creditBreakdown, mockType, compact = false, className = "" 
   return (
     <div className={`bg-white border rounded-lg overflow-hidden shadow-sm ${className}`}>
       <div className="px-3 py-2 border-b">
-        <h3 className="font-subheading text-sm font-medium text-primary-900">Available Tokens</h3>
-        <p className="font-body text-xs text-primary-600 mt-0.5">Your current token balance</p>
+        <h3 className="font-subheading text-sm font-medium text-primary-900">Remaining Tokens</h3>
+        <p className="font-body text-xs text-primary-600 mt-0.5">Your current balance after booking</p>
       </div>
 
       <div className="overflow-x-auto">

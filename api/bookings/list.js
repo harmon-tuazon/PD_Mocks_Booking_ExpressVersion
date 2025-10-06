@@ -109,6 +109,12 @@ async function handler(req, res) {
       shared_mock_credits: parseInt(contact.properties.shared_mock_credits) || 0
     };
 
+    // Create credit_breakdown for TokenCard compatibility
+    const credit_breakdown = {
+      specific_credits: 0,  // Placeholder - frontend determines based on mock type
+      shared_credits: parseInt(contact.properties.shared_mock_credits) || 0
+    };
+
     // Step 2: Get contact's HubSpot object ID for associations API
     const contactHsObjectId = contact.properties.hs_object_id || contactId;
     console.log(`🔗 Using contact HubSpot object ID: ${contactHsObjectId} for associations API`);
@@ -127,9 +133,12 @@ async function handler(req, res) {
         console.log(`📋 Cache MISS - Retrieving bookings via HubSpot associations API (filter: ${filter}, page: ${page}, limit: ${limit})`);
         bookingsData = await hubspot.getBookingsForContact(contactHsObjectId, { filter, page, limit });
 
-        // Store in cache with 5-minute TTL
-        cache.set(cacheKey, bookingsData, 5 * 60);
-        console.log(`💾 Cached bookings data with key: ${cacheKey}`);
+        // FIX: Use shorter cache TTL for upcoming bookings to ensure immediate updates
+        // Upcoming bookings: 30 seconds (users expect immediate updates after booking)
+        // Other filters: 5 minutes (less time-sensitive)
+        const cacheTTL = filter === 'upcoming' ? 30 : (5 * 60);
+        cache.set(cacheKey, bookingsData, cacheTTL);
+        console.log(`💾 Cached bookings data with key: ${cacheKey} (TTL: ${cacheTTL}s)`);
       }
 
       console.log(`📊 [API DEBUG] Booking retrieval summary:`, {
@@ -148,7 +157,8 @@ async function handler(req, res) {
       const responseData = {
         bookings: bookingsData.bookings,
         pagination: bookingsData.pagination,
-        credits: credits
+        credits: credits,  // Keep existing for table display
+        credit_breakdown: credit_breakdown  // Add this for TokenCard compatibility
       };
 
       // Return success response
@@ -186,7 +196,8 @@ async function handler(req, res) {
             has_next: false,
             has_previous: false
           },
-          credits: credits
+          credits: credits,  // Keep existing for table display
+          credit_breakdown: credit_breakdown  // Add this for TokenCard compatibility
         };
 
         return res.status(200).json(createSuccessResponse(

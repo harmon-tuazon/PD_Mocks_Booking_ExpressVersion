@@ -18,10 +18,12 @@ const ExistingBookingsCard = ({
   const [totalBookings, setTotalBookings] = useState(0);
   const [upcomingCount, setUpcomingCount] = useState(0);
   const lastFetchRef = useRef(0);
+  const [refreshKey, setRefreshKey] = useState(0); // Force component refresh
 
   // Fetch bookings from API
   const fetchBookings = useCallback(async (force = false) => {
     if (!studentId || !email) {
+      console.log('🔍 [ExistingBookingsCard] No studentId or email, skipping fetch');
       setLoading(false);
       return;
     }
@@ -29,14 +31,23 @@ const ExistingBookingsCard = ({
     // Prevent duplicate fetches within 1 second unless forced
     const now = Date.now();
     if (!force && now - lastFetchRef.current < 1000) {
+      console.log('🔍 [ExistingBookingsCard] Skipping duplicate fetch (within 1s)');
       return;
     }
     lastFetchRef.current = now;
+
+    console.log('🔍 [ExistingBookingsCard] Starting fetchBookings:', {
+      studentId,
+      email,
+      force,
+      timestamp: new Date().toISOString()
+    });
 
     setLoading(true);
     setError(null);
 
     try {
+      console.log('🔍 [ExistingBookingsCard] Calling API...');
       const response = await apiService.bookings.list({
         student_id: studentId,
         email: email,
@@ -44,13 +55,43 @@ const ExistingBookingsCard = ({
         limit: 10 // Fetch more than maxItems to get accurate count
       });
 
+      console.log('🔍 [ExistingBookingsCard] API Response:', {
+        success: response.success,
+        bookingsCount: response.data?.bookings?.length || 0,
+        rawResponse: response
+      });
+
       if (response.success) {
         const allBookings = response.data.bookings || [];
+
+        console.log('🔍 [ExistingBookingsCard] Raw bookings from API:', allBookings.map(b => ({
+          id: b.id,
+          booking_id: b.booking_id,
+          is_active: b.is_active,
+          mock_exam_is_active: b.mock_exam?.is_active,
+          status: b.status,
+          exam_date: b.exam_date || b.mock_exam?.exam_date
+        })));
 
         // Filter to only show bookings where is_active === "Active"
         const activeBookings = allBookings.filter(booking => {
           const isActive = booking.is_active || booking.mock_exam?.is_active;
-          return isActive === 'Active' || isActive === 'active';
+          const isActiveBooking = isActive === 'Active' || isActive === 'active';
+
+          console.log(`🔍 [ExistingBookingsCard] Filtering booking ${booking.id}:`, {
+            is_active: booking.is_active,
+            mock_exam_is_active: booking.mock_exam?.is_active,
+            final_is_active: isActive,
+            passes_filter: isActiveBooking
+          });
+
+          return isActiveBooking;
+        });
+
+        console.log('🔍 [ExistingBookingsCard] Filtered active bookings:', {
+          total: allBookings.length,
+          active: activeBookings.length,
+          activeIds: activeBookings.map(b => b.booking_id || b.id)
         });
 
         setBookings(activeBookings);
@@ -60,28 +101,49 @@ const ExistingBookingsCard = ({
         throw new Error(response.error || 'Failed to fetch bookings');
       }
     } catch (err) {
-      console.error('Error fetching bookings:', err);
+      console.error('❌ [ExistingBookingsCard] Error fetching bookings:', err);
       setError('Unable to load bookings');
       setBookings([]);
     } finally {
       setLoading(false);
+      console.log('🔍 [ExistingBookingsCard] Fetch complete');
     }
   }, [studentId, email]);
 
   // Fetch bookings on mount and when dependencies change
   useEffect(() => {
+    console.log('🔍 [ExistingBookingsCard] Component mounted or dependencies changed');
     fetchBookings();
-  }, [fetchBookings]);
+  }, [fetchBookings, refreshKey]); // Add refreshKey as dependency
 
   // Refetch bookings when navigating back to this page or when explicitly requested
   useEffect(() => {
+    console.log('🔍 [ExistingBookingsCard] Location/State change detected:', {
+      pathname: location.pathname,
+      refreshBookings: location.state?.refreshBookings,
+      fullState: location.state,
+      timestamp: new Date().toISOString()
+    });
+
     // Fetch when location changes (user navigates to this page)
     // Also check if we should refresh based on navigation state
     const shouldRefresh = location.state?.refreshBookings;
-    fetchBookings(true);
+
+    if (shouldRefresh) {
+      console.log('🔍 [ExistingBookingsCard] refreshBookings flag detected! Forcing refresh with 2s delay for HubSpot sync');
+      // Add a delay to ensure HubSpot has updated
+      setTimeout(() => {
+        console.log('🔍 [ExistingBookingsCard] Executing delayed refresh after navigation');
+        fetchBookings(true);
+      }, 2000);
+    } else {
+      console.log('🔍 [ExistingBookingsCard] Regular navigation detected, fetching immediately');
+      fetchBookings(true);
+    }
 
     // Clear the refresh flag from location state to prevent unnecessary refetches
     if (shouldRefresh && window.history.replaceState) {
+      console.log('🔍 [ExistingBookingsCard] Clearing refreshBookings flag from history state');
       window.history.replaceState({}, document.title);
     }
   }, [location.pathname, location.state?.refreshBookings]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -89,12 +151,15 @@ const ExistingBookingsCard = ({
   // Refetch when page becomes visible (user switches tabs back)
   useEffect(() => {
     const handleVisibilityChange = () => {
+      console.log('🔍 [ExistingBookingsCard] Visibility change:', document.visibilityState);
       if (document.visibilityState === 'visible') {
+        console.log('🔍 [ExistingBookingsCard] Page became visible, refreshing bookings');
         fetchBookings(true);
       }
     };
 
     const handleFocus = () => {
+      console.log('🔍 [ExistingBookingsCard] Window gained focus, refreshing bookings');
       fetchBookings(true);
     };
 
@@ -105,6 +170,90 @@ const ExistingBookingsCard = ({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchBookings]);
+
+  // Listen for localStorage-based refresh signals
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'bookingCreated' && e.newValue) {
+        console.log('🔍 [ExistingBookingsCard] Detected new booking via localStorage:', e.newValue);
+
+        // Parse the value to check if it's for our user
+        try {
+          const bookingInfo = JSON.parse(e.newValue);
+          if (bookingInfo.studentId === studentId) {
+            console.log('🔍 [ExistingBookingsCard] New booking is for current user, refreshing with delay');
+
+            // Add delay for HubSpot sync
+            setTimeout(() => {
+              console.log('🔍 [ExistingBookingsCard] Executing delayed refresh after new booking');
+              setRefreshKey(prev => prev + 1); // Force component refresh
+              fetchBookings(true);
+            }, 2500); // 2.5 second delay for HubSpot
+
+            // Clear the signal
+            localStorage.removeItem('bookingCreated');
+          }
+        } catch (err) {
+          console.error('Error parsing booking signal:', err);
+        }
+      }
+    };
+
+    // Check for pending refresh on mount
+    const pendingRefresh = localStorage.getItem('bookingCreated');
+    if (pendingRefresh) {
+      try {
+        const bookingInfo = JSON.parse(pendingRefresh);
+        if (bookingInfo.studentId === studentId) {
+          console.log('🔍 [ExistingBookingsCard] Found pending refresh signal on mount');
+          setTimeout(() => {
+            setRefreshKey(prev => prev + 1);
+            fetchBookings(true);
+          }, 1500);
+          localStorage.removeItem('bookingCreated');
+        }
+      } catch (err) {
+        console.error('Error handling pending refresh:', err);
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [studentId, fetchBookings]);
+
+  // Periodic polling for updates (every 30 seconds when visible)
+  useEffect(() => {
+    let intervalId;
+
+    if (document.visibilityState === 'visible') {
+      // Start polling
+      intervalId = setInterval(() => {
+        console.log('🔍 [ExistingBookingsCard] Periodic refresh (30s interval)');
+        fetchBookings(true);
+      }, 30000); // 30 seconds
+    }
+
+    const handleVisibilityForPolling = () => {
+      if (document.visibilityState === 'visible' && !intervalId) {
+        // Resume polling when page becomes visible
+        intervalId = setInterval(() => {
+          console.log('🔍 [ExistingBookingsCard] Periodic refresh (30s interval)');
+          fetchBookings(true);
+        }, 30000);
+      } else if (document.visibilityState === 'hidden' && intervalId) {
+        // Stop polling when page is hidden
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityForPolling);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityForPolling);
     };
   }, [fetchBookings]);
 

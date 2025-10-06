@@ -280,6 +280,24 @@ class HubSpotService {
       ...(bookingData.tokenUsed ? { token_used: bookingData.tokenUsed } : {})
     };
 
+    // FIX: Store mock exam data directly on booking for immediate retrieval
+    // This ensures bookings appear in lists without waiting for association queries
+    if (bookingData.mockType) {
+      properties.mock_type = bookingData.mockType;
+    }
+    if (bookingData.examDate) {
+      properties.exam_date = bookingData.examDate;
+    }
+    if (bookingData.location) {
+      properties.location = bookingData.location;
+    }
+    if (bookingData.startTime) {
+      properties.start_time = bookingData.startTime;
+    }
+    if (bookingData.endTime) {
+      properties.end_time = bookingData.endTime;
+    }
+
     // Add conditional fields based on what's provided
     if (bookingData.dominantHand !== undefined) {
       properties.dominant_hand = bookingData.dominantHand.toString();
@@ -304,7 +322,11 @@ class HubSpotService {
       ...properties,
       // Mask sensitive data in logs
       name: properties.name ? `${properties.name.substring(0, 2)}***` : undefined,
-      email: properties.email ? `${properties.email.substring(0, 3)}***` : undefined
+      email: properties.email ? `${properties.email.substring(0, 3)}***` : undefined,
+      // Show mock exam data for debugging
+      mock_type: properties.mock_type,
+      exam_date: properties.exam_date,
+      location: properties.location
     });
 
     return await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}`, payload);

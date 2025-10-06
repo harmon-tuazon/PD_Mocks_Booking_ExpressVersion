@@ -107,6 +107,18 @@ const BookingForm = () => {
     // Pass the payload directly to submitBooking instead of relying on state updates
     const result = await submitBooking(bookingPayload);
     if (result) {
+      console.log('🎯 Booking created successfully:', result);
+
+      // Signal to ExistingBookingsCard that a new booking was created
+      const refreshSignal = {
+        studentId: userSession?.studentId,
+        email: userSession?.email,
+        bookingId: result.bookingId,
+        timestamp: Date.now()
+      };
+
+      console.log('🎯 Setting localStorage refresh signal:', refreshSignal);
+      localStorage.setItem('bookingCreated', JSON.stringify(refreshSignal));
 
       // Use a fallback booking ID if the one from the result is undefined
       const fallbackBookingId = result.bookingId || `booking-${Date.now()}`;
