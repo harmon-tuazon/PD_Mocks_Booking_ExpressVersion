@@ -5,6 +5,7 @@ import apiService, { normalizeBooking, formatBookingNumber, getBookingStatus, fo
 import BookingsCalendarView from './bookings/BookingsCalendarView';
 import CapacityBadge from './shared/CapacityBadge';
 import ResponsiveLogo from './shared/Logo';
+import ErrorDisplay from './shared/ErrorDisplay';
 import { DeleteBookingModal } from './shared';
 
 
@@ -97,12 +98,15 @@ const MyBookings = () => {
       }
     } catch (err) {
       console.error('Authentication error:', err);
-      if (err.message?.includes('not found') || err.message?.includes('STUDENT_NOT_FOUND')) {
-        setAuthError('No user found with this Student ID. Please check your Student ID and try again.');
+      // Pass error with code for better error display
+      if (err.code) {
+        setAuthError({ code: err.code, message: err.message });
+      } else if (err.message?.includes('not found') || err.message?.includes('STUDENT_NOT_FOUND')) {
+        setAuthError({ code: 'STUDENT_NOT_FOUND', message: err.message });
       } else if (err.message?.includes('Email does not match') || err.message?.includes('EMAIL_MISMATCH')) {
-        setAuthError('The email address does not match our records for this Student ID.');
+        setAuthError({ code: 'EMAIL_MISMATCH', message: err.message });
       } else {
-        setAuthError('An error occurred while verifying your information. Please try again.');
+        setAuthError(err.message || 'An error occurred while verifying your information. Please try again.');
       }
     } finally {
       setAuthLoading(false);
@@ -549,34 +553,13 @@ const MyBookings = () => {
             </p>
           </div>
 
-          {/* Error Display */}
+          {/* Error Display with User-Friendly Messages */}
           {authError && (
-            <div className="bg-error-50 border border-error-200 rounded-lg p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-error-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3 flex-1">
-                  <h3 className="font-subheading text-sm font-medium text-error-800">
-                    Authentication Error
-                  </h3>
-                  <div className="mt-2 font-body text-sm text-error-700">
-                    {authError}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setAuthError('')}
-                  className="ml-auto flex-shrink-0 text-error-400 hover:text-error-500"
-                >
-                  <span className="sr-only">Close</span>
-                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+            <ErrorDisplay
+              error={authError}
+              onDismiss={() => setAuthError('')}
+              showAction={true}
+            />
           )}
 
           {/* Login Form */}

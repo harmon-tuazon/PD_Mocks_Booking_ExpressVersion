@@ -128,10 +128,9 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     } catch (err) {
       console.error('Credit verification error:', err);
 
-      if (err.code === 'STUDENT_NOT_FOUND') {
-        setError('Student ID not found in our records. Please check and try again.');
-      } else if (err.code === 'EMAIL_MISMATCH') {
-        setError('Email does not match student record. Please use your registered email.');
+      // Pass the error object with code instead of just message string
+      if (err.code) {
+        setError({ code: err.code, message: err.message });
       } else {
         setError(err.message || 'An error occurred during verification');
       }
@@ -270,18 +269,18 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     } catch (err) {
       console.error('Booking submission error:', err);
 
-      if (err.code === 'DUPLICATE_BOOKING') {
-        setError('You already have a booking for this exam date.');
-      } else if (err.code === 'EXAM_FULL') {
-        setError('Sorry, this exam session is now full. Please select another date.');
-      } else if (err.code === 'INSUFFICIENT_CREDITS') {
-        setError('Your credits have changed. Please verify your eligibility again.');
-        setStep('verify');
+      // Pass the error object with code for better error display
+      if (err.code) {
+        setError({ code: err.code, message: err.message });
+
+        // Special handling for insufficient credits - go back to verify step
+        if (err.code === 'INSUFFICIENT_CREDITS') {
+          setStep('verify');
+        } else {
+          setStep('details');
+        }
       } else {
         setError(err.message || 'An error occurred while creating your booking');
-      }
-
-      if (err.code !== 'INSUFFICIENT_CREDITS') {
         setStep('details');
       }
 

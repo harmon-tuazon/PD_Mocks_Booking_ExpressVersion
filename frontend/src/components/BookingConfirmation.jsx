@@ -16,7 +16,7 @@ const BookingConfirmation = () => {
   const bookingId = bookingData.bookingId || urlBookingId;
 
   const handleBookAnother = () => {
-    navigate('/book/exam-types');
+    navigate('/book/exam-types', { state: { refreshBookings: true } });
   };
 
   return (

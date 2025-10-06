@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import apiService from '../../services/api';
 
 const ExistingBookingsCard = ({
@@ -11,18 +11,27 @@ const ExistingBookingsCard = ({
   className = ''
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [totalBookings, setTotalBookings] = useState(0);
   const [upcomingCount, setUpcomingCount] = useState(0);
+  const lastFetchRef = useRef(0);
 
   // Fetch bookings from API
-  const fetchBookings = useCallback(async () => {
+  const fetchBookings = useCallback(async (force = false) => {
     if (!studentId || !email) {
       setLoading(false);
       return;
     }
+
+    // Prevent duplicate fetches within 1 second unless forced
+    const now = Date.now();
+    if (!force && now - lastFetchRef.current < 1000) {
+      return;
+    }
+    lastFetchRef.current = now;
 
     setLoading(true);
     setError(null);
@@ -37,13 +46,13 @@ const ExistingBookingsCard = ({
 
       if (response.success) {
         const allBookings = response.data.bookings || [];
-        
+
         // Filter to only show bookings where is_active === "Active"
         const activeBookings = allBookings.filter(booking => {
           const isActive = booking.is_active || booking.mock_exam?.is_active;
           return isActive === 'Active' || isActive === 'active';
         });
-        
+
         setBookings(activeBookings);
         setUpcomingCount(activeBookings.length);
         setTotalBookings(activeBookings.length);
@@ -62,6 +71,41 @@ const ExistingBookingsCard = ({
   // Fetch bookings on mount and when dependencies change
   useEffect(() => {
     fetchBookings();
+  }, [fetchBookings]);
+
+  // Refetch bookings when navigating back to this page or when explicitly requested
+  useEffect(() => {
+    // Fetch when location changes (user navigates to this page)
+    // Also check if we should refresh based on navigation state
+    const shouldRefresh = location.state?.refreshBookings;
+    fetchBookings(true);
+
+    // Clear the refresh flag from location state to prevent unnecessary refetches
+    if (shouldRefresh && window.history.replaceState) {
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.pathname, location.state?.refreshBookings]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refetch when page becomes visible (user switches tabs back)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchBookings(true);
+      }
+    };
+
+    const handleFocus = () => {
+      fetchBookings(true);
+    };
+
+    // Listen for visibility changes and window focus
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [fetchBookings]);
 
   // Format short date (e.g., "Jan 25")
@@ -196,7 +240,7 @@ const ExistingBookingsCard = ({
       </svg>
       <p className="text-sm text-gray-700 mb-3">Unable to load bookings</p>
       <button
-        onClick={fetchBookings}
+        onClick={() => fetchBookings(true)}
         className="text-sm text-primary-600 hover:text-primary-700 font-medium"
       >
         Try again
@@ -216,7 +260,23 @@ const ExistingBookingsCard = ({
           {/* Card Header */}
           <div className="px-4 py-3 border-b">
             <div className="flex justify-between items-center">
-              <h3 className="text-sm font-medium text-gray-900">My Upcoming Mocks</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-medium text-gray-900">My Upcoming Mocks</h3>
+                {/* Refresh button - subtle, only shown when not loading */}
+                {!loading && (
+                  <button
+                    onClick={() => fetchBookings(true)}
+                    className="p-1 rounded hover:bg-gray-100 transition-colors duration-200"
+                    title="Refresh bookings"
+                    aria-label="Refresh bookings"
+                  >
+                    <svg className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+                )}
+              </div>
               {upcomingCount > 0 && (
                 <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
                   {upcomingCount}
