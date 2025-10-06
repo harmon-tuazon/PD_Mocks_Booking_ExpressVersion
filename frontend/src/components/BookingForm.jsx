@@ -88,9 +88,9 @@ const BookingForm = () => {
 
     // Add conditional field based on exam type
     if (isClinicalSkills) {
-      bookingPayload.dominantHand = dominantHand;
+      bookingPayload.dominant_hand = dominantHand;
     } else if (isLocationBased) {
-      bookingPayload.attendingLocation = attendingLocation;
+      bookingPayload.attending_location = attendingLocation;
     }
 
     updateBookingData(bookingPayload);
