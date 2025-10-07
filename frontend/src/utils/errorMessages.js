@@ -120,6 +120,15 @@ const ERROR_MESSAGES = {
  * @returns {Object} Formatted error object with title, message, action, etc.
  */
 export function parseErrorMessage(error) {
+  // 🔍 DEBUG: Log raw error received
+  console.log('🔍 [parseErrorMessage] Raw error received:', {
+    errorType: typeof error,
+    error: error,
+    'error?.code': error?.code,
+    'error?.message': error?.message,
+    'error?.error': error?.error
+  });
+
   // Handle different error formats
   let errorCode = null;
   let errorMessage = null;
@@ -135,8 +144,17 @@ export function parseErrorMessage(error) {
     errorMessage = error.error;
   }
 
+  // 🔍 DEBUG: Log extracted values
+  console.log('🔍 [parseErrorMessage] Extracted values:', {
+    errorCode: errorCode,
+    errorMessage: errorMessage,
+    hasErrorCode: !!errorCode,
+    errorCodeExists: errorCode && ERROR_MESSAGES[errorCode]
+  });
+
   // Check for specific error codes first
   if (errorCode && ERROR_MESSAGES[errorCode]) {
+    console.log('🔍 [parseErrorMessage] Found matching error code:', errorCode);
     return ERROR_MESSAGES[errorCode];
   }
 
@@ -146,39 +164,47 @@ export function parseErrorMessage(error) {
 
     // Credit-related errors
     if (lowerMessage.includes('credit') || lowerMessage.includes('0 credits available')) {
+      console.log('🔍 [parseErrorMessage] Matched: INSUFFICIENT_CREDITS');
       return ERROR_MESSAGES.INSUFFICIENT_CREDITS;
     }
 
     // Duplicate booking
     if (lowerMessage.includes('duplicate') || lowerMessage.includes('already have a booking')) {
+      console.log('🔍 [parseErrorMessage] Matched: DUPLICATE_BOOKING (from message pattern)');
       return ERROR_MESSAGES.DUPLICATE_BOOKING;
     }
 
     // Session full
     if (lowerMessage.includes('full') || lowerMessage.includes('capacity')) {
+      console.log('🔍 [parseErrorMessage] Matched: EXAM_FULL');
       return ERROR_MESSAGES.EXAM_FULL;
     }
 
     // Student/email validation
     if (lowerMessage.includes('student') && lowerMessage.includes('not found')) {
+      console.log('🔍 [parseErrorMessage] Matched: STUDENT_NOT_FOUND');
       return ERROR_MESSAGES.STUDENT_NOT_FOUND;
     }
 
     if (lowerMessage.includes('email') && (lowerMessage.includes('mismatch') || lowerMessage.includes('not match'))) {
+      console.log('🔍 [parseErrorMessage] Matched: EMAIL_MISMATCH');
       return ERROR_MESSAGES.EMAIL_MISMATCH;
     }
 
     // Network errors
     if (lowerMessage.includes('network') || lowerMessage.includes('fetch')) {
+      console.log('🔍 [parseErrorMessage] Matched: NETWORK_ERROR');
       return ERROR_MESSAGES.NETWORK_ERROR;
     }
 
     if (lowerMessage.includes('timeout')) {
+      console.log('🔍 [parseErrorMessage] Matched: TIMEOUT_ERROR');
       return ERROR_MESSAGES.TIMEOUT_ERROR;
     }
 
     // Validation errors with specific message
     if (lowerMessage.includes('validation') || lowerMessage.includes('invalid')) {
+      console.log('🔍 [parseErrorMessage] Matched: VALIDATION_ERROR');
       return {
         ...ERROR_MESSAGES.VALIDATION_ERROR,
         message: errorMessage // Use the specific validation message
@@ -187,15 +213,20 @@ export function parseErrorMessage(error) {
 
     // Server errors
     if (lowerMessage.includes('server') || lowerMessage.includes('internal')) {
+      console.log('🔍 [parseErrorMessage] Matched: SERVER_ERROR');
       return ERROR_MESSAGES.SERVER_ERROR;
     }
   }
 
   // Default fallback with original message if available
-  return {
+  console.log('🔍 [parseErrorMessage] No match found, returning UNKNOWN_ERROR');
+  const result = {
     ...ERROR_MESSAGES.UNKNOWN_ERROR,
     message: errorMessage || ERROR_MESSAGES.UNKNOWN_ERROR.message
   };
+
+  console.log('🔍 [parseErrorMessage] Final result:', result);
+  return result;
 }
 
 /**

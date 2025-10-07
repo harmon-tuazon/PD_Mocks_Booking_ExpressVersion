@@ -51,7 +51,8 @@ async function handler(req, res) {
       email: req.query.email,
       filter: req.query.filter || 'all',
       page: req.query.page ? parseInt(req.query.page) : 1,
-      limit: req.query.limit ? parseInt(req.query.limit) : 20
+      limit: req.query.limit ? parseInt(req.query.limit) : 20,
+      force: req.query.force === 'true' || req.query._t !== undefined  // Cache-busting support
     };
 
     // Validate input
@@ -68,7 +69,8 @@ async function handler(req, res) {
       email,
       filter,
       page,
-      limit
+      limit,
+      force
     } = validatedData;
 
     // Logging
@@ -77,7 +79,8 @@ async function handler(req, res) {
       email: sanitizeInput(email),
       filter,
       page,
-      limit
+      limit,
+      force: force || false
     });
 
     // Sanitize inputs
@@ -121,15 +124,27 @@ async function handler(req, res) {
 
     // Step 3: Get bookings using the improved associations-focused approach
     try {
-      // Check cache first
+      // Check cache first (unless force refresh is requested)
       const cache = getCache();
       const cacheKey = `bookings:contact:${contactHsObjectId}:${filter}:page${page}:limit${limit}`;
 
-      let bookingsData = cache.get(cacheKey);
+      let bookingsData = null;
 
-      if (bookingsData) {
-        console.log(`🎯 Cache HIT for ${cacheKey}`);
+      // FIX: Skip cache if force refresh is requested
+      if (force) {
+        console.log(`🔄 [Cache Bypass] Force refresh requested, skipping cache lookup for ${cacheKey}`);
+        // Set no-cache headers
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
       } else {
+        bookingsData = cache.get(cacheKey);
+        if (bookingsData) {
+          console.log(`🎯 Cache HIT for ${cacheKey}`);
+        }
+      }
+
+      if (!bookingsData) {
         console.log(`📋 Cache MISS - Retrieving bookings via HubSpot associations API (filter: ${filter}, page: ${page}, limit: ${limit})`);
         bookingsData = await hubspot.getBookingsForContact(contactHsObjectId, { filter, page, limit });
 
@@ -145,6 +160,7 @@ async function handler(req, res) {
         filter: filter,
         page: page,
         limit: limit,
+        force_refresh: force || false,
         total_bookings: bookingsData.total,
         returned_bookings: bookingsData.bookings.length,
         total_pages: bookingsData.pagination.total_pages,

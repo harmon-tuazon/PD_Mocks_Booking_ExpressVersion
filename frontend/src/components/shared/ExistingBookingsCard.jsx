@@ -47,12 +47,13 @@ const ExistingBookingsCard = ({
     setError(null);
 
     try {
-      console.log('🔍 [ExistingBookingsCard] Calling API...');
+      console.log('🔍 [ExistingBookingsCard] Calling API...', { force });
       const response = await apiService.bookings.list({
         student_id: studentId,
         email: email,
         filter: 'upcoming', // Only get upcoming bookings
-        limit: 10 // Fetch more than maxItems to get accurate count
+        limit: 10, // Fetch more than maxItems to get accurate count
+        force: force // Pass force parameter for cache-busting
       });
 
       console.log('🔍 [ExistingBookingsCard] API Response:', {

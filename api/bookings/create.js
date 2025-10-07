@@ -55,7 +55,7 @@ function mapCreditFieldToTokenUsed(creditField) {
  * POST /api/bookings/create
  * Create a new booking for a mock exam slot and handle all associations
  */
-module.exports = module.exports = async function handler(req, res) {
+module.exports = module.exports = module.exports = async function handler(req, res) {
   let bookingCreated = false;
   let createdBookingId = null;
 
@@ -343,14 +343,12 @@ module.exports = module.exports = async function handler(req, res) {
     await hubspot.updateContactCredits(contact_id, creditField, newCreditValue);
 
     // Step 9: Create Note in Contact timeline (async, non-blocking)
-    // This happens after booking is created but doesn't block the response
     const mockExamDataForNote = {
       exam_date,
       mock_type,
       location: mockExam.properties.location || 'Mississauga'
     };
 
-    // Create Note asynchronously - don't wait for it to complete
     hubspot.createBookingNote(bookingData, contact_id, mockExamDataForNote)
       .then(noteResult => {
         if (noteResult) {
@@ -361,11 +359,10 @@ module.exports = module.exports = async function handler(req, res) {
       })
       .catch(err => {
         console.error(`❌ Error creating booking note for ${bookingId}:`, err.message);
-        // Don't throw - booking is already successful
       });
 
-    // Determine overall success - booking succeeds if core operations complete
-    const bookingSuccess = true; // Booking was created successfully
+    // Determine overall success
+    const bookingSuccess = true;
     const associationWarnings = [];
 
     if (!contactAssocSuccess) {
@@ -379,16 +376,12 @@ module.exports = module.exports = async function handler(req, res) {
     let specificCreditsAfter = specificCredits;
     let sharedCreditsAfter = sharedCredits;
 
-    // Determine which credit was deducted and update accordingly
     if (creditField === 'shared_mock_credits') {
-      // Shared credit was deducted
       sharedCreditsAfter = newCreditValue;
     } else {
-      // Specific credit was deducted (sj_credits, cs_credits, or sjmini_credits)
       specificCreditsAfter = newCreditValue;
     }
 
-    // FIX: Log the AFTER deduction credit breakdown for debugging
     console.log('💳 Credit Breakdown AFTER Deduction:', {
       creditField,
       specificCredits_BEFORE: specificCredits,
@@ -399,7 +392,7 @@ module.exports = module.exports = async function handler(req, res) {
       totalAfter: specificCreditsAfter + sharedCreditsAfter
     });
 
-    // Prepare response - booking is successful regardless of association issues
+    // Prepare response
     const responseData = {
       booking_id: bookingId,
       booking_record_id: createdBookingId,
@@ -414,11 +407,9 @@ module.exports = module.exports = async function handler(req, res) {
         credit_field_deducted: creditField,
         remaining_credits: newCreditValue,
         credit_breakdown: {
-          // Use correct property names for TokenCard component
-          specific_credits: specificCreditsAfter,  // AFTER deduction
-          shared_credits: sharedCreditsAfter       // AFTER deduction
+          specific_credits: specificCreditsAfter,
+          shared_credits: sharedCreditsAfter
         },
-        // Keep detailed info for logging/debugging
         deduction_details: {
           specific_credits_before: specificCredits,
           shared_credits_before: sharedCredits,
@@ -433,76 +424,66 @@ module.exports = module.exports = async function handler(req, res) {
       }
     };
 
-    // FIX: Validate that credit_details is properly structured before sending response
     if (!responseData.credit_details || !responseData.credit_details.credit_breakdown) {
       console.error('🚨 CRITICAL: credit_details or credit_breakdown is missing from response!', responseData);
       throw new Error('Internal error: credit_details not properly generated');
     }
 
-    // FIX: Log the complete credit_details being sent to frontend
     console.log('📤 Sending credit_details to frontend:', {
       remaining_credits: responseData.credit_details.remaining_credits,
       credit_breakdown: responseData.credit_details.credit_breakdown,
       deduction_details: responseData.credit_details.deduction_details
     });
 
-    // Log success with any warnings
     if (associationWarnings.length > 0) {
       console.log('⚠️ Booking successful with association warnings:', associationWarnings);
     } else {
       console.log('✅ Booking and all associations successful');
     }
 
-    // FIX: Invalidate booking cache for this contact to ensure immediate updates
+    // FIX: Invalidate booking cache for this contact
     try {
       const cache = getCache();
-      // Invalidate all booking caches for this contact (all filters, pages)
-      const cacheKeyPatterns = [
-        `bookings:contact:${contact_id}:all:`,
-        `bookings:contact:${contact_id}:upcoming:`,
-        `bookings:contact:${contact_id}:past:`,
-        `bookings:contact:${contact_id}:cancelled:`
-      ];
-
-      // Get all cache keys
+      
+      console.log('🗑️ [Cache Invalidation] Starting cache invalidation for contact:', contact_id);
+      
       const allKeys = cache.keys();
       let invalidatedCount = 0;
 
-      console.log(`🔍 Searching for cache keys matching patterns for contact ${contact_id}:`, cacheKeyPatterns);
-      console.log(`📋 Total cache keys to check: ${allKeys.length}`);
+      console.log(`🔍 [Cache Invalidation] Total cache keys to check: ${allKeys.length}`);
 
-      // Delete matching keys
+      const cacheKeyPrefix = `bookings:contact:${contact_id}:`;
+      
+      console.log(`🔍 [Cache Invalidation] Looking for keys starting with: "${cacheKeyPrefix}"`);
+
       for (const key of allKeys) {
-        for (const pattern of cacheKeyPatterns) {
-          if (key.startsWith(pattern)) {
-            cache.delete(key);  // FIX: Changed from cache.del() to cache.delete()
-            invalidatedCount++;
-            console.log(`  🗑️ Deleted cache key: ${key}`);
-          }
+        if (key.startsWith(cacheKeyPrefix)) {
+          cache.delete(key);
+          invalidatedCount++;
+          console.log(`  🗑️ Deleted cache key: ${key}`);
         }
       }
 
-      console.log(`🗑️ Successfully invalidated ${invalidatedCount} cache entries for contact ${contact_id}`);
+      console.log(`✅ [Cache Invalidation] Successfully invalidated ${invalidatedCount} cache entries for contact ${contact_id}`);
 
       if (invalidatedCount === 0) {
-        console.warn(`⚠️ No cache entries found to invalidate. This may indicate a cache key mismatch.`);
+        console.warn(`⚠️ [Cache Invalidation] No cache entries found to invalidate.`);
+        console.warn(`⚠️ [Cache Invalidation] Cache key prefix used: "${cacheKeyPrefix}"`);
+        console.warn(`⚠️ [Cache Invalidation] Sample cache keys:`, allKeys.slice(0, 5));
       }
     } catch (cacheError) {
       console.error('❌ Cache invalidation failed:', {
         error: cacheError.message,
         stack: cacheError.stack
       });
-      // Don't throw - cache invalidation is nice-to-have, not critical
     }
 
-    // FIXED: Correct parameter order - (data, message) not (message, data)
     console.log('📤 API Response Structure:', {
       success: true,
       message: 'Booking created successfully',
       data: {
         booking_id: responseData.booking_id,
         booking_record_id: responseData.booking_record_id,
-        // ... other data fields
       }
     });
 
@@ -516,23 +497,31 @@ module.exports = module.exports = async function handler(req, res) {
       stack: error.stack
     });
 
-    // Cleanup: If booking was created but subsequent steps failed, attempt cleanup
+    console.log('🔍 [API Error Handler] Error object being sent to frontend:', {
+      'error.message': error.message,
+      'error.code': error.code,
+      'error.status': error.status
+    });
+
+    // Cleanup if needed
     if (bookingCreated && createdBookingId) {
-      console.log(`🧹 Attempting cleanup for booking ${createdBookingId} due to error: ${error.message}`);
+      console.log(`🧹 Attempting cleanup for booking ${createdBookingId}`);
       try {
         const hubspot = new HubSpotService();
         await hubspot.deleteBooking(createdBookingId);
         console.log(`✅ Cleanup successful: Booking ${createdBookingId} deleted`);
       } catch (cleanupError) {
-        console.error(`❌ Cleanup failed for booking ${createdBookingId}:`, cleanupError.message);
-        // Don't throw cleanup error - return original error
+        console.error('❌ Cleanup failed:', cleanupError.message);
       }
     }
 
     const statusCode = error.status || 500;
-    return res.status(statusCode).json(createErrorResponse(
-      error.message || 'Internal server error',
-      error.code || 'INTERNAL_ERROR'
-    ));
+    
+    // FIX: Pass error object to createErrorResponse, not separate parameters
+    const errorResponse = createErrorResponse(error);
+    
+    console.log('🔍 [API Error Handler] Formatted error response:', errorResponse);
+    
+    return res.status(statusCode).json(errorResponse);
   }
 };

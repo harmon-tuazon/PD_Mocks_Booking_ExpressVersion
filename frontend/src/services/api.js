@@ -32,9 +32,24 @@ api.interceptors.response.use(
     return response.data;
   },
   async (error) => {
+    // 🔍 DEBUG: Log raw error from axios
+    console.log('🔍 [Axios Interceptor] Raw error received:', {
+      'error.response?.status': error.response?.status,
+      'error.response?.data': error.response?.data,
+      'error.message': error.message
+    });
+
     // Handle common errors
     if (error.response) {
       const { status, data } = error.response;
+
+      // 🔍 DEBUG: Log response data structure
+      console.log('🔍 [Axios Interceptor] Response data structure:', {
+        'data.error': data.error,
+        'data.code': data.code,
+        'data.success': data.success,
+        'data keys': Object.keys(data)
+      });
 
       // Authentication errors
       if (status === 401) {
@@ -65,10 +80,18 @@ api.interceptors.response.use(
       // Add error code if available
       if (data.code) {
         error.code = data.code;
+        console.log('🔍 [Axios Interceptor] Set error.code =', error.code, 'from data.code =', data.code);
       }
     } else if (error.request) {
       error.message = 'Network error. Please check your connection.';
     }
+
+    // 🔍 DEBUG: Log final error object being passed to caller
+    console.log('🔍 [Axios Interceptor] Final error object:', {
+      'error.code': error.code,
+      'error.message': error.message,
+      'has code': !!error.code
+    });
 
     return Promise.reject(error);
   }
@@ -125,7 +148,9 @@ const apiService = {
           filter: params.filter, // Changed from 'status' to 'filter' to match API expectation
           search: params.search,
           page: params.page || 1,
-          limit: params.limit || 20
+          limit: params.limit || 20,
+          force: params.force ? 'true' : undefined, // Cache-busting parameter
+          _t: params.force ? Date.now() : undefined // Additional cache-busting timestamp
         }
       });
     },
