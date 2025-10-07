@@ -66,7 +66,7 @@ const LoginForm = () => {
             />
           </div>
           <h1 className="font-headline text-h2 font-bold text-primary-900 mb-2">
-            Mock Exam Booking
+            Prep Doctors Booking System
           </h1>
           <p className="font-body text-lg text-primary-700">
             Enter your details to access the booking system.

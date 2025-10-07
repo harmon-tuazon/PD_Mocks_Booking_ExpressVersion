@@ -59,7 +59,8 @@
       "Bash(git add:*)",
       "Read(//c/**)",
       "Bash(git commit:*)",
-      "WebFetch(domain:developers.hubspot.com)"
+      "WebFetch(domain:developers.hubspot.com)",
+      "Bash(npm run lint:*)"
     ],
     "deny": []
   }

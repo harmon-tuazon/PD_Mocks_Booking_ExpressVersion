@@ -174,7 +174,7 @@ execute-prd PRDs/[feature-name].md
 **Critical Files to Understand:**
 - `README.md` - Complete framework overview (MAIN GUIDE)
 - `AGENT_DEVELOPER_COORDINATION_RULES.md` - How agents collaborate
--  Memories under Serena (.serena\memories)
+-  Can Memories under Serena (.serena\memories)
 
 ## Global Development Rules
 
