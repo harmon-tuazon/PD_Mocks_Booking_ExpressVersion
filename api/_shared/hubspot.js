@@ -659,13 +659,28 @@ class HubSpotService {
       console.log(`🔗 Getting booking associations for contact ${contactId} using associations API`);
 
       // Use HubSpot Associations API to get all bookings associated with this contact
+      const apiUrl = `/crm/v4/objects/${HUBSPOT_OBJECTS.contacts}/${contactId}/associations/${HUBSPOT_OBJECTS.bookings}?limit=100`;
+      console.log(`📞 [API Call] Associations API URL:`, {
+        url: apiUrl,
+        contactObjectType: HUBSPOT_OBJECTS.contacts,
+        bookingObjectType: HUBSPOT_OBJECTS.bookings,
+        contactId: contactId
+      });
+
       const associations = await this.apiCall(
         'GET', 
-        `/crm/v4/objects/${HUBSPOT_OBJECTS.contacts}/${contactId}/associations/${HUBSPOT_OBJECTS.bookings}?limit=100`
+        apiUrl
       );
 
+      console.log(`📊 [API Response] Associations API response:`, {
+        hasResults: !!associations?.results,
+        resultsCount: associations?.results?.length || 0,
+        results: associations?.results,
+        fullResponse: associations
+      });
+
       if (!associations?.results || associations.results.length === 0) {
-        console.log(`No booking associations found for contact ${contactId}`);
+        console.log(`⚠️ No booking associations found for contact ${contactId}`);
         return [];
       }
 
@@ -676,7 +691,12 @@ class HubSpotService {
       return bookingIds;
 
     } catch (error) {
-      console.error(`❌ Error getting booking associations for contact ${contactId}:`, error);
+      console.error(`❌ Error getting booking associations for contact ${contactId}:`, {
+        message: error.message,
+        status: error.status,
+        response: error.response,
+        stack: error.stack
+      });
       
       // Handle specific association API errors
       if (error.response?.status === 404) {

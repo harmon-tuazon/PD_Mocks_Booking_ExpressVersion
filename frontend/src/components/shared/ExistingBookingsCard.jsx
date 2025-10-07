@@ -47,20 +47,38 @@ const ExistingBookingsCard = ({
     setError(null);
 
     try {
-      console.log('🔍 [ExistingBookingsCard] Calling API...', { force });
+      console.log('🔍 [ExistingBookingsCard] Calling API...', { 
+        force,
+        studentId,
+        email 
+      });
+      
       const response = await apiService.bookings.list({
         student_id: studentId,
         email: email,
-        filter: 'upcoming', // Only get upcoming bookings
-        limit: 10, // Fetch more than maxItems to get accurate count
-        force: force // Pass force parameter for cache-busting
+        filter: 'upcoming',
+        limit: 10,
+        force: force
       });
 
-      console.log('🔍 [ExistingBookingsCard] API Response:', {
+      console.log('🔍 [ExistingBookingsCard] Raw API response:', response);
+      console.log('🔍 [ExistingBookingsCard] Response structure:', {
         success: response.success,
-        bookingsCount: response.data?.bookings?.length || 0,
-        rawResponse: response
+        hasData: !!response.data,
+        dataKeys: response.data ? Object.keys(response.data) : [],
+        bookingsCount: response.data?.bookings?.length,
+        fullResponse: JSON.stringify(response, null, 2)
       });
+
+      if (!response.success) {
+        console.error('🔍 [ExistingBookingsCard] API returned success=false:', {
+          error: response.error,
+          message: response.message,
+          code: response.code,
+          fullResponse: response
+        });
+        throw new Error(response.error || response.message || 'Failed to fetch bookings');
+      }
 
       if (response.success) {
         const allBookings = response.data.bookings || [];
@@ -102,7 +120,14 @@ const ExistingBookingsCard = ({
         throw new Error(response.error || 'Failed to fetch bookings');
       }
     } catch (err) {
-      console.error('❌ [ExistingBookingsCard] Error fetching bookings:', err);
+      console.error('❌ [ExistingBookingsCard] Error fetching bookings:', {
+        message: err.message,
+        response: err.response,
+        responseData: err.response?.data,
+        responseStatus: err.response?.status,
+        stack: err.stack,
+        fullError: err
+      });
       setError('Unable to load bookings');
       setBookings([]);
     } finally {

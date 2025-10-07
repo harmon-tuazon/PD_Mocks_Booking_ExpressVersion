@@ -184,6 +184,12 @@ const schemas = {
         'number.integer': 'Limit must be an integer',
         'number.min': 'Limit must be at least 1',
         'number.max': 'Limit cannot exceed 100'
+      }),
+    force: Joi.boolean()
+      .optional()
+      .default(false)
+      .messages({
+        'boolean.base': 'Force parameter must be a boolean value'
       })
   }),
   availableExams: Joi.object({

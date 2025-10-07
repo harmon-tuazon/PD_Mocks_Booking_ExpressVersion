@@ -80,7 +80,8 @@ async function handler(req, res) {
       filter,
       page,
       limit,
-      force: force || false
+      force: force || false,
+      timestamp: new Date().toISOString()
     });
 
     // Sanitize inputs
@@ -95,6 +96,10 @@ async function handler(req, res) {
     const contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail);
 
     if (!contact) {
+      console.error('❌ Contact not found:', {
+        student_id: sanitizedStudentId,
+        email: sanitizedEmail
+      });
       const error = new Error('Authentication failed. Please check your Student ID and email.');
       error.status = 401;
       error.code = 'AUTH_FAILED';
@@ -102,7 +107,12 @@ async function handler(req, res) {
     }
 
     const contactId = contact.id;
-    console.log(`✅ Contact authenticated: ${contactId} - ${contact.properties.firstname} ${contact.properties.lastname}`);
+    console.log(`✅ Contact authenticated: ${contactId} - ${contact.properties.firstname} ${contact.properties.lastname}`, {
+      contactId,
+      studentId: contact.properties.student_id,
+      email: contact.properties.email,
+      hs_object_id: contact.properties.hs_object_id
+    });
 
     // Extract credits information
     const credits = {
