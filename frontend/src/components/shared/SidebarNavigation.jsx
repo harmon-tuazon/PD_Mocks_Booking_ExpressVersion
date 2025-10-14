@@ -25,7 +25,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
   // Navigation items
   const navigationItems = [
     {
-      name: 'Book Exam',
+      name: 'NDECC Exams',
       href: '/book/exam-types',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

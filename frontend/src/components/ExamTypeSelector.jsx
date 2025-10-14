@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUserSession } from '../utils/auth';
-import apiService from '../services/api';
+import useCachedCredits from '../hooks/useCachedCredits';
 import { ResponsiveLogo } from './shared/Logo';
 import ExistingBookingsCard from './shared/ExistingBookingsCard';
 
 const ExamTypeSelector = () => {
   const navigate = useNavigate();
   const [userSession, setUserSession] = useState(null);
-  const [creditInfo, setCreditInfo] = useState({});
+  const { credits, loading, fetchCredits } = useCachedCredits();
 
   const examTypes = [
     {
@@ -42,48 +42,10 @@ const ExamTypeSelector = () => {
     const userData = getUserSession();
     if (userData) {
       setUserSession(userData);
-      // Fetch credit info for each exam type
-      fetchCreditInfo(userData);
+      // Fetch credit info using the cached hook
+      fetchCredits(userData.studentId, userData.email);
     }
   }, []);
-
-  const fetchCreditInfo = async (userData) => {
-    try {
-      const creditData = {};
-      let sharedMockCredits = 0;
-
-      // Fetch credit info for each exam type
-      for (const examType of examTypes) {
-        const result = await apiService.mockExams.validateCredits(
-          userData.studentId,
-          userData.email,
-          examType.type
-        );
-        if (result && result.data) {
-          creditData[examType.type] = result.data;
-
-          // Get shared mock credits from non-Mini-mock exam types
-          // (Mini-mock doesn't use shared credits, so we need to get it from SJ or CS)
-          if (sharedMockCredits === 0 && examType.type !== 'Mini-mock' && result.data.credit_breakdown?.shared_credits) {
-            sharedMockCredits = result.data.credit_breakdown.shared_credits;
-          }
-        }
-      }
-
-      // Store shared mock credits separately for the standalone row
-      // Always add shared mock credits if we have any exam type data
-      if (Object.keys(creditData).length > 0) {
-        setCreditInfo({
-          ...creditData,
-          _shared_mock_credits: sharedMockCredits // Add with special key
-        });
-      } else {
-        setCreditInfo(creditData);
-      }
-    } catch (error) {
-      console.error('Error fetching credit information:', error);
-    }
-  };
 
   const handleSelectType = (type) => {
     navigate(`/book/exams?type=${encodeURIComponent(type)}`);
@@ -91,6 +53,19 @@ const ExamTypeSelector = () => {
 
   const handleViewAllBookings = () => {
     navigate('/my-bookings');
+  };
+
+  // Calculate shared mock credits from the credits data
+  const getSharedMockCredits = () => {
+    if (!credits) return 0;
+    // Get shared mock credits from non-Mini-mock exam types
+    // (Mini-mock doesn't use shared credits, so we need to get it from SJ or CS)
+    for (const examType of ['Situational Judgment', 'Clinical Skills']) {
+      if (credits[examType]?.credit_breakdown?.shared_credits) {
+        return credits[examType].credit_breakdown.shared_credits;
+      }
+    }
+    return 0;
   };
 
   return (
@@ -181,7 +156,7 @@ const ExamTypeSelector = () => {
               />
 
               {/* Tokens Overview Table - Always on the RIGHT */}
-              {Object.keys(creditInfo).length > 0 && (
+              {credits && (
                 <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
                   <div className="px-3 py-2 border-b">
                     <h3 className="font-subheading text-sm font-medium text-primary-900">Available Tokens</h3>
@@ -201,45 +176,44 @@ const ExamTypeSelector = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {Object.entries(creditInfo)
-                          .filter(([examType]) => examType !== '_shared_mock_credits') // Exclude special key from main list
-                          .map(([examType, credits], index) => (
-                          <tr key={examType} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                            <td className="px-2 py-1.5 whitespace-nowrap">
-                              <div className="text-xs font-medium text-gray-900">
-                                {examType}
-                              </div>
-                            </td>
-                            <td className="px-2 py-1.5 whitespace-nowrap text-center">
-                              <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${
-                                (credits?.credit_breakdown?.specific_credits || 0) > 0
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {credits?.credit_breakdown?.specific_credits || 0}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {examTypes.map((examType, index) => {
+                          const examCredits = credits?.[examType.type];
+                          return (
+                            <tr key={examType.type} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="px-2 py-1.5 whitespace-nowrap">
+                                <div className="text-xs font-medium text-gray-900">
+                                  {examType.type}
+                                </div>
+                              </td>
+                              <td className="px-2 py-1.5 whitespace-nowrap text-center">
+                                <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${
+                                  (examCredits?.credit_breakdown?.specific_credits || 0) > 0
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {loading ? '...' : (examCredits?.credit_breakdown?.specific_credits || 0)}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                         {/* Add standalone Shared Mock Tokens row */}
-                        {creditInfo._shared_mock_credits !== undefined && (
-                          <tr className={examTypes.length % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                            <td className="px-2 py-1.5 whitespace-nowrap">
-                              <div className="text-xs font-medium text-gray-900">
-                                Shared Mock Tokens
-                              </div>
-                            </td>
-                            <td className="px-2 py-1.5 whitespace-nowrap text-center">
-                              <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${
-                                (creditInfo._shared_mock_credits || 0) > 0
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {creditInfo._shared_mock_credits || 0}
-                              </span>
-                            </td>
-                          </tr>
-                        )}
+                        <tr className={examTypes.length % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-2 py-1.5 whitespace-nowrap">
+                            <div className="text-xs font-medium text-gray-900">
+                              Shared Mock Tokens
+                            </div>
+                          </td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-center">
+                            <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${
+                              getSharedMockCredits() > 0
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {loading ? '...' : getSharedMockCredits()}
+                            </span>
+                          </td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>

@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { formatDate } from '../services/api';
 import TokenCard from './shared/TokenCard';
 import Logo from './shared/Logo';
+import { useCachedCredits } from '../hooks/useCachedCredits';
+import { getUserSession } from '../utils/auth';
 
 const BookingConfirmation = () => {
   const { bookingId: urlBookingId } = useParams();
@@ -11,20 +13,49 @@ const BookingConfirmation = () => {
 
   const bookingData = location.state?.bookingData || {};
 
-  // FIX: Enhanced logging to debug token display issue
-  console.log('📊 BookingConfirmation received data:', {
-    remainingCredits: bookingData.remainingCredits,
-    creditBreakdown: bookingData.creditBreakdown,
+  // Import the hook and get user session
+  const { credits, loading: creditsLoading, fetchCredits } = useCachedCredits();
+
+  // Fetch fresh credits on mount
+  useEffect(() => {
+    const userData = getUserSession();
+    if (userData && bookingData.mockType) {
+      console.log('🔄 [BookingConfirmation] Fetching fresh credit data for:', {
+        studentId: userData.studentId,
+        mockType: bookingData.mockType
+      });
+      fetchCredits(userData.studentId, userData.email);
+    }
+  }, [bookingData.mockType, fetchCredits]);
+
+  // Extract fresh credit breakdown from cache
+  const freshCreditBreakdown = credits?.[bookingData.mockType]?.credit_breakdown;
+
+  // Use fresh data if available, otherwise fall back to navigation state
+  const displayCreditBreakdown = freshCreditBreakdown || bookingData.creditBreakdown;
+  const displayRemainingCredits = freshCreditBreakdown
+    ? (freshCreditBreakdown.specific_credits + freshCreditBreakdown.shared_credits)
+    : bookingData.remainingCredits;
+
+  // Enhanced logging to debug token display issue
+  console.log('📊 BookingConfirmation credit data:', {
+    navigationState: {
+      remainingCredits: bookingData.remainingCredits,
+      creditBreakdown: bookingData.creditBreakdown
+    },
+    freshData: {
+      credits: credits,
+      freshCreditBreakdown: freshCreditBreakdown,
+      displayRemainingCredits: displayRemainingCredits
+    },
     mockType: bookingData.mockType,
-    has_creditBreakdown: !!bookingData.creditBreakdown,
-    full_bookingData: bookingData
+    isUsingFreshData: !!freshCreditBreakdown
   });
 
-  // FIX: Warn if credit breakdown is missing
-  if (bookingData.remainingCredits !== undefined && !bookingData.creditBreakdown) {
-    console.warn('⚠️ BookingConfirmation: creditBreakdown is missing but remainingCredits exists. This may cause incorrect token display.');
+  // Warn if credit breakdown is missing from both sources
+  if (displayRemainingCredits !== undefined && !displayCreditBreakdown) {
+    console.warn('⚠️ BookingConfirmation: creditBreakdown is missing from both cache and navigation state.');
   }
-
 
   // Use backend-generated booking ID from bookingData state, fallback to URL parameter
   const bookingId = bookingData.bookingId || urlBookingId;
@@ -118,28 +149,43 @@ const BookingConfirmation = () => {
                 <dt className="font-body text-sm font-medium text-primary-600">Email</dt>
                 <dd className="font-body text-sm text-primary-900">{bookingData.email}</dd>
               </div>
-              {bookingData.remainingCredits !== undefined && (
+              {displayRemainingCredits !== undefined && (
                 <div className="flex justify-between pt-3 border-t">
                   <dt className="font-body text-sm font-medium text-primary-600">Remaining Tokens</dt>
-                  <dd className="font-body text-sm font-semibold text-teal-700">{bookingData.remainingCredits}</dd>
+                  <dd className="font-body text-sm font-semibold text-teal-700">
+                    {creditsLoading && !freshCreditBreakdown ? (
+                      <span className="text-gray-500">Refreshing...</span>
+                    ) : (
+                      displayRemainingCredits
+                    )}
+                  </dd>
                 </div>
               )}
             </dl>
           </div>
 
           {/* Remaining Credits Display */}
-          {bookingData.remainingCredits !== undefined && bookingData.mockType && (
+          {displayRemainingCredits !== undefined && bookingData.mockType && (
             <div className="mb-8">
-              {!bookingData.creditBreakdown && (
+              {/* Loading indicator while fetching fresh credits */}
+              {creditsLoading && !displayCreditBreakdown && (
+                <div className="mb-4 text-sm text-gray-500">
+                  Refreshing credit data...
+                </div>
+              )}
+
+              {/* Warning only if BOTH sources are missing */}
+              {!displayCreditBreakdown && !creditsLoading && (
                 <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-800">
                     ⚠️ Credit breakdown data is missing. Token display may not be accurate.
                   </p>
                 </div>
               )}
+
               <TokenCard
-                creditBreakdown={bookingData.creditBreakdown || {
-                  specific_credits: bookingData.remainingCredits || 0,
+                creditBreakdown={displayCreditBreakdown || {
+                  specific_credits: displayRemainingCredits || 0,
                   shared_credits: 0  // Fallback if creditBreakdown is not available
                 }}
                 mockType={bookingData.mockType}

@@ -6,6 +6,7 @@ import TokenCard from './shared/TokenCard';
 import CalendarView from './shared/CalendarView';
 import Logo from './shared/Logo';
 import { getUserSession } from '../utils/auth';
+import useCachedCredits from '../hooks/useCachedCredits';
 
 const ExamSessionsList = () => {
   const [searchParams] = useSearchParams();
@@ -17,12 +18,24 @@ const ExamSessionsList = () => {
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('calendar'); // 'list' or 'calendar' - Default to calendar per requirements
   const [userSession, setUserSession] = useState(null);
-  const [creditBreakdown, setCreditBreakdown] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
+  
+  // Use the cached credits hook
+  const { credits, loading: creditsLoading, fetchCredits } = useCachedCredits();
+  
+  // Extract credit breakdown for the specific mock type
+  const creditBreakdown = credits?.[mockType]?.credit_breakdown;
+  
+  // Combined loading state
+  const isLoading = loading || creditsLoading;
 
   useEffect(() => {
     fetchExams();
-    fetchCreditInfo();
+    // Fetch credits using the hook
+    const userData = getUserSession();
+    if (userData) {
+      fetchCredits(userData.studentId, userData.email);
+    }
   }, [mockType]);
 
   useEffect(() => {
@@ -31,24 +44,6 @@ const ExamSessionsList = () => {
       setUserSession(userData);
     }
   }, []);
-
-  const fetchCreditInfo = async () => {
-    try {
-      const userData = getUserSession();
-      if (userData) {
-        const result = await apiService.mockExams.validateCredits(
-          userData.studentId,
-          userData.email,
-          mockType
-        );
-        if (result.success) {
-          setCreditBreakdown(result.data.credit_breakdown);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching credit information:', error);
-    }
-  };
 
   const fetchExams = async () => {
     setLoading(true);
@@ -82,7 +77,7 @@ const ExamSessionsList = () => {
         // Log filtering statistics for debugging
         const filteredCount = (result.data || []).length - upcomingExams.length;
         if (filteredCount > 0) {
-          console.log(`Filtered out ${filteredCount} past exam(s) from ${(result.data || []).length} total exam(s)`);
+          console.log(`Filtered out ${filteredCount} past exam(s) from ${(result.data || []).length} total exam(s)}`);
         }
 
         setExams(upcomingExams);
@@ -206,7 +201,7 @@ const ExamSessionsList = () => {
     return exams;
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="container-app py-12">

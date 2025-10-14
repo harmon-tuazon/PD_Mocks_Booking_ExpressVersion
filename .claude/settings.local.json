@@ -60,7 +60,8 @@
       "Read(//c/**)",
       "Bash(git commit:*)",
       "WebFetch(domain:developers.hubspot.com)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "mcp__serena__list_memories"
     ],
     "deny": []
   }

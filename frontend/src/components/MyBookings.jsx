@@ -4,7 +4,7 @@ import { getUserSession, clearUserSession } from '../utils/auth';
 import apiService, { normalizeBooking, formatBookingNumber, getBookingStatus, formatTimeRange as apiFormatTimeRange } from '../services/api';
 import BookingsCalendarView from './bookings/BookingsCalendarView';
 import CapacityBadge from './shared/CapacityBadge';
-import ResponsiveLogo from './shared/Logo';
+import { ResponsiveLogo } from './shared/Logo';
 import ErrorDisplay from './shared/ErrorDisplay';
 import { DeleteBookingModal } from './shared';
 

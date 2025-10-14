@@ -1,7 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import apiService from '../services/api';
+import useCachedCredits from './useCachedCredits';
 
 const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
+  // Import the cached credits hook at the top level
+  const { credits, loading: creditsLoading, fetchCredits, invalidateCache } = useCachedCredits();
+
   // Multi-step form state
   const [step, setStep] = useState('verify'); // 'verify' | 'details' | 'confirming' | 'confirmed'
 
@@ -71,7 +75,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     return null;
   };
 
-  // Verify credits step
+  // Verify credits step - now uses cached credits
   const verifyCredits = useCallback(async (studentId, email) => {
     setLoading(true);
     setError(null);
@@ -91,35 +95,33 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     }
 
     try {
-      const result = await apiService.mockExams.validateCredits(
-        studentId,
-        email,
-        bookingData.mockType
-      );
-
-      if (!result.success) {
-        throw new Error(result.error || 'Verification failed');
+      // Fetch credits from cache or API
+      await fetchCredits(studentId, email);
+      
+      // Extract the specific mock type data from the cache
+      const result = credits?.[bookingData.mockType];
+      
+      if (!result) {
+        throw new Error('Unable to verify credits. Please try again.');
       }
 
-      const { data } = result;
-
-      // Check eligibility
-      if (!data.eligible) {
-        setError(data.error_message || `You have 0 credits available for ${bookingData.mockType} exams.`);
+      // Check eligibility - accessing properties directly (no .data wrapper)
+      if (!result.eligible) {
+        setError(result.error_message || `You have 0 credits available for ${bookingData.mockType} exams.`);
         setLoading(false);
         return false;
       }
 
-      // Update booking data
+      // Update booking data - using result directly without .data wrapper
       setBookingData(prev => ({
         ...prev,
         studentId,
         email,
-        credits: data.available_credits,
-        creditBreakdown: data.credit_breakdown,
-        contactId: data.contact_id,
-        enrollmentId: data.enrollment_id,
-        name: data.student_name || prev.name,
+        credits: result.available_credits,
+        creditBreakdown: result.credit_breakdown,
+        contactId: result.contact_id,
+        enrollmentId: result.enrollment_id,
+        name: result.student_name || prev.name,
       }));
 
       setStep('details');
@@ -141,7 +143,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     } finally {
       setLoading(false);
     }
-  }, [bookingData.mockType]);
+  }, [bookingData.mockType, credits, fetchCredits]);
 
   // Submit booking - accepts optional overrides for immediate data that hasn't been committed to state yet
   const submitBooking = useCallback(async (immediateData = {}) => {
@@ -296,6 +298,9 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
 
       // Clear session storage on successful booking
       sessionStorage.removeItem('bookingFlow');
+      
+      // Invalidate the cache after successful booking to ensure fresh data
+      invalidateCache();
 
       // Return the updated booking data instead of just true
       return updatedBookingData;
@@ -349,7 +354,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     } finally {
       setLoading(false);
     }
-  }, [bookingData]);  // submitBooking now accepts immediateData parameter
+  }, [bookingData, invalidateCache]);  // Added invalidateCache to dependencies
 
   // Go back to previous step
   const goBack = useCallback(() => {
@@ -396,12 +401,15 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     setValidationErrors({});
   }, []);
 
+  // Combine loading states from both the hook and cached credits
+  const combinedLoading = loading || creditsLoading;
+
   return {
     // State
     step,
     bookingData,
     error,
-    loading,
+    loading: combinedLoading,  // Use combined loading state
     validationErrors,
 
     // Actions
@@ -412,6 +420,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     updateBookingData,
     clearError,
     setStep,
+    invalidateCache,  // Expose cache invalidation
 
     // Computed
     canProceed: step === 'verify'
@@ -420,6 +429,6 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
       ? bookingData.name && bookingData.name.trim().length >= 2
       : false,
   };
-};
+};;
 
 export default useBookingFlow;

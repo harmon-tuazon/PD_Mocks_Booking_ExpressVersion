@@ -4,11 +4,12 @@ import PropTypes from 'prop-types';
 /**
  * PrepDoctors Logo Component
  *
- * A flexible logo component that handles different variants and sizes
- * with responsive behavior and proper accessibility attributes.
+ * A flexible logo component that now uses a single logo across all contexts.
+ * The 'variant' prop is maintained for backward compatibility but all variants
+ * now use the same logo image.
  *
  * @param {Object} props
- * @param {'full'|'horizontal'|'icon'} props.variant - Logo variant to display
+ * @param {'full'|'horizontal'|'icon'} props.variant - Logo variant (maintained for compatibility)
  * @param {'small'|'medium'|'large'|'xl'} props.size - Size of the logo
  * @param {string} props.className - Additional CSS classes
  * @param {boolean} props.linkToHome - Whether to wrap logo in a link to home
@@ -24,55 +25,22 @@ const Logo = ({
   priority = false,
   ...props
 }) => {
-  // Logo URLs from HubSpot CDN
-  const logoUrls = {
-    full: 'https://46814382.fs1.hubspotusercontent-na1.net/hubfs/46814382/prep%20doctors%20logo-%20vertical.png',
-    horizontal: 'https://46814382.fs1.hubspotusercontent-na1.net/hubfs/46814382/Prep%20Doctors%20Logo%20Blue.png',
-    icon: 'https://46814382.fs1.hubspotusercontent-na1.net/hubfs/46814382/Prep%20Doctors%20Icon.png'
-  };
+  // Single logo URL from HubSpot CDN - used for all variants
+  const logoUrl = 'https://46814382.fs1.hubspotusercontent-na1.net/hubfs/46814382/logo%20dark%20blue.png';
 
-  // Size configurations
+  // Size configurations - consistent across all variants
   const sizeClasses = {
-    small: {
-      full: 'h-12 w-auto', // Vertical logo, height-based
-      horizontal: 'h-8 w-auto', // Horizontal logo, shorter
-      icon: 'h-8 w-8' // Square icon
-    },
-    medium: {
-      full: 'h-16 w-auto',
-      horizontal: 'h-10 w-auto',
-      icon: 'h-10 w-10'
-    },
-    large: {
-      full: 'h-24 w-auto',
-      horizontal: 'h-14 w-auto',
-      icon: 'h-14 w-14'
-    },
-    xl: {
-      full: 'h-32 w-auto',
-      horizontal: 'h-18 w-auto',
-      icon: 'h-18 w-18'
-    }
+    small: 'h-8 w-auto',
+    medium: 'h-12 w-auto',
+    large: 'h-16 w-auto',
+    xl: 'h-20 w-auto'
   };
 
-  // Responsive behavior - automatically switch variants based on screen size
-  const responsiveClasses = {
-    full: 'block', // Always show full logo unless overridden
-    horizontal: 'hidden md:block', // Show horizontal on medium screens and up
-    icon: 'block md:hidden' // Show icon only on small screens
-  };
+  // Alt text
+  const logoAlt = 'PrepDoctors - Medical Education Excellence';
 
-  // Alt text based on variant
-  const altText = {
-    full: 'PrepDoctors - Medical Education Excellence',
-    horizontal: 'PrepDoctors Logo',
-    icon: 'PrepDoctors Icon'
-  };
-
-  // Get the appropriate classes and URL
-  const logoUrl = logoUrls[variant];
-  const logoSizeClass = sizeClasses[size][variant];
-  const logoAlt = altText[variant];
+  // Get the appropriate size class
+  const logoSizeClass = sizeClasses[size];
 
   // Base image classes
   const baseClasses = `
@@ -95,7 +63,7 @@ const Logo = ({
       loading={loadingStrategy}
       onClick={onClick}
       onError={(e) => {
-        console.warn(`Failed to load logo variant: ${variant}`, e);
+        console.warn('Failed to load logo', e);
         // Fallback to text if image fails
         e.target.style.display = 'none';
         e.target.parentNode.innerHTML = `
@@ -127,28 +95,14 @@ const Logo = ({
 /**
  * Responsive Logo Component
  *
- * Automatically shows different logo variants based on screen size:
- * - Mobile: Icon only
- * - Tablet: Horizontal logo
- * - Desktop: Full vertical logo
+ * Displays the logo with responsive sizing.
+ * Since we now use a single logo, this component maintains consistent
+ * display across all screen sizes with the same image.
  */
 export const ResponsiveLogo = ({ size = 'medium', className = '', ...props }) => {
   return (
     <div className={`flex items-center ${className}`}>
-      {/* Mobile: Icon only */}
-      <div className="block sm:hidden">
-        <Logo variant="icon" size={size} {...props} />
-      </div>
-
-      {/* Tablet: Horizontal logo */}
-      <div className="hidden sm:block lg:hidden">
-        <Logo variant="horizontal" size={size} {...props} />
-      </div>
-
-      {/* Desktop: Full vertical logo */}
-      <div className="hidden lg:block">
-        <Logo variant="full" size={size} {...props} />
-      </div>
+      <Logo size={size} {...props} />
     </div>
   );
 };
@@ -158,7 +112,7 @@ export const ResponsiveLogo = ({ size = 'medium', className = '', ...props }) =>
  *
  * Shows PrepDoctors text if the image fails to load
  */
-export const LogoWithFallback = ({ variant = 'full', size = 'medium', className = '', ...props }) => {
+export const LogoWithFallback = ({ size = 'medium', className = '', ...props }) => {
   const textSizes = {
     small: 'text-lg',
     medium: 'text-xl',
@@ -169,7 +123,6 @@ export const LogoWithFallback = ({ variant = 'full', size = 'medium', className 
   return (
     <div className={`flex items-center ${className}`}>
       <Logo
-        variant={variant}
         size={size}
         onError={(e) => {
           // Hide the image and show text fallback
@@ -206,7 +159,6 @@ ResponsiveLogo.propTypes = {
 };
 
 LogoWithFallback.propTypes = {
-  variant: PropTypes.oneOf(['full', 'horizontal', 'icon']),
   size: PropTypes.oneOf(['small', 'medium', 'large', 'xl']),
   className: PropTypes.string
 };

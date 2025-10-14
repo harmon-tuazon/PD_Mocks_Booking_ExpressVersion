@@ -149,8 +149,51 @@ module.exports = module.exports = module.exports = async function handler(req, r
       throw error;
     }
 
-    // Step 2: Generate booking ID with full mock type name and check for duplicates
-    const bookingId = `${mock_type}-${sanitizedName} - ${exam_date}`;
+    // Step 2: Format the exam date to full month name format
+    // Function to convert YYYY-MM-DD to "Month Day, Year" format
+    const formatBookingDate = (dateString) => {
+      try {
+        // Parse the date string (expecting YYYY-MM-DD format)
+        const dateParts = dateString.split('-');
+        if (dateParts.length !== 3) {
+          throw new Error('Invalid date format');
+        }
+        
+        const year = parseInt(dateParts[0]);
+        const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed in JavaScript
+        const day = parseInt(dateParts[2]);
+        
+        // Create date object using local timezone
+        const date = new Date(year, month, day);
+        
+        // Verify the date is valid
+        if (isNaN(date.getTime())) {
+          throw new Error('Invalid date');
+        }
+        
+        // Format the date with full month name
+        const monthNames = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        
+        const monthName = monthNames[date.getMonth()];
+        const formattedDay = date.getDate();
+        const formattedYear = date.getFullYear();
+        
+        return `${monthName} ${formattedDay}, ${formattedYear}`;
+      } catch (err) {
+        console.error('Date formatting error:', err.message, 'for date:', dateString);
+        // Fallback to original format if parsing fails
+        return dateString;
+      }
+    };
+    
+    // Format the date for the booking ID
+    const formattedDate = formatBookingDate(exam_date);
+    
+    // Generate booking ID with full mock type name and formatted date
+    const bookingId = `${mock_type}-${sanitizedName} - ${formattedDate}`;
 
     const isDuplicate = await hubspot.checkExistingBooking(bookingId);
     if (isDuplicate) {
@@ -396,7 +439,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
     const responseData = {
       booking_id: bookingId,
       booking_record_id: createdBookingId,
-      confirmation_message: `Your booking for ${mock_type} on ${exam_date} has been confirmed`,
+      confirmation_message: `Your booking for ${mock_type} on ${formattedDate} has been confirmed`,
       exam_details: {
         mock_exam_id,
         exam_date,
