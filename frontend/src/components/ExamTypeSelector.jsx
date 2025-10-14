@@ -119,12 +119,6 @@ const ExamTypeSelector = () => {
                     </svg>
                     <span>Duration: {exam.duration}</span>
                   </div>
-                  <div className="flex items-center justify-center">
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 000 2H6a2 2 0 100 4h2a2 2 0 100 4h2a1 1 0 100 2 2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2z" clipRule="evenodd" />
-                    </svg>
-                  </div>
                 </div>
 
                 <button className="btn-primary w-full">
