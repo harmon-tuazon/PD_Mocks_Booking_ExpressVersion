@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import useBookingFlow from '../hooks/useBookingFlow';
 import CreditAlert from './shared/CreditAlert';
@@ -23,6 +23,9 @@ const BookingForm = () => {
   // Get user session data
   const [userSession, setUserSession] = useState(null);
 
+  // Ref to track if credits have been verified (prevents circular dependency)
+  const creditsVerifiedRef = useRef(false);
+
   const {
     step,
     bookingData,
@@ -45,17 +48,22 @@ const BookingForm = () => {
 
   // Load user session on component mount
   useEffect(() => {
+    // Prevent running verifyCredits multiple times (breaks circular dependency)
+    if (creditsVerifiedRef.current) return;
+
     const userData = getUserSession();
     if (userData) {
       setUserSession(userData);
 
       // Auto-verify credits using session data
       verifyCredits(userData.studentId, userData.email);
+      creditsVerifiedRef.current = true;
     } else {
       // No session found, redirect to login
       navigate('/login');
     }
-  }, [navigate, verifyCredits]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate]);
 
   // Update booking data with exam details
   useEffect(() => {
