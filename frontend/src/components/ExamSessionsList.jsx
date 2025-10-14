@@ -291,19 +291,23 @@ const ExamSessionsList = () => {
           </div>
         )}
 
-        {/* Location Filter and View Toggle */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-          <div className="w-full lg:w-auto">
+        {/* Session Count - Above everything */}
+        <div className="mb-4">
+          <p className="text-sm font-body text-gray-600">
+            Found {filteredExams.length} session{filteredExams.length !== 1 ? 's' : ''}
+            {selectedLocation !== 'all' && ` at ${selectedLocation}`}
+          </p>
+        </div>
+
+        {/* Location Filter and View Toggle - Horizontal */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-6 gap-4">
+          <div className="w-full sm:w-64">
             <LocationFilter
               selectedLocation={selectedLocation}
               onLocationChange={setSelectedLocation}
             />
           </div>
-          <div className="flex items-center justify-between w-full lg:w-auto gap-4">
-            <div className="text-small font-body text-gray-600">
-              Found {filteredExams.length} session{filteredExams.length !== 1 ? 's' : ''}
-            </div>
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2">
             <button
               onClick={() => setViewMode('list')}
               className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
@@ -336,7 +340,6 @@ const ExamSessionsList = () => {
                 <span className="sm:hidden">Calendar</span>
               </span>
             </button>
-            </div>
           </div>
         </div>
 

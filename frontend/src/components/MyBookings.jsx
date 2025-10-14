@@ -93,8 +93,8 @@ const MyBookings = () => {
         // Set credits from response
         setCredits(response.data.credit_breakdown);
 
-        // Fetch bookings
-        await fetchBookings(userData.studentId, userData.email);
+        // Force fetch bookings on initial login to ensure fresh data
+        await fetchBookings(userData.studentId, userData.email, 1, true);
       }
     } catch (err) {
       console.error('Authentication error:', err);
@@ -114,7 +114,7 @@ const MyBookings = () => {
   };
 
   // Fetch bookings from API
-  const fetchBookings = useCallback(async (studentId, email, page = 1) => {
+  const fetchBookings = useCallback(async (studentId, email, page = 1, force = false) => {
     setLoading(true);
     setError('');
 
@@ -127,7 +127,8 @@ const MyBookings = () => {
         email: email,
         filter: apiFilter, // Use adjusted filter for API
         page: page,
-        limit: ITEMS_PER_PAGE
+        limit: ITEMS_PER_PAGE,
+        force: force // Force cache bypass when needed
       });
 
       if (response.success) {
@@ -148,7 +149,7 @@ const MyBookings = () => {
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter]);;
 
   // Refresh bookings when filter changes
   useEffect(() => {
@@ -235,8 +236,8 @@ const MyBookings = () => {
         setDeleteModalOpen(false);
         setBookingToDelete(null);
 
-        // Refresh bookings list - this will also refresh credits
-        await fetchBookings(userSession.studentId, userSession.email, currentPage);
+        // Force refresh bookings list to show updated status - this will also refresh credits
+        await fetchBookings(userSession.studentId, userSession.email, currentPage, true);
       } else {
         throw new Error(response.message || 'Failed to cancel booking');
       }
