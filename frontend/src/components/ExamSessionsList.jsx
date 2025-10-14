@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import apiService, { formatDate, formatTime, formatTimeRange } from '../services/api';
 import CapacityBadge from './shared/CapacityBadge';
@@ -7,6 +7,7 @@ import CalendarView from './shared/CalendarView';
 import Logo from './shared/Logo';
 import { getUserSession } from '../utils/auth';
 import useCachedCredits from '../hooks/useCachedCredits';
+import LocationFilter from './shared/LocationFilter';
 
 const ExamSessionsList = () => {
   const [searchParams] = useSearchParams();
@@ -19,13 +20,20 @@ const ExamSessionsList = () => {
   const [viewMode, setViewMode] = useState('calendar'); // 'list' or 'calendar' - Default to calendar per requirements
   const [userSession, setUserSession] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
+  const [selectedLocation, setSelectedLocation] = useState('all');
   
   // Use the cached credits hook
   const { credits, loading: creditsLoading, fetchCredits } = useCachedCredits();
   
   // Extract credit breakdown for the specific mock type
   const creditBreakdown = credits?.[mockType]?.credit_breakdown;
-  
+
+  // Filter exams based on selected location
+  const filteredExams = useMemo(() => {
+    if (selectedLocation === 'all') return exams;
+    return exams.filter(exam => exam.location === selectedLocation);
+  }, [exams, selectedLocation]);
+
   // Combined loading state
   const isLoading = loading || creditsLoading;
 
@@ -196,9 +204,9 @@ const ExamSessionsList = () => {
 
   const getSortedExams = () => {
     if (viewMode === 'list') {
-      return sortExams(exams, sortConfig);
+      return sortExams(filteredExams, sortConfig);
     }
-    return exams;
+    return filteredExams;
   };
 
   if (isLoading) {
@@ -283,12 +291,19 @@ const ExamSessionsList = () => {
           </div>
         )}
 
-        {/* View Toggle */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="text-small font-body text-gray-600">
-            Found {exams.length} upcoming session{exams.length !== 1 ? 's' : ''}
+        {/* Location Filter and View Toggle */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+          <div className="w-full lg:w-auto">
+            <LocationFilter
+              selectedLocation={selectedLocation}
+              onLocationChange={setSelectedLocation}
+            />
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between w-full lg:w-auto gap-4">
+            <div className="text-small font-body text-gray-600">
+              Found {filteredExams.length} session{filteredExams.length !== 1 ? 's' : ''}
+            </div>
+            <div className="flex items-center space-x-2">
             <button
               onClick={() => setViewMode('list')}
               className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
@@ -321,6 +336,7 @@ const ExamSessionsList = () => {
                 <span className="sm:hidden">Calendar</span>
               </span>
             </button>
+            </div>
           </div>
         </div>
 
@@ -329,6 +345,22 @@ const ExamSessionsList = () => {
           <div className="text-center py-12">
             <p className="text-body font-body text-gray-600">No upcoming exam sessions available for {mockType} at this time.</p>
             <p className="text-body font-body text-gray-600 mt-2">All current sessions may be in the past or fully booked. Please check back later or select a different exam type.</p>
+          </div>
+        ) : filteredExams.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+              <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className="text-body font-body text-gray-700 mb-2">No sessions available at {selectedLocation === 'all' ? 'selected locations' : selectedLocation}</p>
+            <p className="text-small font-body text-gray-600 mb-4">Try selecting a different location to see available sessions.</p>
+            <button
+              onClick={() => setSelectedLocation('all')}
+              className="btn-primary"
+            >
+              View All Locations
+            </button>
           </div>
         ) : viewMode === 'list' ? (
           <>
@@ -548,7 +580,7 @@ const ExamSessionsList = () => {
           </>
         ) : (
           <CalendarView
-            exams={exams}
+            exams={filteredExams}
             onExamSelect={handleSelectExam}
           />
         )}
