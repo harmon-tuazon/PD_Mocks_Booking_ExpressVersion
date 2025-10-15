@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUserSession } from '../utils/auth';
 import useCachedCredits from '../hooks/useCachedCredits';
-import { ResponsiveLogo } from './shared/Logo';
 import ExistingBookingsCard from './shared/ExistingBookingsCard';
 
 const ExamTypeSelector = () => {
@@ -69,15 +68,9 @@ const ExamTypeSelector = () => {
     <div className="bg-gradient-to-br from-primary-50 via-white to-primary-50 min-h-full">
       <div className="container-brand py-8 lg:py-12">
         <div className="text-center mb-12 animate-fade-in">
-          <div className="flex items-center justify-center gap-4 mb-6">
-            <ResponsiveLogo
-              size="large"
-              className="transition-opacity duration-300 hover:opacity-80 !h-16 sm:!h-14 lg:!h-16"
-            />
-            <h1 className="font-headline text-h1 font-bold text-primary-900">
-              Book Your Mock Exam
-            </h1>
-          </div>
+          <h1 className="font-headline text-h1 font-bold text-primary-900 mb-6">
+            Book Your Mock Exam
+          </h1>
           <p className="font-body text-lg text-primary-700 content-width-md">
             Choose the type of mock exam you'd like to book. Check your available tokens below.
           </p>
