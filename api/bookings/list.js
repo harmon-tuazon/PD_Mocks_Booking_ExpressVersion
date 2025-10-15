@@ -158,6 +158,210 @@ async function handler(req, res) {
         console.log(`📋 Cache MISS - Retrieving bookings via HubSpot associations API (filter: ${filter}, page: ${page}, limit: ${limit})`);
         bookingsData = await hubspot.getBookingsForContact(contactHsObjectId, { filter, page, limit });
 
+        // Auto-complete past bookings
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Start of day
+
+        // Check for bookings that should be marked completed
+        const bookingsToComplete = bookingsData.bookings.filter(booking => {
+          // Only process Active bookings (not Cancelled or Completed)
+          const isActiveValue = booking.is_active;
+          const isActive = (
+            isActiveValue === 'Active' ||
+            isActiveValue === 'active' ||
+            isActiveValue === true ||
+            isActiveValue === 'true'
+          );
+
+          if (!isActive) {
+            return false; // Skip if not Active
+          }
+
+          // Check if exam_date is in the past
+          if (booking.exam_date) {
+            try {
+              // Handle various date formats (YYYY-MM-DD, dd/mm/yyyy, ISO string)
+              let examDate;
+              const dateStr = booking.exam_date.toString().trim();
+
+              // Check if it's dd/mm/yyyy format
+              if (dateStr.includes('/')) {
+                const [day, month, year] = dateStr.split('/');
+                examDate = new Date(year, month - 1, day); // month is 0-indexed
+              } else {
+                // Use standard Date parsing for ISO or YYYY-MM-DD formats
+                examDate = new Date(dateStr);
+              }
+
+              examDate.setHours(0, 0, 0, 0);
+
+              // Check if date is valid
+              if (isNaN(examDate.getTime())) {
+                console.error(`❌ Invalid exam_date format for booking ${booking.id}:`, booking.exam_date);
+                return false;
+              }
+
+              const isPast = examDate < today;
+              if (isPast) {
+                console.log(`📅 Booking ${booking.id} is past (${booking.exam_date}) and Active - will mark as Completed`);
+              }
+              return isPast;
+            } catch (error) {
+              console.error(`❌ Error parsing exam_date for booking ${booking.id}:`, booking.exam_date, error.message);
+              return false;
+            }
+          }
+          return false;
+        });
+
+        // Batch update to "Completed" if any found
+        if (bookingsToComplete.length > 0) {
+          console.log(`📅 Found ${bookingsToComplete.length} past booking(s) to mark as Completed`);
+
+          try {
+            // Prepare batch update payload
+            const batchUpdates = bookingsToComplete.map(booking => ({
+              id: booking.id,
+              properties: {
+                is_active: 'Completed'
+              }
+            }));
+
+            // Split into batches of 100 (HubSpot limit)
+            const batchSize = 100;
+            for (let i = 0; i < batchUpdates.length; i += batchSize) {
+              const batch = batchUpdates.slice(i, i + batchSize);
+
+              console.log(`📤 Updating batch ${Math.floor(i / batchSize) + 1}: ${batch.length} booking(s) to Completed status`);
+
+              await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/update`, {
+                inputs: batch
+              });
+
+              console.log(`✅ Updated batch ${Math.floor(i / batchSize) + 1}: ${batch.length} booking(s) marked as Completed`);
+            }
+
+            // Update the local data to reflect changes
+            bookingsData.bookings.forEach(booking => {
+              const shouldUpdate = bookingsToComplete.find(b => b.id === booking.id);
+              if (shouldUpdate) {
+                booking.is_active = 'Completed';
+                console.log(`💾 Updated local booking ${booking.id} to Completed status`);
+              }
+            });
+
+            // Log summary
+            console.log(`🎯 Auto-completion summary: ${bookingsToComplete.length} booking(s) marked as Completed`);
+
+          } catch (updateError) {
+            console.error('❌ Error updating bookings to Completed:', {
+              message: updateError.message,
+              status: updateError.response?.status,
+              details: updateError.response?.data
+            });
+            // Continue without failing - bookings will still be returned
+            // They'll be updated on the next request
+          }
+        } else {
+          console.log('📅 No past Active bookings found that need to be marked as Completed');
+        }
+
+        // Webhook Reminder: Check for bookings happening tomorrow
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0); // Start of tomorrow
+
+        const tomorrowBookings = bookingsData.bookings.filter(booking => {
+          // Only Active bookings
+          const isActiveValue = booking.is_active;
+          const isActive = (
+            isActiveValue === 'Active' ||
+            isActiveValue === 'active' ||
+            isActiveValue === true ||
+            isActiveValue === 'true'
+          );
+
+          if (!isActive) return false;
+
+          // Check if exam_date is tomorrow
+          if (booking.exam_date) {
+            try {
+              let examDate;
+              const dateStr = booking.exam_date.toString().trim();
+
+              // Handle date format (same logic as auto-complete)
+              if (dateStr.includes('/')) {
+                const [day, month, year] = dateStr.split('/');
+                examDate = new Date(year, month - 1, day);
+              } else {
+                examDate = new Date(dateStr);
+              }
+
+              examDate.setHours(0, 0, 0, 0);
+
+              if (isNaN(examDate.getTime())) {
+                return false;
+              }
+
+              // Check if exam is tomorrow (exact match)
+              const isTomorrow = examDate.getTime() === tomorrow.getTime();
+              if (isTomorrow) {
+                console.log(`📅 Booking ${booking.id} is happening tomorrow (${booking.exam_date})`);
+              }
+              return isTomorrow;
+            } catch (error) {
+              console.error(`❌ Error parsing exam_date for booking ${booking.id}:`, error.message);
+              return false;
+            }
+          }
+          return false;
+        });
+
+        // Send individual webhook for each tomorrow booking
+        if (tomorrowBookings.length > 0) {
+          console.log(`📤 Found ${tomorrowBookings.length} booking(s) happening tomorrow - sending webhooks`);
+
+          const webhookUrl = 'https://api-na1.hubapi.com/automation/v4/webhook-triggers/46814382/bYNB8zc';
+
+          // Send webhook for each booking asynchronously
+          tomorrowBookings.forEach((booking, index) => {
+            const webhookPayload = {
+              booking_id: booking.booking_id || booking.id,
+              name: booking.name || `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),
+              email: booking.email || contact.properties.email,
+              exam_date: booking.exam_date,
+              start_time: booking.start_time,
+              end_time: booking.end_time,
+              mock_type: booking.mock_type,
+              location: booking.location || 'Not specified'
+            };
+
+            console.log(`📤 [${index + 1}/${tomorrowBookings.length}] Sending webhook for booking ${booking.booking_id || booking.id}`);
+
+            // Send webhook (don't wait for response - fire and forget)
+            fetch(webhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(webhookPayload)
+            })
+              .then(response => {
+                if (response.ok) {
+                  console.log(`✅ Webhook sent successfully for booking ${booking.booking_id || booking.id}`);
+                } else {
+                  console.warn(`⚠️ Webhook returned status ${response.status} for booking ${booking.booking_id || booking.id}`);
+                }
+              })
+              .catch(error => {
+                console.error(`❌ Failed to send webhook for booking ${booking.booking_id || booking.id}:`, error.message);
+                // Continue - don't fail the entire request
+              });
+          });
+        } else {
+          console.log('📅 No bookings happening tomorrow - no webhooks to send');
+        }
+
         // FIX: Use shorter cache TTL for upcoming bookings to ensure immediate updates
         // Upcoming bookings: 30 seconds (users expect immediate updates after booking)
         // Other filters: 5 minutes (less time-sensitive)
