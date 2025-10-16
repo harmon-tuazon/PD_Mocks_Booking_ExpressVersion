@@ -236,6 +236,68 @@ class HubSpotService {
   }
 
   /**
+   * Find a booking by idempotency key
+   * @param {string} idempotencyKey - The idempotency key to search for
+   * @returns {Promise<object|null>} - Existing booking object or null if not found
+   */
+  async findBookingByIdempotencyKey(idempotencyKey) {
+    try {
+      const searchPayload = {
+        filterGroups: [{
+          filters: [{
+            propertyName: 'idempotency_key',
+            operator: 'EQ',
+            value: idempotencyKey
+          }]
+        }],
+        properties: [
+          'booking_id',
+          'idempotency_key',
+          'is_active',
+          'name',
+          'email',
+          'token_used',
+          'hs_createdate',
+          'hs_object_id'
+        ],
+        sorts: [{
+          propertyName: 'hs_createdate',
+          direction: 'DESCENDING'  // Most recent first
+        }],
+        limit: 1  // Only need the most recent match
+      };
+
+      console.log(`🔑 Searching for booking with idempotency key: ${idempotencyKey}`);
+
+      const result = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/search`, searchPayload);
+
+      if (result.results && result.results.length > 0) {
+        const booking = result.results[0];
+        console.log(`✅ Found existing booking with idempotency key ${idempotencyKey}:`, {
+          booking_id: booking.properties.booking_id,
+          hs_object_id: booking.id,
+          is_active: booking.properties.is_active,
+          created_date: booking.properties.hs_createdate
+        });
+        return booking;
+      } else {
+        console.log(`🔍 No existing booking found with idempotency key ${idempotencyKey}`);
+        return null;
+      }
+    } catch (error) {
+      console.error(`❌ Error searching for booking by idempotency key:`, {
+        idempotencyKey,
+        error: error.message,
+        status: error.status
+      });
+
+      // Don't throw the error, return null to allow new booking creation
+      // This ensures the system remains available even if search fails
+      return null;
+    }
+  }
+
+  /**
    * Map frontend location values to HubSpot expected values
    */
   mapLocationToHubSpot(location) {
@@ -280,6 +342,12 @@ class HubSpotService {
       ...(bookingData.tokenUsed ? { token_used: bookingData.tokenUsed } : {})
     };
 
+    // Add idempotency key if provided
+    if (bookingData.idempotencyKey) {
+      properties.idempotency_key = bookingData.idempotencyKey;
+      console.log(`🔑 Adding idempotency key to booking: ${bookingData.idempotencyKey}`);
+    }
+
     // FIX: Removed calculated properties (mock_type, exam_date, location, start_time, end_time)
     // These are now calculated/rollup properties in HubSpot from the associated Mock Exam
     // Setting them directly causes "READ_ONLY_VALUE" errors
@@ -309,6 +377,8 @@ class HubSpotService {
       // Mask sensitive data in logs
       name: properties.name ? `${properties.name.substring(0, 2)}***` : undefined,
       email: properties.email ? `${properties.email.substring(0, 3)}***` : undefined,
+      // Show idempotency key for debugging
+      idempotency_key: properties.idempotency_key ? `${properties.idempotency_key.substring(0, 8)}...` : undefined,
       // Show mock exam data for debugging
       mock_type: properties.mock_type,
       exam_date: properties.exam_date,

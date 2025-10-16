@@ -1,4 +1,5 @@
 require('dotenv').config();
+const crypto = require('crypto');
 const { HubSpotService, HUBSPOT_OBJECTS } = require('../_shared/hubspot');
 const { schemas } = require('../_shared/validation');
 const { getCache } = require('../_shared/cache');
@@ -11,6 +12,26 @@ const {
   rateLimitMiddleware,
   sanitizeInput
 } = require('../_shared/auth');
+
+/**
+ * Generate idempotency key from request data
+ * Uses SHA-256 hash of deterministic request components
+ * @param {object} data - Request data
+ * @returns {string} - Idempotency key
+ */
+function generateIdempotencyKey(data) {
+  const keyData = {
+    contact_id: data.contact_id,
+    mock_exam_id: data.mock_exam_id,
+    exam_date: data.exam_date,
+    mock_type: data.mock_type,
+    timestamp_bucket: Math.floor(Date.now() / (5 * 60 * 1000)) // 5-minute buckets
+  };
+
+  const keyString = JSON.stringify(keyData, Object.keys(keyData).sort());
+  const hash = crypto.createHash('sha256').update(keyString).digest('hex');
+  return `idem_${hash.substring(0, 32)}`;
+}
 
 /**
  * Determine which credit to deduct based on mock type
@@ -119,6 +140,74 @@ module.exports = module.exports = module.exports = async function handler(req, r
 
     // Initialize HubSpot service
     const hubspot = new HubSpotService();
+
+    // Idempotency Check: Check for duplicate requests within 5-minute window
+    let idempotencyKey = req.headers['x-idempotency-key'];
+
+    // If no header provided, generate key from request data
+    if (!idempotencyKey) {
+      idempotencyKey = generateIdempotencyKey(validatedData);
+      console.log(`🔑 Generated idempotency key: ${idempotencyKey}`);
+    } else {
+      console.log(`🔑 Using provided idempotency key: ${idempotencyKey}`);
+    }
+
+    // Check for existing booking with this idempotency key
+    const existingBooking = await hubspot.findBookingByIdempotencyKey(idempotencyKey);
+
+    if (existingBooking) {
+      const bookingStatus = existingBooking.properties.is_active;
+      console.log(`🔄 Found existing booking with idempotency key:`, {
+        idempotency_key: idempotencyKey,
+        booking_id: existingBooking.properties.booking_id,
+        status: bookingStatus,
+        hs_object_id: existingBooking.id
+      });
+
+      // If booking is Active or Completed, return cached response (not 201 but 200)
+      if (bookingStatus === 'Active' || bookingStatus === 'active' ||
+          bookingStatus === 'Completed' || bookingStatus === 'completed') {
+
+        console.log(`✅ Returning cached response for idempotent request`);
+
+        // Build response similar to successful creation
+        const cachedResponse = {
+          booking_id: existingBooking.properties.booking_id,
+          booking_record_id: existingBooking.id,
+          confirmation_message: `Your booking has already been confirmed`,
+          idempotency_key: idempotencyKey,
+          idempotent_request: true,
+          exam_details: {
+            mock_exam_id,
+            exam_date,
+            mock_type
+          }
+        };
+
+        // Return 200 OK (not 201 Created) for idempotent cached response
+        return res.status(200).json(createSuccessResponse(cachedResponse, 'Booking already exists (idempotent request)'));
+      }
+
+      // If booking is Cancelled or Failed, generate new idempotency key and proceed
+      if (bookingStatus === 'Cancelled' || bookingStatus === 'cancelled' ||
+          bookingStatus === 'Failed' || bookingStatus === 'failed') {
+
+        // Generate new key with different timestamp bucket to allow rebooking
+        const newKeyData = {
+          contact_id: validatedData.contact_id,
+          mock_exam_id: validatedData.mock_exam_id,
+          exam_date: validatedData.exam_date,
+          mock_type: validatedData.mock_type,
+          timestamp_bucket: Math.floor(Date.now() / (5 * 60 * 1000)) + 1, // Force different bucket
+          retry_after_cancel: true
+        };
+
+        const newKeyString = JSON.stringify(newKeyData, Object.keys(newKeyData).sort());
+        idempotencyKey = `idem_${crypto.createHash('sha256').update(newKeyString).digest('hex').substring(0, 32)}`;
+
+        console.log(`🔄 Previous booking was cancelled/failed, generating new idempotency key: ${idempotencyKey}`);
+      }
+    }
 
     // Step 1: Verify mock exam exists and has capacity
     const mockExam = await hubspot.getMockExam(mock_exam_id);
@@ -274,12 +363,13 @@ module.exports = module.exports = module.exports = async function handler(req, r
       currentValue: parseInt(contact.properties[creditField]) || 0
     });
 
-    // Step 5: Create booking with token_used property and conditional fields
+    // Step 5: Create booking with token_used property, idempotency key, and conditional fields
     const bookingData = {
       bookingId,
       name: sanitizedName,
       email: sanitizedEmail,
-      tokenUsed: tokenUsed
+      tokenUsed: tokenUsed,
+      idempotencyKey: idempotencyKey  // Add idempotency key for duplicate prevention
       // FIX: Removed calculated properties (mockType, examDate, location, startTime, endTime)
       // These are now calculated/rollup properties in HubSpot from the associated Mock Exam
       // Setting them directly causes "READ_ONLY_VALUE" errors
@@ -292,9 +382,11 @@ module.exports = module.exports = module.exports = async function handler(req, r
       bookingData.attendingLocation = attending_location;
     }
 
+    console.log(`🔐 Creating booking with idempotency key: ${idempotencyKey}`);
     const createdBooking = await hubspot.createBooking(bookingData);
     bookingCreated = true;
     createdBookingId = createdBooking.id;
+    console.log(`✅ Booking created successfully with ID: ${createdBookingId}`);
 
     // Step 6: Create associations with detailed logging
     console.log(`Creating associations for booking ${createdBookingId}`);
@@ -440,6 +532,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
       booking_id: bookingId,
       booking_record_id: createdBookingId,
       confirmation_message: `Your booking for ${mock_type} on ${formattedDate} has been confirmed`,
+      idempotency_key: idempotencyKey,  // Include idempotency key in response
       exam_details: {
         mock_exam_id,
         exam_date,
