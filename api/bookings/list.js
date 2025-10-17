@@ -370,17 +370,6 @@ async function handler(req, res) {
         console.log(`💾 Cached bookings data with key: ${cacheKey} (TTL: ${cacheTTL}s)`);
       }
 
-      console.log(`📊 [API DEBUG] Booking retrieval summary:`, {
-        filter: filter,
-        page: page,
-        limit: limit,
-        force_refresh: force || false,
-        total_bookings: bookingsData.total,
-        returned_bookings: bookingsData.bookings.length,
-        total_pages: bookingsData.pagination.total_pages,
-        has_bookings: bookingsData.bookings.length > 0
-      });
-
       console.log(`📊 Successfully retrieved ${bookingsData.total} total bookings (filter: ${filter}, page: ${page}/${bookingsData.pagination.total_pages})`);
 
       // Step 4: Prepare response
