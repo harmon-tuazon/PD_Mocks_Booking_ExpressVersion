@@ -128,8 +128,8 @@ module.exports = async (req, res) => {
     let totalInvalidated = 0;
     for (const pattern of invalidationPatterns) {
       console.log(`🗑️ Invalidating cache pattern: ${pattern}`);
-      cache.deletePattern(pattern);
-      totalInvalidated++;
+      const deletedCount = await cache.deletePattern(pattern);
+      totalInvalidated += deletedCount;
     }
 
     const response = {

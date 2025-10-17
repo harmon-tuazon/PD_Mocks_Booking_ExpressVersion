@@ -1,144 +1,158 @@
 /**
- * Simple In-Memory Cache Service with TTL
+ * Distributed Cache Service with Redis Backend
  *
- * Provides TTL-based caching without external dependencies.
- * Automatically cleans expired entries to prevent memory leaks.
+ * Provides distributed TTL-based caching using Redis for serverless environments.
+ * Replaces in-memory Map to survive cold starts and share cache across instances.
  *
  * @module cache
  */
 
+const RedisLockService = require('./redis');
+
 class CacheService {
   constructor(maxSize = 1000) {
-    this.cache = new Map();
     this.maxSize = maxSize;
     this.enabled = process.env.CACHE_ENABLED !== 'false';
 
-    // Auto-cleanup expired entries every 5 minutes
-    this.cleanupInterval = setInterval(() => this.cleanExpired(), 5 * 60 * 1000);
+    // Use Redis for distributed caching instead of in-memory Map
+    this.redis = new RedisLockService();
+
+    console.log('✅ CacheService initialized with Redis backend (distributed cache)');
   }
 
   /**
-   * Store a value in cache with TTL
+   * Store a value in Redis cache with TTL
    *
    * @param {string} key - Cache key
    * @param {*} value - Value to cache (any JSON-serializable data)
    * @param {number} ttlSeconds - Time to live in seconds
    */
-  set(key, value, ttlSeconds) {
+  async set(key, value, ttlSeconds) {
     if (!this.enabled) return;
 
-    // Enforce max size by removing oldest entry if needed
-    if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
-      const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+    try {
+      await this.redis.cacheSet(key, value, ttlSeconds);
+    } catch (error) {
+      console.error(`❌ Cache set error for key "${key}":`, error.message);
+      // Fail gracefully - don't throw
     }
-
-    const expires = Date.now() + (ttlSeconds * 1000);
-    this.cache.set(key, { value, expires });
   }
 
   /**
-   * Retrieve a value from cache
+   * Retrieve a value from Redis cache
    *
    * @param {string} key - Cache key
-   * @returns {*} Cached value or null if expired/not found
+   * @returns {Promise<*>} Cached value or null if expired/not found
    */
-  get(key) {
+  async get(key) {
     if (!this.enabled) return null;
 
-    const item = this.cache.get(key);
-
-    if (!item) {
-      return null;
+    try {
+      return await this.redis.cacheGet(key);
+    } catch (error) {
+      console.error(`❌ Cache get error for key "${key}":`, error.message);
+      return null; // Fail gracefully
     }
-
-    // Check if expired
-    if (Date.now() > item.expires) {
-      this.cache.delete(key);
-      return null;
-    }
-
-    return item.value;
   }
 
   /**
-   * Delete a specific cache entry
+   * Delete a specific cache entry from Redis
    *
    * @param {string} key - Cache key to delete
    */
-  delete(key) {
-    this.cache.delete(key);
+  async delete(key) {
+    try {
+      await this.redis.cacheDelete(key);
+    } catch (error) {
+      console.error(`❌ Cache delete error for key "${key}":`, error.message);
+    }
   }
 
   /**
-   * Delete all cache entries matching a pattern
+   * Delete all Redis cache entries matching a pattern
    *
    * @param {string} pattern - Pattern with wildcards (e.g., "bookings:*")
    */
-  deletePattern(pattern) {
-    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
-
-    for (const key of this.cache.keys()) {
-      if (regex.test(key)) {
-        this.cache.delete(key);
-      }
+  async deletePattern(pattern) {
+    try {
+      await this.redis.cacheDeletePattern(pattern);
+    } catch (error) {
+      console.error(`❌ Cache pattern delete error for pattern "${pattern}":`, error.message);
     }
   }
 
   /**
-   * Clear all cache entries
+   * Clear all cache entries (use with caution!)
    */
-  clear() {
-    this.cache.clear();
+  async clear() {
+    try {
+      await this.redis.cacheDeletePattern('*');
+    } catch (error) {
+      console.error('❌ Cache clear error:', error.message);
+    }
   }
 
   /**
-   * Get all cache keys
+   * Get all cache keys from Redis
    *
-   * @returns {Array<string>} Array of all cache keys
+   * @returns {Promise<Array<string>>} Array of all cache keys
    */
-  keys() {
-    return Array.from(this.cache.keys());
+  async keys() {
+    try {
+      return await this.redis.cacheKeys('*');
+    } catch (error) {
+      console.error('❌ Cache keys error:', error.message);
+      return [];
+    }
   }
 
   /**
-   * Remove all expired entries
+   * Redis handles expiration automatically via TTL
+   * This method is kept for backward compatibility but does nothing
    */
   cleanExpired() {
-    const now = Date.now();
-    let removedCount = 0;
-
-    for (const [key, item] of this.cache.entries()) {
-      if (now > item.expires) {
-        this.cache.delete(key);
-        removedCount++;
-      }
-    }
-
-    if (removedCount > 0) {
-      console.log(`🧹 Cache cleanup: removed ${removedCount} expired entries`);
-    }
+    // No-op: Redis handles expiration automatically via TTL
+    console.log('ℹ️ Redis handles cache expiration automatically via TTL');
   }
 
   /**
-   * Get cache statistics
+   * Get cache statistics from Redis
    *
-   * @returns {Object} Cache stats (size, enabled status)
+   * @returns {Promise<Object>} Cache stats
    */
-  getStats() {
-    return {
-      size: this.cache.size,
-      maxSize: this.maxSize,
-      enabled: this.enabled
-    };
+  async getStats() {
+    try {
+      const redisInfo = await this.redis.getInfo();
+      const keys = await this.keys();
+
+      return {
+        backend: 'redis',
+        size: keys.length,
+        maxSize: this.maxSize,
+        enabled: this.enabled,
+        redis: redisInfo
+      };
+    } catch (error) {
+      console.error('❌ Cache stats error:', error.message);
+      return {
+        backend: 'redis',
+        size: 0,
+        maxSize: this.maxSize,
+        enabled: this.enabled,
+        error: error.message
+      };
+    }
   }
 
   /**
-   * Cleanup interval on service shutdown
+   * Cleanup Redis connection on service shutdown
    */
-  destroy() {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
+  async destroy() {
+    try {
+      await this.redis.close();
+      console.log('✅ Redis connection closed');
+    } catch (error) {
+      console.error('❌ Error closing Redis connection:', error.message);
     }
   }
 }

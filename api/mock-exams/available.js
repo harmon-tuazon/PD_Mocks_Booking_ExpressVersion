@@ -58,7 +58,7 @@ module.exports = async (req, res) => {
 
     // Check cache first (skip cache if real-time is requested)
     if (!useRealTimeCapacity) {
-      const cachedData = cache.get(cacheKey);
+      const cachedData = await cache.get(cacheKey);
       if (cachedData) {
         console.log(`🎯 Cache HIT for ${cacheKey}`);
         return res.status(200).json(createSuccessResponse(cachedData));
@@ -253,7 +253,7 @@ module.exports = async (req, res) => {
     filteredExams.sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date));
 
     // Cache the results (5-minute TTL)
-    cache.set(cacheKey, filteredExams, 5 * 60);
+    await cache.set(cacheKey, filteredExams, 5 * 60);
     console.log(`💾 Cached ${filteredExams.length} exams with key: ${cacheKey}`);
 
     // Return response

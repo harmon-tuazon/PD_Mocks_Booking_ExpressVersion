@@ -125,18 +125,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
       attending_location
     } = validatedData;
 
-    // Logging
-    console.log('📝 Processing booking request:', {
-      contact_id,
-      mock_exam_id,
-      name: sanitizeInput(name),
-      email: sanitizeInput(email),
-      exam_date,
-      mock_type,
-      dominant_hand: dominant_hand !== undefined ? dominant_hand : null,
-      attending_location: attending_location || null
-    });
-
     // Sanitize inputs
     const sanitizedName = sanitizeInput(name);
     const sanitizedEmail = sanitizeInput(email);
@@ -150,9 +138,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
     // If no header provided, generate key from request data
     if (!idempotencyKey) {
       idempotencyKey = generateIdempotencyKey(validatedData);
-      console.log(`🔑 Generated idempotency key: ${idempotencyKey}`);
-    } else {
-      console.log(`🔑 Using provided idempotency key: ${idempotencyKey}`);
     }
 
     // Check for existing booking with this idempotency key
@@ -160,12 +145,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
 
     if (existingBooking) {
       const bookingStatus = existingBooking.properties.is_active;
-      console.log(`🔄 Found existing booking with idempotency key:`, {
-        idempotency_key: idempotencyKey,
-        booking_id: existingBooking.properties.booking_id,
-        status: bookingStatus,
-        hs_object_id: existingBooking.id
-      });
 
       // If booking is Active or Completed, return cached response (not 201 but 200)
       if (bookingStatus === 'Active' || bookingStatus === 'active' ||
@@ -207,15 +186,12 @@ module.exports = module.exports = module.exports = async function handler(req, r
 
         const newKeyString = JSON.stringify(newKeyData, Object.keys(newKeyData).sort());
         idempotencyKey = `idem_${crypto.createHash('sha256').update(newKeyString).digest('hex').substring(0, 32)}`;
-
-        console.log(`🔄 Previous booking was cancelled/failed, generating new idempotency key: ${idempotencyKey}`);
       }
     }
 
     // ========================================================================
     // REDIS LOCK ACQUISITION - Prevents race condition in capacity checking
     // ========================================================================
-    console.log(`🔒 Attempting to acquire lock for mock exam: ${mock_exam_id}`);
 
     // Initialize Redis client
     redis = new RedisLockService();
@@ -328,16 +304,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
       throw error;
     }
 
-    // FIX: Log the raw credit values fetched from HubSpot for debugging
-    console.log('💳 Raw HubSpot Credit Properties:', {
-      contact_id,
-      student_id: contact.properties.student_id,
-      sj_credits: contact.properties.sj_credits,
-      cs_credits: contact.properties.cs_credits,
-      sjmini_credits: contact.properties.sjmini_credits,
-      shared_mock_credits: contact.properties.shared_mock_credits
-    });
-
     // Calculate available credits
     let specificCredits = 0;
     let sharedCredits = parseInt(contact.properties.shared_mock_credits) || 0;
@@ -354,14 +320,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
         sharedCredits = 0; // Don't use shared credits for mini-mock
         break;
     }
-
-    // FIX: Log parsed credit values
-    console.log('💳 Parsed Credit Values:', {
-      mock_type,
-      specificCredits,
-      sharedCredits,
-      totalCredits: specificCredits + sharedCredits
-    });
 
     const totalCredits = specificCredits + sharedCredits;
 
@@ -380,12 +338,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
 
     const creditField = getCreditFieldToDeduct(mock_type, creditBreakdown);
     const tokenUsed = mapCreditFieldToTokenUsed(creditField);
-
-    console.log('💳 Credit to be deducted:', {
-      creditField,
-      tokenUsed,
-      currentValue: parseInt(contact.properties[creditField]) || 0
-    });
 
     // Step 5: Create booking with token_used property, idempotency key, and conditional fields
     const bookingData = {
@@ -406,23 +358,15 @@ module.exports = module.exports = module.exports = async function handler(req, r
       bookingData.attendingLocation = attending_location;
     }
 
-    console.log(`🔐 Creating booking with idempotency key: ${idempotencyKey}`);
     const createdBooking = await hubspot.createBooking(bookingData);
     bookingCreated = true;
     createdBookingId = createdBooking.id;
     console.log(`✅ Booking created successfully with ID: ${createdBookingId}`);
 
-    // Step 6: Create associations with detailed logging
-    console.log(`Creating associations for booking ${createdBookingId}`);
-    console.log(`Contact ID: ${contact_id}, Mock Exam ID: ${mock_exam_id}`);
-
     const associationResults = [];
 
     // Associate with Contact
     try {
-      console.log(`Attempting to associate booking ${createdBookingId} with contact ${contact_id}`);
-      console.log(`📊 Association details: Booking(${createdBookingId}) → Contact(${contact_id})`);
-
       const contactAssociation = await hubspot.createAssociation(
         HUBSPOT_OBJECTS.bookings,
         createdBookingId,
@@ -448,7 +392,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
 
     // Associate with Mock Exam
     try {
-      console.log(`Attempting to associate booking ${createdBookingId} with mock exam ${mock_exam_id}`);
       const mockExamAssociation = await hubspot.createAssociation(
         HUBSPOT_OBJECTS.bookings,
         createdBookingId,
@@ -459,29 +402,12 @@ module.exports = module.exports = module.exports = async function handler(req, r
       associationResults.push({ type: 'mock_exam', success: true, result: mockExamAssociation });
     } catch (err) {
       console.error('❌ Failed to associate with mock exam:', err);
-      console.error('Mock exam association error details:', {
-        fromObject: HUBSPOT_OBJECTS.bookings,
-        fromId: createdBookingId,
-        toObject: HUBSPOT_OBJECTS.mock_exams,
-        toId: mock_exam_id,
-        error: err.message,
-        status: err.response?.status,
-        data: err.response?.data
-      });
       associationResults.push({ type: 'mock_exam', success: false, error: err.message });
     }
-
-    console.log('Association results summary:', associationResults);
 
     // Check critical associations - Contact and Mock Exam are required for booking integrity
     const contactAssocSuccess = associationResults.find(r => r.type === 'contact')?.success || false;
     const mockExamAssocSuccess = associationResults.find(r => r.type === 'mock_exam')?.success || false;
-
-    // Log association status for monitoring
-    console.log('Critical associations status:', {
-      contact: contactAssocSuccess ? '✅' : '❌',
-      mock_exam: mockExamAssocSuccess ? '✅' : '❌'
-    });
 
     // Step 7: Update total bookings counter
     const newTotalBookings = totalBookings + 1;
@@ -493,7 +419,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
     // Lock must be released AFTER counter update to maintain atomicity
     // Release now to minimize lock hold time (remaining operations are non-critical)
     if (lockToken) {
-      console.log(`🔓 Releasing lock for exam ${mock_exam_id}, token: ${lockToken}`);
       await redis.releaseLock(mock_exam_id, lockToken);
       lockToken = null; // Prevent double-release in finally block
       console.log(`✅ Lock released successfully`);
@@ -502,14 +427,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
     // Step 8: Deduct credits (creditField already calculated in Step 4)
     const currentCreditValue = parseInt(contact.properties[creditField]) || 0;
     const newCreditValue = Math.max(0, currentCreditValue - 1);
-
-    // FIX: Log credit deduction details
-    console.log('💳 Credit Deduction:', {
-      creditField,
-      currentValue: currentCreditValue,
-      newValue: newCreditValue,
-      deducted: currentCreditValue - newCreditValue
-    });
 
     await hubspot.updateContactCredits(contact_id, creditField, newCreditValue);
 
@@ -553,16 +470,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
       specificCreditsAfter = newCreditValue;
     }
 
-    console.log('💳 Credit Breakdown AFTER Deduction:', {
-      creditField,
-      specificCredits_BEFORE: specificCredits,
-      sharedCredits_BEFORE: sharedCredits,
-      specificCredits_AFTER: specificCreditsAfter,
-      sharedCredits_AFTER: sharedCreditsAfter,
-      newCreditValue,
-      totalAfter: specificCreditsAfter + sharedCreditsAfter
-    });
-
     // Prepare response
     const responseData = {
       booking_id: bookingId,
@@ -601,63 +508,31 @@ module.exports = module.exports = module.exports = async function handler(req, r
       throw new Error('Internal error: credit_details not properly generated');
     }
 
-    console.log('📤 Sending credit_details to frontend:', {
-      remaining_credits: responseData.credit_details.remaining_credits,
-      credit_breakdown: responseData.credit_details.credit_breakdown,
-      deduction_details: responseData.credit_details.deduction_details
-    });
-
     if (associationWarnings.length > 0) {
       console.log('⚠️ Booking successful with association warnings:', associationWarnings);
     } else {
       console.log('✅ Booking and all associations successful');
     }
 
-    // FIX: Invalidate booking cache for this contact
+    // FIX: Invalidate booking cache for this contact using Redis pattern deletion
     try {
       const cache = getCache();
-      
-      console.log('🗑️ [Cache Invalidation] Starting cache invalidation for contact:', contact_id);
-      
-      const allKeys = cache.keys();
-      let invalidatedCount = 0;
+      const cachePattern = `bookings:contact:${contact_id}:*`;
 
-      console.log(`🔍 [Cache Invalidation] Total cache keys to check: ${allKeys.length}`);
+      const invalidatedCount = await cache.deletePattern(cachePattern);
 
-      const cacheKeyPrefix = `bookings:contact:${contact_id}:`;
-      
-      console.log(`🔍 [Cache Invalidation] Looking for keys starting with: "${cacheKeyPrefix}"`);
-
-      for (const key of allKeys) {
-        if (key.startsWith(cacheKeyPrefix)) {
-          cache.delete(key);
-          invalidatedCount++;
-          console.log(`  🗑️ Deleted cache key: ${key}`);
-        }
-      }
-
-      console.log(`✅ [Cache Invalidation] Successfully invalidated ${invalidatedCount} cache entries for contact ${contact_id}`);
-
-      if (invalidatedCount === 0) {
-        console.warn(`⚠️ [Cache Invalidation] No cache entries found to invalidate.`);
-        console.warn(`⚠️ [Cache Invalidation] Cache key prefix used: "${cacheKeyPrefix}"`);
-        console.warn(`⚠️ [Cache Invalidation] Sample cache keys:`, allKeys.slice(0, 5));
+      if (invalidatedCount > 0) {
+        console.log(`✅ [Cache Invalidation] Successfully invalidated ${invalidatedCount} cache entries for contact ${contact_id}`);
+      } else {
+        console.log(`ℹ️ [Cache Invalidation] No cache entries found to invalidate (pattern: "${cachePattern}")`);
       }
     } catch (cacheError) {
       console.error('❌ Cache invalidation failed:', {
         error: cacheError.message,
         stack: cacheError.stack
       });
+      // Continue - cache invalidation failure shouldn't block booking creation
     }
-
-    console.log('📤 API Response Structure:', {
-      success: true,
-      message: 'Booking created successfully',
-      data: {
-        booking_id: responseData.booking_id,
-        booking_record_id: responseData.booking_record_id,
-      }
-    });
 
     return res.status(201).json(createSuccessResponse(responseData, 'Booking created successfully'));
 
@@ -669,15 +544,8 @@ module.exports = module.exports = module.exports = async function handler(req, r
       stack: error.stack
     });
 
-    console.log('🔍 [API Error Handler] Error object being sent to frontend:', {
-      'error.message': error.message,
-      'error.code': error.code,
-      'error.status': error.status
-    });
-
     // Cleanup if needed
     if (bookingCreated && createdBookingId) {
-      console.log(`🧹 Attempting cleanup for booking ${createdBookingId}`);
       try {
         const hubspot = new HubSpotService();
         await hubspot.deleteBooking(createdBookingId);
@@ -692,8 +560,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
     // FIX: Pass error object to createErrorResponse, not separate parameters
     const errorResponse = createErrorResponse(error);
 
-    console.log('🔍 [API Error Handler] Formatted error response:', errorResponse);
-
     return res.status(statusCode).json(errorResponse);
 
   } finally {
@@ -704,7 +570,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
     // TTL provides safety net if this fails (lock expires in 10 seconds)
     if (lockToken && redis) {
       try {
-        console.log(`🧹 [Finally] Releasing lock for exam ${mock_exam_id || 'unknown'}`);
         await redis.releaseLock(mock_exam_id, lockToken);
         console.log(`✅ [Finally] Lock released successfully`);
       } catch (finallyError) {

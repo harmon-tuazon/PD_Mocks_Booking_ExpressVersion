@@ -205,31 +205,12 @@ class HubSpotService {
 
     const result = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/search`, searchPayload);
 
-    // Log total bookings found for debugging
-    console.log(`🔍 Checking for existing booking with ID ${bookingId}:`, {
-      total_found: result.total,
-      results_returned: result.results?.length || 0
-    });
-
     // Filter for only active bookings
     const activeBookings = result.results?.filter(booking => {
       const isActive = booking.properties?.is_active;
       // Only consider booking as duplicate if it's explicitly 'Active'
       return isActive === 'Active';
     }) || [];
-
-    // Log detailed results for debugging
-    if (result.results && result.results.length > 0) {
-      console.log(`📊 Booking check for ${bookingId}:`, {
-        total_bookings: result.results.length,
-        active_bookings: activeBookings.length,
-        booking_statuses: result.results.map(b => ({
-          id: b.id,
-          booking_id: b.properties.booking_id,
-          is_active: b.properties.is_active || 'undefined'
-        }))
-      });
-    }
 
     // Only return true if there's at least one active booking
     return activeBookings.length > 0;
@@ -267,8 +248,6 @@ class HubSpotService {
         limit: 1  // Only need the most recent match
       };
 
-      console.log(`🔑 Searching for booking with idempotency key: ${idempotencyKey}`);
-
       const result = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/search`, searchPayload);
 
       if (result.results && result.results.length > 0) {
@@ -281,7 +260,6 @@ class HubSpotService {
         });
         return booking;
       } else {
-        console.log(`🔍 No existing booking found with idempotency key ${idempotencyKey}`);
         return null;
       }
     } catch (error) {
@@ -326,7 +304,6 @@ class HubSpotService {
       return location;
     }
 
-    console.log(`📍 Mapped location: ${location} → ${mappedLocation}`);
     return mappedLocation;
   }
 
@@ -345,7 +322,6 @@ class HubSpotService {
     // Add idempotency key if provided
     if (bookingData.idempotencyKey) {
       properties.idempotency_key = bookingData.idempotencyKey;
-      console.log(`🔑 Adding idempotency key to booking: ${bookingData.idempotencyKey}`);
     }
 
     // FIX: Removed calculated properties (mock_type, exam_date, location, start_time, end_time)
@@ -362,28 +338,9 @@ class HubSpotService {
       const originalLocation = bookingData.attendingLocation;
       const mappedLocation = this.mapLocationToHubSpot(originalLocation);
       properties.attending_location = mappedLocation;
-
-      console.log(`📍 Location mapping for booking:`, {
-        original: originalLocation,
-        mapped: mappedLocation,
-        bookingId: bookingData.bookingId
-      });
     }
 
     const payload = { properties };
-
-    console.log(`📝 Creating booking with properties:`, {
-      ...properties,
-      // Mask sensitive data in logs
-      name: properties.name ? `${properties.name.substring(0, 2)}***` : undefined,
-      email: properties.email ? `${properties.email.substring(0, 3)}***` : undefined,
-      // Show idempotency key for debugging
-      idempotency_key: properties.idempotency_key ? `${properties.idempotency_key.substring(0, 8)}...` : undefined,
-      // Show mock exam data for debugging
-      mock_type: properties.mock_type,
-      exam_date: properties.exam_date,
-      location: properties.location
-    });
 
     return await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}`, payload);
   }
@@ -456,19 +413,11 @@ class HubSpotService {
     // For ALL associations, use empty payload to let HubSpot use the default Type 1277
     const payload = [];
 
-    console.log(`🔗 Creating association: ${fromObjectType}(${fromObjectId}) → ${toObjectType}(${toObjectId})`);
-
     // Log specific details for Booking ↔ Mock Exam associations
     const isBookingToMockExam = (
       (fromObjectType === HUBSPOT_OBJECTS.bookings && toObjectType === HUBSPOT_OBJECTS.mock_exams) ||
       (fromObjectType === HUBSPOT_OBJECTS.mock_exams && toObjectType === HUBSPOT_OBJECTS.bookings)
     );
-
-    if (isBookingToMockExam) {
-      console.log(`📋 Booking ↔ Mock Exam association - Using default Type 1277 (proven working)`);
-    } else {
-      console.log(`📋 Using default HubSpot association type`);
-    }
 
     try {
       const result = await this.apiCall('PUT', path, payload);
@@ -495,8 +444,6 @@ class HubSpotService {
    */
   async removeAssociation(fromObjectType, fromObjectId, toObjectType, toObjectId) {
     const path = `/crm/v4/objects/${fromObjectType}/${fromObjectId}/associations/${toObjectType}/${toObjectId}`;
-
-    console.log(`🗑️ Removing association: ${fromObjectType}(${fromObjectId}) → ${toObjectType}(${toObjectId})`);
 
     try {
       const result = await this.apiCall('DELETE', path);
@@ -726,28 +673,13 @@ class HubSpotService {
    */
   async getContactBookingAssociations(contactId) {
     try {
-      console.log(`🔗 Getting booking associations for contact ${contactId} using associations API`);
-
       // Use HubSpot Associations API to get all bookings associated with this contact
       const apiUrl = `/crm/v4/objects/${HUBSPOT_OBJECTS.contacts}/${contactId}/associations/${HUBSPOT_OBJECTS.bookings}?limit=100`;
-      console.log(`📞 [API Call] Associations API URL:`, {
-        url: apiUrl,
-        contactObjectType: HUBSPOT_OBJECTS.contacts,
-        bookingObjectType: HUBSPOT_OBJECTS.bookings,
-        contactId: contactId
-      });
 
       const associations = await this.apiCall(
-        'GET', 
+        'GET',
         apiUrl
       );
-
-      console.log(`📊 [API Response] Associations API response:`, {
-        hasResults: !!associations?.results,
-        resultsCount: associations?.results?.length || 0,
-        results: associations?.results,
-        fullResponse: associations
-      });
 
       if (!associations?.results || associations.results.length === 0) {
         console.log(`⚠️ No booking associations found for contact ${contactId}`);
@@ -797,8 +729,6 @@ class HubSpotService {
       if (after) {
         url += `&after=${after}`;
       }
-      
-      console.log(`🔗 Getting paginated booking associations for contact ${contactId} (limit: ${fetchLimit}, after: ${after || 'none'})`);
 
       const associations = await this.apiCall('GET', url);
 
@@ -812,12 +742,8 @@ class HubSpotService {
 
       // Extract booking IDs from associations
       const bookingIds = associations.results.map(assoc => assoc.toObjectId);
-      
+
       console.log(`✅ Found ${bookingIds.length} booking associations for contact ${contactId}`);
-      
-      if (associations.paging?.next?.after) {
-        console.log(`📄 More associations available (next token: ${associations.paging.next.after})`);
-      }
 
       return {
         bookingIds,
@@ -847,8 +773,6 @@ class HubSpotService {
    */
   async getBookingsForContact(contactId, { filter = 'all', page = 1, limit = 10 } = {}) {
     try {
-      console.log(`📋 Getting bookings for contact ${contactId} with filter: ${filter}, page: ${page}, limit: ${limit}`);
-
       // Step 1: Get all booking IDs associated with this contact using the dedicated method
       const bookingIds = await this.getContactBookingAssociations(contactId);
 
@@ -888,7 +812,6 @@ class HubSpotService {
         properties: bookingProperties
       };
 
-      console.log(`📦 Batch reading ${bookingIds.length} booking objects with optimized properties`);
       const bookingsResponse = await this.apiCall(
         'POST',
         `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`,
@@ -916,27 +839,11 @@ class HubSpotService {
       const nowISOString = now.toISOString();
       const nowTimestamp = now.getTime();
 
-      console.log(`🕐 [FILTER DEBUG] Current time reference:`, {
-        now: nowISOString,
-        timestamp: nowTimestamp,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-      });
-
       // Collect booking IDs that need mock exam association fetching
       const bookingsNeedingMockExamData = [];
       const processedBookings = [];
 
       for (const booking of bookingsResponse.results) {
-        console.log(`🔍 [BOOKING DEBUG] Processing booking ${booking.id}:`, {
-          id: booking.id,
-          booking_id: booking.properties.booking_id,
-          has_mock_type: !!booking.properties.mock_type,
-          has_exam_date: !!booking.properties.exam_date,
-          raw_exam_date: booking.properties.exam_date,
-          mock_type: booking.properties.mock_type,
-          is_active: booking.properties.is_active // ADD THIS TO DEBUG
-        });
-
         // Check if booking already has mock exam properties
         if (booking.properties.mock_type && booking.properties.exam_date) {
           // We have the data directly on the booking - no need for additional queries!
@@ -987,18 +894,6 @@ class HubSpotService {
           const isUpcoming = examDateTimestamp >= nowTimestamp;
           const status = isUpcoming ? 'upcoming' : 'past';
 
-          console.log(`📅 [DATE DEBUG] Booking ${booking.id} date analysis:`, {
-            raw_exam_date: examDateRaw,
-            parsed_exam_date: examDate.toISOString(),
-            exam_timestamp: examDateTimestamp,
-            now_timestamp: nowTimestamp,
-            time_diff_hours: Math.round((examDateTimestamp - nowTimestamp) / (1000 * 60 * 60) * 100) / 100,
-            is_upcoming: isUpcoming,
-            status: status,
-            filter: filter,
-            will_include: filter === 'all' || filter === status
-          });
-
           // FIX: Improve is_active handling to be more robust
           const isActive = booking.properties.is_active;
           
@@ -1035,18 +930,7 @@ class HubSpotService {
             shouldInclude = (filter === status) && isActiveBooking;
           }
 
-          console.log(`🔍 [ACTIVE DEBUG] Booking ${booking.id} active status:`, {
-            is_active_raw: isActive,
-            is_active_type: typeof isActive,
-            is_cancelled: isCancelled,
-            is_active_booking: isActiveBooking,
-            filter: filter,
-            status: status,
-            should_include: shouldInclude
-          });
-
           if (shouldInclude) {
-            console.log(`✅ [FILTER DEBUG] Including booking ${booking.id} (status: ${status}, filter: ${filter}, is_active: ${isActive})`);
             const mockExamData = {
               mock_type: booking.properties.mock_type,
               exam_date: booking.properties.exam_date,
@@ -1061,11 +945,8 @@ class HubSpotService {
               status,
               finalStatus: this.mapBookingStatus(booking, mockExamData, status)
             });
-          } else {
-            console.log(`➖ [FILTER DEBUG] Excluding booking ${booking.id} (status: ${status}, filter: ${filter}, is_active: ${isActive})`);
           }
         } else {
-          console.log(`⚠️ [BOOKING DEBUG] Booking ${booking.id} missing mock exam properties, will fetch via associations`);
           // We need to fetch mock exam data via associations
           bookingsNeedingMockExamData.push(booking);
         }
@@ -1073,14 +954,9 @@ class HubSpotService {
 
       // Step 4: If any bookings need mock exam data, batch fetch the associations
       if (bookingsNeedingMockExamData.length > 0) {
-        console.log(`⚠️ ${bookingsNeedingMockExamData.length} bookings missing mock exam properties, fetching via associations...`);
-
         // Batch get all mock exam associations
         const mockExamIds = new Set();
         const bookingToMockExamMap = new Map();
-
-        // Get associations for all bookings that need it - BATCH OPTIMIZED
-        console.log(`🔍 Fetching mock exam associations for ${bookingsNeedingMockExamData.length} bookings...`);
 
         try {
           // Batch read all associations in 1-2 API calls instead of N calls
@@ -1117,8 +993,6 @@ class HubSpotService {
             inputs: Array.from(mockExamIds).map(id => ({ id })),
             properties: ['exam_date', 'start_time', 'end_time', 'capacity', 'total_bookings', 'mock_type', 'location', 'is_active']
           };
-
-          console.log(`📦 Batch reading ${mockExamIds.size} mock exam objects...`);
 
           try {
             const mockExamsResponse = await this.apiCall(
@@ -1187,18 +1061,6 @@ class HubSpotService {
               const isUpcoming = examDateTimestamp >= nowTimestamp;
               const status = isUpcoming ? 'upcoming' : 'past';
 
-              console.log(`📅 [DATE DEBUG] Association booking ${booking.id} date analysis:`, {
-                raw_exam_date: examDateRaw,
-                parsed_exam_date: examDate.toISOString(),
-                exam_timestamp: examDateTimestamp,
-                now_timestamp: nowTimestamp,
-                time_diff_hours: Math.round((examDateTimestamp - nowTimestamp) / (1000 * 60 * 60) * 100) / 100,
-                is_upcoming: isUpcoming,
-                status: status,
-                filter: filter,
-                will_include: filter === 'all' || filter === status
-              });
-
               // FIX: Same improved is_active handling for association-fetched bookings
               const isActive = booking.properties.is_active || mockExam.properties.is_active;
               
@@ -1234,7 +1096,6 @@ class HubSpotService {
               }
 
               if (shouldInclude) {
-                console.log(`✅ [FILTER DEBUG] Including association booking ${booking.id} (status: ${status}, filter: ${filter}, is_active: ${isActive})`);
                 const mockExamData = {
                   id: mockExamId,
                   mock_type: mockExam.properties.mock_type,
@@ -1252,8 +1113,6 @@ class HubSpotService {
                   status,
                   finalStatus: this.mapBookingStatus(booking, mockExamData, status)
                 });
-              } else {
-                console.log(`➖ [FILTER DEBUG] Excluding association booking ${booking.id} (status: ${status}, filter: ${filter}, is_active: ${isActive})`);
               }
             } else {
               console.warn(`❌ No mock exam data found for booking ${booking.id} (${booking.properties.booking_id}), excluding from results`);
@@ -1274,14 +1133,6 @@ class HubSpotService {
 
       // Step 5: Format all processed bookings for output
       for (const { booking, mockExamData, status, finalStatus } of processedBookings) {
-        console.log('🔍 [HUBSPOT DEBUG] Adding booking to list:', {
-          hubspotObjectId: booking.id,
-          customBookingId: booking.properties.booking_id,
-          mockType: mockExamData.mock_type,
-          timeStatus: status,
-          finalStatus: finalStatus
-        });
-
         bookingsWithExams.push({
           id: booking.id,
           booking_id: booking.properties.booking_id,
@@ -1331,18 +1182,6 @@ class HubSpotService {
       const startIndex = (page - 1) * limit;
       const endIndex = startIndex + limit;
       const paginatedBookings = bookingsWithExams.slice(startIndex, endIndex);
-
-      console.log(`📊 [FINAL DEBUG] Booking processing summary:`, {
-        initial_bookings_found: bookingsResponse?.results?.length || 0,
-        bookings_with_direct_data: bookingsResponse?.results?.length - bookingsNeedingMockExamData.length,
-        bookings_needing_associations: bookingsNeedingMockExamData.length,
-        total_processed_bookings: processedBookings.length,
-        final_bookings_count: totalBookings,
-        paginated_bookings_count: paginatedBookings.length,
-        filter: filter,
-        page: page,
-        current_time: nowISOString
-      });
 
       // ℹ️ FILTER INFO: Log when all bookings are filtered out (expected behavior for certain filters)
       if ((bookingsResponse?.results?.length > 0) && (totalBookings === 0)) {
@@ -1426,13 +1265,6 @@ class HubSpotService {
    * @returns {Promise<object>} Booking object with associations
    */
   async getBookingWithAssociations(bookingId) {
-    console.log('🔍 [HUBSPOT DEBUG] Getting booking with associations:', {
-      bookingId,
-      bookingIdType: typeof bookingId,
-      hubspotObjectType: HUBSPOT_OBJECTS.bookings,
-      url: `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/${bookingId}`
-    });
-
     try {
       // Get booking properties with V3 API
       const bookingResult = await this.apiCall({
@@ -1462,12 +1294,6 @@ class HubSpotService {
           method: 'GET',
           url: `/crm/v4/objects/${HUBSPOT_OBJECTS.bookings}/${bookingId}/associations/${HUBSPOT_OBJECTS.contacts}`
         });
-        
-        console.log('🔍 [ASSOCIATION DEBUG] Raw contact associations from V4 API:', {
-          hasResults: !!contactAssocs.results,
-          resultsLength: contactAssocs.results?.length || 0,
-          rawResults: contactAssocs.results
-        });
       } catch (e) {
         console.log('No contact associations found');
       }
@@ -1489,13 +1315,6 @@ class HubSpotService {
         associations: {
           [HUBSPOT_OBJECTS.contacts]: {
             results: contactAssocs.results?.map(a => {
-              console.log('🔍 [ASSOCIATION MAPPING] Processing contact association:', {
-                rawAssociation: a,
-                toObjectId: a.toObjectId,
-                toObjectIdType: typeof a.toObjectId,
-                associationType: a.associationSpec?.associationTypeId
-              });
-              
               return {
                 id: a.toObjectId,  // This is the contact ID we want to match against
                 toObjectId: a.toObjectId,  // Keep for backward compatibility
@@ -1514,14 +1333,6 @@ class HubSpotService {
           }
         }
       };
-
-      console.log('🔍 [HUBSPOT DEBUG] Final booking result with mapped associations:', {
-        hasResult: !!result,
-        bookingId: result?.id || result?.data?.id,
-        contactAssociations: result.associations[HUBSPOT_OBJECTS.contacts].results.length,
-        contactAssocDetails: result.associations[HUBSPOT_OBJECTS.contacts].results,
-        mockExamAssociations: result.associations[HUBSPOT_OBJECTS.mock_exams].results.length
-      });
 
       return result;
     } catch (error) {
@@ -1734,8 +1545,6 @@ ${cancellationData.reason ? `<strong>Reason:</strong> ${cancellationData.reason}
         ]
       };
 
-      console.log(`📝 Creating booking note for contact ${contactId}, booking ${bookingData.bookingId}`);
-
       const noteResponse = await this.apiCall('POST', '/crm/v3/objects/notes', notePayload);
 
       console.log(`✅ Note created successfully with ID: ${noteResponse.id}`);
@@ -1823,7 +1632,6 @@ ${cancellationData.reason ? `<strong>Reason:</strong> ${cancellationData.reason}
     };
 
     try {
-      console.log(`📝 Creating cancellation note for Contact ${contactId}:`, cancellationData);
       const result = await this.apiCall('POST', '/crm/v3/objects/notes', notePayload);
       console.log(`✅ Cancellation note created successfully: Note ID ${result.id}`);
       return result;

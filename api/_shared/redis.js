@@ -50,16 +50,8 @@ class RedisLockService {
     });
 
     // Handle connection events
-    this.redis.on('connect', () => {
-      console.log('✅ Redis connected successfully');
-    });
-
     this.redis.on('error', (error) => {
       console.error('❌ Redis connection error:', error.message);
-    });
-
-    this.redis.on('close', () => {
-      console.log('👋 Redis connection closed');
     });
   }
 
@@ -84,10 +76,8 @@ class RedisLockService {
       const result = await this.redis.set(lockKey, lockToken, 'EX', ttl, 'NX');
 
       if (result === 'OK') {
-        console.log(`🔒 Lock acquired: exam=${mockExamId}, token=${lockToken}, ttl=${ttl}s`);
         return lockToken;
       } else {
-        console.log(`⏸️  Lock busy: exam=${mockExamId}`);
         return null;
       }
     } catch (error) {
@@ -126,10 +116,8 @@ class RedisLockService {
       const result = await this.redis.eval(luaScript, 1, lockKey, lockToken);
 
       if (result === 1) {
-        console.log(`🔓 Lock released: exam=${mockExamId}, token=${lockToken}`);
         return true;
       } else {
-        console.warn(`⚠️  Lock not released: exam=${mockExamId}, token=${lockToken} (already expired or wrong owner)`);
         return false;
       }
     } catch (error) {
@@ -163,7 +151,6 @@ class RedisLockService {
       const lockToken = await this.acquireLock(mockExamId, ttl);
 
       if (lockToken) {
-        console.log(`✅ Lock acquired on attempt ${attempt + 1}/${maxRetries}: exam=${mockExamId}`);
         return lockToken;
       }
 
@@ -175,7 +162,6 @@ class RedisLockService {
         const jitter = Math.random() * 100;
         const delay = exponentialDelay + jitter;
 
-        console.log(`⏳ Lock busy, retry ${attempt + 1}/${maxRetries} in ${Math.round(delay)}ms: exam=${mockExamId}`);
         await sleep(delay);
       }
     }
@@ -197,7 +183,6 @@ class RedisLockService {
       const latency = Date.now() - start;
 
       if (result === 'PONG') {
-        console.log(`✅ Redis health check passed (latency: ${latency}ms)`);
         return true;
       } else {
         console.error(`❌ Redis health check failed: unexpected response "${result}"`);
@@ -239,10 +224,145 @@ class RedisLockService {
    *
    * Should be called when done with the service to prevent connection leaks
    */
+  /**
+   * ========================================================================
+   * DISTRIBUTED CACHE METHODS
+   * Application-layer caching for API responses
+   * ========================================================================
+   */
+
+  /**
+   * Get value from Redis cache
+   * 
+   * @param {string} key - Cache key
+   * @returns {Promise<any|null>} Parsed value or null if not found/expired
+   */
+  async cacheGet(key) {
+    const cacheKey = `cache:${key}`;
+    
+    try {
+      const value = await this.redis.get(cacheKey);
+      
+      if (!value) {
+        return null;
+      }
+      
+      return JSON.parse(value);
+    } catch (error) {
+      console.error(`❌ Redis cache get error for key "${key}":`, error.message);
+      return null; // Fail gracefully - return null on error
+    }
+  }
+
+  /**
+   * Set value in Redis cache with TTL
+   * 
+   * @param {string} key - Cache key
+   * @param {any} value - Value to cache (will be JSON stringified)
+   * @param {number} ttlSeconds - Time to live in seconds
+   * @returns {Promise<boolean>} True if successful, false otherwise
+   */
+  async cacheSet(key, value, ttlSeconds) {
+    const cacheKey = `cache:${key}`;
+    
+    try {
+      await this.redis.setex(cacheKey, ttlSeconds, JSON.stringify(value));
+      return true;
+    } catch (error) {
+      console.error(`❌ Redis cache set error for key "${key}":`, error.message);
+      return false; // Fail gracefully
+    }
+  }
+
+  /**
+   * Delete specific key from Redis cache
+   * 
+   * @param {string} key - Cache key to delete
+   * @returns {Promise<boolean>} True if deleted, false otherwise
+   */
+  async cacheDelete(key) {
+    const cacheKey = `cache:${key}`;
+    
+    try {
+      const result = await this.redis.del(cacheKey);
+      return result > 0;
+    } catch (error) {
+      console.error(`❌ Redis cache delete error for key "${key}":`, error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Delete all keys matching a pattern
+   * Uses SCAN for safe iteration (doesn't block Redis)
+   * 
+   * @param {string} pattern - Pattern to match (e.g., "bookings:contact:123:*")
+   * @returns {Promise<number>} Number of keys deleted
+   */
+  async cacheDeletePattern(pattern) {
+    const fullPattern = `cache:${pattern}`;
+    
+    try {
+      let cursor = '0';
+      let deletedCount = 0;
+      
+      // Use SCAN to safely iterate through keys without blocking Redis
+      do {
+        const result = await this.redis.scan(cursor, 'MATCH', fullPattern, 'COUNT', 100);
+        cursor = result[0];
+        const keys = result[1];
+        
+        if (keys.length > 0) {
+          const deleted = await this.redis.del(...keys);
+          deletedCount += deleted;
+        }
+      } while (cursor !== '0');
+      
+      if (deletedCount > 0) {
+        console.log(`✅ Deleted ${deletedCount} cache entries matching pattern: ${pattern}`);
+      }
+      
+      return deletedCount;
+    } catch (error) {
+      console.error(`❌ Redis cache pattern delete error for pattern "${pattern}":`, error.message);
+      return 0;
+    }
+  }
+
+  /**
+   * Get all cache keys (for debugging/monitoring)
+   * WARNING: Use sparingly in production - can be slow with many keys
+   * 
+   * @param {string} pattern - Optional pattern to filter keys (default: all cache keys)
+   * @returns {Promise<string[]>} Array of cache keys (without "cache:" prefix)
+   */
+  async cacheKeys(pattern = '*') {
+    const fullPattern = `cache:${pattern}`;
+    
+    try {
+      let cursor = '0';
+      let allKeys = [];
+      
+      do {
+        const result = await this.redis.scan(cursor, 'MATCH', fullPattern, 'COUNT', 100);
+        cursor = result[0];
+        const keys = result[1];
+        
+        // Remove "cache:" prefix before returning
+        const cleanKeys = keys.map(k => k.replace(/^cache:/, ''));
+        allKeys = allKeys.concat(cleanKeys);
+      } while (cursor !== '0');
+      
+      return allKeys;
+    } catch (error) {
+      console.error(`❌ Redis cache keys error:`, error.message);
+      return [];
+    }
+  }
+
   async close() {
     try {
       await this.redis.quit();
-      console.log('👋 Redis connection closed gracefully');
     } catch (error) {
       console.error('❌ Error closing Redis connection:', error.message);
       // Force close if graceful quit fails

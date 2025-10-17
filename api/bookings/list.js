@@ -148,7 +148,7 @@ async function handler(req, res) {
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
       } else {
-        bookingsData = cache.get(cacheKey);
+        bookingsData = await cache.get(cacheKey);
         if (bookingsData) {
           console.log(`🎯 Cache HIT for ${cacheKey}`);
         }
@@ -366,7 +366,7 @@ async function handler(req, res) {
         // Upcoming bookings: 30 seconds (users expect immediate updates after booking)
         // Other filters: 5 minutes (less time-sensitive)
         const cacheTTL = filter === 'upcoming' ? 30 : (5 * 60);
-        cache.set(cacheKey, bookingsData, cacheTTL);
+        await cache.set(cacheKey, bookingsData, cacheTTL);
         console.log(`💾 Cached bookings data with key: ${cacheKey} (TTL: ${cacheTTL}s)`);
       }
 
