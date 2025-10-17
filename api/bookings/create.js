@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { HubSpotService, HUBSPOT_OBJECTS } = require('../_shared/hubspot');
 const { schemas } = require('../_shared/validation');
 const { getCache } = require('../_shared/cache');
+const RedisLockService = require('../_shared/redis');
 const {
   setCorsHeaders,
   handleOptionsRequest,
@@ -79,6 +80,8 @@ function mapCreditFieldToTokenUsed(creditField) {
 module.exports = module.exports = module.exports = async function handler(req, res) {
   let bookingCreated = false;
   let createdBookingId = null;
+  let redis = null;
+  let lockToken = null;
 
   setCorsHeaders(res);
 
@@ -209,7 +212,28 @@ module.exports = module.exports = module.exports = async function handler(req, r
       }
     }
 
+    // ========================================================================
+    // REDIS LOCK ACQUISITION - Prevents race condition in capacity checking
+    // ========================================================================
+    console.log(`🔒 Attempting to acquire lock for mock exam: ${mock_exam_id}`);
+
+    // Initialize Redis client
+    redis = new RedisLockService();
+
+    // Acquire lock with retry (max 5 attempts, exponential backoff)
+    lockToken = await redis.acquireLockWithRetry(mock_exam_id, 5, 100, 10);
+
+    if (!lockToken) {
+      const lockError = new Error('Unable to process booking at this time. The system is experiencing high demand. Please try again in a moment.');
+      lockError.status = 503;
+      lockError.code = 'LOCK_ACQUISITION_FAILED';
+      throw lockError;
+    }
+
+    console.log(`✅ Lock acquired successfully for exam ${mock_exam_id}, token: ${lockToken}`);
+
     // Step 1: Verify mock exam exists and has capacity
+    // CRITICAL: Re-fetch exam data AFTER acquiring lock to ensure fresh capacity data
     const mockExam = await hubspot.getMockExam(mock_exam_id);
 
     if (!mockExam) {
@@ -463,6 +487,18 @@ module.exports = module.exports = module.exports = async function handler(req, r
     const newTotalBookings = totalBookings + 1;
     await hubspot.updateMockExamBookings(mock_exam_id, newTotalBookings);
 
+    // ========================================================================
+    // REDIS LOCK RELEASE - Release lock as early as possible
+    // ========================================================================
+    // Lock must be released AFTER counter update to maintain atomicity
+    // Release now to minimize lock hold time (remaining operations are non-critical)
+    if (lockToken) {
+      console.log(`🔓 Releasing lock for exam ${mock_exam_id}, token: ${lockToken}`);
+      await redis.releaseLock(mock_exam_id, lockToken);
+      lockToken = null; // Prevent double-release in finally block
+      console.log(`✅ Lock released successfully`);
+    }
+
     // Step 8: Deduct credits (creditField already calculated in Step 4)
     const currentCreditValue = parseInt(contact.properties[creditField]) || 0;
     const newCreditValue = Math.max(0, currentCreditValue - 1);
@@ -652,12 +688,38 @@ module.exports = module.exports = module.exports = async function handler(req, r
     }
 
     const statusCode = error.status || 500;
-    
+
     // FIX: Pass error object to createErrorResponse, not separate parameters
     const errorResponse = createErrorResponse(error);
-    
+
     console.log('🔍 [API Error Handler] Formatted error response:', errorResponse);
-    
+
     return res.status(statusCode).json(errorResponse);
+
+  } finally {
+    // ========================================================================
+    // REDIS CLEANUP - Always release lock and close connection
+    // ========================================================================
+    // CRITICAL: This ensures lock is released even if errors occur
+    // TTL provides safety net if this fails (lock expires in 10 seconds)
+    if (lockToken && redis) {
+      try {
+        console.log(`🧹 [Finally] Releasing lock for exam ${mock_exam_id || 'unknown'}`);
+        await redis.releaseLock(mock_exam_id, lockToken);
+        console.log(`✅ [Finally] Lock released successfully`);
+      } catch (finallyError) {
+        console.error(`❌ [Finally] Failed to release lock:`, finallyError.message);
+        // Don't throw - lock will expire via TTL
+      }
+    }
+
+    // Close Redis connection to prevent leaks
+    if (redis) {
+      try {
+        await redis.close();
+      } catch (closeError) {
+        console.error(`❌ [Finally] Failed to close Redis connection:`, closeError.message);
+      }
+    }
   }
 };
