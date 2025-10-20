@@ -25,13 +25,19 @@ mocks_booking/
 │   ├── _shared/                   # Shared Services & Utilities
 │   │   ├── auth.js               # Authentication middleware
 │   │   ├── hubspot.js            # HubSpot service layer with rate limiting
-│   │   └── validation.js         # Joi validation schemas
+│   │   ├── validation.js         # Joi validation schemas
+│   │   ├── cache.js              # Redis-based caching layer
+│   │   └── redis.js              # Distributed locking service
 │   ├── bookings/                 # Booking Management
 │   │   └── create.js            # Create booking endpoint
 │   ├── mock-exams/              # Mock Exam Services
 │   │   ├── available.js         # Fetch available sessions
 │   │   ├── sync-capacity.js     # Capacity synchronization
 │   │   └── validate-credits.js  # Credit validation
+│   ├── mock-discussions/        # Mock Discussion Services (NEW)
+│   │   ├── available.js         # Fetch available discussion sessions
+│   │   ├── validate-credits.js  # Validate mock_discussion_token
+│   │   └── create-booking.js    # Create discussion booking
 │   └── webhooks/                # External Integrations
 │       └── booking-sync.js      # HubSpot webhook handler
 ├── frontend/                     # React Frontend Application
@@ -53,8 +59,11 @@ mocks_booking/
 │   │   │       ├── BookingsList.jsx      # List view for bookings
 │   │   │       ├── BookingsCalendar.jsx  # Calendar view for bookings
 │   │   │       └── ExistingBookingsCard.jsx # Compact booking card
+│   │   ├── pages/               # Page Components
+│   │   │   └── MockDiscussions.jsx       # Mock discussions page (NEW)
 │   │   ├── hooks/               # Custom React Hooks
-│   │   │   └── useBookingFlow.js         # Booking state management
+│   │   │   ├── useBookingFlow.js         # Booking state management
+│   │   │   └── useCachedCredits.js       # Credit caching hook (NEW)
 │   │   ├── services/            # API Integration Layer
 │   │   │   └── api.js                    # Axios configuration & utilities
 │   │   └── utils/               # Frontend Utilities
@@ -62,6 +71,7 @@ mocks_booking/
 │   └── dist/                    # Production build output
 ├── documentation/               # Technical Documentation
 │   ├── HUBSPOT_SCHEMA_DOCUMENTATION.md  # HubSpot object schemas
+│   ├── MOCK_DISCUSSIONS_MODULE.md       # Mock Discussions documentation (NEW)
 │   └── AGENT_DEVELOPER_COORDINATION_RULES.md  # Development protocols
 ├── tests/                       # Comprehensive Test Suite
 │   ├── unit/                    # Unit tests
@@ -96,6 +106,11 @@ mocks_booking/
 - `GET /api/mock-exams/available` - Fetch available exam sessions
 - `POST /api/mock-exams/validate-credits` - Validate user credits
 - `POST /api/mock-exams/sync-capacity` - Synchronize session capacity
+
+#### Mock Discussion Management (NEW)
+- `GET /api/mock-discussions/available` - Fetch available discussion sessions
+- `POST /api/mock-discussions/validate-credits` - Validate mock_discussion_token
+- `POST /api/mock-discussions/create-booking` - Create discussion booking with idempotency
 
 #### Booking Management
 - `POST /api/bookings/create` - Create new booking with validation
@@ -172,9 +187,12 @@ npm run verify:hubspot-schema  # Verify HubSpot object schemas
 ## 📊 HubSpot Integration
 
 ### Custom Objects
-- **Mock Exams**: Session definitions with capacity management
-- **Bookings**: Student reservations linked to contacts
-- **Contacts**: Student profiles with credit tracking
+- **Mock Exams (2-50158913)**: Session definitions with capacity management
+  - Supports multiple types: Situational Judgment, Clinical Skills, Mini-mock, Mock Discussion
+- **Bookings (2-50158943)**: Student reservations linked to contacts
+  - Unified booking object for both exams and discussions
+- **Contacts (0-1)**: Student profiles with credit tracking
+  - Properties: specific exam tokens, shared mock tokens, mock_discussion_token (NEW)
 
 ### Data Flow
 1. Frontend requests → API validation → HubSpot query/update
@@ -195,6 +213,8 @@ npm run verify:hubspot-schema  # Verify HubSpot object schemas
 # Required environment variables
 HUBSPOT_PRIVATE_APP_TOKEN=your_hubspot_token
 CORS_ORIGIN=your_frontend_domain
+REDIS_URL=your_redis_connection_string  # For caching and distributed locking
+CRON_SECRET=your_cron_secret  # For scheduled jobs
 ```
 
 ## 📈 Performance Considerations
@@ -225,6 +245,21 @@ CORS_ORIGIN=your_frontend_domain
 - User flow validation scripts
 - HubSpot data integrity checks
 - Performance and load testing
+
+## 📚 Additional Documentation
+
+For detailed module documentation, see:
+
+- **[Mock Discussions Module](documentation/MOCK_DISCUSSIONS_MODULE.md)** - Complete documentation for the mock discussions booking system
+  - API endpoints and request/response formats
+  - Frontend components and state management
+  - HubSpot configuration requirements
+  - Token management and validation logic
+  - Testing procedures and deployment checklist
+  - Known limitations and future enhancements
+
+- **[HubSpot Schema Documentation](documentation/HUBSPOT_SCHEMA_DOCUMENTATION.md)** - Complete HubSpot CRM integration reference
+- **[Agent Developer Coordination Rules](documentation/AGENT_DEVELOPER_COORDINATION_RULES.md)** - Development protocols
 
 ## 📝 Contributing
 

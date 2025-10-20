@@ -83,18 +83,20 @@ export function useCachedCredits() {
     // Create the request promise
     const requestPromise = (async () => {
       try {
-        // Fetch all 3 exam types in parallel
-        const [situationalCredits, clinicalCredits, miniMockCredits] = await Promise.all([
+        // Fetch all 4 exam/discussion types in parallel
+        const [situationalCredits, clinicalCredits, miniMockCredits, discussionCredits] = await Promise.all([
           apiService.mockExams.validateCredits(studentId, email, 'Situational Judgment'),
           apiService.mockExams.validateCredits(studentId, email, 'Clinical Skills'),
-          apiService.mockExams.validateCredits(studentId, email, 'Mini-mock')
+          apiService.mockExams.validateCredits(studentId, email, 'Mini-mock'),
+          apiService.mockDiscussions.validateCredits(studentId, email)
         ]);
 
         // Structure the cache data
         const newCreditData = {
           'Situational Judgment': situationalCredits.data || situationalCredits,
           'Clinical Skills': clinicalCredits.data || clinicalCredits,
-          'Mini-mock': miniMockCredits.data || miniMockCredits
+          'Mini-mock': miniMockCredits.data || miniMockCredits,
+          'Mock Discussion': discussionCredits.data || discussionCredits
         };
 
         // Update module-level cache

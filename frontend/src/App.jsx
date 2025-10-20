@@ -7,6 +7,7 @@ import ExamSessionsList from './components/ExamSessionsList';
 import BookingForm from './components/BookingForm';
 import BookingConfirmation from './components/BookingConfirmation';
 import MyBookings from './components/MyBookings';
+import MockDiscussions from './pages/MockDiscussions';
 import ErrorBoundary from './components/ErrorBoundary';
 import MainLayout from './components/layout/MainLayout';
 import { ResponsiveLogo } from './components/shared/Logo';
@@ -42,6 +43,18 @@ function App() {
             <Route path="/booking/confirmation/:bookingId" element={
               <ProtectedRoute>
                 <BookingConfirmation />
+              </ProtectedRoute>
+            } />
+
+            {/* Mock Discussions page - requires authentication */}
+            <Route path="/book/discussions" element={
+              <ProtectedRoute>
+                <MockDiscussions />
+              </ProtectedRoute>
+            } />
+            <Route path="/book/mock-discussion/:mockExamId" element={
+              <ProtectedRoute>
+                <BookingForm />
               </ProtectedRoute>
             } />
 

@@ -135,6 +135,40 @@ const apiService = {
     },
   },
 
+  /**
+   * Mock Discussions API endpoints
+   */
+  mockDiscussions: {
+    /**
+     * Get available mock discussion sessions
+     */
+    getAvailable: async (includeCapacity = true) => {
+      return api.get('/mock-discussions/available', {
+        params: {
+          include_capacity: includeCapacity,
+          realtime: true, // Always use real-time capacity calculation
+        },
+      });
+    },
+
+    /**
+     * Validate user credits for discussion booking
+     */
+    validateCredits: async (studentId, email) => {
+      return api.post('/mock-discussions/validate-credits', {
+        student_id: studentId,
+        email: email,
+      });
+    },
+
+    /**
+     * Create a discussion booking
+     */
+    createBooking: async (data) => {
+      return api.post('/mock-discussions/create-booking', data);
+    },
+  },
+
   // Bookings
   bookings: {
     /**

@@ -5,7 +5,9 @@ const TokenCard = ({ creditBreakdown, mockType, compact = false, className = "",
     return null;
   }
 
-  const { specific_credits = 0, shared_credits = 0 } = creditBreakdown;
+  // For Mock Discussion, credit structure is simpler (just available_credits)
+  const isMockDiscussion = mockType === 'Mock Discussion';
+  const { specific_credits = 0, shared_credits = 0, available_credits } = creditBreakdown;
 
   // Get the specific token type name based on mock type
   const getSpecificTokenName = (type) => {
@@ -16,27 +18,45 @@ const TokenCard = ({ creditBreakdown, mockType, compact = false, className = "",
         return 'CS Tokens';
       case 'Mini-mock':
         return 'Mini-Mock Tokens';
+      case 'Mock Discussion':
+        return 'Mock Discussion Tokens';
       default:
         return 'Specific Tokens';
     }
   };
 
-  const tokenData = [
-    {
-      type: getSpecificTokenName(mockType),
-      amount: specific_credits,
-    },
-  ];
+  // Handle token data based on type
+  let tokenData;
+  let total;
 
-  // Only add shared mock tokens for non-mini-mock types
-  if (mockType !== 'Mini-mock') {
-    tokenData.push({
-      type: 'Shared Mock Tokens',
-      amount: shared_credits,
-    });
+  if (isMockDiscussion) {
+    // Mock Discussion only has a single token type
+    tokenData = [
+      {
+        type: getSpecificTokenName(mockType),
+        amount: available_credits || 0,
+      },
+    ];
+    total = available_credits || 0;
+  } else {
+    // Regular exam tokens with specific and shared credits
+    tokenData = [
+      {
+        type: getSpecificTokenName(mockType),
+        amount: specific_credits,
+      },
+    ];
+
+    // Only add shared mock tokens for non-mini-mock types
+    if (mockType !== 'Mini-mock') {
+      tokenData.push({
+        type: 'Shared Mock Tokens',
+        amount: shared_credits,
+      });
+    }
+
+    total = specific_credits + (mockType !== 'Mini-mock' ? shared_credits : 0);
   }
-
-  const total = specific_credits + (mockType !== 'Mini-mock' ? shared_credits : 0);
 
   if (compact) {
     return (
