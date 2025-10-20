@@ -1498,7 +1498,7 @@ ${cancellationData.reason ? `<strong>Reason:</strong> ${cancellationData.reason}
 
       // Create HTML formatted note body for better readability
       const noteBody = `
-        <h3>📅 Mock Exam Booking Confirmed</h3>
+        <h3>📅 Booking Confirmed</h3>
 
         <p><strong>Booking Details:</strong></p>
         <ul>
@@ -1522,7 +1522,7 @@ ${cancellationData.reason ? `<strong>Reason:</strong> ${cancellationData.reason}
 
         <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e0e0e0;">
         <p style="font-size: 12px; color: #666;">
-          <em>This booking was automatically confirmed through the Mock Exam Booking System.</em>
+          <em>This booking was automatically confirmed through the Prep Doctors Booking System.</em>
         </p>
       `;
 
@@ -1586,7 +1586,7 @@ ${cancellationData.reason ? `<strong>Reason:</strong> ${cancellationData.reason}
       }) : 'Date TBD';
 
     const noteContent = `
-      <h3>❌ Mock Exam Booking Cancelled</h3>
+      <h3>❌ Booking Cancelled</h3>
       <p><strong>Booking Details:</strong></p>
       <ul>
       <li><strong>Booking ID:</strong> ${cancellationData.booking_id || 'N/A'}</li>
