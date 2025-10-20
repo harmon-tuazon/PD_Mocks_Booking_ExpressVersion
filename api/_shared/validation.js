@@ -130,9 +130,9 @@ const schemas = {
     attending_location: Joi.string()
       .valid('mississauga', 'calgary', 'vancouver', 'montreal', 'richmond_hill')
       .when('mock_type', {
-        is: Joi.string().valid('Situational Judgment', 'Mini-mock', 'Mock Discussion'),
+        is: Joi.string().valid('Situational Judgment', 'Mini-mock'),
         then: Joi.required().messages({
-          'any.required': 'Attending location is required for Situational Judgment, Mini-mock, and Mock Discussion exams',
+          'any.required': 'Attending location is required for Situational Judgment and Mini-mock exams',
           'any.only': 'Location must be one of: Mississauga, Calgary, Vancouver, Montreal, or Richmond Hill'
         }),
         otherwise: Joi.optional().strip()

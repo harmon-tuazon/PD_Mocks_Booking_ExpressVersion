@@ -364,7 +364,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
     // Add conditional fields based on exam type
     if (mock_type === 'Clinical Skills') {
       bookingData.dominantHand = dominant_hand;
-    } else if (mock_type === 'Situational Judgment' || mock_type === 'Mini-mock' || mock_type === 'Mock Discussion') {
+    } else if (mock_type === 'Situational Judgment' || mock_type === 'Mini-mock') {
       bookingData.attendingLocation = attending_location;
     }
 
