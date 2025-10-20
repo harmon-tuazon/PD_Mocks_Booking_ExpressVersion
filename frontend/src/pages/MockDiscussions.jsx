@@ -22,6 +22,7 @@ const MockDiscussions = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [validationData, setValidationData] = useState(null);
+  const [showInsufficientTokensError, setShowInsufficientTokensError] = useState(false);
 
   // Use the cached credits hook
   const { credits, loading: creditsLoading, fetchCredits } = useCachedCredits();
@@ -115,7 +116,7 @@ const MockDiscussions = () => {
     }
 
     if (mockDiscussionTokens === 0) {
-      alert('You do not have enough Mock Discussion tokens to book this session. Please purchase more tokens.');
+      setShowInsufficientTokensError(true);
       return;
     }
 
@@ -251,12 +252,12 @@ const MockDiscussions = () => {
     );
   }
 
-  // Show InsufficientTokensError when user has 0 tokens
-  if (!isLoading && userSession && mockDiscussionTokens === 0) {
+  // Show InsufficientTokensError when user attempts to book with 0 tokens
+  if (showInsufficientTokensError) {
     return (
       <InsufficientTokensError
         mockType="Mock Discussion"
-        onGoBack={() => navigate('/book/exam-types')}
+        onGoBack={() => setShowInsufficientTokensError(false)}
       />
     );
   }
@@ -296,7 +297,7 @@ const MockDiscussions = () => {
         </div>
 
         {/* Token Display Card */}
-        {userSession && mockDiscussionTokens > 0 && (
+        {userSession && mockDiscussionTokens >= 0 && (
           <div className="mb-6">
             <div className="max-w-md">
               <TokenCard
