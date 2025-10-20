@@ -42,6 +42,11 @@ function calculateCredits(contact, mockType) {
       specificCredits = parseInt(props.sjmini_credits) || 0;
       sharedCredits = 0; // Don't use shared credits for mini-mock
       break;
+    case 'Mock Discussion':
+      // Mock Discussion only uses specific credits
+      specificCredits = parseInt(props.md_credits) || 0;
+      sharedCredits = 0; // Don't use shared credits for mock discussion
+      break;
     default:
       throw new Error('Invalid mock type');
   }

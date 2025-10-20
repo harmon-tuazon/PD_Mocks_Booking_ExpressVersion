@@ -63,10 +63,10 @@ const schemas = {
         'any.required': 'Email is required'
       }),
     mock_type: Joi.string()
-      .valid('Situational Judgment', 'Clinical Skills', 'Mini-mock')
+      .valid('Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion')
       .required()
       .messages({
-        'any.only': 'Mock type must be one of: Situational Judgment, Clinical Skills, or Mini-mock',
+        'any.only': 'Mock type must be one of: Situational Judgment, Clinical Skills, Mini-mock, or Mock Discussion',
         'any.required': 'Mock type is required'
       })
   }),
@@ -107,10 +107,10 @@ const schemas = {
         'any.required': 'Email is required'
       }),
     mock_type: Joi.string()
-      .valid('Situational Judgment', 'Clinical Skills', 'Mini-mock')
+      .valid('Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion')
       .required()
       .messages({
-        'any.only': 'Mock type must be one of: Situational Judgment, Clinical Skills, or Mini-mock',
+        'any.only': 'Mock type must be one of: Situational Judgment, Clinical Skills, Mini-mock, or Mock Discussion',
         'any.required': 'Mock type is required'
       }),
     exam_date: Joi.string()
@@ -130,9 +130,9 @@ const schemas = {
     attending_location: Joi.string()
       .valid('mississauga', 'calgary', 'vancouver', 'montreal', 'richmond_hill')
       .when('mock_type', {
-        is: Joi.string().valid('Situational Judgment', 'Mini-mock'),
+        is: Joi.string().valid('Situational Judgment', 'Mini-mock', 'Mock Discussion'),
         then: Joi.required().messages({
-          'any.required': 'Attending location is required for Situational Judgment and Mini-mock exams',
+          'any.required': 'Attending location is required for Situational Judgment, Mini-mock, and Mock Discussion exams',
           'any.only': 'Location must be one of: Mississauga, Calgary, Vancouver, Montreal, or Richmond Hill'
         }),
         otherwise: Joi.optional().strip()
@@ -194,10 +194,10 @@ const schemas = {
   }),
   availableExams: Joi.object({
     mock_type: Joi.string()
-      .valid('Situational Judgment', 'Clinical Skills', 'Mini-mock')
+      .valid('Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion')
       .required()
       .messages({
-        'any.only': 'Mock type must be one of: Situational Judgment, Clinical Skills, or Mini-mock',
+        'any.only': 'Mock type must be one of: Situational Judgment, Clinical Skills, Mini-mock, or Mock Discussion',
         'any.required': 'Mock type is required'
       }),
     include_capacity: Joi.boolean()

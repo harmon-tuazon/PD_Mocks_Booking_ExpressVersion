@@ -47,6 +47,11 @@ function getCreditFieldToDeduct(mockType, creditBreakdown) {
     return 'sjmini_credits';
   }
 
+  // For Mock Discussion, only use specific credits
+  if (mockType === 'Mock Discussion') {
+    return 'md_credits';
+  }
+
   // For other types, prefer specific credits, then shared
   if (mockType === 'Situational Judgment') {
     return creditBreakdown.specific_credits > 0 ? 'sj_credits' : 'shared_mock_credits';
@@ -67,9 +72,10 @@ function mapCreditFieldToTokenUsed(creditField) {
     'sj_credits': 'Situational Judgment Token',
     'cs_credits': 'Clinical Skills Token',
     'sjmini_credits': 'Mini-mock Token',
+    'md_credits': 'Mock Discussion Token',
     'shared_mock_credits': 'Shared Token'
   };
-  
+
   return mapping[creditField] || 'Unknown Token';
 }
 
@@ -294,7 +300,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
 
     // Step 3: Verify contact and credits (double-check)
     const contact = await hubspot.apiCall('GET',
-      `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contact_id}?properties=student_id,email,sj_credits,cs_credits,sjmini_credits,shared_mock_credits`
+      `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contact_id}?properties=student_id,email,sj_credits,cs_credits,sjmini_credits,md_credits,shared_mock_credits`
     );
 
     if (!contact) {
@@ -318,6 +324,10 @@ module.exports = module.exports = module.exports = async function handler(req, r
       case 'Mini-mock':
         specificCredits = parseInt(contact.properties.sjmini_credits) || 0;
         sharedCredits = 0; // Don't use shared credits for mini-mock
+        break;
+      case 'Mock Discussion':
+        specificCredits = parseInt(contact.properties.md_credits) || 0;
+        sharedCredits = 0; // Don't use shared credits for mock discussion
         break;
     }
 
@@ -354,7 +364,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
     // Add conditional fields based on exam type
     if (mock_type === 'Clinical Skills') {
       bookingData.dominantHand = dominant_hand;
-    } else if (mock_type === 'Situational Judgment' || mock_type === 'Mini-mock') {
+    } else if (mock_type === 'Situational Judgment' || mock_type === 'Mini-mock' || mock_type === 'Mock Discussion') {
       bookingData.attendingLocation = attending_location;
     }
 
