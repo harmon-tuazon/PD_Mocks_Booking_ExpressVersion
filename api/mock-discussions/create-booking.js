@@ -156,6 +156,7 @@ module.exports = async function handler(req, res) {
   let createdBookingId = null;
   let redis = null;
   let lockToken = null;
+  let userLock = null; // For user-specific lock to prevent duplicates
 
   setCorsHeaders(res);
 
@@ -259,22 +260,57 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // Step 1: Generate booking ID and check for duplicates BEFORE acquiring lock
+    // This prevents race conditions where two users book the same date simultaneously
+    const formattedDate = formatBookingDate(exam_date);
+
+    // Generate booking ID with Mock Discussion prefix
+    const bookingId = `Mock Discussion-${sanitizedName} - ${formattedDate}`;
+
+    // Check for duplicate booking BEFORE acquiring lock (prevents race condition)
+    const isDuplicate = await hubspot.checkExistingBooking(bookingId);
+    if (isDuplicate) {
+      const error = new Error('Duplicate booking detected: You already have a Mock Discussion booking for this date');
+      error.status = 400;
+      error.code = 'DUPLICATE_BOOKING';
+      throw error;
+    }
+
     // ========================================================================
-    // REDIS LOCK ACQUISITION
+    // REDIS LOCK ACQUISITION - Two-phase locking for complete duplicate prevention
     // ========================================================================
     redis = new RedisLockService();
+
+    // First lock: User + Date specific lock to prevent duplicate bookings by same user
+    const userLockKey = `user_booking:${contact_id}:${exam_date}`;
+    const userLockToken = await redis.acquireLockWithRetry(userLockKey, 3, 100, 5);
+
+    if (!userLockToken) {
+      const lockError = new Error('You are already processing a booking for this date. Please wait a moment.');
+      lockError.status = 409;
+      lockError.code = 'USER_BOOKING_IN_PROGRESS';
+      throw lockError;
+    }
+
+    // Second lock: Session-level lock for capacity management
     lockToken = await redis.acquireLockWithRetry(mock_exam_id, 5, 100, 10);
 
     if (!lockToken) {
+      // Release user lock if we can't get session lock
+      await redis.releaseLock(userLockKey, userLockToken);
+
       const lockError = new Error('Unable to process Mock Discussion booking at this time. The system is experiencing high demand. Please try again in a moment.');
       lockError.status = 503;
       lockError.code = 'LOCK_ACQUISITION_FAILED';
       throw lockError;
     }
 
-    console.log(`✅ Lock acquired successfully for discussion ${mock_exam_id}, token: ${lockToken}`);
+    console.log(`✅ Locks acquired successfully - User lock: ${userLockKey}, Session lock: ${mock_exam_id}`);
 
-    // Step 1: Verify mock discussion exists and has capacity
+    // Store user lock info for cleanup
+    userLock = { key: userLockKey, token: userLockToken };
+
+    // Step 2: Verify mock discussion exists and has capacity
     const mockDiscussion = await hubspot.getMockExam(mock_exam_id);
 
     if (!mockDiscussion) {
@@ -308,21 +344,6 @@ module.exports = async function handler(req, res) {
       const error = new Error('This Mock Discussion session is now full');
       error.status = 400;
       error.code = 'DISCUSSION_FULL';
-      throw error;
-    }
-
-    // Step 2: Format the date for the booking ID
-    const formattedDate = formatBookingDate(exam_date);
-
-    // Generate booking ID with Mock Discussion prefix
-    const bookingId = `Mock Discussion-${sanitizedName} - ${formattedDate}`;
-
-    // Check for duplicate booking
-    const isDuplicate = await hubspot.checkExistingBooking(bookingId);
-    if (isDuplicate) {
-      const error = new Error('Duplicate booking detected: You already have a Mock Discussion booking for this date');
-      error.status = 400;
-      error.code = 'DUPLICATE_BOOKING';
       throw error;
     }
 
@@ -413,12 +434,18 @@ module.exports = async function handler(req, res) {
     await hubspot.updateMockExamBookings(mock_exam_id, newTotalBookings);
 
     // ========================================================================
-    // REDIS LOCK RELEASE
+    // REDIS LOCK RELEASE - Release both locks after booking is confirmed
     // ========================================================================
     if (lockToken) {
       await redis.releaseLock(mock_exam_id, lockToken);
       lockToken = null;
-      console.log(`✅ Lock released successfully`);
+      console.log(`✅ Session lock released successfully`);
+    }
+
+    if (userLock?.token) {
+      await redis.releaseLock(userLock.key, userLock.token);
+      userLock.token = null;
+      console.log(`✅ User lock released successfully`);
     }
 
     // Step 6: Deduct mock discussion token
@@ -551,14 +578,23 @@ module.exports = async function handler(req, res) {
 
   } finally {
     // ========================================================================
-    // REDIS CLEANUP
+    // REDIS CLEANUP - Release both locks if they haven't been released
     // ========================================================================
     if (lockToken && redis) {
       try {
         await redis.releaseLock(mock_exam_id, lockToken);
-        console.log(`✅ [Finally] Lock released successfully`);
+        console.log(`✅ [Finally] Session lock released successfully`);
       } catch (finallyError) {
-        console.error(`❌ [Finally] Failed to release lock:`, finallyError.message);
+        console.error(`❌ [Finally] Failed to release session lock:`, finallyError.message);
+      }
+    }
+
+    if (userLock?.token && redis) {
+      try {
+        await redis.releaseLock(userLock.key, userLock.token);
+        console.log(`✅ [Finally] User lock released successfully`);
+      } catch (finallyError) {
+        console.error(`❌ [Finally] Failed to release user lock:`, finallyError.message);
       }
     }
 
