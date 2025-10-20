@@ -88,6 +88,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
   let createdBookingId = null;
   let redis = null;
   let lockToken = null;
+  let mock_exam_id = null; // Declare at function scope for finally block access
 
   setCorsHeaders(res);
 
@@ -121,7 +122,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
 
     const {
       contact_id,
-      mock_exam_id,
       student_id,
       name,
       email,
@@ -130,6 +130,9 @@ module.exports = module.exports = module.exports = async function handler(req, r
       dominant_hand,
       attending_location
     } = validatedData;
+
+    // Assign to function-scoped variable for finally block access
+    mock_exam_id = validatedData.mock_exam_id;
 
     // Sanitize inputs
     const sanitizedName = sanitizeInput(name);
@@ -314,6 +317,17 @@ module.exports = module.exports = module.exports = async function handler(req, r
     let specificCredits = 0;
     let sharedCredits = parseInt(contact.properties.shared_mock_credits) || 0;
 
+    // Debug logging for Mock Discussion credits
+    if (mock_type === 'Mock Discussion') {
+      console.log('🔍 [DEBUG] Mock Discussion Credit Check:', {
+        mock_type,
+        contact_id: contact.id,
+        raw_token_value: contact.properties.mock_discussion_token,
+        all_contact_properties: Object.keys(contact.properties),
+        properties_with_values: Object.entries(contact.properties).filter(([k, v]) => v !== null && v !== undefined && v !== '')
+      });
+    }
+
     switch (mock_type) {
       case 'Situational Judgment':
         specificCredits = parseInt(contact.properties.sj_credits) || 0;
@@ -328,10 +342,22 @@ module.exports = module.exports = module.exports = async function handler(req, r
       case 'Mock Discussion':
         specificCredits = parseInt(contact.properties.mock_discussion_token) || 0;
         sharedCredits = 0; // Don't use shared credits for mock discussion
+        console.log('🔍 [DEBUG] Mock Discussion Credits Calculated:', {
+          specificCredits,
+          sharedCredits,
+          totalWillBe: specificCredits + sharedCredits
+        });
         break;
     }
 
     const totalCredits = specificCredits + sharedCredits;
+
+    console.log(`📊 Credit validation for ${mock_type}:`, {
+      specificCredits,
+      sharedCredits,
+      totalCredits,
+      contact_id
+    });
 
     if (totalCredits <= 0) {
       const error = new Error('Insufficient credits for booking');
