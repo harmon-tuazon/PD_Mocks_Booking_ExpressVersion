@@ -1363,6 +1363,7 @@ class HubSpotService {
       'Situational Judgment Token': 'sj_credits',
       'Clinical Skills Token': 'cs_credits',
       'Mini-mock Token': 'sjmini_credits',
+      'Mock Discussion Token': 'mock_discussion_token',
       'Shared Token': 'shared_mock_credits'
     };
 

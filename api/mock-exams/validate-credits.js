@@ -44,7 +44,7 @@ function calculateCredits(contact, mockType) {
       break;
     case 'Mock Discussion':
       // Mock Discussion only uses specific credits
-      specificCredits = parseInt(props.md_credits) || 0;
+      specificCredits = parseInt(props.mock_discussion_token) || 0;
       sharedCredits = 0; // Don't use shared credits for mock discussion
       break;
     default:

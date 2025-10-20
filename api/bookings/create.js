@@ -49,7 +49,7 @@ function getCreditFieldToDeduct(mockType, creditBreakdown) {
 
   // For Mock Discussion, only use specific credits
   if (mockType === 'Mock Discussion') {
-    return 'md_credits';
+    return 'mock_discussion_token';
   }
 
   // For other types, prefer specific credits, then shared
@@ -72,7 +72,7 @@ function mapCreditFieldToTokenUsed(creditField) {
     'sj_credits': 'Situational Judgment Token',
     'cs_credits': 'Clinical Skills Token',
     'sjmini_credits': 'Mini-mock Token',
-    'md_credits': 'Mock Discussion Token',
+    'mock_discussion_token': 'Mock Discussion Token',
     'shared_mock_credits': 'Shared Token'
   };
 
@@ -300,7 +300,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
 
     // Step 3: Verify contact and credits (double-check)
     const contact = await hubspot.apiCall('GET',
-      `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contact_id}?properties=student_id,email,sj_credits,cs_credits,sjmini_credits,md_credits,shared_mock_credits`
+      `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contact_id}?properties=student_id,email,sj_credits,cs_credits,sjmini_credits,mock_discussion_token,shared_mock_credits`
     );
 
     if (!contact) {
@@ -326,7 +326,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
         sharedCredits = 0; // Don't use shared credits for mini-mock
         break;
       case 'Mock Discussion':
-        specificCredits = parseInt(contact.properties.md_credits) || 0;
+        specificCredits = parseInt(contact.properties.mock_discussion_token) || 0;
         sharedCredits = 0; // Don't use shared credits for mock discussion
         break;
     }
