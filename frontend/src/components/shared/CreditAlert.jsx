@@ -68,6 +68,8 @@ const CreditAlert = ({ credits, creditBreakdown, mockType, variant = 'info' }) =
         return 'CS Tokens';
       case 'Mini-mock':
         return 'Mini-Mock Tokens';
+      case 'Mock Discussion':
+        return 'Mock Discussion Tokens';
       default:
         return 'Specific Tokens';
     }
@@ -91,21 +93,23 @@ const CreditAlert = ({ credits, creditBreakdown, mockType, variant = 'info' }) =
               <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                   <tbody className="divide-y divide-gray-200">
-                    <tr className="bg-white">
-                      <td className="px-2 py-1.5 text-xs font-medium text-gray-900">
-                        {specificTokenName}
-                      </td>
-                      <td className="px-2 py-1.5 text-xs text-right">
-                        <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${
-                          specific_credits > 0
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {specific_credits}
-                        </span>
-                      </td>
-                    </tr>
-                    {mockType !== 'Mini-mock' && (
+                    {mockType !== 'Mock Discussion' && (
+                      <tr className="bg-white">
+                        <td className="px-2 py-1.5 text-xs font-medium text-gray-900">
+                          {specificTokenName}
+                        </td>
+                        <td className="px-2 py-1.5 text-xs text-right">
+                          <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${
+                            specific_credits > 0
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {specific_credits}
+                          </span>
+                        </td>
+                      </tr>
+                    )}
+                    {mockType !== 'Mini-mock' && mockType !== 'Mock Discussion' && (
                       <tr className="bg-gray-50">
                         <td className="px-2 py-1.5 text-xs font-medium text-gray-900">
                           Shared Mock Tokens
