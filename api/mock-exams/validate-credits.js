@@ -105,9 +105,9 @@ module.exports = async (req, res) => {
     const sanitizedStudentId = sanitizeInput(student_id);
     const sanitizedEmail = sanitizeInput(email);
 
-    // Search for contact in HubSpot
+    // Search for contact in HubSpot - pass mock_type for optimized property fetching
     const hubspot = new HubSpotService();
-    const contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail);
+    const contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail, mock_type);
 
     // Check if contact exists
     if (!contact) {

@@ -21,7 +21,6 @@ const MockDiscussions = () => {
   const [userSession, setUserSession] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
   const [selectedLocation, setSelectedLocation] = useState('all');
-  const [validationData, setValidationData] = useState(null);
   const [showInsufficientTokensError, setShowInsufficientTokensError] = useState(false);
 
   // Use the cached credits hook
@@ -46,8 +45,7 @@ const MockDiscussions = () => {
     const userData = getUserSession();
     if (userData) {
       setUserSession(userData);
-      fetchCredits(userData.studentId, userData.email);
-      validateCredits(userData.studentId, userData.email);
+      fetchCredits(userData.studentId, userData.email); // This already fetches Mock Discussion credits
     }
   }, []);
 
@@ -98,16 +96,6 @@ const MockDiscussions = () => {
     }
   };
 
-  const validateCredits = async (studentId, email) => {
-    try {
-      const result = await apiService.mockDiscussions.validateCredits(studentId, email);
-      if (result.success) {
-        setValidationData(result.data);
-      }
-    } catch (err) {
-      console.error('Error validating credits:', err);
-    }
-  };
 
   const handleSelectDiscussion = (discussion) => {
     if (discussion.available_slots === 0) {

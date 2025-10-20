@@ -111,7 +111,40 @@ class HubSpotService {
   /**
    * Search for contacts by student_id and email
    */
-  async searchContacts(studentId, email) {
+  async searchContacts(studentId, email, mockType = null) {
+    // Build properties list based on mock type
+    const baseProperties = [
+      'student_id',
+      'firstname',
+      'lastname',
+      'email',
+      'hs_object_id'
+    ];
+    
+    let creditProperties = [];
+    if (mockType) {
+      switch (mockType) {
+        case 'Mock Discussion':
+          creditProperties = ['mock_discussion_token'];
+          break;
+        case 'Situational Judgment':
+          creditProperties = ['sj_credits', 'shared_mock_credits'];
+          break;
+        case 'Clinical Skills':
+          creditProperties = ['cs_credits', 'shared_mock_credits'];
+          break;
+        case 'Mini-mock':
+          creditProperties = ['sjmini_credits'];
+          break;
+        default:
+          // If unknown type, fetch all credit properties as fallback
+          creditProperties = ['sj_credits', 'cs_credits', 'sjmini_credits', 'mock_discussion_token', 'shared_mock_credits'];
+      }
+    } else {
+      // If no type specified, fetch all credit properties (for backward compatibility)
+      creditProperties = ['sj_credits', 'cs_credits', 'sjmini_credits', 'mock_discussion_token', 'shared_mock_credits'];
+    }
+    
     const searchPayload = {
       filterGroups: [{
         filters: [
@@ -127,17 +160,7 @@ class HubSpotService {
           }
         ]
       }],
-      properties: [
-        'student_id',
-        'firstname',
-        'lastname',
-        'email',
-        'sj_credits',
-        'cs_credits',
-        'sjmini_credits',
-        'shared_mock_credits',
-        'hs_object_id'
-      ],
+      properties: [...baseProperties, ...creditProperties],
       limit: 1
     };
 

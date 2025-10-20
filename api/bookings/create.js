@@ -302,8 +302,31 @@ module.exports = module.exports = module.exports = async function handler(req, r
     }
 
     // Step 3: Verify contact and credits (double-check)
+    // Build properties list based on mock type for efficiency
+    const baseProperties = ['student_id', 'email'];
+    let creditProperties = [];
+
+    switch (mock_type) {
+      case 'Mock Discussion':
+        creditProperties = ['mock_discussion_token'];
+        break;
+      case 'Situational Judgment':
+        creditProperties = ['sj_credits', 'shared_mock_credits'];
+        break;
+      case 'Clinical Skills':
+        creditProperties = ['cs_credits', 'shared_mock_credits'];
+        break;
+      case 'Mini-mock':
+        creditProperties = ['sjmini_credits'];
+        break;
+      default:
+        // Fallback: fetch all credit properties
+        creditProperties = ['sj_credits', 'cs_credits', 'sjmini_credits', 'mock_discussion_token', 'shared_mock_credits'];
+    }
+
+    const properties = [...baseProperties, ...creditProperties].join(',');
     const contact = await hubspot.apiCall('GET',
-      `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contact_id}?properties=student_id,email,sj_credits,cs_credits,sjmini_credits,mock_discussion_token,shared_mock_credits`
+      `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contact_id}?properties=${properties}`
     );
 
     if (!contact) {

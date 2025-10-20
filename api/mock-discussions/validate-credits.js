@@ -144,15 +144,18 @@ module.exports = async (req, res) => {
     // Calculate available mock discussion tokens
     const creditInfo = calculateDiscussionCredits(contact);
 
-    // Search for active enrollment (optional - discussions may not require enrollment)
+    // Mock Discussions do not require active enrollment - skipping this check to save an API call
     let enrollmentId = null;
+    // Commented out enrollment search to optimize API usage
+    // If business requirements change and enrollment becomes required, uncomment this block:
+    /*
     try {
       const enrollment = await hubspot.searchEnrollments(contact.id, 'Registered');
       enrollmentId = enrollment?.id || null;
     } catch (enrollmentError) {
       console.log('No active enrollment found, continuing without it');
-      // Mock Discussions might not require active enrollment
     }
+    */
 
     // Prepare response data
     const responseData = {
