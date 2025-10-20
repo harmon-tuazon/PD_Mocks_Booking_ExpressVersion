@@ -244,8 +244,10 @@ module.exports = module.exports = module.exports = async function handler(req, r
     // Format the date for the booking ID
     const formattedDate = formatBookingDate(exam_date);
 
-    // Generate booking ID with full mock type name and formatted date
-    const bookingId = `${mock_type}-${sanitizedName} - ${formattedDate}`;
+    // Generate booking ID with mock type, student ID, and formatted date
+    // Format: "MockType-StudentID-Date" ensures uniqueness per student
+    // This prevents same-name collision while maintaining duplicate detection
+    const bookingId = `${mock_type}-${student_id}-${formattedDate}`;
 
     // Check for duplicate booking BEFORE acquiring lock (prevents race condition)
     const isDuplicate = await hubspot.checkExistingBooking(bookingId);

@@ -264,8 +264,10 @@ module.exports = async function handler(req, res) {
     // This prevents race conditions where two users book the same date simultaneously
     const formattedDate = formatBookingDate(exam_date);
 
-    // Generate booking ID with Mock Discussion prefix
-    const bookingId = `Mock Discussion-${sanitizedName} - ${formattedDate}`;
+    // Generate booking ID with Mock Discussion prefix, student ID, and formatted date
+    // Format: "MockType-StudentID-Date" ensures uniqueness per student
+    // This prevents same-name collision while maintaining duplicate detection
+    const bookingId = `Mock Discussion-${student_id}-${formattedDate}`;
 
     // Check for duplicate booking BEFORE acquiring lock (prevents race condition)
     const isDuplicate = await hubspot.checkExistingBooking(bookingId);
