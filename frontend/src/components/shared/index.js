@@ -6,3 +6,5 @@ export { default as ResponsiveLogo } from './Logo';
 export { default as Logo } from './Logo';
 export { default as LoggedInUserCard } from './LoggedInUserCard';
 export { default as DeleteBookingModal } from './DeleteBookingModal';
+export { default as InsufficientTokensError } from './InsufficientTokensError';
+export { default as InsufficientCreditsCard } from './InsufficientCreditsCard';

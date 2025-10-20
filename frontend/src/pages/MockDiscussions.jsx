@@ -5,7 +5,7 @@ import CapacityBadge from '../components/shared/CapacityBadge';
 import TokenCard from '../components/shared/TokenCard';
 import CalendarView from '../components/shared/CalendarView';
 import Logo from '../components/shared/Logo';
-import CreditAlert from '../components/shared/CreditAlert';
+import InsufficientTokensError from '../components/shared/InsufficientTokensError';
 import { getUserSession } from '../utils/auth';
 import useCachedCredits from '../hooks/useCachedCredits';
 import LocationFilter from '../components/shared/LocationFilter';
@@ -251,6 +251,16 @@ const MockDiscussions = () => {
     );
   }
 
+  // Show InsufficientTokensError when user has 0 tokens
+  if (!isLoading && userSession && mockDiscussionTokens === 0) {
+    return (
+      <InsufficientTokensError
+        mockType="Mock Discussion"
+        onGoBack={() => navigate('/book/exam-types')}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container-app py-12">
@@ -285,26 +295,15 @@ const MockDiscussions = () => {
           </p>
         </div>
 
-        {/* Token Display Card or Alert */}
-        {userSession && (
+        {/* Token Display Card */}
+        {userSession && mockDiscussionTokens > 0 && (
           <div className="mb-6">
-            {mockDiscussionTokens === 0 ? (
-              <CreditAlert
-                credits={0}
-                creditBreakdown={mockDiscussionData || { available_credits: 0 }}
-                mockType="Mock Discussion"
-                variant="error"
-              />
-            ) : (
-              <div className="max-w-md">
-                <TokenCard
-                  creditBreakdown={mockDiscussionData || { available_credits: mockDiscussionTokens }}
-                  mockType="Mock Discussion"
-                  compact={true}
-                  className=""
-                />
-              </div>
-            )}
+            <TokenCard
+              creditBreakdown={mockDiscussionData || { available_credits: mockDiscussionTokens }}
+              mockType="Mock Discussion"
+              compact={true}
+              className=""
+            />
           </div>
         )}
 
