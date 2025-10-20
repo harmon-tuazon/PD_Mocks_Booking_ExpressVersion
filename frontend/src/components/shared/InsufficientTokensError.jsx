@@ -29,13 +29,13 @@ const InsufficientTokensError = ({
   };
 
   return (
-    <div className={`min-h-screen bg-gray-900 flex items-center justify-center px-4 py-12 ${className}`}>
+    <div className={`min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12 ${className}`}>
       <div className="max-w-2xl w-full">
-        {/* Main Card with Dark Theme */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-8 text-center">
+        {/* Main Card with Light Theme */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-8 text-center">
           {/* Warning Icon Circle */}
           <div className="mb-6 flex justify-center">
-            <div className="w-20 h-20 bg-red-900/30 rounded-full flex items-center justify-center">
+            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center">
               <svg
                 className="w-12 h-12 text-red-500"
                 fill="currentColor"
@@ -52,21 +52,21 @@ const InsufficientTokensError = ({
           </div>
 
           {/* Main Heading */}
-          <h1 className="text-3xl font-bold text-red-400 mb-4">
+          <h1 className="text-3xl font-bold text-red-500 mb-4">
             Insufficient Tokens
           </h1>
 
           {/* Main Message */}
-          <p className="text-gray-300 text-base mb-2 leading-relaxed">
+          <p className="text-gray-700 text-base mb-2 leading-relaxed">
             You don't have enough tokens to book this {mockType}.
           </p>
-          <p className="text-gray-300 text-base mb-8 leading-relaxed">
+          <p className="text-gray-700 text-base mb-8 leading-relaxed">
             Please contact our academic advisors for assistance with your token requirements.
           </p>
 
           {/* Contact Information Section */}
-          <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-6 mb-8">
-            <h2 className="text-lg font-semibold text-gray-200 mb-4">
+          <div className="bg-red-50 border border-red-100 rounded-lg p-6 mb-8">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Need Help? Contact Us
             </h2>
 
@@ -74,13 +74,13 @@ const InsufficientTokensError = ({
               {/* Email Contact */}
               <button
                 onClick={handleEmailClick}
-                className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 rounded-lg p-4 transition-all duration-200 group"
+                className="w-full bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-lg p-4 transition-all duration-200 group"
                 aria-label="Send email to PrepDoctors support"
               >
                 <div className="flex items-center justify-center space-x-3">
                   <div className="flex-shrink-0">
                     <svg
-                      className="w-5 h-5 text-gray-400 group-hover:text-gray-300"
+                      className="w-5 h-5 text-gray-500 group-hover:text-gray-700"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                       aria-hidden="true"
@@ -90,10 +90,10 @@ const InsufficientTokensError = ({
                     </svg>
                   </div>
                   <div className="text-left">
-                    <p className="font-medium text-gray-200 group-hover:text-white">
+                    <p className="font-medium text-gray-900 group-hover:text-gray-900">
                       Email Support
                     </p>
-                    <p className="text-sm text-gray-400 group-hover:text-gray-300">
+                    <p className="text-sm text-gray-500 group-hover:text-gray-600">
                       info@prepdoctors.com
                     </p>
                   </div>
@@ -103,13 +103,13 @@ const InsufficientTokensError = ({
               {/* Phone Contact */}
               <button
                 onClick={handlePhoneClick}
-                className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 rounded-lg p-4 transition-all duration-200 group"
+                className="w-full bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-lg p-4 transition-all duration-200 group"
                 aria-label="Call PrepDoctors support"
               >
                 <div className="flex items-center justify-center space-x-3">
                   <div className="flex-shrink-0">
                     <svg
-                      className="w-5 h-5 text-gray-400 group-hover:text-gray-300"
+                      className="w-5 h-5 text-gray-500 group-hover:text-gray-700"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                       aria-hidden="true"
@@ -118,10 +118,10 @@ const InsufficientTokensError = ({
                     </svg>
                   </div>
                   <div className="text-left">
-                    <p className="font-medium text-gray-200 group-hover:text-white">
+                    <p className="font-medium text-gray-900 group-hover:text-gray-900">
                       Call Support
                     </p>
-                    <p className="text-sm text-gray-400 group-hover:text-gray-300">
+                    <p className="text-sm text-gray-500 group-hover:text-gray-600">
                       +1 855-397-7737
                     </p>
                   </div>
@@ -135,7 +135,7 @@ const InsufficientTokensError = ({
             {/* Go Back Button */}
             <button
               onClick={handleGoBack}
-              className="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 hover:text-white border border-gray-600 hover:border-gray-500 font-medium py-3 px-4 rounded-lg transition-all duration-200 inline-flex items-center justify-center"
+              className="w-full bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border border-gray-300 hover:border-gray-400 font-medium py-3 px-4 rounded-lg transition-all duration-200 inline-flex items-center justify-center"
               aria-label="Go back to exam types selection"
             >
               <svg
@@ -178,12 +178,12 @@ const InsufficientTokensError = ({
           </div>
 
           {/* Additional Information */}
-          <div className="mt-8 pt-6 border-t border-gray-700">
-            <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-4">
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0 mt-0.5">
                   <svg
-                    className="w-5 h-5 text-blue-400"
+                    className="w-5 h-5 text-blue-500"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                     aria-hidden="true"
@@ -196,10 +196,10 @@ const InsufficientTokensError = ({
                   </svg>
                 </div>
                 <div className="text-left">
-                  <h3 className="font-semibold text-blue-300 text-sm mb-1">
+                  <h3 className="font-semibold text-blue-900 text-sm mb-1">
                     Why am I seeing this?
                   </h3>
-                  <p className="text-sm text-gray-400 leading-relaxed">
+                  <p className="text-sm text-gray-600 leading-relaxed">
                     Your account doesn't have sufficient tokens for this {mockType.toLowerCase()}.
                     Our academic advisors can help you understand your token balance and guide you
                     through purchasing additional tokens if needed.

@@ -298,12 +298,14 @@ const MockDiscussions = () => {
         {/* Token Display Card */}
         {userSession && mockDiscussionTokens > 0 && (
           <div className="mb-6">
-            <TokenCard
-              creditBreakdown={mockDiscussionData || { available_credits: mockDiscussionTokens }}
-              mockType="Mock Discussion"
-              compact={true}
-              className=""
-            />
+            <div className="max-w-md">
+              <TokenCard
+                creditBreakdown={mockDiscussionData || { available_credits: mockDiscussionTokens }}
+                mockType="Mock Discussion"
+                compact={true}
+                className=""
+              />
+            </div>
           </div>
         )}
 
