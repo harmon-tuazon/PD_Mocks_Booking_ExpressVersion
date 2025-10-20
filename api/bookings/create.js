@@ -88,6 +88,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
   let createdBookingId = null;
   let redis = null;
   let lockToken = null;
+  let userLock = null; // For user-specific lock to prevent duplicates
   let mock_exam_id = null; // Declare at function scope for finally block access
 
   setCorsHeaders(res);
@@ -198,26 +199,98 @@ module.exports = module.exports = module.exports = async function handler(req, r
       }
     }
 
-    // ========================================================================
-    // REDIS LOCK ACQUISITION - Prevents race condition in capacity checking
-    // ========================================================================
+    // Step 1: Generate booking ID and check for duplicates BEFORE acquiring lock
+    // This prevents race conditions where two users book the same date simultaneously
 
-    // Initialize Redis client
+    // Function to convert YYYY-MM-DD to "Month Day, Year" format
+    const formatBookingDate = (dateString) => {
+      try {
+        // Parse the date string (expecting YYYY-MM-DD format)
+        const dateParts = dateString.split('-');
+        if (dateParts.length !== 3) {
+          throw new Error('Invalid date format');
+        }
+
+        const year = parseInt(dateParts[0]);
+        const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed in JavaScript
+        const day = parseInt(dateParts[2]);
+
+        // Create date object using local timezone
+        const date = new Date(year, month, day);
+
+        // Verify the date is valid
+        if (isNaN(date.getTime())) {
+          throw new Error('Invalid date');
+        }
+
+        // Format the date with full month name
+        const monthNames = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+
+        const monthName = monthNames[date.getMonth()];
+        const formattedDay = date.getDate();
+        const formattedYear = date.getFullYear();
+
+        return `${monthName} ${formattedDay}, ${formattedYear}`;
+      } catch (err) {
+        console.error('Date formatting error:', err.message, 'for date:', dateString);
+        // Fallback to original format if parsing fails
+        return dateString;
+      }
+    };
+
+    // Format the date for the booking ID
+    const formattedDate = formatBookingDate(exam_date);
+
+    // Generate booking ID with full mock type name and formatted date
+    const bookingId = `${mock_type}-${sanitizedName} - ${formattedDate}`;
+
+    // Check for duplicate booking BEFORE acquiring lock (prevents race condition)
+    const isDuplicate = await hubspot.checkExistingBooking(bookingId);
+    if (isDuplicate) {
+      const error = new Error('Duplicate booking detected: You already have a booking for this exam date');
+      error.status = 400;
+      error.code = 'DUPLICATE_BOOKING';
+      throw error;
+    }
+
+    // ========================================================================
+    // REDIS LOCK ACQUISITION - Two-phase locking for complete duplicate prevention
+    // ========================================================================
     redis = new RedisLockService();
 
-    // Acquire lock with retry (max 5 attempts, exponential backoff)
+    // First lock: User + Date specific lock to prevent duplicate bookings by same user
+    const userLockKey = `user_booking:${contact_id}:${exam_date}`;
+    const userLockToken = await redis.acquireLockWithRetry(userLockKey, 3, 100, 5);
+
+    if (!userLockToken) {
+      const lockError = new Error('You are already processing a booking for this date. Please wait a moment.');
+      lockError.status = 409;
+      lockError.code = 'USER_BOOKING_IN_PROGRESS';
+      throw lockError;
+    }
+
+    // Second lock: Session-level lock for capacity management
     lockToken = await redis.acquireLockWithRetry(mock_exam_id, 5, 100, 10);
 
     if (!lockToken) {
+      // Release user lock if we can't get session lock
+      await redis.releaseLock(userLockKey, userLockToken);
+
       const lockError = new Error('Unable to process booking at this time. The system is experiencing high demand. Please try again in a moment.');
       lockError.status = 503;
       lockError.code = 'LOCK_ACQUISITION_FAILED';
       throw lockError;
     }
 
-    console.log(`✅ Lock acquired successfully for exam ${mock_exam_id}, token: ${lockToken}`);
+    console.log(`✅ Locks acquired successfully - User lock: ${userLockKey}, Session lock: ${mock_exam_id}`);
 
-    // Step 1: Verify mock exam exists and has capacity
+    // Store user lock info for cleanup
+    userLock = { key: userLockKey, token: userLockToken };
+
+    // Step 2: Verify mock exam exists and has capacity
     // CRITICAL: Re-fetch exam data AFTER acquiring lock to ensure fresh capacity data
     const mockExam = await hubspot.getMockExam(mock_exam_id);
 
@@ -244,60 +317,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
       const error = new Error('This mock exam session is now full');
       error.status = 400;
       error.code = 'EXAM_FULL';
-      throw error;
-    }
-
-    // Step 2: Format the exam date to full month name format
-    // Function to convert YYYY-MM-DD to "Month Day, Year" format
-    const formatBookingDate = (dateString) => {
-      try {
-        // Parse the date string (expecting YYYY-MM-DD format)
-        const dateParts = dateString.split('-');
-        if (dateParts.length !== 3) {
-          throw new Error('Invalid date format');
-        }
-        
-        const year = parseInt(dateParts[0]);
-        const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed in JavaScript
-        const day = parseInt(dateParts[2]);
-        
-        // Create date object using local timezone
-        const date = new Date(year, month, day);
-        
-        // Verify the date is valid
-        if (isNaN(date.getTime())) {
-          throw new Error('Invalid date');
-        }
-        
-        // Format the date with full month name
-        const monthNames = [
-          'January', 'February', 'March', 'April', 'May', 'June',
-          'July', 'August', 'September', 'October', 'November', 'December'
-        ];
-        
-        const monthName = monthNames[date.getMonth()];
-        const formattedDay = date.getDate();
-        const formattedYear = date.getFullYear();
-        
-        return `${monthName} ${formattedDay}, ${formattedYear}`;
-      } catch (err) {
-        console.error('Date formatting error:', err.message, 'for date:', dateString);
-        // Fallback to original format if parsing fails
-        return dateString;
-      }
-    };
-    
-    // Format the date for the booking ID
-    const formattedDate = formatBookingDate(exam_date);
-    
-    // Generate booking ID with full mock type name and formatted date
-    const bookingId = `${mock_type}-${sanitizedName} - ${formattedDate}`;
-
-    const isDuplicate = await hubspot.checkExistingBooking(bookingId);
-    if (isDuplicate) {
-      const error = new Error('Duplicate booking detected: You already have a booking for this exam date');
-      error.status = 400;
-      error.code = 'DUPLICATE_BOOKING';
       throw error;
     }
 
@@ -473,14 +492,19 @@ module.exports = module.exports = module.exports = async function handler(req, r
     await hubspot.updateMockExamBookings(mock_exam_id, newTotalBookings);
 
     // ========================================================================
-    // REDIS LOCK RELEASE - Release lock as early as possible
     // ========================================================================
-    // Lock must be released AFTER counter update to maintain atomicity
-    // Release now to minimize lock hold time (remaining operations are non-critical)
+    // REDIS LOCK RELEASE - Release both locks after booking is confirmed
+    // ========================================================================
     if (lockToken) {
       await redis.releaseLock(mock_exam_id, lockToken);
-      lockToken = null; // Prevent double-release in finally block
-      console.log(`✅ Lock released successfully`);
+      lockToken = null;
+      console.log(`✅ Session lock released successfully`);
+    }
+
+    if (userLock?.token) {
+      await redis.releaseLock(userLock.key, userLock.token);
+      userLock.token = null;
+      console.log(`✅ User lock released successfully`);
     }
 
     // Step 8: Deduct credits (creditField already calculated in Step 4)
@@ -623,21 +647,26 @@ module.exports = module.exports = module.exports = async function handler(req, r
 
   } finally {
     // ========================================================================
-    // REDIS CLEANUP - Always release lock and close connection
+    // REDIS CLEANUP - Release both locks if they haven't been released
     // ========================================================================
-    // CRITICAL: This ensures lock is released even if errors occur
-    // TTL provides safety net if this fails (lock expires in 10 seconds)
     if (lockToken && redis) {
       try {
         await redis.releaseLock(mock_exam_id, lockToken);
-        console.log(`✅ [Finally] Lock released successfully`);
+        console.log(`✅ [Finally] Session lock released successfully`);
       } catch (finallyError) {
-        console.error(`❌ [Finally] Failed to release lock:`, finallyError.message);
-        // Don't throw - lock will expire via TTL
+        console.error(`❌ [Finally] Failed to release session lock:`, finallyError.message);
       }
     }
 
-    // Close Redis connection to prevent leaks
+    if (userLock?.token && redis) {
+      try {
+        await redis.releaseLock(userLock.key, userLock.token);
+        console.log(`✅ [Finally] User lock released successfully`);
+      } catch (finallyError) {
+        console.error(`❌ [Finally] Failed to release user lock:`, finallyError.message);
+      }
+    }
+
     if (redis) {
       try {
         await redis.close();
