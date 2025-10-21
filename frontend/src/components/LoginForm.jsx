@@ -54,7 +54,7 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-dark-bg dark:via-dark-card dark:to-dark-bg flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         {/* Header with PrepDoctors Logo */}
         <div className="text-center">
@@ -104,7 +104,7 @@ const LoginForm = () => {
         )}
 
         {/* Login Form */}
-        <div className="card dark:bg-gray-800 dark:border-gray-700">
+        <div className="card dark:bg-dark-card dark:border-dark-border">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="studentId" className="label dark:text-gray-200">
@@ -115,7 +115,7 @@ const LoginForm = () => {
                 id="studentId"
                 value={studentId}
                 onChange={(e) => setStudentId(e.target.value.toUpperCase())}
-                className="input dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-primary-400"
+                className="input dark:bg-dark-hover dark:border-dark-border dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-primary-400"
                 placeholder="e.g., STU123456"
                 required
                 disabled={loading}
@@ -131,7 +131,7 @@ const LoginForm = () => {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="input dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-primary-400"
+                className="input dark:bg-dark-hover dark:border-dark-border dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-primary-400"
                 placeholder="john.doe@example.com"
                 required
                 disabled={loading}

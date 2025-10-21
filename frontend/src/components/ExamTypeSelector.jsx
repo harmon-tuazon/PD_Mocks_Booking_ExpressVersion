@@ -65,7 +65,7 @@ const ExamTypeSelector = () => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-full">
+    <div className="bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-dark-bg dark:via-dark-card dark:to-dark-bg min-h-full">
       <div className="container-brand py-8 lg:py-12">
         <div className="text-center mb-12 animate-fade-in">
           <h1 className="font-headline text-h1 font-bold text-primary-900 dark:text-gray-100 mb-6">
@@ -81,7 +81,7 @@ const ExamTypeSelector = () => {
           {examTypes.map((exam, index) => (
             <div
               key={exam.type}
-              className="card-hover dark:bg-gray-800 dark:border-gray-700 dark:hover:border-gray-600 animate-slide-up"
+              className="card-hover dark:bg-dark-card dark:border-dark-border dark:hover:border-dark-border animate-slide-up"
               style={{ animationDelay: `${index * 100}ms` }}
               onClick={() => handleSelectType(exam.type)}
             >
@@ -140,15 +140,15 @@ const ExamTypeSelector = () => {
 
               {/* Tokens Overview Table - Always on the RIGHT */}
               {credits && (
-                <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">
-                  <div className="px-3 py-2 border-b dark:border-gray-700">
+                <div className="bg-white dark:bg-dark-card border dark:border-dark-border rounded-lg overflow-hidden shadow-sm">
+                  <div className="px-3 py-2 border-b dark:border-dark-border">
                     <h3 className="font-subheading text-sm font-medium text-primary-900 dark:text-gray-100">Available Tokens</h3>
                     <p className="font-body text-xs text-primary-600 dark:text-gray-400 mt-0.5">Your current token balance</p>
                   </div>
 
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                      <thead className="bg-gray-50 dark:bg-gray-900">
+                      <thead className="bg-gray-50 dark:bg-dark-bg">
                         <tr>
                           <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                             Exam Type
@@ -158,11 +158,11 @@ const ExamTypeSelector = () => {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
                         {examTypes.map((examType, index) => {
                           const examCredits = credits?.[examType.type];
                           return (
-                            <tr key={examType.type} className={index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50'}>
+                            <tr key={examType.type} className={index % 2 === 0 ? 'bg-white dark:bg-dark-card' : 'bg-gray-50 dark:bg-dark-bg/50'}>
                               <td className="px-2 py-1.5 whitespace-nowrap">
                                 <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
                                   {examType.type}
@@ -172,7 +172,7 @@ const ExamTypeSelector = () => {
                                 <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${
                                   (examCredits?.credit_breakdown?.specific_credits || 0) > 0
                                     ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                                    : 'bg-gray-100 dark:bg-dark-hover text-gray-800 dark:text-gray-300'
                                 }`}>
                                   {loading ? '...' : (examCredits?.credit_breakdown?.specific_credits || 0)}
                                 </span>
@@ -181,7 +181,7 @@ const ExamTypeSelector = () => {
                           );
                         })}
                         {/* Add standalone Shared Mock Tokens row */}
-                        <tr className={examTypes.length % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50'}>
+                        <tr className={examTypes.length % 2 === 0 ? 'bg-white dark:bg-dark-card' : 'bg-gray-50 dark:bg-dark-bg/50'}>
                           <td className="px-2 py-1.5 whitespace-nowrap">
                             <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
                               Shared Mock Tokens
@@ -191,7 +191,7 @@ const ExamTypeSelector = () => {
                             <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${
                               getSharedMockCredits() > 0
                                 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                                : 'bg-gray-100 dark:bg-dark-hover text-gray-800 dark:text-gray-300'
                             }`}>
                               {loading ? '...' : getSharedMockCredits()}
                             </span>
@@ -201,7 +201,7 @@ const ExamTypeSelector = () => {
                     </table>
                   </div>
 
-                  <div className="px-2 py-1 bg-gray-50 dark:bg-gray-900 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="px-2 py-1 bg-gray-50 dark:bg-dark-bg text-xs text-gray-500 dark:text-gray-400">
                     Specific tokens are for each exam type. Shared tokens can be used for SJ or CS exams.
                   </div>
                 </div>

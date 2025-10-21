@@ -120,6 +120,14 @@ export default {
           700: '#525252',
           800: '#404040',
           900: '#262626',
+        },
+        // Dark mode specific colors matching PrepDoctors design
+        dark: {
+          bg: '#0f1419',     // Main dark background
+          card: '#1a1f2e',   // Card backgrounds in dark mode
+          sidebar: '#0b0e11', // Sidebar background
+          border: '#2a3441',  // Borders in dark mode
+          hover: '#242b3a',   // Hover states in dark mode
         }
       },
       // PrepDoctors Typography System

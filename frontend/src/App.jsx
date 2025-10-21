@@ -83,8 +83,8 @@ function App() {
 }
 
 const InsufficientCreditsError = () => (
-  <div className="min-h-screen bg-gradient-to-br from-coral-50 via-white to-coral-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
-    <div className="card max-w-md text-center dark:bg-gray-800 dark:border-gray-700">
+  <div className="min-h-screen bg-gradient-to-br from-coral-50 via-white to-coral-50 dark:from-dark-bg dark:via-dark-card dark:to-dark-bg flex items-center justify-center">
+    <div className="card max-w-md text-center dark:bg-dark-card dark:border-dark-border">
       <div className="flex justify-center mb-6">
         <ResponsiveLogo
           size="medium"
@@ -111,8 +111,8 @@ const InsufficientCreditsError = () => (
 );
 
 const ExamFullError = () => (
-  <div className="min-h-screen bg-gradient-to-br from-coral-50 via-white to-coral-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
-    <div className="card max-w-md text-center dark:bg-gray-800 dark:border-gray-700">
+  <div className="min-h-screen bg-gradient-to-br from-coral-50 via-white to-coral-50 dark:from-dark-bg dark:via-dark-card dark:to-dark-bg flex items-center justify-center">
+    <div className="card max-w-md text-center dark:bg-dark-card dark:border-dark-border">
       <div className="flex justify-center mb-6">
         <ResponsiveLogo
           size="medium"
@@ -136,8 +136,8 @@ const ExamFullError = () => (
 );
 
 const SessionExpiredError = () => (
-  <div className="min-h-screen bg-gradient-to-br from-coral-50 via-white to-coral-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
-    <div className="card max-w-md text-center dark:bg-gray-800 dark:border-gray-700">
+  <div className="min-h-screen bg-gradient-to-br from-coral-50 via-white to-coral-50 dark:from-dark-bg dark:via-dark-card dark:to-dark-bg flex items-center justify-center">
+    <div className="card max-w-md text-center dark:bg-dark-card dark:border-dark-border">
       <div className="flex justify-center mb-6">
         <ResponsiveLogo
           size="medium"
@@ -161,7 +161,7 @@ const SessionExpiredError = () => (
 );
 
 const NotFound = () => (
-  <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+  <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-dark-bg dark:via-dark-card dark:to-dark-bg flex items-center justify-center">
     <div className="text-center">
       <div className="flex justify-center mb-6">
         <ResponsiveLogo

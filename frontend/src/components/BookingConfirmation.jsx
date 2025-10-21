@@ -89,7 +89,7 @@ const BookingConfirmation = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-teal-50 dark:from-dark-bg dark:via-dark-bg dark:to-dark-card">
       <div className="container-app py-12 max-w-2xl">
         {/* Header with Logo */}
         <div className="flex items-center justify-end mb-8">
@@ -101,7 +101,7 @@ const BookingConfirmation = () => {
           />
         </div>
 
-        <div className="card dark:bg-gray-800 dark:border-gray-700 text-center animate-fade-in">
+        <div className="card dark:bg-dark-card dark:border-dark-border text-center animate-fade-in">
           {/* Success Icon */}
           <div className="mb-6">
             <div className="inline-flex items-center justify-center w-20 h-20 bg-teal-100 dark:bg-teal-900/30 rounded-full">
@@ -120,7 +120,7 @@ const BookingConfirmation = () => {
           </p>
 
           {/* Booking Details */}
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 text-left mb-8">
+          <div className="bg-gray-50 dark:bg-dark-hover rounded-lg p-6 text-left mb-8">
             <h2 className="font-subheading text-lg font-semibold text-primary-900 dark:text-gray-100 mb-4">
               Booking Details
             </h2>
@@ -150,7 +150,7 @@ const BookingConfirmation = () => {
                 <dd className="font-body text-sm text-primary-900 dark:text-gray-100">{bookingData.email}</dd>
               </div>
               {displayRemainingCredits !== undefined && (
-                <div className="flex justify-between pt-3 border-t dark:border-gray-600">
+                <div className="flex justify-between pt-3 border-t dark:border-dark-border">
                   <dt className="font-body text-sm font-medium text-primary-600 dark:text-primary-400">Remaining Tokens</dt>
                   <dd className="font-body text-sm font-semibold text-teal-700 dark:text-teal-400">
                     {creditsLoading && !freshCreditBreakdown ? (
@@ -205,7 +205,7 @@ const BookingConfirmation = () => {
           </div>
 
           {/* Additional Info */}
-          <div className="mt-8 pt-8 border-t dark:border-gray-600 text-sm text-gray-500 dark:text-gray-400">
+          <div className="mt-8 pt-8 border-t dark:border-dark-border text-sm text-gray-500 dark:text-gray-400">
             <p>
               If you need to cancel or modify this booking, please contact PrepDoctors support.
             </p>

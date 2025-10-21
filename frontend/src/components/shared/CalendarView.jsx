@@ -80,7 +80,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect }) => {
     let classes = 'h-10 w-10 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center ';
 
     if (isPast) {
-      classes += 'text-gray-300 dark:text-gray-600 cursor-not-allowed bg-gray-50 dark:bg-gray-800/50 ';
+      classes += 'text-gray-300 dark:text-gray-600 cursor-not-allowed bg-gray-50 dark:bg-dark-card/50 ';
     } else if (isSelected) {
       classes += 'bg-primary-600 text-white font-bold shadow-md ring-2 ring-primary-300 dark:ring-primary-700 ';
     } else if (hasExams) {
@@ -89,7 +89,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect }) => {
         classes += 'ring-2 ring-primary-300 dark:ring-primary-700 ';
       }
     } else {
-      classes += 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 ';
+      classes += 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-hover ';
       if (isDateToday) {
         classes += 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 ring-2 ring-primary-200 dark:ring-primary-700 ';
       }
@@ -123,7 +123,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect }) => {
   );
 
   return (
-    <div className="card-brand dark:bg-gray-800 dark:border-gray-700 max-w-6xl mx-auto">
+    <div className="card-brand dark:bg-dark-card dark:border-dark-border max-w-6xl mx-auto">
       <div className="flex gap-6">
         {/* Calendar Side */}
         <div className="flex-1 p-6">
@@ -131,7 +131,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect }) => {
           <div className="flex items-center justify-between mb-6">
             <button
               onClick={() => navigateMonth(-1)}
-              className="p-2 hover:bg-primary-50 dark:hover:bg-gray-700 rounded-md transition-colors text-gray-600 dark:text-gray-400 hover:text-primary-700 dark:hover:text-primary-400 focus-brand"
+              className="p-2 hover:bg-primary-50 dark:hover:bg-dark-hover rounded-md transition-colors text-gray-600 dark:text-gray-400 hover:text-primary-700 dark:hover:text-primary-400 focus-brand"
               aria-label="Previous month"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,7 +145,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect }) => {
 
             <button
               onClick={() => navigateMonth(1)}
-              className="p-2 hover:bg-primary-50 dark:hover:bg-gray-700 rounded-md transition-colors text-gray-600 dark:text-gray-400 hover:text-primary-700 dark:hover:text-primary-400 focus-brand"
+              className="p-2 hover:bg-primary-50 dark:hover:bg-dark-hover rounded-md transition-colors text-gray-600 dark:text-gray-400 hover:text-primary-700 dark:hover:text-primary-400 focus-brand"
               aria-label="Next month"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,7 +178,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect }) => {
           </div>
 
           {/* Legend */}
-          <div className="mt-6 pt-4 border-t border-cool-grey dark:border-gray-700">
+          <div className="mt-6 pt-4 border-t border-cool-grey dark:border-dark-border">
             <div className="flex items-center justify-center gap-6 text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-teal-100 dark:bg-teal-900/30 border-2 border-teal-200 dark:border-teal-700 rounded"></div>
@@ -189,7 +189,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect }) => {
                 <span className="text-gray-700 dark:text-gray-300 font-body">Selected</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-gray-100 dark:bg-gray-700 rounded"></div>
+                <div className="w-4 h-4 bg-gray-100 dark:bg-dark-hover rounded"></div>
                 <span className="text-gray-700 dark:text-gray-300 font-body">No sessions</span>
               </div>
             </div>
@@ -197,7 +197,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect }) => {
         </div>
 
         {/* Sessions Side - Only show when a date with sessions is selected */}
-        <div className="w-80 border-l border-cool-grey dark:border-gray-700">
+        <div className="w-80 border-l border-cool-grey dark:border-dark-border">
           {selectedDate && selectedSessions.length > 0 ? (
             <div className="p-4">
               <h3 className="text-lg font-headline font-semibold text-navy-900 dark:text-gray-100 mb-4">
@@ -211,7 +211,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect }) => {
                 {selectedSessions.map((session) => (
                   <div
                     key={session.mock_exam_id}
-                    className={`p-3 border-2 border-cool-grey dark:border-gray-600 rounded-lg ${session.available_slots > 0 ? 'hover:shadow-md cursor-pointer hover:border-primary-300 dark:hover:border-primary-600 bg-white dark:bg-gray-800' : 'opacity-75 bg-gray-50 dark:bg-gray-900/50'} transition-all duration-200`}
+                    className={`p-3 border-2 border-cool-grey dark:border-dark-border rounded-lg ${session.available_slots > 0 ? 'hover:shadow-md cursor-pointer hover:border-primary-300 dark:hover:border-primary-600 bg-white dark:bg-dark-card' : 'opacity-75 bg-gray-50 dark:bg-dark-bg/50'} transition-all duration-200`}
                     onClick={() => handleSessionSelect(session)}
                   >
                     <div className="flex items-center justify-between mb-2">

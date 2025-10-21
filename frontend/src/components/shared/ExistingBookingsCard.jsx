@@ -405,27 +405,27 @@ const ExistingBookingsCard = ({
   // Loading skeleton
   const LoadingSkeleton = () => (
     <div className="animate-pulse">
-      <div className="px-4 py-3 border-b dark:border-gray-700">
+      <div className="px-4 py-3 border-b dark:border-dark-border">
         <div className="flex justify-between items-center">
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
-          <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-full w-6"></div>
+          <div className="h-4 bg-gray-200 dark:bg-dark-hover rounded w-24"></div>
+          <div className="h-5 bg-gray-200 dark:bg-dark-hover rounded-full w-6"></div>
         </div>
-        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-32 mt-1"></div>
+        <div className="h-3 bg-gray-100 dark:bg-dark-card rounded w-32 mt-1"></div>
       </div>
       <div className="p-4 space-y-3">
         {[1, 2, 3].map((i) => (
           <div key={i} className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="h-6 w-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
-              <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-20"></div>
+              <div className="h-6 w-8 bg-gray-200 dark:bg-dark-hover rounded"></div>
+              <div className="h-4 bg-gray-200 dark:bg-dark-hover rounded w-16"></div>
+              <div className="h-4 bg-gray-100 dark:bg-dark-card rounded w-20"></div>
             </div>
-            <div className="h-2 w-2 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+            <div className="h-2 w-2 bg-gray-200 dark:bg-dark-hover rounded-full"></div>
           </div>
         ))}
       </div>
-      <div className="px-4 py-2 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-28 mx-auto"></div>
+      <div className="px-4 py-2 border-t dark:border-dark-border bg-gray-50 dark:bg-dark-bg">
+        <div className="h-4 bg-gray-200 dark:bg-dark-hover rounded w-28 mx-auto"></div>
       </div>
     </div>
   );
@@ -463,7 +463,7 @@ const ExistingBookingsCard = ({
 
   // Main render
   return (
-    <div className={`bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-md overflow-hidden shadow-sm existing-bookings-card ${className}`}>
+    <div className={`bg-white dark:bg-dark-card border dark:border-dark-border rounded-md overflow-hidden shadow-sm existing-bookings-card ${className}`}>
       {loading ? (
         <LoadingSkeleton />
       ) : error ? (
@@ -471,7 +471,7 @@ const ExistingBookingsCard = ({
       ) : (
         <>
           {/* Card Header */}
-          <div className="px-4 py-3 border-b dark:border-gray-700">
+          <div className="px-4 py-3 border-b dark:border-dark-border">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">My Upcoming Mocks</h3>
@@ -479,7 +479,7 @@ const ExistingBookingsCard = ({
                 {!loading && (
                   <button
                     onClick={() => fetchBookings(true)}
-                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors duration-200"
                     title="Refresh bookings"
                     aria-label="Refresh bookings"
                   >
@@ -509,7 +509,7 @@ const ExistingBookingsCard = ({
                   {bookings.slice(0, maxItems).map((booking) => (
                     <div
                       key={booking.id}
-                      className="booking-item flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200"
+                      className="booking-item flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-dark-hover cursor-pointer transition-colors duration-200"
                       onClick={() => navigate('/my-bookings')}
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -540,7 +540,7 @@ const ExistingBookingsCard = ({
 
                 {/* Show remaining count if there are more bookings */}
                 {bookings.length > maxItems && (
-                  <div className="mt-3 pt-3 border-t dark:border-gray-700">
+                  <div className="mt-3 pt-3 border-t dark:border-dark-border">
                     <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
                       +{bookings.length - maxItems} more booking{bookings.length - maxItems > 1 ? 's' : ''}
                     </p>
@@ -549,7 +549,7 @@ const ExistingBookingsCard = ({
               </div>
 
               {/* Card Footer */}
-              <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-t dark:border-gray-700">
+              <div className="px-4 py-2 bg-gray-50 dark:bg-dark-bg border-t dark:border-dark-border">
                 <button
                   onClick={handleViewAll}
                   className="w-full text-center text-xs font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors duration-200"

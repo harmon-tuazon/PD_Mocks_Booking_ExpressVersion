@@ -150,7 +150,7 @@ const BookingForm = () => {
 
   if (!userSession) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400 mb-4"></div>
           <p className="text-body font-body text-gray-700 dark:text-gray-300">Loading...</p>
@@ -178,7 +178,7 @@ const BookingForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
       <SessionTimer
         expiryMinutes={15}
         onExpire={handleSessionExpire}
@@ -216,7 +216,7 @@ const BookingForm = () => {
             <LoggedInUserCard userSession={userSession} />
 
             {/* Exam Details Card */}
-            <div className="card-brand-primary dark:bg-gray-800 dark:border-gray-700">
+            <div className="card-brand-primary dark:bg-dark-card dark:border-dark-border">
               <h2 className="text-lg font-headline font-semibold text-primary-900 dark:text-primary-400 mb-2">Selected Exam</h2>
               <div className="space-brand-small text-sm font-body text-primary-700 dark:text-gray-300">
                 <div className="form-field-even">
@@ -248,7 +248,7 @@ const BookingForm = () => {
 
         {/* Token validation and booking flow */}
         {step === 'verify' && (
-          <div className="card-brand dark:bg-gray-800 dark:border-gray-700 animate-fade-in">
+          <div className="card-brand dark:bg-dark-card dark:border-dark-border animate-fade-in">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400 mb-4"></div>
               <p className="text-body font-body text-gray-700 dark:text-gray-300">Verifying your tokens...</p>
@@ -268,7 +268,7 @@ const BookingForm = () => {
             />
 
             {/* Booking Form */}
-            <div className="card-brand dark:bg-gray-800 dark:border-gray-700">
+            <div className="card-brand dark:bg-dark-card dark:border-dark-border">
               <h2 className="text-xl font-headline font-semibold text-navy-900 dark:text-gray-100 mb-6">
                 Complete Your Booking
               </h2>
@@ -288,7 +288,7 @@ const BookingForm = () => {
                           value="true"
                           checked={dominantHand === true}
                           onChange={() => setDominantHand(true)}
-                          className="form-radio h-4 w-4 text-primary-600 dark:text-primary-400 focus-brand dark:bg-gray-700 dark:border-gray-600"
+                          className="form-radio h-4 w-4 text-primary-600 dark:text-primary-400 focus-brand dark:bg-dark-hover dark:border-dark-border"
                           required
                         />
                         <span className="ml-2 text-body font-body text-gray-800 dark:text-gray-200">Right-handed</span>
@@ -300,7 +300,7 @@ const BookingForm = () => {
                           value="false"
                           checked={dominantHand === false}
                           onChange={() => setDominantHand(false)}
-                          className="form-radio h-4 w-4 text-primary-600 dark:text-primary-400 focus-brand dark:bg-gray-700 dark:border-gray-600"
+                          className="form-radio h-4 w-4 text-primary-600 dark:text-primary-400 focus-brand dark:bg-dark-hover dark:border-dark-border"
                           required
                         />
                         <span className="ml-2 text-body font-body text-gray-800 dark:text-gray-200">Left-handed</span>
@@ -351,7 +351,7 @@ const BookingForm = () => {
 
         {/* Confirming State */}
         {step === 'confirming' && (
-          <div className="card-brand dark:bg-gray-800 dark:border-gray-700 text-center">
+          <div className="card-brand dark:bg-dark-card dark:border-dark-border text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400 mb-4"></div>
             <p className="text-body font-body text-gray-700 dark:text-gray-300">Processing your booking...</p>
           </div>

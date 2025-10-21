@@ -7,7 +7,7 @@ const CapacityBadge = ({ availableSlots, capacity, size = 'normal' }) => {
   let text = '';
 
   if (availableSlots === 0) {
-    colorClass = 'bg-cool-grey dark:bg-gray-700 text-gray-800 dark:text-gray-300 border border-gray-300 dark:border-gray-600';
+    colorClass = 'bg-cool-grey dark:bg-dark-hover text-gray-800 dark:text-gray-300 border border-gray-300 dark:border-dark-border';
     text = 'Full';
   } else if (percentage <= 20) {
     colorClass = 'bg-coral-100 dark:bg-red-900/30 text-coral-800 dark:text-red-300 border border-coral-200 dark:border-red-700';

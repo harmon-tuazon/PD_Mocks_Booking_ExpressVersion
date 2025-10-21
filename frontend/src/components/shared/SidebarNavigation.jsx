@@ -110,7 +110,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
 
       {/* Sidebar - Full viewport height */}
       <div className={`
-        fixed top-0 left-0 h-screen w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg
+        fixed top-0 left-0 h-screen w-64 bg-white dark:bg-dark-sidebar border-r border-gray-200 dark:border-dark-border shadow-lg
         transform transition-transform duration-300 ease-in-out z-50
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:static lg:z-auto lg:shadow-none
@@ -130,7 +130,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
             {/* Close button - Mobile only */}
             <button
               onClick={() => setIsOpen(false)}
-              className="lg:hidden p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+              className="lg:hidden p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors duration-200"
               aria-label="Close navigation"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +141,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
 
           {/* Enhanced User Info Section */}
           {userSession && (
-            <div className="px-6 pb-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="px-6 pb-6 border-b border-gray-200 dark:border-dark-border">
               {/* Welcome Message */}
               <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
                 Welcome back!
@@ -197,7 +197,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                         transition-all duration-200 text-left
                         ${isActive
                           ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
-                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-dark-hover'
                         }
                         focus:outline-none focus:ring-2 focus:ring-primary-400 dark:focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800
                       `}
@@ -226,7 +226,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
           </nav>
 
           {/* Footer Section - More spacious */}
-          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-bg">
             {/* Dark Mode Toggle - Desktop Only */}
             <div className="hidden lg:flex justify-center mb-4">
               <DarkModeToggle />
@@ -235,7 +235,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
             {userSession && (
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-400 dark:focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 shadow-sm hover:shadow"
+                className="w-full flex items-center px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white dark:hover:bg-dark-card rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-400 dark:focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 shadow-sm hover:shadow"
               >
                 <svg className="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

@@ -499,7 +499,7 @@ const MyBookings = () => {
   // Mobile booking card component
   const MobileBookingCard = ({ booking }) => (
     <div
-      className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow"
+      className="bg-white dark:bg-dark-card p-4 rounded-lg border border-gray-200 dark:border-dark-border shadow-sm hover:shadow-md transition-shadow"
     >
       <div className="flex justify-between items-start mb-2">
         <div className="flex-1">
@@ -552,7 +552,7 @@ const MyBookings = () => {
   // Render authentication form
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-dark-bg dark:via-dark-bg dark:to-dark-card flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           {/* Header with PrepDoctors Logo */}
           <div className="text-center">
@@ -595,7 +595,7 @@ const MyBookings = () => {
                     required
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value.toUpperCase())}
-                    className="appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400 focus:border-primary-500 dark:focus:border-primary-400 focus:z-10 font-body text-base sm:text-lg transition-colors duration-200"
+                    className="appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-dark-border placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-gray-100 dark:bg-dark-card rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400 focus:border-primary-500 dark:focus:border-primary-400 focus:z-10 font-body text-base sm:text-lg transition-colors duration-200"
                     placeholder="Enter your student ID"
                     disabled={authLoading}
                   />
@@ -613,7 +613,7 @@ const MyBookings = () => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value.toLowerCase())}
-                    className="appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400 focus:border-primary-500 dark:focus:border-primary-400 focus:z-10 font-body text-base sm:text-lg transition-colors duration-200"
+                    className="appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-dark-border placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-gray-100 dark:bg-dark-card rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400 focus:border-primary-500 dark:focus:border-primary-400 focus:z-10 font-body text-base sm:text-lg transition-colors duration-200"
                     placeholder="Enter your email address"
                     disabled={authLoading}
                   />
@@ -656,7 +656,7 @@ const MyBookings = () => {
 
   // Render bookings view
   return (
-    <div className="bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 min-h-full">
+    <div className="bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-dark-bg dark:via-dark-bg dark:to-dark-card min-h-full">
       <div className="container mx-auto px-4 py-6 sm:py-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
@@ -676,15 +676,15 @@ const MyBookings = () => {
         {credits && (
           <div className="mb-6 sm:mb-8">
             <div className="max-w-md">
-              <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">
-                <div className="px-3 py-2 border-b dark:border-gray-700">
+              <div className="bg-white dark:bg-dark-card border dark:border-dark-border rounded-lg overflow-hidden shadow-sm">
+                <div className="px-3 py-2 border-b dark:border-dark-border">
                   <h3 className="font-subheading text-sm font-medium text-primary-900 dark:text-gray-100">Available Tokens</h3>
                   <p className="font-body text-xs text-primary-600 dark:text-gray-400 mt-0.5">Your current token balance</p>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-900">
+                    <thead className="bg-gray-50 dark:bg-dark-bg">
                       <tr>
                         <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Token Type
@@ -694,7 +694,7 @@ const MyBookings = () => {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
                       {examTypes.map((examType, index) => {
                         // Get credits for this exam type (specific credits only)
                         let specific = 0;
@@ -708,7 +708,7 @@ const MyBookings = () => {
                         }
 
                         return (
-                          <tr key={examType.type} className={index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'}>
+                          <tr key={examType.type} className={index % 2 === 0 ? 'bg-white dark:bg-dark-card' : 'bg-gray-50 dark:bg-dark-bg'}>
                             <td className="px-2 py-1.5 whitespace-nowrap">
                               <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
                                 {examType.type}
@@ -718,7 +718,7 @@ const MyBookings = () => {
                               <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${
                                 specific > 0
                                   ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
-                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                                  : 'bg-gray-100 dark:bg-dark-hover text-gray-800 dark:text-gray-300'
                               }`}>
                                 {specific}
                               </span>
@@ -728,7 +728,7 @@ const MyBookings = () => {
                       })}
                       {/* Add standalone Shared Mock Tokens row */}
                       {credits && credits.shared_mock_credits !== undefined && (
-                        <tr className={examTypes.length % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'}>
+                        <tr className={examTypes.length % 2 === 0 ? 'bg-white dark:bg-dark-card' : 'bg-gray-50 dark:bg-dark-bg'}>
                           <td className="px-2 py-1.5 whitespace-nowrap">
                             <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
                               Shared Mock Tokens
@@ -738,7 +738,7 @@ const MyBookings = () => {
                             <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${
                               credits.shared_mock_credits > 0
                                 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                                : 'bg-gray-100 dark:bg-dark-hover text-gray-800 dark:text-gray-300'
                             }`}>
                               {credits.shared_mock_credits}
                             </span>
@@ -749,7 +749,7 @@ const MyBookings = () => {
                   </table>
                 </div>
 
-                <div className="px-2 py-1 bg-gray-50 dark:bg-gray-900 text-xs text-gray-500 dark:text-gray-400">
+                <div className="px-2 py-1 bg-gray-50 dark:bg-dark-bg text-xs text-gray-500 dark:text-gray-400">
                   Specific tokens are for each exam type. Shared tokens can be used for SJ or CS exams.
                 </div>
               </div>
@@ -758,7 +758,7 @@ const MyBookings = () => {
         )}
 
         {/* Controls Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
+        <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border p-4 mb-6">
           <div className="flex flex-col space-y-4">
             {/* Mobile Controls */}
             <div className="flex flex-col sm:flex-row gap-4">
@@ -769,7 +769,7 @@ const MyBookings = () => {
                   className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
                     viewMode === 'list'
                       ? 'bg-primary-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-hover'
                   }`}
                 >
                   <span className="flex items-center">
@@ -785,7 +785,7 @@ const MyBookings = () => {
                   className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
                     viewMode === 'calendar'
                       ? 'bg-primary-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-hover'
                   }`}
                 >
                   <span className="flex items-center">
@@ -805,7 +805,7 @@ const MyBookings = () => {
                   className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 whitespace-nowrap ${
                     filter === 'all'
                       ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-300 dark:border-primary-600'
-                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                      : 'bg-white dark:bg-dark-hover text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-hover'
                   }`}
                 >
                   All {totalBookings > 0 && `(${totalBookings})`}
@@ -815,7 +815,7 @@ const MyBookings = () => {
                   className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 whitespace-nowrap ${
                     filter === 'upcoming'
                       ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-300 dark:border-primary-600'
-                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                      : 'bg-white dark:bg-dark-hover text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-hover'
                   }`}
                 >
                   Upcoming
@@ -825,7 +825,7 @@ const MyBookings = () => {
                   className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 whitespace-nowrap ${
                     filter === 'past'
                       ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-300 dark:border-primary-600'
-                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                      : 'bg-white dark:bg-dark-hover text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-hover'
                   }`}
                 >
                   Past
@@ -835,7 +835,7 @@ const MyBookings = () => {
                   className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 whitespace-nowrap ${
                     filter === 'cancelled'
                       ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-300 dark:border-primary-600'
-                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                      : 'bg-white dark:bg-dark-hover text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-hover'
                   }`}
                 >
                   Cancelled
@@ -851,7 +851,7 @@ const MyBookings = () => {
                 </label>
                 <select
                   id="sort-mobile"
-                  className="block w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md focus:ring-primary-500 dark:focus:ring-primary-400 focus:border-primary-500 dark:focus:border-primary-400"
+                  className="block w-full px-3 py-2 text-sm border border-gray-300 dark:border-dark-border dark:bg-dark-hover dark:text-gray-100 rounded-md focus:ring-primary-500 dark:focus:ring-primary-400 focus:border-primary-500 dark:focus:border-primary-400"
                   value={sortField ? `${sortField}_${sortDirection}` : ''}
                   onChange={(e) => {
                     const value = e.target.value;
@@ -971,13 +971,13 @@ const MyBookings = () => {
             {viewMode === 'list' ? (
               <>
                 {/* Desktop Table View */}
-                <div className="hidden md:block bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">
+                <div className="hidden md:block bg-white dark:bg-dark-card border dark:border-dark-border rounded-lg overflow-hidden shadow-sm">
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                      <thead className="bg-navy-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                      <thead className="bg-navy-50 dark:bg-dark-bg border-b border-gray-200 dark:border-dark-border">
                         <tr>
                           <th
-                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
+                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-dark-card transition-colors"
                             onClick={() => handleSort('booking_number')}
                           >
                             <div className="flex items-center">
@@ -986,7 +986,7 @@ const MyBookings = () => {
                             </div>
                           </th>
                           <th
-                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
+                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-dark-card transition-colors"
                             onClick={() => handleSort('exam_type')}
                           >
                             <div className="flex items-center">
@@ -995,7 +995,7 @@ const MyBookings = () => {
                             </div>
                           </th>
                           <th
-                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
+                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-dark-card transition-colors"
                             onClick={() => handleSort('date_time')}
                           >
                             <div className="flex items-center">
@@ -1004,7 +1004,7 @@ const MyBookings = () => {
                             </div>
                           </th>
                           <th
-                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
+                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-dark-card transition-colors"
                             onClick={() => handleSort('location')}
                           >
                             <div className="flex items-center">
@@ -1013,7 +1013,7 @@ const MyBookings = () => {
                             </div>
                           </th>
                           <th
-                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
+                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-dark-card transition-colors"
                             onClick={() => handleSort('status')}
                           >
                             <div className="flex items-center">
@@ -1026,7 +1026,7 @@ const MyBookings = () => {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
                         {(() => {
                           // Apply sorting to the display bookings
                           const sortedBookings = sortField
@@ -1034,7 +1034,7 @@ const MyBookings = () => {
                             : displayBookings;
 
                           return sortedBookings.map((booking) => (
-                          <tr key={booking.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
+                          <tr key={booking.id} className="hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors duration-200">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-primary-900 dark:text-primary-400">
                                 {formatBookingNumber(booking)}
