@@ -218,6 +218,34 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
         fullResponse: result
       });
 
+      // FIX: Check if this is an idempotent (duplicate) request
+      if (result.data?.idempotent_request === true) {
+        console.log('⚠️ Duplicate booking detected - idempotent request');
+
+        // Extract the date from the confirmation message or booking details
+        const examDate = result.data?.exam_details?.exam_date || mergedData.examDate;
+        const mockType = result.data?.exam_details?.mock_type || mergedData.mockType;
+
+        // Create a user-friendly error message for duplicate bookings
+        const duplicateError = {
+          code: 'DUPLICATE_BOOKING',
+          message: `You already have a ${mockType} booking for this date (${new Date(examDate).toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+          })}). Please check your existing bookings or select a different session.`,
+          isUserError: true
+        };
+
+        console.log('📋 Setting duplicate booking error:', duplicateError);
+        setError(duplicateError);
+        setStep('verify'); // Go back to verify step to show the error
+        setLoading(false);
+
+        return false; // Indicate booking was not successful (duplicate)
+      }
+
       // Enhanced validation with detailed logging
       if (!result.data?.booking_id) {
         console.error('🚨 API Response Validation Failed:', {
@@ -345,6 +373,9 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
 
       // Special handling for insufficient credits - go back to verify step
       if (errorCode === 'INSUFFICIENT_CREDITS') {
+        setStep('verify');
+      } else if (errorCode === 'DUPLICATE_BOOKING') {
+        // FIX: Handle duplicate booking errors properly
         setStep('verify');
       } else {
         setStep('details');
