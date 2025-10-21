@@ -150,10 +150,10 @@ const BookingForm = () => {
 
   if (!userSession) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mb-4"></div>
-          <p className="text-body font-body text-gray-700">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400 mb-4"></div>
+          <p className="text-body font-body text-gray-700 dark:text-gray-300">Loading...</p>
         </div>
       </div>
     );
@@ -178,7 +178,7 @@ const BookingForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <SessionTimer
         expiryMinutes={15}
         onExpire={handleSessionExpire}
@@ -190,7 +190,7 @@ const BookingForm = () => {
         <div className="mb-8">
           <button
             onClick={() => navigate(-1)}
-            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
+            className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4"
           >
             <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
@@ -199,7 +199,7 @@ const BookingForm = () => {
           </button>
 
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-h2 font-headline font-bold text-navy-900">
+            <h1 className="text-h2 font-headline font-bold text-navy-900 dark:text-gray-100">
               Complete Your Booking
             </h1>
             <Logo
@@ -216,9 +216,9 @@ const BookingForm = () => {
             <LoggedInUserCard userSession={userSession} />
 
             {/* Exam Details Card */}
-            <div className="card-brand-primary">
-              <h2 className="text-lg font-headline font-semibold text-primary-900 mb-2">Selected Exam</h2>
-              <div className="space-brand-small text-sm font-body text-primary-700">
+            <div className="card-brand-primary dark:bg-gray-800 dark:border-gray-700">
+              <h2 className="text-lg font-headline font-semibold text-primary-900 dark:text-primary-400 mb-2">Selected Exam</h2>
+              <div className="space-brand-small text-sm font-body text-primary-700 dark:text-gray-300">
                 <div className="form-field-even">
                   <span className="font-medium">Type:</span>
                   <span>{mockType}</span>
@@ -248,10 +248,10 @@ const BookingForm = () => {
 
         {/* Token validation and booking flow */}
         {step === 'verify' && (
-          <div className="card-brand animate-fade-in">
+          <div className="card-brand dark:bg-gray-800 dark:border-gray-700 animate-fade-in">
             <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mb-4"></div>
-              <p className="text-body font-body text-gray-700">Verifying your tokens...</p>
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400 mb-4"></div>
+              <p className="text-body font-body text-gray-700 dark:text-gray-300">Verifying your tokens...</p>
             </div>
           </div>
         )}
@@ -268,8 +268,8 @@ const BookingForm = () => {
             />
 
             {/* Booking Form */}
-            <div className="card-brand">
-              <h2 className="text-xl font-headline font-semibold text-navy-900 mb-6">
+            <div className="card-brand dark:bg-gray-800 dark:border-gray-700">
+              <h2 className="text-xl font-headline font-semibold text-navy-900 dark:text-gray-100 mb-6">
                 Complete Your Booking
               </h2>
 
@@ -277,7 +277,7 @@ const BookingForm = () => {
                 {/* Conditional Field: Dominant Hand for Clinical Skills */}
                 {isClinicalSkills && (
                   <div className="form-field">
-                    <label className="text-sm font-subheading font-medium text-navy-700 mb-1 block">
+                    <label className="text-sm font-subheading font-medium text-navy-700 dark:text-gray-300 mb-1 block">
                       Which is your dominant hand? *
                     </label>
                     <div className="flex flex-col space-y-3">
@@ -288,10 +288,10 @@ const BookingForm = () => {
                           value="true"
                           checked={dominantHand === true}
                           onChange={() => setDominantHand(true)}
-                          className="form-radio h-4 w-4 text-primary-600 focus-brand"
+                          className="form-radio h-4 w-4 text-primary-600 dark:text-primary-400 focus-brand dark:bg-gray-700 dark:border-gray-600"
                           required
                         />
-                        <span className="ml-2 text-body font-body text-gray-800">Right-handed</span>
+                        <span className="ml-2 text-body font-body text-gray-800 dark:text-gray-200">Right-handed</span>
                       </label>
                       <label className="inline-flex items-center">
                         <input
@@ -300,10 +300,10 @@ const BookingForm = () => {
                           value="false"
                           checked={dominantHand === false}
                           onChange={() => setDominantHand(false)}
-                          className="form-radio h-4 w-4 text-primary-600 focus-brand"
+                          className="form-radio h-4 w-4 text-primary-600 dark:text-primary-400 focus-brand dark:bg-gray-700 dark:border-gray-600"
                           required
                         />
-                        <span className="ml-2 text-body font-body text-gray-800">Left-handed</span>
+                        <span className="ml-2 text-body font-body text-gray-800 dark:text-gray-200">Left-handed</span>
                       </label>
                     </div>
                   </div>
@@ -351,9 +351,9 @@ const BookingForm = () => {
 
         {/* Confirming State */}
         {step === 'confirming' && (
-          <div className="card-brand text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mb-4"></div>
-            <p className="text-body font-body text-gray-700">Processing your booking...</p>
+          <div className="card-brand dark:bg-gray-800 dark:border-gray-700 text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400 mb-4"></div>
+            <p className="text-body font-body text-gray-700 dark:text-gray-300">Processing your booking...</p>
           </div>
         )}
       </div>

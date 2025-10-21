@@ -405,27 +405,27 @@ const ExistingBookingsCard = ({
   // Loading skeleton
   const LoadingSkeleton = () => (
     <div className="animate-pulse">
-      <div className="px-4 py-3 border-b">
+      <div className="px-4 py-3 border-b dark:border-gray-700">
         <div className="flex justify-between items-center">
-          <div className="h-4 bg-gray-200 rounded w-24"></div>
-          <div className="h-5 bg-gray-200 rounded-full w-6"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+          <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-full w-6"></div>
         </div>
-        <div className="h-3 bg-gray-100 rounded w-32 mt-1"></div>
+        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-32 mt-1"></div>
       </div>
       <div className="p-4 space-y-3">
         {[1, 2, 3].map((i) => (
           <div key={i} className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="h-6 w-8 bg-gray-200 rounded"></div>
-              <div className="h-4 bg-gray-200 rounded w-16"></div>
-              <div className="h-4 bg-gray-100 rounded w-20"></div>
+              <div className="h-6 w-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+              <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-20"></div>
             </div>
-            <div className="h-2 w-2 bg-gray-200 rounded-full"></div>
+            <div className="h-2 w-2 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
           </div>
         ))}
       </div>
-      <div className="px-4 py-2 border-t bg-gray-50">
-        <div className="h-4 bg-gray-200 rounded w-28 mx-auto"></div>
+      <div className="px-4 py-2 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-28 mx-auto"></div>
       </div>
     </div>
   );
@@ -433,12 +433,12 @@ const ExistingBookingsCard = ({
   // Empty state
   const EmptyState = () => (
     <div className="p-8 text-center">
-      <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
           d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
-      <p className="text-sm text-gray-500 mb-4">No upcoming bookings</p>
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">No upcoming bookings</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400">
         No upcoming exams scheduled
       </p>
     </div>
@@ -447,14 +447,14 @@ const ExistingBookingsCard = ({
   // Error state
   const ErrorState = () => (
     <div className="p-6 text-center">
-      <svg className="mx-auto h-10 w-10 text-error-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="mx-auto h-10 w-10 text-error-400 dark:text-red-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
           d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
-      <p className="text-sm text-gray-700 mb-3">Unable to load bookings</p>
+      <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">Unable to load bookings</p>
       <button
         onClick={() => fetchBookings(true)}
-        className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+        className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
       >
         Try again
       </button>
@@ -463,7 +463,7 @@ const ExistingBookingsCard = ({
 
   // Main render
   return (
-    <div className={`bg-white border rounded-md overflow-hidden shadow-sm existing-bookings-card ${className}`}>
+    <div className={`bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-md overflow-hidden shadow-sm existing-bookings-card ${className}`}>
       {loading ? (
         <LoadingSkeleton />
       ) : error ? (
@@ -471,19 +471,19 @@ const ExistingBookingsCard = ({
       ) : (
         <>
           {/* Card Header */}
-          <div className="px-4 py-3 border-b">
+          <div className="px-4 py-3 border-b dark:border-gray-700">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-medium text-gray-900">My Upcoming Mocks</h3>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">My Upcoming Mocks</h3>
                 {/* Refresh button - subtle, only shown when not loading */}
                 {!loading && (
                   <button
                     onClick={() => fetchBookings(true)}
-                    className="p-1 rounded hover:bg-gray-100 transition-colors duration-200"
+                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
                     title="Refresh bookings"
                     aria-label="Refresh bookings"
                   >
-                    <svg className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                         d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
@@ -491,12 +491,12 @@ const ExistingBookingsCard = ({
                 )}
               </div>
               {upcomingCount > 0 && (
-                <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
+                <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 dark:bg-primary-500 rounded-full">
                   {upcomingCount}
                 </span>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Your upcoming mock exams</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Your upcoming mock exams</p>
           </div>
 
           {/* Card Body */}
@@ -509,22 +509,22 @@ const ExistingBookingsCard = ({
                   {bookings.slice(0, maxItems).map((booking) => (
                     <div
                       key={booking.id}
-                      className="booking-item flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-200"
+                      className="booking-item flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200"
                       onClick={() => navigate('/my-bookings')}
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         {/* Exam Type Badge */}
-                        <span className="exam-badge inline-flex items-center justify-center px-2 py-1 text-xs font-bold text-white bg-primary-600 rounded">
+                        <span className="exam-badge inline-flex items-center justify-center px-2 py-1 text-xs font-bold text-white bg-primary-600 dark:bg-primary-500 rounded">
                           {getExamTypeAbbr(booking.mock_exam?.mock_type || booking.mock_type)}
                         </span>
 
                         {/* Date */}
-                        <span className="booking-date text-sm font-medium text-gray-900 whitespace-nowrap">
+                        <span className="booking-date text-sm font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
                           {formatShortDate(booking.mock_exam?.exam_date || booking.exam_date)}
                         </span>
 
                         {/* Location */}
-                        <span className="booking-location text-sm text-gray-500 truncate">
+                        <span className="booking-location text-sm text-gray-500 dark:text-gray-400 truncate">
                           {getAbbreviatedLocation(booking.mock_exam?.location || booking.location)}
                         </span>
                       </div>
@@ -540,8 +540,8 @@ const ExistingBookingsCard = ({
 
                 {/* Show remaining count if there are more bookings */}
                 {bookings.length > maxItems && (
-                  <div className="mt-3 pt-3 border-t">
-                    <p className="text-xs text-gray-500 text-center">
+                  <div className="mt-3 pt-3 border-t dark:border-gray-700">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
                       +{bookings.length - maxItems} more booking{bookings.length - maxItems > 1 ? 's' : ''}
                     </p>
                   </div>
@@ -549,10 +549,10 @@ const ExistingBookingsCard = ({
               </div>
 
               {/* Card Footer */}
-              <div className="px-4 py-2 bg-gray-50 border-t">
+              <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-t dark:border-gray-700">
                 <button
                   onClick={handleViewAll}
-                  className="w-full text-center text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors duration-200"
+                  className="w-full text-center text-xs font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors duration-200"
                 >
                   View All Bookings {totalBookings > 0 && `(${totalBookings})`} →
                 </button>

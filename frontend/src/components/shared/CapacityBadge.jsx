@@ -7,13 +7,13 @@ const CapacityBadge = ({ availableSlots, capacity, size = 'normal' }) => {
   let text = '';
 
   if (availableSlots === 0) {
-    colorClass = 'bg-cool-grey text-gray-800 border border-gray-300';
+    colorClass = 'bg-cool-grey dark:bg-gray-700 text-gray-800 dark:text-gray-300 border border-gray-300 dark:border-gray-600';
     text = 'Full';
   } else if (percentage <= 20) {
-    colorClass = 'bg-coral-100 text-coral-800 border border-coral-200';
+    colorClass = 'bg-coral-100 dark:bg-red-900/30 text-coral-800 dark:text-red-300 border border-coral-200 dark:border-red-700';
     text = availableSlots === 1 ? '1 slot left' : `${availableSlots} slots left`;
   } else {
-    colorClass = 'bg-teal-100 text-teal-800 border border-teal-200';
+    colorClass = 'bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-700';
     text = `${availableSlots} slots available`;
   }
 

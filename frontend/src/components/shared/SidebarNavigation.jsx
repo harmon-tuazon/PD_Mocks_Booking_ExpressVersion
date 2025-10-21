@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getUserSession, clearUserSession } from '../../utils/auth';
 import { ResponsiveLogo } from './Logo';
+import DarkModeToggle from '../DarkModeToggle';
 
 /**
  * Sidebar Navigation Component
@@ -102,14 +103,14 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
       {/* Mobile Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 z-40 lg:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       {/* Sidebar - Full viewport height */}
       <div className={`
-        fixed top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 shadow-lg
+        fixed top-0 left-0 h-screen w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg
         transform transition-transform duration-300 ease-in-out z-50
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:static lg:z-auto lg:shadow-none
@@ -129,7 +130,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
             {/* Close button - Mobile only */}
             <button
               onClick={() => setIsOpen(false)}
-              className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors duration-200"
+              className="lg:hidden p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
               aria-label="Close navigation"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,40 +141,40 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
 
           {/* Enhanced User Info Section */}
           {userSession && (
-            <div className="px-6 pb-6 border-b border-gray-200">
+            <div className="px-6 pb-6 border-b border-gray-200 dark:border-gray-700">
               {/* Welcome Message */}
-              <div className="text-sm font-semibold text-gray-900 mb-3">
+              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
                 Welcome back!
               </div>
 
               {/* User Details Card */}
-              <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg p-4 space-y-2">
+              <div className="bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-lg p-4 space-y-2">
                 {/* Student Name */}
                 <div className="flex items-center">
-                  <svg className="w-4 h-4 mr-2 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
-                  <span className="text-sm font-medium text-primary-900 truncate">
+                  <span className="text-sm font-medium text-primary-900 dark:text-primary-200 truncate">
                     {userSession.studentName || 'Student'}
                   </span>
                 </div>
 
                 {/* Student ID */}
                 <div className="flex items-center">
-                  <svg className="w-4 h-4 mr-2 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
                   </svg>
-                  <span className="text-xs font-medium text-primary-700 truncate">
+                  <span className="text-xs font-medium text-primary-700 dark:text-primary-300 truncate">
                     ID: {userSession.studentId}
                   </span>
                 </div>
 
                 {/* Email */}
                 <div className="flex items-center">
-                  <svg className="w-4 h-4 mr-2 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                  <span className="text-xs text-primary-700 truncate" title={userSession.email}>
+                  <span className="text-xs text-primary-700 dark:text-primary-300 truncate" title={userSession.email}>
                     {userSession.email}
                   </span>
                 </div>
@@ -195,15 +196,15 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                         w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg
                         transition-all duration-200 text-left
                         ${isActive
-                          ? 'bg-primary-100 text-primary-700 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                          ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700'
                         }
-                        focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2
+                        focus:outline-none focus:ring-2 focus:ring-primary-400 dark:focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800
                       `}
                     >
                       <span className={`
                         mr-3 flex-shrink-0
-                        ${isActive ? 'text-primary-600' : 'text-gray-400'}
+                        ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'}
                       `}>
                         {item.icon}
                       </span>
@@ -212,7 +213,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                       {/* Active indicator */}
                       {isActive && (
                         <span className="ml-auto">
-                          <svg className="w-4 h-4 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
+                          <svg className="w-4 h-4 text-primary-600 dark:text-primary-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
                         </span>
@@ -225,13 +226,18 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
           </nav>
 
           {/* Footer Section - More spacious */}
-          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+            {/* Dark Mode Toggle - Desktop Only */}
+            <div className="hidden lg:flex justify-center mb-4">
+              <DarkModeToggle />
+            </div>
+
             {userSession && (
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 shadow-sm hover:shadow"
+                className="w-full flex items-center px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-400 dark:focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 shadow-sm hover:shadow"
               >
-                <svg className="w-5 h-5 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
                 Sign out
@@ -240,10 +246,10 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
 
             {/* Version and Support Info */}
             <div className="mt-4 space-y-1">
-              <div className="text-xs text-gray-500 text-center">
+              <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
                 PrepDoctors v1.0.0
               </div>
-              <div className="text-xs text-gray-400 text-center">
+              <div className="text-xs text-gray-400 dark:text-gray-500 text-center">
                 © 2025 PrepDoctors
               </div>
             </div>

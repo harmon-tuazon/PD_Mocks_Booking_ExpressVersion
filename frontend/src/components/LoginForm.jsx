@@ -54,7 +54,7 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         {/* Header with PrepDoctors Logo */}
         <div className="text-center">
@@ -65,34 +65,34 @@ const LoginForm = () => {
               priority={true}
             />
           </div>
-          <h1 className="font-headline text-h2 font-bold text-primary-900 mb-2">
+          <h1 className="font-headline text-h2 font-bold text-primary-900 dark:text-gray-100 mb-2">
             Prep Doctors Booking
           </h1>
-          <p className="font-body text-lg text-primary-700">
+          <p className="font-body text-lg text-primary-700 dark:text-gray-300">
             Enter your details to access the booking system.
           </p>
         </div>
 
         {/* Error Display */}
         {error && (
-          <div className="bg-error-50 border border-error-200 rounded-lg p-4">
+          <div className="bg-error-50 dark:bg-red-900/20 border border-error-200 dark:border-red-800 rounded-lg p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-error-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-5 w-5 text-error-400 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="font-subheading text-sm font-medium text-error-800">
+                <h3 className="font-subheading text-sm font-medium text-error-800 dark:text-red-200">
                   Authentication Error
                 </h3>
-                <div className="mt-2 font-body text-sm text-error-700">
+                <div className="mt-2 font-body text-sm text-error-700 dark:text-red-300">
                   {error}
                 </div>
               </div>
               <button
                 onClick={clearError}
-                className="ml-auto flex-shrink-0 text-error-400 hover:text-error-500"
+                className="ml-auto flex-shrink-0 text-error-400 hover:text-error-500 dark:text-red-400 dark:hover:text-red-300"
               >
                 <span className="sr-only">Close</span>
                 <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -104,10 +104,10 @@ const LoginForm = () => {
         )}
 
         {/* Login Form */}
-        <div className="card">
+        <div className="card dark:bg-gray-800 dark:border-gray-700">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="studentId" className="label">
+              <label htmlFor="studentId" className="label dark:text-gray-200">
                 Student ID
               </label>
               <input
@@ -115,7 +115,7 @@ const LoginForm = () => {
                 id="studentId"
                 value={studentId}
                 onChange={(e) => setStudentId(e.target.value.toUpperCase())}
-                className="input"
+                className="input dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-primary-400"
                 placeholder="e.g., STU123456"
                 required
                 disabled={loading}
@@ -123,7 +123,7 @@ const LoginForm = () => {
             </div>
 
             <div>
-              <label htmlFor="email" className="label">
+              <label htmlFor="email" className="label dark:text-gray-200">
                 Email Address
               </label>
               <input
@@ -131,7 +131,7 @@ const LoginForm = () => {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="input"
+                className="input dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-primary-400"
                 placeholder="john.doe@example.com"
                 required
                 disabled={loading}
@@ -141,7 +141,7 @@ const LoginForm = () => {
             <button
               type="submit"
               disabled={loading || !studentId || !email}
-              className="btn-primary w-full"
+              className="btn-primary w-full dark:bg-primary-600 dark:hover:bg-primary-700"
             >
               {loading ? (
                 <>
@@ -159,9 +159,9 @@ const LoginForm = () => {
         </div>
 
         {/* Footer */}
-        <div className="text-center font-body text-sm text-primary-600">
+        <div className="text-center font-body text-sm text-primary-600 dark:text-gray-400">
           <p>
-            Need help? Contact support at <span className="font-medium text-primary-700">info@prepdoctors.com</span> if you're having trouble accessing your account.
+            Need help? Contact support at <span className="font-medium text-primary-700 dark:text-primary-400">info@prepdoctors.com</span> if you're having trouble accessing your account.
           </p>
         </div>
       </div>

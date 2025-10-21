@@ -208,11 +208,11 @@ const MockDiscussions = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container-app py-12">
           <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-            <p className="mt-4 text-body font-body text-gray-700">Loading available mock discussion sessions...</p>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400"></div>
+            <p className="mt-4 text-body font-body text-gray-700 dark:text-gray-300">Loading available mock discussion sessions...</p>
           </div>
         </div>
       </div>
@@ -221,16 +221,16 @@ const MockDiscussions = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container-app py-12">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-coral-100 rounded-full mb-4 border-2 border-coral-200">
-              <svg className="w-8 h-8 text-coral-600" fill="currentColor" viewBox="0 0 20 20">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-coral-100 dark:bg-coral-900/30 rounded-full mb-4 border-2 border-coral-200 dark:border-coral-700">
+              <svg className="w-8 h-8 text-coral-600 dark:text-coral-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
             </div>
-            <h2 className="text-h3 font-headline font-bold text-navy-900 mb-2">Error Loading Mock Discussions</h2>
-            <p className="text-body font-body text-gray-700 mb-6">{error}</p>
+            <h2 className="text-h3 font-headline font-bold text-navy-900 dark:text-gray-100 mb-2">Error Loading Mock Discussions</h2>
+            <p className="text-body font-body text-gray-700 dark:text-gray-300 mb-6">{error}</p>
             <button onClick={fetchDiscussions} className="btn-brand-primary">
               Try Again
             </button>
@@ -251,13 +251,13 @@ const MockDiscussions = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container-app py-12">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => navigate('/book/exam-types')}
-            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
+            className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4"
           >
             <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
@@ -266,7 +266,7 @@ const MockDiscussions = () => {
           </button>
 
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-h2 font-headline font-bold text-navy-900">
+            <h1 className="text-h2 font-headline font-bold text-navy-900 dark:text-gray-100">
               Mock Discussion Sessions
             </h1>
             <Logo
@@ -276,7 +276,7 @@ const MockDiscussions = () => {
               aria-label="PrepDoctors Logo"
             />
           </div>
-          <p className="text-body font-body text-gray-800">
+          <p className="text-body font-body text-gray-800 dark:text-gray-300">
             {viewMode === 'calendar'
               ? 'Select a date from the calendar to view available discussion sessions'
               : 'Select an available discussion session to book your slot'
@@ -308,7 +308,7 @@ const MockDiscussions = () => {
           </div>
           <div className="flex flex-col items-end gap-2">
             {/* Session Count - Above view buttons */}
-            <p className="text-sm font-body text-gray-600">
+            <p className="text-sm font-body text-gray-600 dark:text-gray-400">
               Found {filteredDiscussions.length} session{filteredDiscussions.length !== 1 ? 's' : ''}
               {selectedLocation !== 'all' && ` at ${selectedLocation}`}
             </p>
@@ -318,7 +318,7 @@ const MockDiscussions = () => {
                 className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
                   viewMode === 'list'
                     ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
                 <span className="flex items-center">
@@ -334,7 +334,7 @@ const MockDiscussions = () => {
                 className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
                   viewMode === 'calendar'
                     ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
                 <span className="flex items-center">
@@ -375,12 +375,12 @@ const MockDiscussions = () => {
           <>
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
-              <div className="card-brand p-0 overflow-hidden">
+              <div className="card-brand dark:bg-gray-800 dark:border-gray-700 p-0 overflow-hidden">
                 <table className="w-full">
-                  <thead className="bg-navy-50 border-b border-gray-200">
+                  <thead className="bg-navy-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                     <tr>
                       <th
-                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 uppercase tracking-wider cursor-pointer hover:bg-navy-100 transition-colors"
+                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
                         onClick={() => handleSort('date')}
                       >
                         <div className="flex items-center">
@@ -391,7 +391,7 @@ const MockDiscussions = () => {
                         </div>
                       </th>
                       <th
-                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 uppercase tracking-wider cursor-pointer hover:bg-navy-100 transition-colors"
+                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
                         onClick={() => handleSort('time')}
                       >
                         <div className="flex items-center">
@@ -402,7 +402,7 @@ const MockDiscussions = () => {
                         </div>
                       </th>
                       <th
-                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 uppercase tracking-wider cursor-pointer hover:bg-navy-100 transition-colors"
+                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
                         onClick={() => handleSort('location')}
                       >
                         <div className="flex items-center">
@@ -413,7 +413,7 @@ const MockDiscussions = () => {
                         </div>
                       </th>
                       <th
-                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 uppercase tracking-wider cursor-pointer hover:bg-navy-100 transition-colors"
+                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
                         onClick={() => handleSort('capacity')}
                       >
                         <div className="flex items-center">
@@ -423,21 +423,21 @@ const MockDiscussions = () => {
                           )}
                         </div>
                       </th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold text-navy-900 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-center text-xs font-semibold text-navy-900 dark:text-gray-100 uppercase tracking-wider">
                         Action
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {getSortedDiscussions().map((discussion) => (
                       <tr
                         key={discussion.mock_exam_id}
-                        className={`${discussion.available_slots > 0 ? 'hover:bg-gray-50' : 'bg-gray-50 opacity-75'} transition-colors`}
+                        className={`${discussion.available_slots > 0 ? 'hover:bg-gray-50 dark:hover:bg-gray-700' : 'bg-gray-50 dark:bg-gray-700/50 opacity-75'} transition-colors`}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <CalendarIcon />
-                            <span className="ml-2 text-sm font-medium text-gray-900">
+                            <span className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">
                               {formatDate(discussion.exam_date)}
                             </span>
                           </div>
@@ -445,7 +445,7 @@ const MockDiscussions = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <ClockIcon />
-                            <span className="ml-2 text-sm text-gray-700">
+                            <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
                               {formatTimeRange(discussion)}
                             </span>
                           </div>
@@ -453,7 +453,7 @@ const MockDiscussions = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <LocationIcon />
-                            <span className="ml-2 text-sm text-gray-700">
+                            <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
                               {discussion.location}
                             </span>
                           </div>
@@ -464,7 +464,7 @@ const MockDiscussions = () => {
                               availableSlots={discussion.available_slots}
                               capacity={discussion.capacity}
                             />
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
                               {discussion.available_slots} of {discussion.capacity} slots
                             </span>
                           </div>
@@ -494,12 +494,12 @@ const MockDiscussions = () => {
               {getSortedDiscussions().map((discussion) => (
                 <div
                   key={discussion.mock_exam_id}
-                  className={`card-brand ${discussion.available_slots > 0 && mockDiscussionTokens > 0 ? 'hover:shadow-lg hover:border-primary-300' : 'opacity-75'} transition-all duration-200`}
+                  className={`card-brand dark:bg-gray-800 dark:border-gray-700 ${discussion.available_slots > 0 && mockDiscussionTokens > 0 ? 'hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-600' : 'opacity-75'} transition-all duration-200`}
                 >
                   <div className="space-y-3">
                     {/* Date and Capacity Badge */}
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-headline font-semibold text-navy-800">
+                      <h3 className="text-lg font-headline font-semibold text-navy-800 dark:text-gray-100">
                         {formatDate(discussion.exam_date)}
                       </h3>
                       <CapacityBadge
@@ -509,7 +509,7 @@ const MockDiscussions = () => {
                     </div>
 
                     {/* Time and Location */}
-                    <div className="space-y-2 text-sm font-body text-gray-700">
+                    <div className="space-y-2 text-sm font-body text-gray-700 dark:text-gray-300">
                       <div className="flex items-center gap-2">
                         <ClockIcon />
                         <span>{formatTimeRange(discussion)}</span>
@@ -518,7 +518,7 @@ const MockDiscussions = () => {
                         <LocationIcon />
                         <span>{discussion.location}</span>
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
                         {discussion.available_slots} of {discussion.capacity} slots available
                       </div>
                     </div>

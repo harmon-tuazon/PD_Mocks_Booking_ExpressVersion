@@ -211,11 +211,11 @@ const ExamSessionsList = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container-app py-12">
           <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-            <p className="mt-4 text-body font-body text-gray-700">Loading available exam sessions...</p>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400"></div>
+            <p className="mt-4 text-body font-body text-gray-700 dark:text-gray-300">Loading available exam sessions...</p>
           </div>
         </div>
       </div>
@@ -224,17 +224,17 @@ const ExamSessionsList = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container-app py-12">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-coral-100 rounded-full mb-4 border-2 border-coral-200">
-              <svg className="w-8 h-8 text-coral-600" fill="currentColor" viewBox="0 0 20 20">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-coral-100 dark:bg-red-900/20 rounded-full mb-4 border-2 border-coral-200 dark:border-red-800">
+              <svg className="w-8 h-8 text-coral-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
             </div>
-            <h2 className="text-h3 font-headline font-bold text-navy-900 mb-2">Error Loading Exams</h2>
-            <p className="text-body font-body text-gray-700 mb-6">{error}</p>
-            <button onClick={fetchExams} className="btn-brand-primary">
+            <h2 className="text-h3 font-headline font-bold text-navy-900 dark:text-gray-100 mb-2">Error Loading Exams</h2>
+            <p className="text-body font-body text-gray-700 dark:text-gray-300 mb-6">{error}</p>
+            <button onClick={fetchExams} className="btn-brand-primary dark:bg-primary-600 dark:hover:bg-primary-700">
               Try Again
             </button>
           </div>
@@ -244,13 +244,13 @@ const ExamSessionsList = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container-app py-12">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => navigate('/book/exam-types')}
-            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
+            className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 mb-4"
           >
             <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
@@ -259,7 +259,7 @@ const ExamSessionsList = () => {
           </button>
 
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-h2 font-headline font-bold text-navy-900">
+            <h1 className="text-h2 font-headline font-bold text-navy-900 dark:text-gray-100">
               {mockType} Mock Exams
             </h1>
             <Logo
@@ -269,7 +269,7 @@ const ExamSessionsList = () => {
               aria-label="PrepDoctors Logo"
             />
           </div>
-          <p className="text-body font-body text-gray-800">
+          <p className="text-body font-body text-gray-800 dark:text-gray-300">
             {viewMode === 'calendar'
               ? 'Select a date from the calendar to view available sessions'
               : 'Select an available exam session to book your slot'
@@ -301,7 +301,7 @@ const ExamSessionsList = () => {
           </div>
           <div className="flex flex-col items-end gap-2">
             {/* Session Count - Above view buttons */}
-            <p className="text-sm font-body text-gray-600">
+            <p className="text-sm font-body text-gray-600 dark:text-gray-400">
               Found {filteredExams.length} session{filteredExams.length !== 1 ? 's' : ''}
               {selectedLocation !== 'all' && ` at ${selectedLocation}`}
             </p>
@@ -310,8 +310,8 @@ const ExamSessionsList = () => {
               onClick={() => setViewMode('list')}
               className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
                 viewMode === 'list'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-primary-600 text-white dark:bg-primary-500'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               <span className="flex items-center">
@@ -326,8 +326,8 @@ const ExamSessionsList = () => {
               onClick={() => setViewMode('calendar')}
               className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
                 viewMode === 'calendar'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-primary-600 text-white dark:bg-primary-500'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               <span className="flex items-center">
@@ -345,21 +345,21 @@ const ExamSessionsList = () => {
         {/* Exam Sessions */}
         {exams.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-body font-body text-gray-600">No upcoming exam sessions available for {mockType} at this time.</p>
-            <p className="text-body font-body text-gray-600 mt-2">All current sessions may be in the past or fully booked. Please check back later or select a different exam type.</p>
+            <p className="text-body font-body text-gray-600 dark:text-gray-400">No upcoming exam sessions available for {mockType} at this time.</p>
+            <p className="text-body font-body text-gray-600 dark:text-gray-400 mt-2">All current sessions may be in the past or fully booked. Please check back later or select a different exam type.</p>
           </div>
         ) : filteredExams.length === 0 ? (
           <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
+              <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
               </svg>
             </div>
-            <p className="text-body font-body text-gray-700 mb-2">No sessions available at {selectedLocation === 'all' ? 'selected locations' : selectedLocation}</p>
-            <p className="text-small font-body text-gray-600 mb-4">Try selecting a different location to see available sessions.</p>
+            <p className="text-body font-body text-gray-700 dark:text-gray-300 mb-2">No sessions available at {selectedLocation === 'all' ? 'selected locations' : selectedLocation}</p>
+            <p className="text-small font-body text-gray-600 dark:text-gray-400 mb-4">Try selecting a different location to see available sessions.</p>
             <button
               onClick={() => setSelectedLocation('all')}
-              className="btn-primary"
+              className="btn-primary dark:bg-primary-600 dark:hover:bg-primary-700"
             >
               View All Locations
             </button>
@@ -368,12 +368,12 @@ const ExamSessionsList = () => {
           <>
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
-              <div className="card-brand p-0 overflow-hidden">
+              <div className="card-brand dark:bg-gray-800 dark:border-gray-700 p-0 overflow-hidden">
                 <table className="w-full">
-                  <thead className="bg-navy-50 border-b border-gray-200">
+                  <thead className="bg-navy-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                     <tr>
                       <th
-                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 uppercase tracking-wider cursor-pointer hover:bg-navy-100 transition-colors"
+                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
                         onClick={() => handleSort('date')}
                       >
                         <div className="flex items-center">
@@ -384,7 +384,7 @@ const ExamSessionsList = () => {
                         </div>
                       </th>
                       <th
-                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 uppercase tracking-wider cursor-pointer hover:bg-navy-100 transition-colors"
+                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
                         onClick={() => handleSort('time')}
                       >
                         <div className="flex items-center">
@@ -395,7 +395,7 @@ const ExamSessionsList = () => {
                         </div>
                       </th>
                       <th
-                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 uppercase tracking-wider cursor-pointer hover:bg-navy-100 transition-colors"
+                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
                         onClick={() => handleSort('location')}
                       >
                         <div className="flex items-center">
@@ -406,7 +406,7 @@ const ExamSessionsList = () => {
                         </div>
                       </th>
                       <th
-                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 uppercase tracking-wider cursor-pointer hover:bg-navy-100 transition-colors"
+                        className="px-6 py-4 text-left text-xs font-semibold text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
                         onClick={() => handleSort('capacity')}
                       >
                         <div className="flex items-center">
@@ -416,21 +416,21 @@ const ExamSessionsList = () => {
                           )}
                         </div>
                       </th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold text-navy-900 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-center text-xs font-semibold text-navy-900 dark:text-gray-100 uppercase tracking-wider">
                         Action
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {getSortedExams().map((exam, index) => (
                       <tr
                         key={exam.mock_exam_id}
-                        className={`${exam.available_slots > 0 ? 'hover:bg-gray-50' : 'bg-gray-50 opacity-75'} transition-colors`}
+                        className={`${exam.available_slots > 0 ? 'hover:bg-gray-50 dark:hover:bg-gray-700' : 'bg-gray-50 dark:bg-gray-900/50 opacity-75'} transition-colors`}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <CalendarIcon />
-                            <span className="ml-2 text-sm font-medium text-gray-900">
+                            <span className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">
                               {formatDate(exam.exam_date)}
                             </span>
                           </div>
@@ -438,7 +438,7 @@ const ExamSessionsList = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <ClockIcon />
-                            <span className="ml-2 text-sm text-gray-700">
+                            <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
                               {formatTimeRange(exam)}
                             </span>
                           </div>
@@ -446,7 +446,7 @@ const ExamSessionsList = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <LocationIcon />
-                            <span className="ml-2 text-sm text-gray-700">
+                            <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
                               {exam.location}
                             </span>
                           </div>
@@ -457,7 +457,7 @@ const ExamSessionsList = () => {
                               availableSlots={exam.available_slots}
                               capacity={exam.capacity}
                             />
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
                               {exam.available_slots} of {exam.capacity} slots
                             </span>
                           </div>
@@ -467,8 +467,8 @@ const ExamSessionsList = () => {
                             onClick={() => handleSelectExam(exam)}
                             className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                               exam.available_slots > 0
-                                ? 'bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                ? 'bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-800'
+                                : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                             }`}
                             disabled={exam.available_slots === 0}
                           >
@@ -487,12 +487,12 @@ const ExamSessionsList = () => {
               {getSortedExams().map((exam) => (
                 <div
                   key={exam.mock_exam_id}
-                  className={`card-brand ${exam.available_slots > 0 ? 'hover:shadow-lg hover:border-primary-300' : 'opacity-75'} transition-all duration-200`}
+                  className={`card-brand dark:bg-gray-800 dark:border-gray-700 ${exam.available_slots > 0 ? 'hover:shadow-lg hover:border-primary-300 dark:hover:border-gray-600' : 'opacity-75'} transition-all duration-200`}
                 >
                   <div className="space-y-3">
                     {/* Date and Capacity Badge */}
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-headline font-semibold text-navy-800">
+                      <h3 className="text-lg font-headline font-semibold text-navy-800 dark:text-gray-100">
                         {formatDate(exam.exam_date)}
                       </h3>
                       <CapacityBadge
@@ -502,7 +502,7 @@ const ExamSessionsList = () => {
                     </div>
 
                     {/* Time and Location */}
-                    <div className="space-y-2 text-sm font-body text-gray-700">
+                    <div className="space-y-2 text-sm font-body text-gray-700 dark:text-gray-300">
                       <div className="flex items-center gap-2">
                         <ClockIcon />
                         <span>{formatTimeRange(exam)}</span>
@@ -511,7 +511,7 @@ const ExamSessionsList = () => {
                         <LocationIcon />
                         <span>{exam.location}</span>
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
                         {exam.available_slots} of {exam.capacity} slots available
                       </div>
                     </div>
@@ -521,8 +521,8 @@ const ExamSessionsList = () => {
                       onClick={() => handleSelectExam(exam)}
                       className={`w-full py-2 px-4 text-sm font-medium rounded-lg transition-all ${
                         exam.available_slots > 0
-                          ? 'bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          ? 'bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-800'
+                          : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                       }`}
                       disabled={exam.available_slots === 0}
                     >
@@ -534,15 +534,15 @@ const ExamSessionsList = () => {
             </div>
 
             {/* Mobile Sorting Controls */}
-            <div className="md:hidden mt-4 p-4 bg-white rounded-lg border border-gray-200">
-              <p className="text-sm font-semibold text-gray-700 mb-3">Sort by:</p>
+            <div className="md:hidden mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Sort by:</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleSort('date')}
                   className={`px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
                     sortConfig.key === 'date'
-                      ? 'bg-primary-100 text-primary-700 border border-primary-300'
-                      : 'bg-gray-50 text-gray-700 border border-gray-200'
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border border-primary-300 dark:border-primary-600'
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                   }`}
                 >
                   Date {sortConfig.key === 'date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
@@ -551,8 +551,8 @@ const ExamSessionsList = () => {
                   onClick={() => handleSort('time')}
                   className={`px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
                     sortConfig.key === 'time'
-                      ? 'bg-primary-100 text-primary-700 border border-primary-300'
-                      : 'bg-gray-50 text-gray-700 border border-gray-200'
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border border-primary-300 dark:border-primary-600'
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                   }`}
                 >
                   Time {sortConfig.key === 'time' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
@@ -561,8 +561,8 @@ const ExamSessionsList = () => {
                   onClick={() => handleSort('location')}
                   className={`px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
                     sortConfig.key === 'location'
-                      ? 'bg-primary-100 text-primary-700 border border-primary-300'
-                      : 'bg-gray-50 text-gray-700 border border-gray-200'
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border border-primary-300 dark:border-primary-600'
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                   }`}
                 >
                   Location {sortConfig.key === 'location' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
@@ -571,8 +571,8 @@ const ExamSessionsList = () => {
                   onClick={() => handleSort('capacity')}
                   className={`px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
                     sortConfig.key === 'capacity'
-                      ? 'bg-primary-100 text-primary-700 border border-primary-300'
-                      : 'bg-gray-50 text-gray-700 border border-gray-200'
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border border-primary-300 dark:border-primary-600'
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                   }`}
                 >
                   Availability {sortConfig.key === 'capacity' && (sortConfig.direction === 'asc' ? '↑' : '↓')}

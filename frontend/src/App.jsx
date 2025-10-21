@@ -11,12 +11,14 @@ import MockDiscussions from './pages/MockDiscussions';
 import ErrorBoundary from './components/ErrorBoundary';
 import MainLayout from './components/layout/MainLayout';
 import { ResponsiveLogo } from './components/shared/Logo';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 function App() {
   return (
     <Router>
-      <ErrorBoundary>
-        <MainLayout>
+      <ThemeProvider>
+        <ErrorBoundary>
+          <MainLayout>
           <Routes>
             {/* Root redirect to login */}
             <Route path="/" element={<Navigate to="/login" replace />} />
@@ -75,26 +77,27 @@ function App() {
           </Routes>
         </MainLayout>
       </ErrorBoundary>
+      </ThemeProvider>
     </Router>
   );
 }
 
 const InsufficientCreditsError = () => (
-  <div className="min-h-screen bg-gradient-to-br from-coral-50 via-white to-coral-50 flex items-center justify-center">
-    <div className="card max-w-md text-center">
+  <div className="min-h-screen bg-gradient-to-br from-coral-50 via-white to-coral-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+    <div className="card max-w-md text-center dark:bg-gray-800 dark:border-gray-700">
       <div className="flex justify-center mb-6">
         <ResponsiveLogo
           size="medium"
           className="transition-opacity duration-300 hover:opacity-80"
         />
       </div>
-      <div className="inline-flex items-center justify-center w-16 h-16 bg-coral-100 rounded-full mb-4">
-        <svg className="w-8 h-8 text-coral-600" fill="currentColor" viewBox="0 0 20 20">
+      <div className="inline-flex items-center justify-center w-16 h-16 bg-coral-100 dark:bg-coral-900/30 rounded-full mb-4">
+        <svg className="w-8 h-8 text-coral-600 dark:text-coral-400" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
         </svg>
       </div>
-      <h1 className="font-headline text-h3 font-semibold text-primary-900 mb-2">Insufficient Credits</h1>
-      <p className="font-body text-base text-primary-700 mb-6">
+      <h1 className="font-headline text-h3 font-semibold text-primary-900 dark:text-primary-100 mb-2">Insufficient Credits</h1>
+      <p className="font-body text-base text-primary-700 dark:text-primary-300 mb-6">
         You don't have enough credits to book this exam. Please purchase additional credits or contact support for assistance.
       </p>
       <div className="space-y-3">
@@ -108,21 +111,21 @@ const InsufficientCreditsError = () => (
 );
 
 const ExamFullError = () => (
-  <div className="min-h-screen bg-gradient-to-br from-coral-50 via-white to-coral-50 flex items-center justify-center">
-    <div className="card max-w-md text-center">
+  <div className="min-h-screen bg-gradient-to-br from-coral-50 via-white to-coral-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+    <div className="card max-w-md text-center dark:bg-gray-800 dark:border-gray-700">
       <div className="flex justify-center mb-6">
         <ResponsiveLogo
           size="medium"
           className="transition-opacity duration-300 hover:opacity-80"
         />
       </div>
-      <div className="inline-flex items-center justify-center w-16 h-16 bg-coral-100 rounded-full mb-4">
-        <svg className="w-8 h-8 text-coral-600" fill="currentColor" viewBox="0 0 20 20">
+      <div className="inline-flex items-center justify-center w-16 h-16 bg-coral-100 dark:bg-coral-900/30 rounded-full mb-4">
+        <svg className="w-8 h-8 text-coral-600 dark:text-coral-400" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
         </svg>
       </div>
-      <h1 className="font-headline text-h3 font-semibold text-primary-900 mb-2">Exam Session Full</h1>
-      <p className="font-body text-base text-primary-700 mb-6">
+      <h1 className="font-headline text-h3 font-semibold text-primary-900 dark:text-primary-100 mb-2">Exam Session Full</h1>
+      <p className="font-body text-base text-primary-700 dark:text-primary-300 mb-6">
         Sorry, this exam session has reached capacity. Please select another available date.
       </p>
       <a href="/book/exams" className="btn-primary">
@@ -133,21 +136,21 @@ const ExamFullError = () => (
 );
 
 const SessionExpiredError = () => (
-  <div className="min-h-screen bg-gradient-to-br from-coral-50 via-white to-coral-50 flex items-center justify-center">
-    <div className="card max-w-md text-center">
+  <div className="min-h-screen bg-gradient-to-br from-coral-50 via-white to-coral-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+    <div className="card max-w-md text-center dark:bg-gray-800 dark:border-gray-700">
       <div className="flex justify-center mb-6">
         <ResponsiveLogo
           size="medium"
           className="transition-opacity duration-300 hover:opacity-80"
         />
       </div>
-      <div className="inline-flex items-center justify-center w-16 h-16 bg-coral-100 rounded-full mb-4">
-        <svg className="w-8 h-8 text-coral-600" fill="currentColor" viewBox="0 0 20 20">
+      <div className="inline-flex items-center justify-center w-16 h-16 bg-coral-100 dark:bg-coral-900/30 rounded-full mb-4">
+        <svg className="w-8 h-8 text-coral-600 dark:text-coral-400" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
         </svg>
       </div>
-      <h1 className="font-headline text-h3 font-semibold text-primary-900 mb-2">Session Expired</h1>
-      <p className="font-body text-base text-primary-700 mb-6">
+      <h1 className="font-headline text-h3 font-semibold text-primary-900 dark:text-primary-100 mb-2">Session Expired</h1>
+      <p className="font-body text-base text-primary-700 dark:text-primary-300 mb-6">
         Your booking session has expired for security reasons. Please start over to continue with your booking.
       </p>
       <a href="/login" className="btn-primary">
@@ -158,7 +161,7 @@ const SessionExpiredError = () => (
 );
 
 const NotFound = () => (
-  <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center">
+  <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
     <div className="text-center">
       <div className="flex justify-center mb-6">
         <ResponsiveLogo
@@ -166,9 +169,9 @@ const NotFound = () => (
           className="transition-opacity duration-300 hover:opacity-80"
         />
       </div>
-      <h1 className="font-headline text-6xl font-bold text-primary-300 mb-4">404</h1>
-      <h2 className="font-headline text-h3 font-semibold text-primary-900 mb-2">Page Not Found</h2>
-      <p className="font-body text-base text-primary-700 mb-6">
+      <h1 className="font-headline text-6xl font-bold text-primary-300 dark:text-primary-600 mb-4">404</h1>
+      <h2 className="font-headline text-h3 font-semibold text-primary-900 dark:text-primary-100 mb-2">Page Not Found</h2>
+      <p className="font-body text-base text-primary-700 dark:text-primary-300 mb-6">
         The page you're looking for doesn't exist.
       </p>
       <a href="/login" className="btn-primary">
