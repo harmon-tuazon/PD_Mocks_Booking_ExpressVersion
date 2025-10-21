@@ -541,15 +541,15 @@ const MockDiscussions = () => {
             </div>
 
             {/* Mobile Sorting Controls */}
-            <div className="md:hidden mt-4 p-4 bg-white rounded-lg border border-gray-200">
-              <p className="text-sm font-semibold text-gray-700 mb-3">Sort by:</p>
+            <div className="md:hidden mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Sort by:</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleSort('date')}
                   className={`px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
                     sortConfig.key === 'date'
-                      ? 'bg-primary-100 text-primary-700 border border-primary-300'
-                      : 'bg-gray-50 text-gray-700 border border-gray-200'
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-300 dark:border-primary-600'
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                   }`}
                 >
                   Date {sortConfig.key === 'date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
@@ -558,8 +558,8 @@ const MockDiscussions = () => {
                   onClick={() => handleSort('time')}
                   className={`px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
                     sortConfig.key === 'time'
-                      ? 'bg-primary-100 text-primary-700 border border-primary-300'
-                      : 'bg-gray-50 text-gray-700 border border-gray-200'
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-300 dark:border-primary-600'
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                   }`}
                 >
                   Time {sortConfig.key === 'time' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
@@ -568,8 +568,8 @@ const MockDiscussions = () => {
                   onClick={() => handleSort('location')}
                   className={`px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
                     sortConfig.key === 'location'
-                      ? 'bg-primary-100 text-primary-700 border border-primary-300'
-                      : 'bg-gray-50 text-gray-700 border border-gray-200'
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-300 dark:border-primary-600'
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                   }`}
                 >
                   Location {sortConfig.key === 'location' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
@@ -578,8 +578,8 @@ const MockDiscussions = () => {
                   onClick={() => handleSort('capacity')}
                   className={`px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
                     sortConfig.key === 'capacity'
-                      ? 'bg-primary-100 text-primary-700 border border-primary-300'
-                      : 'bg-gray-50 text-gray-700 border border-gray-200'
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-300 dark:border-primary-600'
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                   }`}
                 >
                   Availability {sortConfig.key === 'capacity' && (sortConfig.direction === 'asc' ? '↑' : '↓')}

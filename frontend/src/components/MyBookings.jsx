@@ -499,32 +499,32 @@ const MyBookings = () => {
   // Mobile booking card component
   const MobileBookingCard = ({ booking }) => (
     <div
-      className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+      className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow"
     >
       <div className="flex justify-between items-start mb-2">
         <div className="flex-1">
-          <p className="font-semibold text-sm text-primary-900">{formatBookingNumber(booking)}</p>
-          <p className="text-lg font-medium text-gray-900 mt-1">{booking.mock_type || 'Mock Exam'}</p>
+          <p className="font-semibold text-sm text-primary-900 dark:text-primary-400">{formatBookingNumber(booking)}</p>
+          <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mt-1">{booking.mock_type || 'Mock Exam'}</p>
         </div>
         {getStatusBadge(booking)}
       </div>
 
-      <div className="space-y-1 text-sm text-gray-600">
+      <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
         <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           <span>{formatDate(booking.exam_date)}</span>
         </div>
         <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>{formatBookingTimeRange(booking)}</span>
         </div>
         {booking.location && (
           <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
@@ -540,7 +540,7 @@ const MyBookings = () => {
               e.stopPropagation();
               handleCancelBooking(booking);
             }}
-            className="text-red-600 hover:text-red-700 text-sm font-medium"
+            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium"
           >
             Cancel Booking
           </button>
@@ -846,12 +846,12 @@ const MyBookings = () => {
             {/* Mobile Sorting Dropdown - Only show in list view */}
             {viewMode === 'list' && (
               <div className="md:hidden">
-                <label htmlFor="sort-mobile" className="block text-xs font-medium text-gray-700 mb-1">
+                <label htmlFor="sort-mobile" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Sort by
                 </label>
                 <select
                   id="sort-mobile"
-                  className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  className="block w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md focus:ring-primary-500 dark:focus:ring-primary-400 focus:border-primary-500 dark:focus:border-primary-400"
                   value={sortField ? `${sortField}_${sortDirection}` : ''}
                   onChange={(e) => {
                     const value = e.target.value;
@@ -971,13 +971,13 @@ const MyBookings = () => {
             {viewMode === 'list' ? (
               <>
                 {/* Desktop Table View */}
-                <div className="hidden md:block bg-white border rounded-lg overflow-hidden shadow-sm">
+                <div className="hidden md:block bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-navy-50 border-b border-gray-200">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-navy-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                         <tr>
                           <th
-                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 uppercase tracking-wider cursor-pointer hover:bg-navy-100 transition-colors"
+                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
                             onClick={() => handleSort('booking_number')}
                           >
                             <div className="flex items-center">
@@ -986,7 +986,7 @@ const MyBookings = () => {
                             </div>
                           </th>
                           <th
-                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 uppercase tracking-wider cursor-pointer hover:bg-navy-100 transition-colors"
+                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
                             onClick={() => handleSort('exam_type')}
                           >
                             <div className="flex items-center">
@@ -995,7 +995,7 @@ const MyBookings = () => {
                             </div>
                           </th>
                           <th
-                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 uppercase tracking-wider cursor-pointer hover:bg-navy-100 transition-colors"
+                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
                             onClick={() => handleSort('date_time')}
                           >
                             <div className="flex items-center">
@@ -1004,7 +1004,7 @@ const MyBookings = () => {
                             </div>
                           </th>
                           <th
-                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 uppercase tracking-wider cursor-pointer hover:bg-navy-100 transition-colors"
+                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
                             onClick={() => handleSort('location')}
                           >
                             <div className="flex items-center">
@@ -1013,7 +1013,7 @@ const MyBookings = () => {
                             </div>
                           </th>
                           <th
-                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 uppercase tracking-wider cursor-pointer hover:bg-navy-100 transition-colors"
+                            className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-gray-800 transition-colors"
                             onClick={() => handleSort('status')}
                           >
                             <div className="flex items-center">
@@ -1021,12 +1021,12 @@ const MyBookings = () => {
                               <SortIcon field="status" />
                             </div>
                           </th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-navy-900 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-center text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider">
                             Actions
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                         {(() => {
                           // Apply sorting to the display bookings
                           const sortedBookings = sortField
@@ -1034,27 +1034,27 @@ const MyBookings = () => {
                             : displayBookings;
 
                           return sortedBookings.map((booking) => (
-                          <tr key={booking.id} className="hover:bg-gray-50 transition-colors duration-200">
+                          <tr key={booking.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-primary-900">
+                              <div className="text-sm font-medium text-primary-900 dark:text-primary-400">
                                 {formatBookingNumber(booking)}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">
+                              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {booking.mock_type || 'Mock Exam'}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">
+                              <div className="text-sm text-gray-900 dark:text-gray-100">
                                 {formatDate(booking.exam_date)}
                               </div>
-                              <div className="text-sm text-gray-500">
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
                                 {formatBookingTimeRange(booking)}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">
+                              <div className="text-sm text-gray-900 dark:text-gray-100">
                                 {booking.location || 'Location TBD'}
                               </div>
                             </td>
@@ -1068,7 +1068,7 @@ const MyBookings = () => {
                                     e.stopPropagation();
                                     handleCancelBooking(booking);
                                   }}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded-md transition-colors"
+                                  className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 px-3 py-1 rounded-md transition-colors"
                                 >
                                   Cancel
                                 </button>
