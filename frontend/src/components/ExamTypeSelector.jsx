@@ -65,7 +65,7 @@ const ExamTypeSelector = () => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-dark-bg dark:via-dark-card dark:to-dark-bg min-h-full">
+    <div className="bg-gray-50 dark:from-dark-bg dark:via-dark-card dark:to-dark-bg min-h-full">
       <div className="container-brand py-8 lg:py-12">
         <div className="text-center mb-12 animate-fade-in">
           <h1 className="font-headline text-h1 font-bold text-primary-900 dark:text-gray-100 mb-6">

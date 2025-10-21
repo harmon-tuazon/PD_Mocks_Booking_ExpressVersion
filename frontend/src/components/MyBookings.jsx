@@ -552,7 +552,7 @@ const MyBookings = () => {
   // Render authentication form
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-dark-bg dark:via-dark-bg dark:to-dark-card flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gray-50 dark:from-dark-bg dark:via-dark-bg dark:to-dark-card flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           {/* Header with PrepDoctors Logo */}
           <div className="text-center">
@@ -656,7 +656,7 @@ const MyBookings = () => {
 
   // Render bookings view
   return (
-    <div className="bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-dark-bg dark:via-dark-bg dark:to-dark-card min-h-full">
+    <div className="bg-gray-50 dark:from-dark-bg dark:via-dark-bg dark:to-dark-card min-h-full">
       <div className="container mx-auto px-4 py-6 sm:py-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">

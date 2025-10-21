@@ -159,11 +159,30 @@ const BookingForm = () => {
     );
   }
 
-  // Check if we should show the insufficient credits card instead of the booking form
+  // FIX: Check if we should show the insufficient credits card instead of the booking form
+  // Handle both string and object error formats for backward compatibility
   const showInsufficientCreditsCard = step === 'verify' && error && (
-    error.toLowerCase().includes('credit') ||
-    error.toLowerCase().includes('insufficient') ||
-    error.toLowerCase().includes('0 credits available')
+    // Check error code first (preferred method for object errors)
+    error?.code === 'INSUFFICIENT_CREDITS' ||
+    // Fallback to string checks for legacy string errors
+    (typeof error === 'string' && (
+      error.toLowerCase().includes('credit') ||
+      error.toLowerCase().includes('insufficient') ||
+      error.toLowerCase().includes('0 credits available')
+    )) ||
+    // Check error message property for object errors
+    (error?.message && (
+      error.message.toLowerCase().includes('credit') ||
+      error.message.toLowerCase().includes('insufficient') ||
+      error.message.toLowerCase().includes('0 credits available')
+    ))
+  );
+
+  // Check if we have a duplicate booking error
+  const isDuplicateBookingError = step === 'verify' && error && (
+    error?.code === 'DUPLICATE_BOOKING' ||
+    (typeof error === 'string' && error.toLowerCase().includes('duplicate')) ||
+    (error?.message && error.message.toLowerCase().includes('duplicate'))
   );
 
   if (showInsufficientCreditsCard) {
@@ -247,11 +266,80 @@ const BookingForm = () => {
         )}
 
         {/* Token validation and booking flow */}
-        {step === 'verify' && (
+        {step === 'verify' && !isDuplicateBookingError && (
           <div className="card-brand dark:bg-dark-card dark:border-dark-border animate-fade-in">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400 mb-4"></div>
               <p className="text-body font-body text-gray-700 dark:text-gray-300">Verifying your tokens...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Duplicate Booking Error Card */}
+        {isDuplicateBookingError && (
+          <div className="card-brand dark:bg-dark-card dark:border-dark-border animate-fade-in text-center">
+            {/* Warning Icon */}
+            <div className="mb-6">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
+                <svg className="w-10 h-10 text-yellow-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Main Message */}
+            <h2 className="font-headline text-h2 font-bold text-yellow-800 dark:text-yellow-400 mb-4">
+              Duplicate Booking Detected
+            </h2>
+            <p className="font-body text-lg text-yellow-700 dark:text-yellow-300 mb-8 leading-relaxed max-w-2xl mx-auto">
+              {error?.message || 'You already have a booking for this exam on this date. Each student can only book one session per exam date.'}
+            </p>
+
+            {/* Action Buttons */}
+            <div className="space-y-4 max-w-md mx-auto">
+              <button
+                onClick={() => navigate('/my-bookings')}
+                className="btn-brand-primary w-full text-white"
+                aria-label="View your existing bookings"
+              >
+                <svg className="w-5 h-5 mr-2 inline" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                  <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+                </svg>
+                View My Bookings
+              </button>
+
+              <button
+                onClick={() => navigate(-1)}
+                className="btn-brand-secondary dark:bg-dark-hover dark:border-dark-border dark:text-gray-200 dark:hover:bg-dark-card w-full"
+                aria-label="Go back to session selection"
+              >
+                <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Sessions
+              </button>
+            </div>
+
+            {/* Information Box */}
+            <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <div className="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-4 border border-primary-200 dark:border-primary-800">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <svg className="w-5 h-5 text-primary-600 dark:text-primary-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-subheading font-semibold text-primary-800 dark:text-primary-200 text-sm mb-1">
+                      Why am I seeing this?
+                    </h3>
+                    <p className="font-body text-sm text-primary-700 dark:text-primary-300 leading-relaxed">
+                      Our system detected that you already have a booking for this exam type on the selected date. Please view your existing bookings or choose a different date.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
