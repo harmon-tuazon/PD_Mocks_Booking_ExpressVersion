@@ -17,17 +17,22 @@ export const ThemeProvider = ({ children }) => {
   // Initialize theme from localStorage or default to 'light'
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
-    return savedTheme || 'light';
+    // Always default to 'light' if no saved theme or if saved theme is invalid
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      return savedTheme;
+    }
+    return 'light'; // Default to light mode
   });
 
   // Update the HTML element class and localStorage when theme changes
   useEffect(() => {
     const root = document.documentElement;
 
+    // Ensure we start with clean state
     if (theme === 'dark') {
       root.classList.add('dark');
     } else {
-      root.classList.remove('dark');
+      root.classList.remove('dark'); // Remove dark class for light mode
     }
 
     localStorage.setItem('theme', theme);
