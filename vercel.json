@@ -1,37 +1,6 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "frontend/dist",
-  "functions": {
-    "api/**/*.js": {
-      "maxDuration": 60
-    }
-  },
-  "headers": [
-    {
-      "source": "/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/",
-      "destination": "/login",
-      "permanent": false
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
-    {
-      "source": "/((?!api|assets|favicon\\.ico|robots\\.txt).*)",
-      "destination": "/index.html"
-    }
-  ]
+  "comment": "⚠️ DEPRECATED: User app now deploys from user_root/vercel.json",
+  "comment2": "This file kept for reference during transition period",
+  "comment3": "After migration is stable, this file can be safely deleted",
+  "comment4": "Admin app will deploy from admin_root/vercel.json when created"
 }
