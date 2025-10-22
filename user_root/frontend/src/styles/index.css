@@ -1,0 +1,619 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased font-body;
+  }
+
+  /* PrepDoctors Typography Hierarchy */
+  h1 {
+    @apply text-h1 font-headline font-bold tracking-tight text-navy-900;
+  }
+
+  h2 {
+    @apply text-h2 font-headline font-bold tracking-tight text-navy-900;
+  }
+
+  h3 {
+    @apply text-h3 font-subheading font-bold text-navy-800;
+  }
+
+  h4 {
+    @apply text-xl font-subheading font-semibold text-navy-700;
+  }
+
+  h5 {
+    @apply text-lg font-subheading font-medium text-navy-700;
+  }
+
+  h6 {
+    @apply text-base font-subheading font-medium text-navy-600;
+  }
+
+  p {
+    @apply text-body font-body leading-relaxed text-gray-800;
+  }
+
+  .text-small {
+    @apply text-xs font-body text-gray-600;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn text-white bg-primary-600 hover:bg-primary-700 focus:ring-primary-500;
+  }
+
+  .btn-secondary {
+    @apply btn text-primary-700 bg-primary-100 hover:bg-primary-200 focus:ring-primary-500;
+  }
+
+  .btn-outline {
+    @apply btn text-gray-700 bg-white border-gray-300 hover:bg-gray-50 focus:ring-primary-500;
+  }
+
+  .btn-danger {
+    @apply btn text-white bg-error-600 hover:bg-error-700 focus:ring-error-500;
+  }
+
+  .btn-large {
+    @apply px-6 py-3 text-base;
+  }
+
+  .input {
+    @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm;
+  }
+
+  .input-error {
+    @apply border-error-300 text-error-900 placeholder-error-300 focus:ring-error-500 focus:border-error-500;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+
+  .card {
+    @apply bg-white shadow-md rounded-lg p-6;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-lg transition-shadow duration-200 cursor-pointer;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply badge bg-success-100 text-success-800;
+  }
+
+  .badge-warning {
+    @apply badge bg-warning-100 text-warning-800;
+  }
+
+  .badge-error {
+    @apply badge bg-error-100 text-error-800;
+  }
+
+  .skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
+  }
+
+  .container-app {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* PrepDoctors Brand Button Variants */
+  .btn-brand-primary {
+    @apply btn font-subheading font-semibold text-white bg-primary-500 hover:bg-primary-600 focus:ring-primary-400 border-primary-500 hover:border-primary-600;
+  }
+
+  .btn-brand-secondary {
+    @apply btn font-subheading font-semibold text-primary-600 bg-white hover:bg-primary-50 focus:ring-primary-400 border-primary-300 hover:border-primary-400;
+  }
+
+  .btn-brand-teal {
+    @apply btn font-subheading font-semibold text-white bg-teal-400 hover:bg-teal-500 focus:ring-teal-300 border-teal-400 hover:border-teal-500;
+  }
+
+  .btn-brand-coral {
+    @apply btn font-subheading font-semibold text-white bg-coral-500 hover:bg-coral-600 focus:ring-coral-400 border-coral-500 hover:border-coral-600;
+  }
+
+  .btn-brand-ghost {
+    @apply btn font-subheading font-medium text-primary-600 bg-transparent hover:bg-primary-50 focus:ring-primary-400 border-transparent hover:border-primary-200;
+  }
+
+  /* PrepDoctors Brand Card Variants */
+  .card-brand {
+    @apply card bg-white border border-cool-grey hover:border-primary-200 transition-all duration-200;
+  }
+
+  .card-brand-primary {
+    @apply card bg-primary-50 border border-primary-200;
+  }
+
+  .card-brand-teal {
+    @apply card bg-teal-50 border border-teal-200;
+  }
+
+  .card-brand-coral {
+    @apply card bg-coral-50 border border-coral-200;
+  }
+
+  .card-brand-elevated {
+    @apply card-brand shadow-lg hover:shadow-xl;
+  }
+
+  /* PrepDoctors Status Badges */
+  .badge-available {
+    @apply badge bg-teal-100 text-teal-800 border border-teal-200;
+  }
+
+  .badge-limited {
+    @apply badge bg-coral-100 text-coral-800 border border-coral-200;
+  }
+
+  .badge-booked {
+    @apply badge bg-gray-100 text-gray-800 border border-gray-200;
+  }
+
+  .badge-confirmed {
+    @apply badge bg-primary-100 text-primary-800 border border-primary-200;
+  }
+
+  /* PrepDoctors Input Variants */
+  .input-brand {
+    @apply input font-body border-cool-grey focus:border-primary-400 focus:ring-primary-300;
+  }
+
+  .input-brand-error {
+    @apply input-brand border-coral-300 text-coral-900 placeholder-coral-400 focus:ring-coral-300 focus:border-coral-400;
+  }
+
+  /* PrepDoctors Typography Combinations */
+  .hero-title {
+    @apply text-5xl md:text-6xl font-headline font-bold text-navy-900 leading-tight tracking-tight;
+  }
+
+  .section-title {
+    @apply text-h2 font-headline font-bold text-navy-900 mb-4;
+  }
+
+  .subsection-title {
+    @apply text-h3 font-subheading font-bold text-navy-800 mb-3;
+  }
+
+  .card-title {
+    @apply text-xl font-subheading font-semibold text-navy-800 mb-2;
+  }
+
+  .body-large {
+    @apply text-lg font-body text-gray-800 leading-relaxed;
+  }
+
+  .body-emphasis {
+    @apply text-body font-body font-medium text-navy-700;
+  }
+
+  .caption {
+    @apply text-small font-body text-gray-600 leading-normal;
+  }
+
+  /* PrepDoctors Layout Utilities */
+  .content-section {
+    @apply py-12 md:py-16 lg:py-20;
+  }
+
+  .content-section-small {
+    @apply py-8 md:py-10 lg:py-12;
+  }
+
+  /* PrepDoctors Responsive Grid System */
+
+  /* Container Utilities with 24px gutters */
+  .container-brand {
+    @apply w-full max-w-7xl mx-auto px-6 lg:px-8;
+  }
+
+  .container-brand-sm {
+    @apply w-full max-w-2xl mx-auto px-6;
+  }
+
+  .container-brand-md {
+    @apply w-full max-w-4xl mx-auto px-6;
+  }
+
+  .container-brand-lg {
+    @apply w-full max-w-6xl mx-auto px-6;
+  }
+
+  /* 3-Column Exam Grid System */
+  .grid-exam-cards {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+  }
+
+  .grid-exam-cards-large {
+    @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8;
+  }
+
+  /* 2-Column Form Grid System */
+  .grid-form {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-6 items-start;
+  }
+
+  .grid-form-tight {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4 items-start;
+  }
+
+  /* Form Label-Input Pairs */
+  .form-field {
+    @apply grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-3 md:gap-4 items-start;
+  }
+
+  .form-field-even {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 items-start;
+  }
+
+  /* Auto-fit Grids with PrepDoctors spacing */
+  .grid-auto-fit {
+    @apply grid gap-6;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  .grid-auto-fit-sm {
+    @apply grid gap-4;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  .grid-auto-fit-lg {
+    @apply grid gap-8;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+
+  .grid-auto-fill {
+    @apply grid gap-6;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+
+  /* Full-page Layout Grid */
+  .grid-page-layout {
+    @apply min-h-screen grid grid-rows-[auto_1fr_auto];
+  }
+
+  .grid-dashboard {
+    @apply grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-6;
+  }
+
+  .grid-sidebar-content {
+    @apply grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8;
+  }
+
+  /* Card Grid Variations */
+  .grid-cards-2 {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-6;
+  }
+
+  .grid-cards-3 {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+  }
+
+  .grid-cards-4 {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6;
+  }
+
+  /* List Layout Grids */
+  .grid-list-item {
+    @apply grid grid-cols-[auto_1fr_auto] gap-4 items-center;
+  }
+
+  .grid-list-detailed {
+    @apply grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-4 items-center;
+  }
+
+  /* Responsive Spacing Utilities (24px = 1.5rem in Tailwind) */
+  .gap-brand {
+    @apply gap-6; /* 24px */
+  }
+
+  .gap-brand-sm {
+    @apply gap-4; /* 16px */
+  }
+
+  .gap-brand-lg {
+    @apply gap-8; /* 32px */
+  }
+
+  /* Content Width Utilities */
+  .content-width-sm {
+    @apply max-w-prose mx-auto;
+  }
+
+  .content-width-md {
+    @apply max-w-4xl mx-auto;
+  }
+
+  .content-width-lg {
+    @apply max-w-6xl mx-auto;
+  }
+
+  .content-width-full {
+    @apply max-w-7xl mx-auto;
+  }
+
+  /* Mobile-first Responsive Utilities */
+  .stack-mobile {
+    @apply flex flex-col md:flex-row gap-4 md:gap-6;
+  }
+
+  .stack-mobile-reverse {
+    @apply flex flex-col-reverse md:flex-row gap-4 md:gap-6;
+  }
+
+  /* Alignment Utilities for Grid Items */
+  .align-start {
+    @apply items-start;
+  }
+
+  .align-center {
+    @apply items-center;
+  }
+
+  .align-end {
+    @apply items-end;
+  }
+
+  .align-stretch {
+    @apply items-stretch;
+  }
+
+  /* PrepDoctors Interactive States */
+  .interactive-card {
+    @apply card-brand cursor-pointer transform hover:scale-[1.02] hover:shadow-lg transition-all duration-200;
+  }
+
+  .focus-ring-brand {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2;
+  }
+
+  /* PrepDoctors Loading States */
+  .skeleton-brand {
+    @apply skeleton bg-cool-grey;
+  }
+
+  .loading-shimmer {
+    @apply bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200%_100%] animate-pulse;
+  }
+
+  /* PrepDoctors Alert/Notification Variants */
+  .alert {
+    @apply p-4 rounded-lg border font-body;
+  }
+
+  .alert-info {
+    @apply alert bg-primary-50 border-primary-200 text-primary-800;
+  }
+
+  .alert-success {
+    @apply alert bg-teal-50 border-teal-200 text-teal-800;
+  }
+
+  .alert-warning {
+    @apply alert bg-coral-50 border-coral-200 text-coral-800;
+  }
+
+  .alert-error {
+    @apply alert bg-coral-50 border-coral-300 text-coral-900;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  /* PrepDoctors Brand Utility Classes */
+  .bg-brand-gradient {
+    background: linear-gradient(135deg, #0660B2 0%, #054E91 50%, #02376D 100%);
+  }
+
+  .bg-brand-gradient-soft {
+    background: linear-gradient(135deg, #e8f2ff 0%, #d1e6ff 50%, #a3ccff 100%);
+  }
+
+  .bg-teal-gradient {
+    background: linear-gradient(135deg, #44D3BB 0%, #20c997 50%, #18a57a 100%);
+  }
+
+  .bg-coral-gradient {
+    background: linear-gradient(135deg, #F45E56 0%, #e93d35 50%, #d32f2f 100%);
+  }
+
+  /* PrepDoctors Spacing */
+  .space-brand {
+    @apply space-y-6;
+  }
+
+  .space-brand-small {
+    @apply space-y-4;
+  }
+
+  .space-brand-large {
+    @apply space-y-8;
+  }
+
+  /* PrepDoctors Shadows */
+  .shadow-brand {
+    box-shadow: 0 4px 6px -1px rgba(6, 96, 178, 0.1), 0 2px 4px -1px rgba(6, 96, 178, 0.06);
+  }
+
+  .shadow-brand-lg {
+    box-shadow: 0 10px 15px -3px rgba(6, 96, 178, 0.1), 0 4px 6px -2px rgba(6, 96, 178, 0.05);
+  }
+
+  .shadow-teal {
+    box-shadow: 0 4px 6px -1px rgba(68, 211, 187, 0.1), 0 2px 4px -1px rgba(68, 211, 187, 0.06);
+  }
+
+  .shadow-coral {
+    box-shadow: 0 4px 6px -1px rgba(244, 94, 86, 0.1), 0 2px 4px -1px rgba(244, 94, 86, 0.06);
+  }
+
+  /* PrepDoctors Border Utilities */
+  .border-brand {
+    @apply border-primary-200;
+  }
+
+  .border-brand-focus {
+    @apply border-primary-400;
+  }
+
+  .divide-brand > * + * {
+    @apply border-primary-200;
+  }
+
+  /* PrepDoctors Text Decorations */
+  .text-brand-link {
+    @apply text-primary-600 hover:text-primary-700 underline decoration-primary-300 hover:decoration-primary-500 underline-offset-2 transition-all duration-200;
+  }
+
+  .text-brand-link-no-underline {
+    @apply text-primary-600 hover:text-primary-700 no-underline hover:underline underline-offset-2 transition-all duration-200;
+  }
+
+  /* PrepDoctors Focus States */
+  .focus-brand {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:border-primary-400;
+  }
+
+  .focus-teal {
+    @apply focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:border-teal-400;
+  }
+
+  .focus-coral {
+    @apply focus:outline-none focus:ring-2 focus:ring-coral-400 focus:ring-offset-2 focus:border-coral-400;
+  }
+
+  /* PrepDoctors Selection States */
+  .selection-brand {
+    @apply selection:bg-primary-200 selection:text-primary-900;
+  }
+
+  /* Accessibility Utilities */
+  .sr-only-focus {
+    @apply sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-50 focus:p-4 focus:bg-white focus:text-black focus:border focus:border-gray-300;
+  }
+
+  /* Print Utilities */
+  @media print {
+    .print-hidden {
+      display: none !important;
+    }
+
+    .print-visible {
+      display: block !important;
+    }
+  }
+
+  /* PrepDoctors Grid Responsive Utilities */
+
+  /* Responsive Grid Column Spans */
+  .col-span-full-mobile {
+    @apply col-span-full md:col-span-1;
+  }
+
+  /* Responsive Margins for Grid Layouts */
+  .margin-brand {
+    @apply mx-6;
+  }
+
+  .margin-brand-y {
+    @apply my-6;
+  }
+
+  /* Grid Item Responsive Sizing */
+  .grid-item-auto {
+    @apply col-span-1;
+  }
+
+  .grid-item-full {
+    @apply col-span-full;
+  }
+
+  /* Responsive Padding for Grid Containers */
+  .padding-brand {
+    @apply p-6;
+  }
+
+  .padding-brand-x {
+    @apply px-6;
+  }
+
+  .padding-brand-y {
+    @apply py-6;
+  }
+
+  /* Mobile Stacking Utilities */
+  .mobile-stack > * {
+    @apply w-full;
+  }
+
+  @media (max-width: 768px) {
+    .mobile-stack {
+      @apply flex flex-col space-y-4;
+    }
+  }
+
+  /* PrepDoctors Responsive Display */
+  .hide-mobile {
+    @apply hidden md:block;
+  }
+
+  .show-mobile {
+    @apply block md:hidden;
+  }
+
+  .hide-desktop {
+    @apply block md:hidden;
+  }
+
+  .show-desktop {
+    @apply hidden md:block;
+  }
+
+  /* Grid Template Utilities */
+  .grid-template-fit {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  .grid-template-fill {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+
+  .grid-template-exam {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+
+  @media (max-width: 768px) {
+    .grid-template-exam,
+    .grid-template-fit,
+    .grid-template-fill {
+      grid-template-columns: 1fr;
+    }
+  }
+}
