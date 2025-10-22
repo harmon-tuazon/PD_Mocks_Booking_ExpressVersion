@@ -26,6 +26,7 @@ export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState([]);
+  const [configError, setConfigError] = useState(null);
 
   // Set axios auth header when session changes
   useEffect(() => {
@@ -74,6 +75,16 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
+        // Check if Supabase is properly configured
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+        if (!supabaseUrl || !supabaseKey) {
+          setConfigError('Supabase configuration is missing. Please contact the administrator.');
+          setLoading(false);
+          return;
+        }
+
         // Get initial session
         const { session: currentSession, error } = await authHelpers.getSession();
 
@@ -254,6 +265,7 @@ export const AuthProvider = ({ children }) => {
     session,
     loading,
     permissions,
+    configError,
     signIn,
     signOut,
     validateSession,
@@ -262,6 +274,43 @@ export const AuthProvider = ({ children }) => {
     isSuperAdmin: () => isSuperAdmin(user),
     hasPermission
   };
+
+  // Show configuration error if Supabase is not configured
+  if (configError) {
+    return (
+      <AuthContext.Provider value={value}>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+          <div className="max-w-md w-full">
+            <div className="bg-red-50 border border-red-400 rounded-lg p-6">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">Configuration Error</h3>
+                  <div className="mt-2 text-sm text-red-700">
+                    <p>{configError}</p>
+                  </div>
+                  <div className="mt-4">
+                    <div className="text-xs text-red-600">
+                      <p className="font-semibold">Technical Details:</p>
+                      <p className="mt-1">Missing Supabase environment variables:</p>
+                      <ul className="list-disc list-inside mt-1">
+                        <li>VITE_SUPABASE_URL</li>
+                        <li>VITE_SUPABASE_ANON_KEY</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </AuthContext.Provider>
+    );
+  }
 
   return (
     <AuthContext.Provider value={value}>

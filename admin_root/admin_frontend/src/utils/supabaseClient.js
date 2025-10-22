@@ -20,7 +20,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Create Supabase client with persistence and auto-refresh
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
+// Use placeholder values if env vars are missing to prevent app crash
+const safeUrl = supabaseUrl || 'https://placeholder.supabase.co';
+const safeKey = supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTI4MDAsImV4cCI6MTk2MDc2ODgwMH0.placeholder';
+
+export const supabase = createClient(safeUrl, safeKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
