@@ -6,12 +6,17 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Get environment variables from Vite
+// NOTE: VITE_ prefix is required for Vite to expose variables to frontend
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Validate configuration
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase configuration. Please check your environment variables.');
+  console.error('❌ Missing Supabase configuration!');
+  console.error('Required environment variables:');
+  console.error('  - VITE_SUPABASE_URL:', supabaseUrl ? '✓' : '✗ MISSING');
+  console.error('  - VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? '✓' : '✗ MISSING');
+  console.error('Please set these in Vercel Dashboard → Settings → Environment Variables');
 }
 
 // Create Supabase client with persistence and auto-refresh
