@@ -42,7 +42,7 @@
   "redirects": [
     {
       "source": "/",
-      "destination": "/admin/login",
+      "destination": "/login",
       "permanent": false
     }
   ],
