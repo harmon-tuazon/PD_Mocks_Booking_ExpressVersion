@@ -1,43 +1,41 @@
 {
-  "name": "mocks_booking",
-  "version": "1.0.0",
-  "description": "Mock Exam Booking System for PrepDoctors using HubSpot CRM",
-  "main": "index.js",
+  "name": "mocks_booking_monorepo",
+  "version": "2.0.0",
+  "description": "Mock Exam Booking System - Monorepo Container",
+  "private": true,
   "scripts": {
-    "dev": "nodemon api/index.js",
-    "build": "cd frontend && npm install && npm run build",
-    "build:verify": "node scripts/verify-build.js",
-    "pre-deploy": "bash scripts/pre-deploy.sh",
-    "deploy": "npm run pre-deploy && vercel --prod && npm run post-deploy:verify",
-    "deploy:staging": "npm run pre-deploy && vercel && npm run post-deploy:verify",
-    "post-deploy:verify": "node scripts/post-deploy-verify.js",
-    "build:client": "echo 'No client build needed - API only deployment'",
-    "test": "jest",
-    "test:integration": "jest tests/integration --runInBand",
-    "test:e2e": "jest tests/e2e --runInBand",
-    "test:coverage": "jest --coverage",
-    "test:delete:simplified": "node tests/manual/test-simplified-delete.js",
-    "lint": "echo 'Linting complete'",
-    "verify:hubspot-schema": "node helper_scripts/fetch-hubspot-schema-simple.js",
-    "test:load": "echo 'Load testing complete'",
-    "audit:lighthouse": "echo 'Lighthouse audit complete'"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "axios": "^1.12.2",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.2",
-    "express": "^5.1.0",
-    "ioredis": "^5.8.1",
-    "joi": "^18.0.1"
+    "dev:user": "cd user_root && npm run dev",
+    "dev:admin": "cd admin_root && npm run dev",
+    "dev:user:api": "cd user_root && npm run dev:api",
+    "dev:admin:api": "cd admin_root && npm run dev:api",
+    "build:user": "cd user_root && npm run build",
+    "build:admin": "cd admin_root && npm run build",
+    "build:all": "npm run build:user && npm run build:admin",
+    "deploy:user": "cd user_root && vercel --prod",
+    "deploy:admin": "cd admin_root && vercel --prod",
+    "deploy:user:staging": "cd user_root && vercel",
+    "deploy:admin:staging": "cd admin_root && vercel",
+    "test:user": "cd user_root && npm test",
+    "test:admin": "cd admin_root && npm test",
+    "test:all": "npm run test:user && npm run test:admin",
+    "install:all": "npm install && cd user_root && npm install && cd ../admin_root && npm install",
+    "clean": "rm -rf user_root/node_modules admin_root/node_modules user_root/frontend/dist admin_root/admin_frontend/dist",
+    "verify:structure": "ls -la user_root/ && ls -la admin_root/",
+    "verify:hubspot-schema": "node helper_scripts/fetch-hubspot-schema-simple.js"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^24.5.2",
-    "jest": "^30.1.3",
-    "nodemon": "^3.1.10",
-    "supertest": "^7.1.4"
-  }
+    "jest": "^30.1.3"
+  },
+  "workspaces": [
+    "user_root",
+    "admin_root"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/prepdoctors/mocks_booking.git"
+  },
+  "author": "PrepDoctors",
+  "license": "PRIVATE"
 }

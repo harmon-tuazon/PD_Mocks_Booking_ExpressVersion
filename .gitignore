@@ -29,6 +29,24 @@ pids/
 
 # Coverage directory used by tools like istanbul
 coverage/
+user_root/coverage/
+admin_root/coverage/
+
+# Project-specific build outputs
+user_root/frontend/dist/
+admin_root/admin_frontend/dist/
+
+# Project node_modules (each project has its own)
+user_root/node_modules/
+user_root/frontend/node_modules/
+admin_root/node_modules/
+admin_root/admin_frontend/node_modules/
+
+# Deprecated/removed directories (kept for reference)
+# /api/
+# /frontend/
+# /assets/
+coverage/
 *.lcov
 
 # Temporary files
