@@ -3,6 +3,8 @@
 .env.local
 .env.production
 .env.staging
+/admin_root/admin_frontend/.env
+/admin_root/.env
 
 # Dependencies
 node_modules/
@@ -12,7 +14,12 @@ node_modules/
 # Build outputs
 dist/
 build/
+
+# Vercel
 .vercel/
+user_root/.vercel/
+admin_root/.vercel/
+*/.vercel/
 
 # Logs
 logs/
@@ -28,6 +35,28 @@ pids/
 *.pid.lock
 
 # Coverage directory used by tools like istanbul
+coverage/
+user_root/coverage/
+admin_root/coverage/
+
+# Documentation directory used by tools like istanbul
+user_root/documentation/
+admin_root/documentation/
+
+# Project-specific build outputs
+user_root/frontend/dist/
+admin_root/admin_frontend/dist/
+
+# Project node_modules (each project has its own)
+user_root/node_modules/
+user_root/frontend/node_modules/
+admin_root/node_modules/
+admin_root/admin_frontend/node_modules/
+
+# Deprecated/removed directories (kept for reference)
+# /api/
+# /frontend/
+# /assets/
 coverage/
 *.lcov
 

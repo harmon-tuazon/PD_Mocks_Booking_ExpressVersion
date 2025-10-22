@@ -1,6 +1,0 @@
-{
-  "comment": "⚠️ DEPRECATED: User app now deploys from user_root/vercel.json",
-  "comment2": "This file kept for reference during transition period",
-  "comment3": "After migration is stable, this file can be safely deleted",
-  "comment4": "Admin app will deploy from admin_root/vercel.json when created"
-}
