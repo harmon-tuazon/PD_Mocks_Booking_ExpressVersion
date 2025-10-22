@@ -3,6 +3,8 @@
 .env.local
 .env.production
 .env.staging
+/admin_root/admin_frontend/.env
+/admin_root/.env
 
 # Dependencies
 node_modules/
@@ -36,6 +38,10 @@ pids/
 coverage/
 user_root/coverage/
 admin_root/coverage/
+
+# Documentation directory used by tools like istanbul
+user_root/documentation/
+admin_root/documentation/
 
 # Project-specific build outputs
 user_root/frontend/dist/

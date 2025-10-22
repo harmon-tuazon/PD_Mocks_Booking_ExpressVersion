@@ -1665,6 +1665,426 @@ ${cancellationData.reason ? `<strong>Reason:</strong> ${cancellationData.reason}
     }
   }
 
+  /**
+   * Create a single mock exam
+   * @param {Object} mockExamData - Mock exam properties
+   * @returns {Promise<Object>} Created mock exam object
+   */
+  async createMockExam(mockExamData) {
+    const {
+      mock_type,
+      exam_date,
+      capacity,
+      location,
+      is_active = true,
+      start_time,
+      end_time
+    } = mockExamData;
+
+    // Convert date and times to ISO format for HubSpot
+    // HubSpot datetime properties expect Unix timestamp in milliseconds
+    const examDateObj = new Date(exam_date);
+    
+    // Combine date with start_time
+    const [startHour, startMinute] = start_time.split(':');
+    const startDateTime = new Date(examDateObj);
+    startDateTime.setHours(parseInt(startHour), parseInt(startMinute), 0, 0);
+    
+    // Combine date with end_time
+    const [endHour, endMinute] = end_time.split(':');
+    const endDateTime = new Date(examDateObj);
+    endDateTime.setHours(parseInt(endHour), parseInt(endMinute), 0, 0);
+
+    const properties = {
+      mock_type,
+      exam_date: examDateObj.toISOString().split('T')[0], // YYYY-MM-DD format
+      capacity: capacity.toString(),
+      location,
+      is_active: is_active.toString(),
+      start_time: startDateTime.getTime().toString(), // Unix timestamp in ms
+      end_time: endDateTime.getTime().toString(), // Unix timestamp in ms
+      total_bookings: '0' // Initialize with 0 bookings
+    };
+
+    const payload = { properties };
+
+    try {
+      const result = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}`, payload);
+      
+      console.log(`✅ Mock exam created successfully:`, {
+        id: result.id,
+        mock_type,
+        exam_date,
+        start_time,
+        end_time,
+        location
+      });
+
+      return result;
+    } catch (error) {
+      console.error(`❌ Failed to create mock exam:`, {
+        mock_type,
+        exam_date,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Create multiple mock exams with different time slots (bulk operation)
+   * @param {Object} commonProperties - Properties shared across all exams
+   * @param {Array} timeSlots - Array of {start_time, end_time} objects
+   * @returns {Promise<Object>} Results of bulk creation
+   */
+  async batchCreateMockExams(commonProperties, timeSlots) {
+    const {
+      mock_type,
+      exam_date,
+      capacity,
+      location,
+      is_active = true
+    } = commonProperties;
+
+    const examDateObj = new Date(exam_date);
+
+    // Build inputs array for batch create
+    const inputs = timeSlots.map(slot => {
+      // Combine date with start_time
+      const [startHour, startMinute] = slot.start_time.split(':');
+      const startDateTime = new Date(examDateObj);
+      startDateTime.setHours(parseInt(startHour), parseInt(startMinute), 0, 0);
+      
+      // Combine date with end_time
+      const [endHour, endMinute] = slot.end_time.split(':');
+      const endDateTime = new Date(examDateObj);
+      endDateTime.setHours(parseInt(endHour), parseInt(endMinute), 0, 0);
+
+      return {
+        properties: {
+          mock_type,
+          exam_date: examDateObj.toISOString().split('T')[0],
+          capacity: capacity.toString(),
+          location,
+          is_active: is_active.toString(),
+          start_time: startDateTime.getTime().toString(),
+          end_time: endDateTime.getTime().toString(),
+          total_bookings: '0'
+        }
+      };
+    });
+
+    try {
+      // Use batch create API (max 100 objects per request)
+      const result = await this.apiCall(
+        'POST',
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/create`,
+        { inputs }
+      );
+
+      console.log(`✅ Batch created ${result.results?.length || 0} mock exams:`, {
+        mock_type,
+        exam_date,
+        location,
+        time_slots_count: timeSlots.length
+      });
+
+      return {
+        success: true,
+        created_count: result.results?.length || 0,
+        mockExams: result.results || [],
+        status: result.status || 'COMPLETE'
+      };
+    } catch (error) {
+      console.error(`❌ Failed to batch create mock exams:`, {
+        mock_type,
+        exam_date,
+        time_slots_count: timeSlots.length,
+        error: error.message
+      });
+
+      // Check if it's a partial failure
+      if (error.response?.data?.results) {
+        const successCount = error.response.data.results.filter(r => r.id).length;
+        console.log(`⚠️ Partial success: ${successCount} out of ${timeSlots.length} created`);
+        
+        return {
+          success: false,
+          created_count: successCount,
+          mockExams: error.response.data.results.filter(r => r.id),
+          errors: error.response.data.errors || [],
+          status: 'PARTIAL'
+        };
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * List mock exams with pagination, filtering, and sorting
+   * @param {object} options - Query options
+   * @param {number} options.page - Page number (1-based)
+   * @param {number} options.limit - Records per page
+   * @param {string} options.sort_by - Property to sort by
+   * @param {string} options.sort_order - 'asc' or 'desc'
+   * @param {object} options.filters - Filter criteria
+   * @returns {Promise<object>} Paginated mock exams with metadata
+   */
+  async listMockExams(options = {}) {
+    const {
+      page = 1,
+      limit = 50,
+      sort_by = 'exam_date',
+      sort_order = 'asc',
+      filters = {}
+    } = options;
+
+    // Build filter groups based on provided filters
+    const filterGroups = [];
+    const filterGroup = { filters: [] };
+
+    // Filter by location
+    if (filters.location) {
+      filterGroup.filters.push({
+        propertyName: 'location',
+        operator: 'EQ',
+        value: filters.location
+      });
+    }
+
+    // Filter by mock type
+    if (filters.mock_type) {
+      filterGroup.filters.push({
+        propertyName: 'mock_type',
+        operator: 'EQ',
+        value: filters.mock_type
+      });
+    }
+
+    // Filter by status (active/inactive)
+    if (filters.status === 'active') {
+      filterGroup.filters.push({
+        propertyName: 'is_active',
+        operator: 'EQ',
+        value: 'true'
+      });
+    } else if (filters.status === 'inactive') {
+      filterGroup.filters.push({
+        propertyName: 'is_active',
+        operator: 'EQ',
+        value: 'false'
+      });
+    }
+
+    // Filter by date range
+    if (filters.date_from) {
+      filterGroup.filters.push({
+        propertyName: 'exam_date',
+        operator: 'GTE',
+        value: filters.date_from
+      });
+    }
+
+    if (filters.date_to) {
+      filterGroup.filters.push({
+        propertyName: 'exam_date',
+        operator: 'LTE',
+        value: filters.date_to
+      });
+    }
+
+    // Only add filter group if there are filters
+    if (filterGroup.filters.length > 0) {
+      filterGroups.push(filterGroup);
+    }
+
+    // Build search payload
+    const searchPayload = {
+      filterGroups: filterGroups.length > 0 ? filterGroups : undefined,
+      properties: [
+        'exam_date',
+        'start_time',
+        'end_time',
+        'capacity',
+        'total_bookings',
+        'mock_type',
+        'location',
+        'is_active',
+        'hs_object_id',
+        'hs_createdate',
+        'hs_lastmodifieddate'
+      ],
+      sorts: [{
+        propertyName: sort_by,
+        direction: sort_order.toUpperCase()
+      }],
+      limit,
+      after: page > 1 ? ((page - 1) * limit).toString() : undefined
+    };
+
+    const result = await this.apiCall(
+      'POST',
+      `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`,
+      searchPayload
+    );
+
+    return {
+      results: result.results || [],
+      total: result.total || 0,
+      paging: result.paging
+    };
+  }
+
+  /**
+   * Update a mock exam
+   * @param {string} mockExamId - Mock exam ID
+   * @param {object} properties - Properties to update
+   * @returns {Promise<object>} Updated mock exam
+   */
+  async updateMockExam(mockExamId, properties) {
+    const updatePayload = { properties };
+    
+    return await this.apiCall(
+      'PATCH',
+      `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}`,
+      updatePayload
+    );
+  }
+
+  /**
+   * Delete a mock exam
+   * @param {string} mockExamId - Mock exam ID
+   * @returns {Promise<void>}
+   */
+  async deleteMockExam(mockExamId) {
+    return await this.apiCall(
+      'DELETE',
+      `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}`
+    );
+  }
+
+  /**
+   * Get mock exam with associated bookings
+   * @param {string} mockExamId - Mock exam ID
+   * @returns {Promise<object>} Mock exam with bookings
+   */
+  async getMockExamWithBookings(mockExamId) {
+    // Get mock exam details
+    const mockExam = await this.getMockExam(mockExamId);
+
+    // Get associated bookings
+    const associationsResponse = await this.apiCall(
+      'GET',
+      `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}/associations/${HUBSPOT_OBJECTS.bookings}`
+    );
+
+    const bookingIds = associationsResponse.results?.map(assoc => assoc.id) || [];
+
+    let bookings = [];
+    if (bookingIds.length > 0) {
+      // Batch read bookings
+      const batchService = new HubSpotBatchService(this);
+      const bookingsResult = await batchService.batchReadObjects(
+        HUBSPOT_OBJECTS.bookings,
+        bookingIds,
+        [
+          'student_id',
+          'student_name',
+          'student_email',
+          'booking_status',
+          'exam_date',
+          'hs_createdate'
+        ]
+      );
+
+      bookings = bookingsResult.results || [];
+    }
+
+    return {
+      mockExam,
+      bookings
+    };
+  }
+
+  /**
+   * Calculate dashboard metrics for mock exams
+   * @param {object} filters - Optional date range filters
+   * @returns {Promise<object>} Calculated metrics
+   */
+  async calculateMetrics(filters = {}) {
+    // Fetch all mock exams (may need pagination for large datasets)
+    const allExams = await this.listMockExams({
+      limit: 10000, // Get all exams
+      filters
+    });
+
+    const exams = allExams.results;
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+
+    // Initialize metrics
+    const metrics = {
+      total_sessions: exams.length,
+      active_sessions: 0,
+      upcoming_sessions: 0,
+      past_sessions: 0,
+      fully_booked: 0,
+      low_bookings: 0,
+      average_utilization: 0,
+      total_capacity: 0,
+      total_bookings: 0,
+      by_location: {},
+      by_mock_type: {}
+    };
+
+    let totalUtilization = 0;
+
+    // Calculate metrics
+    exams.forEach(exam => {
+      const examDate = exam.properties.exam_date;
+      const capacity = parseInt(exam.properties.capacity) || 0;
+      const bookings = parseInt(exam.properties.total_bookings) || 0;
+      const isActive = exam.properties.is_active === 'true';
+      const location = exam.properties.location || 'Unknown';
+      const mockType = exam.properties.mock_type || 'Unknown';
+      const utilization = capacity > 0 ? (bookings / capacity) * 100 : 0;
+
+      // Count by status
+      if (isActive) metrics.active_sessions++;
+      if (examDate >= today) {
+        metrics.upcoming_sessions++;
+      } else {
+        metrics.past_sessions++;
+      }
+
+      // Count fully booked and low bookings
+      if (bookings >= capacity) {
+        metrics.fully_booked++;
+      } else if (utilization < 50 && examDate >= today && isActive) {
+        metrics.low_bookings++;
+      }
+
+      // Aggregate totals
+      metrics.total_capacity += capacity;
+      metrics.total_bookings += bookings;
+      totalUtilization += utilization;
+
+      // Count by location
+      metrics.by_location[location] = (metrics.by_location[location] || 0) + 1;
+
+      // Count by mock type
+      metrics.by_mock_type[mockType] = (metrics.by_mock_type[mockType] || 0) + 1;
+    });
+
+    // Calculate average utilization
+    metrics.average_utilization = exams.length > 0 
+      ? Math.round((totalUtilization / exams.length) * 10) / 10 
+      : 0;
+
+    return metrics;
+  }
+
 }
 
 module.exports = { HubSpotService, HUBSPOT_OBJECTS };

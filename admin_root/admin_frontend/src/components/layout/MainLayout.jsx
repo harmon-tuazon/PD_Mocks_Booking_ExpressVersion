@@ -1,87 +1,92 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react';
+import { useLocation, Outlet } from 'react-router-dom';
+import SidebarNavigation from '../shared/SidebarNavigation';
+import DarkModeToggle from '../shared/DarkModeToggle';
+import { useAuth } from '../../hooks/useAuth';
 
-function MainLayout() {
-  const navigate = useNavigate()
+/**
+ * Main Layout Component (Admin)
+ *
+ * Provides the main application layout with:
+ * - Responsive sidebar navigation
+ * - Mobile hamburger menu
+ * - Proper content area adjustment
+ * - Authentication-aware layout
+ */
+const MainLayout = () => {
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken')
-    navigate('/login')
-  }
+  // Close sidebar on route changes (mobile)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  // Handle escape key to close sidebar
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setSidebarOpen(false);
+      }
+    };
+
+    if (sidebarOpen) {
+      document.addEventListener('keydown', handleEscape);
+      // Prevent body scroll when sidebar is open on mobile
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [sidebarOpen]);
+
+  // Don't show layout on login page or if not authenticated
+  const showSidebar = location.pathname !== '/login' && user;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Navigation Header */}
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold text-indigo-600">Admin Dashboard</h1>
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <NavLink
-                  to="/"
-                  className={({ isActive }) =>
-                    isActive
-                      ? 'border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
-                  }
-                  end
-                >
-                  Dashboard
-                </NavLink>
-                <NavLink
-                  to="/users"
-                  className={({ isActive }) =>
-                    isActive
-                      ? 'border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
-                  }
-                >
-                  Users
-                </NavLink>
-                <NavLink
-                  to="/mock-exams"
-                  className={({ isActive }) =>
-                    isActive
-                      ? 'border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
-                  }
-                >
-                  Mock Exams
-                </NavLink>
-                <NavLink
-                  to="/reports"
-                  className={({ isActive }) =>
-                    isActive
-                      ? 'border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
-                  }
-                >
-                  Reports
-                </NavLink>
-              </div>
-            </div>
-            <div className="flex items-center">
-              <button
-                onClick={handleLogout}
-                className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Logout
-              </button>
-            </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
+      {/* Mobile Header with Hamburger Menu */}
+      {showSidebar && (
+        <div className="lg:hidden bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-md text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors duration-200"
+            aria-label="Open navigation menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
+          <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            PrepDoctors Admin
           </div>
-        </div>
-      </nav>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+          <DarkModeToggle />
+        </div>
+      )}
+
+      <div className="flex h-screen">
+        {/* Sidebar Navigation - Full height */}
+        {showSidebar && (
+          <SidebarNavigation
+            isOpen={sidebarOpen}
+            setIsOpen={setSidebarOpen}
+          />
+        )}
+
+        {/* Main Content Area - Full height with scroll */}
+        <main className="flex-1 transition-all duration-300 ease-in-out overflow-y-auto">
           <Outlet />
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
-  )
-}
+  );
+};
 
-export default MainLayout
+export default MainLayout;

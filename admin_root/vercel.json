@@ -3,7 +3,7 @@
   "buildCommand": "cd admin_frontend && npm install && npm run build",
   "outputDirectory": "admin_frontend/dist",
   "functions": {
-    "admin_api/**/*.js": {
+    "api/**/*.js": {
       "maxDuration": 60
     }
   },
@@ -47,10 +47,6 @@
     }
   ],
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/admin_api/$1"
-    },
     {
       "source": "/((?!api|assets|favicon\\.ico|robots\\.txt).*)",
       "destination": "/index.html"

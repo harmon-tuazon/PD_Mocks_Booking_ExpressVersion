@@ -24,7 +24,7 @@ This is the admin dashboard for the PrepDoctors Mock Booking System. It provides
 
 ```
 admin_root/
-├── admin_api/                    # Admin API endpoints
+├── api/                          # Admin API endpoints (Vercel serverless functions)
 │   ├── _shared/                 # Shared services (copied from user)
 │   │   ├── hubspot.js          # HubSpot integration
 │   │   ├── redis.js            # Redis caching

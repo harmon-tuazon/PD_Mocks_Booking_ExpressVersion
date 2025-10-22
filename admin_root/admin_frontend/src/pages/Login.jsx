@@ -1,13 +1,24 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 
-function Login({ setAuth }) {
+function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+  const { signIn, user } = useAuth()
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user) {
+      const from = location.state?.from?.pathname || '/';
+      navigate(from, { replace: true });
+    }
+  }, [user, navigate, location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -15,16 +26,17 @@ function Login({ setAuth }) {
     setLoading(true)
 
     try {
-      const response = await axios.post('/api/auth/admin-login', {
-        email,
-        password
-      })
+      const result = await signIn(email, password, rememberMe)
 
-      localStorage.setItem('adminToken', response.data.token)
-      setAuth(true)
-      navigate('/')
+      if (result.success) {
+        // Redirect to the page they tried to access or dashboard
+        const from = location.state?.from?.pathname || '/'
+        navigate(from, { replace: true })
+      } else {
+        setError(result.error || 'Login failed')
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed')
+      setError('An unexpected error occurred. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -83,6 +95,22 @@ function Login({ setAuth }) {
                   onChange={(e) => setPassword(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                  Remember me for 7 days
+                </label>
               </div>
             </div>
 
