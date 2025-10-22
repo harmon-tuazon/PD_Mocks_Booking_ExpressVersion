@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tantml:invoke name="@tanstack/react-query"';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import StatusBadge from './StatusBadge';
 import { mockExamsApi } from '../../services/adminApi';
 
