@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - PrepDoctors Mock Booking System</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+        .api-status {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 1rem;
+            border-radius: 5px;
+            margin-top: 2rem;
+        }
+        .api-endpoint {
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.5rem;
+            border-radius: 3px;
+            margin: 0.5rem 0;
+        }
+        .status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.9rem;
+            margin-left: 0.5rem;
+        }
+        .status.active {
+            background: #4caf50;
+        }
+        .status.pending {
+            background: #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Admin Dashboard</h1>
+        <p>PrepDoctors Mock Booking System</p>
+
+        <div class="api-status">
+            <h3>API Status</h3>
+            <div class="api-endpoint">
+                GET /api/health
+                <span class="status active">Active</span>
+            </div>
+            <div class="api-endpoint">
+                GET /api/users
+                <span class="status active">Active</span>
+            </div>
+            <div class="api-endpoint">
+                Frontend Dashboard
+                <span class="status pending">Coming Soon</span>
+            </div>
+        </div>
+
+        <p style="margin-top: 2rem; font-size: 0.9rem; opacity: 0.7;">
+            Admin API is operational. React dashboard under development.
+        </p>
+    </div>
+
+    <script>
+        // Test API health endpoint
+        fetch('/api/health')
+            .then(res => res.json())
+            .then(data => {
+                console.log('Admin API Health:', data);
+            })
+            .catch(err => {
+                console.log('API not connected yet:', err);
+            });
+    </script>
+</body>
+</html>

@@ -61,7 +61,8 @@
       "Bash(git commit:*)",
       "WebFetch(domain:developers.hubspot.com)",
       "Bash(npm run lint:*)",
-      "mcp__serena__list_memories"
+      "mcp__serena__list_memories",
+      "Bash(git rm:*)"
     ],
     "deny": []
   }

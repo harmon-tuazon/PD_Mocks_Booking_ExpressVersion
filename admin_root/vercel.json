@@ -1,7 +1,7 @@
 {
   "name": "mocks_booking_admin",
-  "buildCommand": "cd admin_frontend && npm install && npm run build",
-  "outputDirectory": "admin_frontend/dist",
+  "buildCommand": "echo 'API-only deployment - no frontend build needed'",
+  "outputDirectory": "public",
   "functions": {
     "admin_api/**/*.js": {
       "maxDuration": 60

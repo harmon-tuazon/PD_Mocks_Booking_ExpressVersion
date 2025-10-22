@@ -12,7 +12,12 @@ node_modules/
 # Build outputs
 dist/
 build/
+
+# Vercel
 .vercel/
+user_root/.vercel/
+admin_root/.vercel/
+*/.vercel/
 
 # Logs
 logs/
