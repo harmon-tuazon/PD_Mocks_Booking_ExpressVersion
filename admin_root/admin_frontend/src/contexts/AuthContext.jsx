@@ -131,14 +131,19 @@ export const AuthProvider = ({ children }) => {
         rememberMe
       });
 
-      if (response.data?.session) {
-        const { session: newSession } = response.data;
+      if (response.data?.session && response.data?.user) {
+        const { session: newSession, user: newUser } = response.data;
 
         // Set Supabase session
         await supabase.auth.setSession({
           access_token: newSession.access_token,
           refresh_token: newSession.refresh_token
         });
+
+        // CRITICAL: Immediately update local state to trigger redirect
+        // Don't wait for auth state change listener
+        setSession(newSession);
+        setUser(newUser);
 
         return { success: true };
       }
