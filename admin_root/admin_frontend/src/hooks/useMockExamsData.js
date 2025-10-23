@@ -13,7 +13,7 @@ import { mockExamsApi } from '../services/adminApi';
  */
 export function useMockExamsData(params = {}, options = {}) {
   return useQuery({
-    queryKey: ['mockExams', params],
+    queryKey: ['mockExams', JSON.stringify(params)],
     queryFn: () => mockExamsApi.list(params),
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // Refetch every minute
@@ -29,7 +29,7 @@ export function useMockExamsData(params = {}, options = {}) {
  */
 export function useMockExamsMetrics(filters = {}, options = {}) {
   return useQuery({
-    queryKey: ['mockExamsMetrics', filters],
+    queryKey: ['mockExamsMetrics', JSON.stringify(filters)],
     queryFn: () => mockExamsApi.getMetrics(filters),
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // Refetch every minute
@@ -60,7 +60,7 @@ export function useMockExamDetails(id, options = {}) {
  */
 export function useMockExamsInfinite(params = {}, options = {}) {
   return useInfiniteQuery({
-    queryKey: ['mockExamsInfinite', params],
+    queryKey: ['mockExamsInfinite', JSON.stringify(params)],
     queryFn: ({ pageParam = 1 }) =>
       mockExamsApi.list({ ...params, page: pageParam }),
     getNextPageParam: (lastPage) => {
