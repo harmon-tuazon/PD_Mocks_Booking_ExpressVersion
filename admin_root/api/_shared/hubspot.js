@@ -1917,7 +1917,7 @@ ${cancellationData.reason ? `<strong>Reason:</strong> ${cancellationData.reason}
       ],
       sorts: [{
         propertyName: sort_by,
-        direction: sort_order.toUpperCase()
+        direction: sort_order.toLowerCase() === 'asc' ? 'ASCENDING' : 'DESCENDING'
       }],
       limit,
       after: page > 1 ? ((page - 1) * limit).toString() : undefined
