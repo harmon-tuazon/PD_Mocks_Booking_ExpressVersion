@@ -25,7 +25,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [permissions, setPermissions] = useState([]);
   const [configError, setConfigError] = useState(null);
 
   // Set axios auth header when session changes
@@ -37,21 +36,12 @@ export const AuthProvider = ({ children }) => {
     }
   }, [session]);
 
-  // Simplified: Just check if user exists (no role checking)
-  // Legacy functions kept for backward compatibility but always return true
-  const isAdmin = () => {
-    return !!user; // Any authenticated user is considered "admin"
+  // No role-based checks - any authenticated user has access
+  const isAuthenticated = () => {
+    return !!user;
   };
 
-  const isSuperAdmin = () => {
-    return !!user; // Any authenticated user
-  };
-
-  const hasPermission = (permission) => {
-    return !!user; // Any authenticated user has all permissions
-  };
-
-  // Fetch user details and permissions from backend
+  // Fetch additional user details from backend (optional)
   const fetchUserDetails = async (accessToken) => {
     try {
       const response = await axios.get('/admin/auth/me', {
@@ -59,10 +49,6 @@ export const AuthProvider = ({ children }) => {
           'Authorization': `Bearer ${accessToken}`
         }
       });
-
-      if (response.data?.user_metadata?.permissions) {
-        setPermissions(response.data.user_metadata.permissions);
-      }
 
       return response.data;
     } catch (error) {
@@ -89,13 +75,12 @@ export const AuthProvider = ({ children }) => {
         const { session: currentSession, error } = await authHelpers.getSession();
 
         if (currentSession) {
-          // Accept any authenticated user (no role checking)
           const { user: currentUser } = currentSession;
 
           setSession(currentSession);
           setUser(currentUser);
 
-          // Fetch additional user details
+          // Fetch additional user details (optional)
           const userDetails = await fetchUserDetails(currentSession.access_token);
           if (userDetails) {
             setUser({ ...currentUser, ...userDetails });
@@ -115,11 +100,10 @@ export const AuthProvider = ({ children }) => {
       if (event === 'SIGNED_IN' && newSession) {
         const { user: newUser } = newSession;
 
-        // Accept any authenticated user (no role checking)
         setSession(newSession);
         setUser(newUser);
 
-        // Fetch additional user details
+        // Fetch additional user details (optional)
         const userDetails = await fetchUserDetails(newSession.access_token);
         if (userDetails) {
           setUser({ ...newUser, ...userDetails });
@@ -127,7 +111,6 @@ export const AuthProvider = ({ children }) => {
       } else if (event === 'SIGNED_OUT') {
         setSession(null);
         setUser(null);
-        setPermissions([]);
       } else if (event === 'TOKEN_REFRESHED' && newSession) {
         setSession(newSession);
       }
@@ -210,7 +193,6 @@ export const AuthProvider = ({ children }) => {
       // Clear state
       setUser(null);
       setSession(null);
-      setPermissions([]);
 
       return { success: true };
     } catch (error) {
@@ -220,7 +202,6 @@ export const AuthProvider = ({ children }) => {
       await authHelpers.signOut();
       setUser(null);
       setSession(null);
-      setPermissions([]);
 
       return { success: true };
     }
@@ -264,15 +245,12 @@ export const AuthProvider = ({ children }) => {
     user,
     session,
     loading,
-    permissions,
     configError,
     signIn,
     signOut,
     validateSession,
     refreshToken,
-    isAdmin: () => isAdmin(user),
-    isSuperAdmin: () => isSuperAdmin(user),
-    hasPermission
+    isAuthenticated
   };
 
   // Show configuration error if Supabase is not configured

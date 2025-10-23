@@ -49,59 +49,8 @@ async function verifyToken(token) {
   }
 }
 
-/**
- * Check if user has admin role
- * @param {object} user - Supabase user object
- * @returns {boolean}
- */
-function isAdmin(user) {
-  const role = user?.user_metadata?.role;
-  return role === 'admin' || role === 'super_admin';
-}
-
-/**
- * Check if user has super admin role
- * @param {object} user - Supabase user object
- * @returns {boolean}
- */
-function isSuperAdmin(user) {
-  const role = user?.user_metadata?.role;
-  return role === 'super_admin';
-}
-
-/**
- * Get user permissions based on role
- * @param {object} user - Supabase user object
- * @returns {string[]}
- */
-function getUserPermissions(user) {
-  const role = user?.user_metadata?.role;
-
-  const ROLE_PERMISSIONS = {
-    super_admin: ['*'], // All permissions
-    admin: [
-      'create_mock_exams',
-      'edit_mock_exams',
-      'delete_mock_exams',
-      'view_bookings',
-      'manage_users',
-      'view_reports'
-    ],
-    staff: [
-      'view_mock_exams',
-      'view_bookings',
-      'view_reports'
-    ]
-  };
-
-  return ROLE_PERMISSIONS[role] || [];
-}
-
 module.exports = {
   supabaseAdmin,
   supabasePublic,
-  verifyToken,
-  isAdmin,
-  isSuperAdmin,
-  getUserPermissions
+  verifyToken
 };

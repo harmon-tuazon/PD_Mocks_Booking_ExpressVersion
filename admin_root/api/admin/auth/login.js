@@ -3,7 +3,7 @@
  * POST /api/admin/auth/login
  */
 
-const { supabasePublic, isAdmin } = require('../../_shared/supabase');
+const { supabasePublic } = require('../../_shared/supabase');
 const Joi = require('joi');
 
 // Login request validation schema
@@ -101,19 +101,8 @@ module.exports = async (req, res) => {
 
     const { user, session } = data;
 
-    // Verify user has admin role
-    if (!isAdmin(user)) {
-      // Sign out non-admin user
-      await supabasePublic.auth.signOut();
-
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: 'INSUFFICIENT_PERMISSIONS',
-          message: 'Admin access required'
-        }
-      });
-    }
+    // User is authenticated - no role check needed
+    // Any authenticated Supabase user can access the admin panel
 
     // Clear failed attempts on successful login
     loginAttempts.delete(attemptKey);
@@ -131,12 +120,7 @@ module.exports = async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        role: user.user_metadata?.role || 'admin',
-        user_metadata: {
-          full_name: user.user_metadata?.full_name || '',
-          department: user.user_metadata?.department || '',
-          avatar_url: user.user_metadata?.avatar_url || null
-        }
+        user_metadata: user.user_metadata || {}
       },
       session: {
         access_token: session.access_token,
