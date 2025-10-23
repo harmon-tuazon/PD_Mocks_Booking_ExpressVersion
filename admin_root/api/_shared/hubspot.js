@@ -987,42 +987,31 @@ class HubSpotService {
    */
   async calculateMetrics(filters = {}) {
     try {
-      const { startDate, endDate, mockType, status } = filters;
+      const { date_from, date_to } = filters;
 
       // Build filters for mock exams
       const examFilters = [];
-      if (startDate) {
+      const today = new Date().toISOString().split('T')[0];
+
+      // Date range filters
+      if (date_from) {
         examFilters.push({
-          propertyName: 'date',
+          propertyName: 'exam_date',
           operator: 'GTE',
-          value: startDate
+          value: date_from
         });
       }
-      if (endDate) {
+      if (date_to) {
         examFilters.push({
-          propertyName: 'date',
+          propertyName: 'exam_date',
           operator: 'LTE',
-          value: endDate
-        });
-      }
-      if (mockType) {
-        examFilters.push({
-          propertyName: 'mock_type',
-          operator: 'EQ',
-          value: mockType
-        });
-      }
-      if (status) {
-        examFilters.push({
-          propertyName: 'mock_exam_status',
-          operator: 'EQ',
-          value: status
+          value: date_to
         });
       }
 
       // Get all mock exams matching filters
       const searchRequest = {
-        properties: ['mock_type', 'date', 'slots_available', 'slots_total', 'mock_exam_status'],
+        properties: ['exam_date', 'capacity', 'total_bookings', 'is_active'],
         limit: 100
       };
 
@@ -1034,48 +1023,44 @@ class HubSpotService {
       const exams = examsResponse.results || [];
 
       // Calculate metrics
-      const metrics = {
-        totalExams: exams.length,
-        totalSlots: 0,
-        bookedSlots: 0,
-        availableSlots: 0,
-        utilizationRate: 0,
-        byType: {},
-        byStatus: {}
-      };
+      let totalSessions = exams.length;
+      let upcomingSessions = 0;
+      let fullyBooked = 0;
+      let totalCapacity = 0;
+      let totalBookings = 0;
 
       exams.forEach(exam => {
-        const total = parseInt(exam.properties.slots_total || 0);
-        const available = parseInt(exam.properties.slots_available || 0);
-        const booked = total - available;
+        const examDate = exam.properties.exam_date || '';
+        const capacity = parseInt(exam.properties.capacity || 0);
+        const bookings = parseInt(exam.properties.total_bookings || 0);
+        const isActive = exam.properties.is_active === 'true';
 
-        metrics.totalSlots += total;
-        metrics.availableSlots += available;
-        metrics.bookedSlots += booked;
-
-        // Group by type
-        const type = exam.properties.mock_type || 'Unknown';
-        if (!metrics.byType[type]) {
-          metrics.byType[type] = { count: 0, totalSlots: 0, bookedSlots: 0 };
+        // Count upcoming sessions (today or future, and active)
+        if (examDate >= today && isActive) {
+          upcomingSessions++;
         }
-        metrics.byType[type].count++;
-        metrics.byType[type].totalSlots += total;
-        metrics.byType[type].bookedSlots += booked;
 
-        // Group by status
-        const examStatus = exam.properties.mock_exam_status || 'unknown';
-        if (!metrics.byStatus[examStatus]) {
-          metrics.byStatus[examStatus] = 0;
+        // Count fully booked sessions
+        if (capacity > 0 && bookings >= capacity) {
+          fullyBooked++;
         }
-        metrics.byStatus[examStatus]++;
+
+        // Sum for utilization calculation
+        totalCapacity += capacity;
+        totalBookings += bookings;
       });
 
-      // Calculate utilization rate
-      if (metrics.totalSlots > 0) {
-        metrics.utilizationRate = (metrics.bookedSlots / metrics.totalSlots * 100).toFixed(2);
-      }
+      // Calculate average utilization
+      const averageUtilization = totalCapacity > 0
+        ? Math.round((totalBookings / totalCapacity) * 100)
+        : 0;
 
-      return metrics;
+      return {
+        total_sessions: totalSessions,
+        upcoming_sessions: upcomingSessions,
+        fully_booked: fullyBooked,
+        average_utilization: averageUtilization
+      };
     } catch (error) {
       console.error('Error calculating metrics:', error);
       throw error;
