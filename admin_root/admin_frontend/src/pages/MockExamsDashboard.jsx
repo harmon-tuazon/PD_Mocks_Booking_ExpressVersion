@@ -58,18 +58,18 @@ function MockExamsDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
-      <div className="container-app py-12">
+      <div className="container-app py-8">
         {/* Page Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Mock Exams Dashboard</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-3xl font-bold text-navy-900">Mock Exams Dashboard</h1>
+            <p className="mt-2 text-sm text-gray-600">
               View and manage all mock exam sessions
             </p>
           </div>
           <Link
             to="/mock-exams/create"
-            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
           >
             <svg className="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

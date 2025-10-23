@@ -11,7 +11,14 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nchore: improve Supabase env var validation and error messages\n\nEnhanced error logging for missing Supabase configuration:\n- Added clear visual indicators (✓/✗) for each required variable\n- Included helpful message pointing to Vercel Dashboard\n- Added comment explaining VITE_ prefix requirement\n\nThis commit triggers a rebuild with newly configured environment variables.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(cat:*)",
       "Bash(git commit:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(rg:*)",
+      "mcp__serena__find_symbol",
+      "mcp__serena__insert_before_symbol",
+      "mcp__serena__replace_symbol_body",
+      "mcp__serena__get_symbols_overview",
+      "mcp__serena__search_for_pattern",
+      "mcp__serena__insert_after_symbol"
     ],
     "deny": [],
     "ask": []
