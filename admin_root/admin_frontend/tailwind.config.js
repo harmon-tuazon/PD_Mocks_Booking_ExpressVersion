@@ -8,18 +8,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        // PrepDoctors Brand Colors
+        // PrepDoctors Official Brand Colors (from PD Brand Guide.pdf)
         primary: {
           50: '#e8f2ff',
           100: '#d1e6ff',
           200: '#a3ccff',
           300: '#75b3ff',
           400: '#4799ff',
-          500: '#0660B2', // Primary Blue
-          600: '#054E91', // Secondary Blue (hover states)
+          500: '#0660B2', // Primary Blue - Main brand color
+          600: '#054E91', // Secondary Blue - Hover states
           700: '#043d73',
           800: '#032b55',
-          900: '#02376D', // Navy Blue (dark backgrounds)
+          900: '#02376D', // Navy Blue - Dark backgrounds
         },
         secondary: {
           50: '#e8f2ff',
