@@ -103,6 +103,12 @@ export const AuthProvider = ({ children }) => {
         setSession(newSession);
         setUser(newUser);
 
+        // Store tokens in localStorage
+        localStorage.setItem('access_token', newSession.access_token);
+        if (newSession.refresh_token) {
+          localStorage.setItem('refresh_token', newSession.refresh_token);
+        }
+
         // Fetch additional user details (optional)
         const userDetails = await fetchUserDetails(newSession.access_token);
         if (userDetails) {
@@ -111,8 +117,18 @@ export const AuthProvider = ({ children }) => {
       } else if (event === 'SIGNED_OUT') {
         setSession(null);
         setUser(null);
+
+        // Clear tokens from localStorage
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
       } else if (event === 'TOKEN_REFRESHED' && newSession) {
         setSession(newSession);
+
+        // Update token in localStorage
+        localStorage.setItem('access_token', newSession.access_token);
+        if (newSession.refresh_token) {
+          localStorage.setItem('refresh_token', newSession.refresh_token);
+        }
       }
     });
 
@@ -144,6 +160,12 @@ export const AuthProvider = ({ children }) => {
         // Don't wait for auth state change listener
         setSession(newSession);
         setUser(newUser);
+
+        // Store tokens in localStorage for API requests
+        localStorage.setItem('access_token', newSession.access_token);
+        if (newSession.refresh_token) {
+          localStorage.setItem('refresh_token', newSession.refresh_token);
+        }
 
         return { success: true };
       }
@@ -199,6 +221,10 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setSession(null);
 
+      // Clear tokens from localStorage
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+
       return { success: true };
     } catch (error) {
       console.error('Logout error:', error);
@@ -207,6 +233,10 @@ export const AuthProvider = ({ children }) => {
       await authHelpers.signOut();
       setUser(null);
       setSession(null);
+
+      // Clear tokens from localStorage
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
 
       return { success: true };
     }

@@ -19,7 +19,13 @@ const api = axios.create({
 // Add request interceptor to include auth token
 api.interceptors.request.use(
   (config) => {
-    // Token will be set by AuthContext via axios defaults
+    // Get token from localStorage (set by AuthContext)
+    const token = localStorage.getItem('access_token');
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
     return config;
   },
   (error) => {
