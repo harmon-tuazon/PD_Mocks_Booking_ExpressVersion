@@ -13,7 +13,6 @@
  */
 
 const axios = require('axios');
-const { HubSpotBatchService } = require('./batch');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -40,9 +39,6 @@ class HubSpotService {
     if (!this.token) {
       throw new Error('HS_PRIVATE_APP_TOKEN environment variable is required');
     }
-
-    // Initialize batch service for optimized operations
-    this.batch = new HubSpotBatchService(this);
   }
 
   /**
