@@ -1,9 +1,11 @@
 /**
  * Get Current User Endpoint
  * GET /api/admin/auth/me
+ *
+ * Note: Only checks authentication, not role-based authorization.
  */
 
-const { verifyToken, isAdmin, getUserPermissions } = require('../../_shared/supabase');
+const { verifyToken } = require('../../_shared/supabase');
 
 module.exports = async (req, res) => {
   // Only allow GET requests
@@ -33,7 +35,7 @@ module.exports = async (req, res) => {
 
     const token = authHeader.substring(7);
 
-    // Verify token with Supabase
+    // Verify token with Supabase (authentication only)
     const { user, error } = await verifyToken(token);
 
     if (error || !user) {
@@ -46,31 +48,11 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Verify user has admin role
-    if (!isAdmin(user)) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: 'INSUFFICIENT_PERMISSIONS',
-          message: 'Admin access required'
-        }
-      });
-    }
-
-    // Get user permissions
-    const permissions = getUserPermissions(user);
-
-    // Return user information
+    // Return user information (all authenticated users have access)
     res.status(200).json({
       id: user.id,
       email: user.email,
-      role: user.user_metadata?.role || 'admin',
-      user_metadata: {
-        full_name: user.user_metadata?.full_name || '',
-        department: user.user_metadata?.department || '',
-        avatar_url: user.user_metadata?.avatar_url || null,
-        permissions
-      },
+      user_metadata: user.user_metadata || {},
       created_at: user.created_at,
       last_sign_in: user.last_sign_in_at
     });

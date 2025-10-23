@@ -1,9 +1,11 @@
 /**
  * Token Refresh Endpoint
  * POST /api/admin/auth/refresh
+ *
+ * Note: Only checks authentication, not role-based authorization.
  */
 
-const { supabasePublic, isAdmin } = require('../../_shared/supabase');
+const { supabasePublic } = require('../../_shared/supabase');
 
 module.exports = async (req, res) => {
   // Only allow POST requests
@@ -40,7 +42,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Refresh the session using Supabase
+    // Refresh the session using Supabase (authentication only)
     const { data, error } = await supabasePublic.auth.refreshSession({
       refresh_token: refreshToken
     });
@@ -55,18 +57,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    const { user, session } = data;
-
-    // Verify user still has admin role
-    if (!isAdmin(user)) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: 'INSUFFICIENT_PERMISSIONS',
-          message: 'Admin access required'
-        }
-      });
-    }
+    const { session } = data;
 
     // Update refresh token cookie if present
     if (req.headers.cookie?.includes('admin_refresh_token=')) {
@@ -75,7 +66,7 @@ module.exports = async (req, res) => {
       ]);
     }
 
-    // Return new session
+    // Return new session (all authenticated users can refresh)
     res.status(200).json({
       success: true,
       session: {

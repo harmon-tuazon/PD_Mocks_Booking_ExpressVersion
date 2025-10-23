@@ -1,9 +1,11 @@
 /**
  * Session Validation Endpoint
  * GET /api/admin/auth/validate
+ *
+ * Note: Only checks authentication, not role-based authorization.
  */
 
-const { verifyToken, isAdmin } = require('../../_shared/supabase');
+const { verifyToken } = require('../../_shared/supabase');
 
 module.exports = async (req, res) => {
   // Only allow GET requests
@@ -33,7 +35,7 @@ module.exports = async (req, res) => {
 
     const token = authHeader.substring(7);
 
-    // Verify token with Supabase
+    // Verify token with Supabase (authentication only)
     const { user, error } = await verifyToken(token);
 
     if (error || !user) {
@@ -46,24 +48,12 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Verify user has admin role
-    if (!isAdmin(user)) {
-      return res.status(403).json({
-        valid: false,
-        error: {
-          code: 'INSUFFICIENT_PERMISSIONS',
-          message: 'Admin access required'
-        }
-      });
-    }
-
-    // Return validation result
+    // Return validation result (authenticated user is valid)
     res.status(200).json({
       valid: true,
       user: {
         id: user.id,
-        email: user.email,
-        role: user.user_metadata?.role || 'admin'
+        email: user.email
       }
     });
 
