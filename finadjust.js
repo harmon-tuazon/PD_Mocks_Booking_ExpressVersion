@@ -250,23 +250,28 @@ exports.main = async (event, callback) => {
                     }
                 });
 
-                // Recalculate deal amount based on line items
-                await recalculateAndUpdateDealAmount(dealId);
-
-                // Apply penalty/adjustment deduction directly to deal amount (HubSpot doesn't allow negative line item prices)
+                // Create adjustment line item with positive price and double discount for negative effect
                 const penaltyValue = parseFloat(penalty) || 0;
                 const totalDeduction = adjustmentAmount + penaltyValue;
 
                 if (totalDeduction > 0) {
-                    const updatedDeal = await hubspotApiCall('get', `/crm/v3/objects/deals/${dealId}?properties=amount`);
-                    const currentAmount = parseFloat(updatedDeal.properties.amount || '0');
-                    const newAmount = currentAmount - totalDeduction;
-
-                    await hubspotApiCall('patch', `/crm/v3/objects/deals/${dealId}`, {
-                        properties: { amount: Math.max(0, newAmount) }  // Ensure amount doesn't go negative
+                    // Use positive price with discount that's double the price to get negative net effect
+                    // Example: price 6100, discount 12200 = net -6100
+                    const adjustmentLineItem = await hubspotApiCall('post', `/crm/v3/objects/line_items`, {
+                        properties: {
+                            name: 'Adjustment-Penalty',
+                            hs_product_id: '22099387758',
+                            quantity: 1,
+                            price: totalDeduction,
+                            discount: totalDeduction * 2  // Discount twice the price for negative effect
+                        }
                     });
-                    console.log(`  - Applied penalty/adjustment deduction of -${totalDeduction} (adjustment: ${adjustmentAmount}, penalty: ${penaltyValue}). New deal amount: ${Math.max(0, newAmount)}`);
+                    await hubspotApiCall('put', `/crm/v3/objects/line_items/${adjustmentLineItem.id}/associations/deals/${dealId}/line_item_to_deal`);
+                    console.log(`  - Created adjustment line item ${adjustmentLineItem.id} with net deduction of -${totalDeduction} (price: ${totalDeduction}, discount: ${totalDeduction * 2})`);
                 }
+
+                // Recalculate deal amount to include the adjustment line item
+                await recalculateAndUpdateDealAmount(dealId);
 
                 const newCreditsApplied = currentCreditsApplied - Math.abs(creditAmount);
                 await hubspotApiCall('patch', `/crm/v3/objects/deals/${dealId}`, { properties: { [DEAL_PROP_CREDITS_APPLIED]: newCreditsApplied } });
@@ -343,23 +348,28 @@ exports.main = async (event, callback) => {
                     }
                 });
 
-                // Recalculate deal amount based on line items
-                await recalculateAndUpdateDealAmount(dealId);
-
-                // Apply penalty/adjustment deduction directly to deal amount (HubSpot doesn't allow negative line item prices)
+                // Create adjustment line item with positive price and double discount for negative effect
                 const penaltyValue2 = parseFloat(penalty) || 0;
                 const totalDeduction2 = adjustmentAmount + penaltyValue2;
 
                 if (totalDeduction2 > 0) {
-                    const updatedDeal2 = await hubspotApiCall('get', `/crm/v3/objects/deals/${dealId}?properties=amount`);
-                    const currentAmount2 = parseFloat(updatedDeal2.properties.amount || '0');
-                    const newAmount2 = currentAmount2 - totalDeduction2;
-
-                    await hubspotApiCall('patch', `/crm/v3/objects/deals/${dealId}`, {
-                        properties: { amount: Math.max(0, newAmount2) }  // Ensure amount doesn't go negative
+                    // Use positive price with discount that's double the price to get negative net effect
+                    // Example: price 6100, discount 12200 = net -6100
+                    const adjustmentLineItem2 = await hubspotApiCall('post', `/crm/v3/objects/line_items`, {
+                        properties: {
+                            name: 'Adjustment-Penalty',
+                            hs_product_id: '22099387758',
+                            quantity: 1,
+                            price: totalDeduction2,
+                            discount: totalDeduction2 * 2  // Discount twice the price for negative effect
+                        }
                     });
-                    console.log(`  - Applied penalty/adjustment deduction of -${totalDeduction2} (adjustment: ${adjustmentAmount}, penalty: ${penaltyValue2}). New deal amount: ${Math.max(0, newAmount2)}`);
+                    await hubspotApiCall('put', `/crm/v3/objects/line_items/${adjustmentLineItem2.id}/associations/deals/${dealId}/line_item_to_deal`);
+                    console.log(`  - Created adjustment line item ${adjustmentLineItem2.id} with net deduction of -${totalDeduction2} (price: ${totalDeduction2}, discount: ${totalDeduction2 * 2})`);
                 }
+
+                // Recalculate deal amount to include the adjustment line item
+                await recalculateAndUpdateDealAmount(dealId);
 
                 const newCreditsAppliedRefund = currentCreditsApplied - Math.abs(adjustmentAmount);
                 await hubspotApiCall('patch', `/crm/v3/objects/deals/${dealId}`, { properties: { [DEAL_PROP_CREDITS_APPLIED]: newCreditsAppliedRefund } });
@@ -446,7 +456,7 @@ exports.main = async (event, callback) => {
         summaryMessage = error.message;
         console.error('🔥 An error occurred during the workflow execution.', error);
     } finally {
-        const lastUpdatedBy = event.inputFields[UPDATED_BY] || ownerName || 'Unknown User';
+        const lastUpdatedBy = event.inputFields[UPDATED_BY] || 'Admin';
         const noteBody = `
             <p>An adjustment request initiated by <strong>${lastUpdatedBy}</strong> has been processed.</p>
             <ul>
