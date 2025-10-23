@@ -46,11 +46,11 @@ const MockExamsTable = ({ data, pagination, isLoading, onSort, currentSort }) =>
     }
 
     return currentSort.sort_order === 'asc' ? (
-      <svg className="w-4 h-4 ml-1 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-4 h-4 ml-1 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
       </svg>
     ) : (
-      <svg className="w-4 h-4 ml-1 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-4 h-4 ml-1 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
       </svg>
     );
@@ -163,11 +163,11 @@ const MockExamsTable = ({ data, pagination, isLoading, onSort, currentSort }) =>
                     <div className="w-24 bg-gray-200 rounded-full h-2 mr-2">
                       <div
                         className={`h-2 rounded-full ${
-                          exam.utilization_rate >= 80
-                            ? 'bg-green-500'
+                          exam.utilization_rate >= 70
+                            ? 'bg-teal-500'
                             : exam.utilization_rate >= 50
-                            ? 'bg-yellow-500'
-                            : 'bg-red-500'
+                            ? 'bg-primary-500'
+                            : 'bg-coral-500'
                         }`}
                         style={{ width: `${Math.min(exam.utilization_rate, 100)}%` }}
                       ></div>
@@ -182,7 +182,7 @@ const MockExamsTable = ({ data, pagination, isLoading, onSort, currentSort }) =>
                   <div className="flex items-center justify-end space-x-2">
                     <button
                       onClick={() => window.location.href = `/admin/mock-exams/${exam.id}`}
-                      className="text-indigo-600 hover:text-indigo-900"
+                      className="text-primary-600 hover:text-primary-700"
                       title="View Details"
                     >
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

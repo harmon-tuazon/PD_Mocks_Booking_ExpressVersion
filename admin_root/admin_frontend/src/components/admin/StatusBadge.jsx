@@ -6,41 +6,40 @@
 const StatusBadge = ({ status }) => {
   const getStatusConfig = () => {
     switch (status) {
+      case 'active':
+        return {
+          label: 'Active',
+          classes: 'bg-teal-100 text-teal-800'
+        };
       case 'upcoming':
         return {
           label: 'Upcoming',
-          classes: 'bg-green-100 text-green-800',
-          icon: '🟢'
+          classes: 'bg-primary-100 text-primary-800'
         };
       case 'full':
         return {
           label: 'Full',
-          classes: 'bg-red-100 text-red-800',
-          icon: '🔴'
+          classes: 'bg-coral-100 text-coral-800'
         };
       case 'low':
         return {
           label: 'Low Bookings',
-          classes: 'bg-yellow-100 text-yellow-800',
-          icon: '🟡'
+          classes: 'bg-primary-100 text-primary-800'
         };
       case 'past':
         return {
           label: 'Past',
-          classes: 'bg-gray-100 text-gray-800',
-          icon: '⚫'
+          classes: 'bg-gray-100 text-gray-800'
         };
       case 'inactive':
         return {
           label: 'Inactive',
-          classes: 'bg-orange-100 text-orange-800',
-          icon: '🟠'
+          classes: 'bg-gray-100 text-gray-600'
         };
       default:
         return {
           label: status,
-          classes: 'bg-gray-100 text-gray-800',
-          icon: ''
+          classes: 'bg-gray-100 text-gray-800'
         };
     }
   };
@@ -51,7 +50,6 @@ const StatusBadge = ({ status }) => {
     <span
       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.classes}`}
     >
-      <span className="mr-1">{config.icon}</span>
       {config.label}
     </span>
   );
