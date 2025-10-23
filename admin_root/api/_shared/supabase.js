@@ -49,8 +49,38 @@ async function verifyToken(token) {
   }
 }
 
+/**
+ * Check if user is authenticated
+ * Note: This only checks authentication, NOT authorization.
+ * All authenticated users are considered valid admin users.
+ * @param {object} user - Supabase user object
+ * @returns {boolean} True if user is authenticated
+ */
+function isAdmin(user) {
+  // Simply check if user exists (is authenticated)
+  // No role-based authorization - authentication is enough
+  return !!user;
+}
+
+/**
+ * Get user metadata
+ * Note: Returns user metadata as-is, without role-based logic.
+ * @param {object} user - Supabase user object
+ * @returns {object} User metadata object
+ */
+function getUserPermissions(user) {
+  if (!user) {
+    return {};
+  }
+
+  // Return user metadata as-is, no role-based authorization
+  return user.user_metadata || {};
+}
+
 module.exports = {
   supabaseAdmin,
   supabasePublic,
-  verifyToken
+  verifyToken,
+  isAdmin,
+  getUserPermissions
 };
