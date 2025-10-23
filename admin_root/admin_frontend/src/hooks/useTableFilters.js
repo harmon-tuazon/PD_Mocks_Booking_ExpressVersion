@@ -6,7 +6,7 @@ import { useState, useCallback, useMemo } from 'react';
 
 const DEFAULT_FILTERS = {
   page: 1,
-  limit: 50,
+  limit: 25,
   sort_by: 'exam_date',
   sort_order: 'asc',
   filter_location: '',
@@ -15,7 +15,7 @@ const DEFAULT_FILTERS = {
   filter_date_from: '',
   filter_date_to: '',
   search: ''
-};
+};;
 
 /**
  * Hook to manage table filters and sorting

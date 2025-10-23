@@ -77,6 +77,37 @@ module.exports = async (req, res) => {
     });
 
     // Transform results to include calculated fields
+    // Helper function to format time to 12-hour AM/PM format
+    const formatTime = (timeString) => {
+      if (!timeString) return '';
+      
+      try {
+        // Handle ISO timestamp format (e.g., "2025-09-26T16:00:00Z")
+        if (timeString.includes('T') || timeString.includes('Z')) {
+          const date = new Date(timeString);
+          return date.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          });
+        }
+        
+        // Handle HH:MM format (e.g., "14:30")
+        if (timeString.includes(':')) {
+          const [hours, minutes] = timeString.split(':');
+          const hour = parseInt(hours, 10);
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+          return `${displayHour}:${minutes} ${ampm}`;
+        }
+        
+        return timeString;
+      } catch (error) {
+        console.error('Error formatting time:', error);
+        return timeString;
+      }
+    };
+
     const transformedResults = result.results.map(exam => {
       const properties = exam.properties;
       const capacity = parseInt(properties.capacity) || 0;
@@ -98,10 +129,9 @@ module.exports = async (req, res) => {
         status = 'past';
       }
 
-      // Extract time strings directly from HubSpot properties
-      // Times are stored as strings like "14:30" in HubSpot
-      const startTime = properties.start_time || '';
-      const endTime = properties.end_time || '';
+      // Format times to 12-hour AM/PM format
+      const startTime = formatTime(properties.start_time);
+      const endTime = formatTime(properties.end_time);
 
       return {
         id: exam.id,
@@ -118,7 +148,7 @@ module.exports = async (req, res) => {
         created_at: properties.hs_createdate || '',
         updated_at: properties.hs_lastmodifieddate || ''
       };
-    });
+    });;
 
     // Apply client-side search filter if provided
     let filteredResults = transformedResults;
