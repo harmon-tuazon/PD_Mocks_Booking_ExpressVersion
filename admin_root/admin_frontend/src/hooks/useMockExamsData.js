@@ -2,7 +2,7 @@
  * Custom hook for fetching and managing mock exams data
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { mockExamsApi } from '../services/adminApi';
 
 /**
@@ -48,6 +48,29 @@ export function useMockExamDetails(id, options = {}) {
     queryKey: ['mockExamDetails', id],
     queryFn: () => mockExamsApi.getById(id),
     enabled: !!id,
+    ...options
+  });
+}
+
+/**
+ * Hook to fetch mock exams with infinite scroll
+ * @param {Object} params - Query parameters (filters, sort, etc.)
+ * @param {Object} options - React Query options
+ * @returns {Object} Infinite query result with mock exams data
+ */
+export function useMockExamsInfinite(params = {}, options = {}) {
+  return useInfiniteQuery({
+    queryKey: ['mockExamsInfinite', params],
+    queryFn: ({ pageParam = 1 }) =>
+      mockExamsApi.list({ ...params, page: pageParam }),
+    getNextPageParam: (lastPage) => {
+      const { pagination } = lastPage;
+      if (!pagination) return undefined;
+
+      const hasNextPage = pagination.current_page < pagination.total_pages;
+      return hasNextPage ? pagination.current_page + 1 : undefined;
+    },
+    staleTime: 30000, // 30 seconds
     ...options
   });
 }

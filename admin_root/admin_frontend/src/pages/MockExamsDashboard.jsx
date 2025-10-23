@@ -4,11 +4,12 @@
  */
 
 import { Link } from 'react-router-dom';
-import { useMockExamsData, useMockExamsMetrics } from '../hooks/useMockExamsData';
+import { useMockExamsInfinite, useMockExamsMetrics } from '../hooks/useMockExamsData';
 import { useTableFilters } from '../hooks/useTableFilters';
 import DashboardMetrics from '../components/admin/DashboardMetrics';
 import FilterBar from '../components/admin/FilterBar';
 import MockExamsTable from '../components/admin/MockExamsTable';
+import { useMemo } from 'react';
 
 function MockExamsDashboard() {
   // Initialize filter management
@@ -22,21 +23,34 @@ function MockExamsDashboard() {
     getQueryParams
   } = useTableFilters();
 
-  // Fetch mock exams data
+  // Fetch mock exams data with infinite scroll
   const {
     data: mockExamsData,
     isLoading: isLoadingExams,
-    error: examsError
-  } = useMockExamsData(getQueryParams);
+    error: examsError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useMockExamsInfinite(getQueryParams);
 
-  // Fetch metrics data
+  // Flatten all pages of data into a single array
+  const allExams = useMemo(() => {
+    if (!mockExamsData?.pages) return [];
+    return mockExamsData.pages.flatMap(page => page.data || []);
+  }, [mockExamsData]);
+
+  // Fetch metrics data (only pass non-empty date filters)
+  const metricsFilters = useMemo(() => {
+    const params = {};
+    if (filters.filter_date_from) params.date_from = filters.filter_date_from;
+    if (filters.filter_date_to) params.date_to = filters.filter_date_to;
+    return params;
+  }, [filters.filter_date_from, filters.filter_date_to]);
+
   const {
     data: metricsData,
     isLoading: isLoadingMetrics
-  } = useMockExamsMetrics({
-    date_from: filters.filter_date_from,
-    date_to: filters.filter_date_to
-  });
+  } = useMockExamsMetrics(metricsFilters);
 
   const handleSort = (column) => {
     toggleSort(column);
@@ -100,14 +114,16 @@ function MockExamsDashboard() {
 
         {/* Mock Exams Table */}
         <MockExamsTable
-          data={mockExamsData?.data}
-          pagination={mockExamsData?.pagination}
+          data={allExams}
           isLoading={isLoadingExams}
           onSort={handleSort}
           currentSort={{
             sort_by: filters.sort_by,
             sort_order: filters.sort_order
           }}
+          hasNextPage={hasNextPage}
+          fetchNextPage={fetchNextPage}
+          isFetchingNextPage={isFetchingNextPage}
         />
       </div>
     </div>

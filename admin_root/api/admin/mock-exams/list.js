@@ -98,22 +98,10 @@ module.exports = async (req, res) => {
         status = 'past';
       }
 
-      // Convert timestamps to readable time format
-      const startTime = properties.start_time
-        ? new Date(parseInt(properties.start_time)).toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-          })
-        : '';
-
-      const endTime = properties.end_time
-        ? new Date(parseInt(properties.end_time)).toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-          })
-        : '';
+      // Extract time strings directly from HubSpot properties
+      // Times are stored as strings like "14:30" in HubSpot
+      const startTime = properties.start_time || '';
+      const endTime = properties.end_time || '';
 
       return {
         id: exam.id,
