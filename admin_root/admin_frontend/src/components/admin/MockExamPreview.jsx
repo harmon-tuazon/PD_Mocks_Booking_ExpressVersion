@@ -55,7 +55,7 @@ const MockExamPreview = ({ mockExamData, timeSlots, mode }) => {
           Preview ({previewItems.length} session{previewItems.length > 1 ? 's' : ''})
         </h3>
         {mode === 'bulk' && (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-[#E0E7FF] text-[#6366F1]">
             Bulk Creation
           </span>
         )}

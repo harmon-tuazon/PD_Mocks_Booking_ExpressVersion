@@ -51,11 +51,11 @@ const MockExamsTable = ({
     }
 
     return currentSort.sort_order === 'asc' ? (
-      <svg className="w-4 h-4 ml-1 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-4 h-4 ml-1 text-[#6366F1]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
       </svg>
     ) : (
-      <svg className="w-4 h-4 ml-1 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-4 h-4 ml-1 text-[#6366F1]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
       </svg>
     );
@@ -171,7 +171,7 @@ const MockExamsTable = ({
                           exam.utilization_rate >= 70
                             ? 'bg-teal-500'
                             : exam.utilization_rate >= 50
-                            ? 'bg-primary-500'
+                            ? 'bg-[#6366F1]'
                             : 'bg-coral-500'
                         }`}
                         style={{ width: `${Math.min(exam.utilization_rate, 100)}%` }}
@@ -186,7 +186,7 @@ const MockExamsTable = ({
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
                     onClick={() => window.location.href = `/admin/mock-exams/${exam.id}/edit`}
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-[#6366F1] hover:bg-[#5558e3] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6366F1]"
                   >
                     <svg className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -204,7 +204,7 @@ const MockExamsTable = ({
       <div ref={loadMoreRef} className="bg-white px-4 py-6 border-t border-gray-200">
         {isFetchingNextPage && (
           <div className="flex items-center justify-center">
-            <svg className="animate-spin h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24">
+            <svg className="animate-spin h-6 w-6 text-[#6366F1]" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>

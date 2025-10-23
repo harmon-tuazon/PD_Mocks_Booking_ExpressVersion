@@ -115,10 +115,10 @@ function MockExams() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
-      <div className="container-app py-12">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Mock Exams Management</h1>
-          <p className="mt-1 text-sm text-gray-500">Create single or multiple mock exam sessions</p>
+      <div className="container-app py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Mock Exams Management</h1>
+          <p className="mt-2 text-base text-gray-500">Create single or multiple mock exam sessions</p>
         </div>
 
         {/* Success/Error Messages */}
@@ -166,19 +166,19 @@ function MockExams() {
           </div>
         )}
 
-        <div className="bg-white shadow rounded-lg">
+        <div className="bg-white shadow-sm rounded-lg">
           {/* Mode Toggle */}
           <div className="border-b border-gray-200 p-6">
-            <div className="flex space-x-4">
+            <div className="flex space-x-2">
               <button
                 onClick={() => {
                   setMode('single');
                   setShowPreview(false);
                 }}
-                className={`px-4 py-2 text-sm font-medium rounded-md ${
+                className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-colors ${
                   mode === 'single'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-[#6366F1] text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
                 Single Session
@@ -188,10 +188,10 @@ function MockExams() {
                   setMode('bulk');
                   setShowPreview(false);
                 }}
-                className={`px-4 py-2 text-sm font-medium rounded-md ${
+                className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-colors ${
                   mode === 'bulk'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-[#6366F1] text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
                 Multiple Sessions
@@ -205,13 +205,13 @@ function MockExams() {
               {/* Common Properties */}
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mock Type *
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mock Type <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.mock_type}
                     onChange={(e) => setFormData({ ...formData, mock_type: e.target.value })}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
                     required
                   >
                     {MOCK_TYPES.map((type) => (
@@ -223,21 +223,21 @@ function MockExams() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Exam Date *
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Exam Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
                     value={formData.exam_date}
                     onChange={(e) => setFormData({ ...formData, exam_date: e.target.value })}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Capacity *
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Capacity <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -245,19 +245,19 @@ function MockExams() {
                     max="100"
                     value={formData.capacity}
                     onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Location *
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Location <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
                     required
                   >
                     {LOCATIONS.map((loc) => (
@@ -276,7 +276,7 @@ function MockExams() {
                   id="is_active"
                   checked={formData.is_active}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-[#6366F1] focus:ring-[#6366F1] border-gray-300 rounded checked:bg-[#6366F1] checked:border-[#6366F1]"
                 />
                 <label htmlFor="is_active" className="ml-2 block text-sm text-gray-700">
                   Active (available for booking)
@@ -285,31 +285,39 @@ function MockExams() {
 
               {/* Time Slots - Different UI for single vs bulk */}
               {mode === 'single' ? (
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Start Time *
-                    </label>
-                    <input
-                      type="time"
-                      value={formData.start_time}
-                      onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      required
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-4">
+                    Time Slots <span className="text-red-500">*</span>
+                  </label>
+                  <div className="border border-gray-300 rounded-md p-4 bg-gray-50">
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-2">
+                          Start Time
+                        </label>
+                        <input
+                          type="time"
+                          value={formData.start_time}
+                          onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                          className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
+                          required
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      End Time *
-                    </label>
-                    <input
-                      type="time"
-                      value={formData.end_time}
-                      onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      required
-                    />
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-2">
+                          End Time
+                        </label>
+                        <input
+                          type="time"
+                          value={formData.end_time}
+                          onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                          className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <p className="mt-3 text-sm text-gray-500">1 time slot will create 1 mock exam session</p>
                   </div>
                 </div>
               ) : (
@@ -333,7 +341,7 @@ function MockExams() {
                   type="button"
                   onClick={() => setShowPreview(!showPreview)}
                   disabled={!isFormValid() || isLoading}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center px-5 py-2.5 border border-gray-300 text-sm font-medium rounded-md text-gray-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6366F1] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {showPreview ? 'Hide Preview' : 'Show Preview'}
                 </button>
@@ -343,7 +351,7 @@ function MockExams() {
                     type="button"
                     onClick={resetForm}
                     disabled={isLoading}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center px-5 py-2.5 border border-gray-300 text-sm font-medium rounded-md text-gray-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6366F1] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Reset
                   </button>
@@ -351,7 +359,7 @@ function MockExams() {
                   <button
                     type="submit"
                     disabled={!isFormValid() || isLoading}
-                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-md text-white bg-[#6366F1] hover:bg-[#5558E3] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6366F1] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
                   >
                     {isLoading ? (
                       <>
@@ -363,7 +371,7 @@ function MockExams() {
                       </>
                     ) : (
                       <>
-                        {mode === 'single' ? 'Create Session' : `Create ${timeSlots.length} Sessions`}
+                        {mode === 'single' ? 'Create 1 Session' : `Create ${timeSlots.length} Sessions`}
                       </>
                     )}
                   </button>
