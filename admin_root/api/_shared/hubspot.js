@@ -124,9 +124,9 @@ class HubSpotService {
     try {
       const filters = [
         {
-          propertyName: 'mock_exam_status',
+          propertyName: 'is_active',
           operator: 'EQ',
-          value: isActive ? 'active' : 'inactive'
+          value: isActive ? 'true' : 'false'
         }
       ];
 
@@ -141,7 +141,7 @@ class HubSpotService {
 
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, {
         filterGroups: [{ filters }],
-        properties: ['mock_type', 'date', 'time', 'location', 'slots_available', 'slots_total', 'mock_exam_status'],
+        properties: ['mock_type', 'exam_date', 'start_time', 'end_time', 'location', 'capacity', 'total_bookings', 'is_active'],
         limit: 100
       });
 
@@ -266,7 +266,7 @@ class HubSpotService {
     try {
       await this.apiCall('PATCH', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}`, {
         properties: {
-          slots_available: newTotal
+          total_bookings: newTotal
         }
       });
     } catch (error) {
@@ -342,7 +342,7 @@ class HubSpotService {
   async getMockExam(mockExamId) {
     try {
       const response = await this.apiCall('GET',
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?properties=mock_type,date,time,location,slots_available,slots_total,mock_exam_status`
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?properties=mock_type,exam_date,start_time,end_time,location,capacity,total_bookings,is_active`
       );
       return response;
     } catch (error) {
@@ -694,20 +694,23 @@ class HubSpotService {
   async createMockExam(mockExamData) {
     try {
       // Validate required fields
-      const requiredFields = ['mock_type', 'date', 'time', 'location', 'slots_total'];
+      const requiredFields = ['mock_type', 'exam_date', 'start_time', 'end_time', 'location', 'capacity'];
       for (const field of requiredFields) {
         if (!mockExamData[field]) {
           throw new Error(`Missing required field: ${field}`);
         }
       }
 
-      // Set defaults
+      // Set defaults - using correct HubSpot property names
       const examData = {
-        ...mockExamData,
-        slots_available: mockExamData.slots_available || mockExamData.slots_total,
-        mock_exam_status: mockExamData.mock_exam_status || 'active',
-        price_credits: mockExamData.price_credits || 1,
-        created_at: new Date().toISOString()
+        mock_type: mockExamData.mock_type,
+        exam_date: mockExamData.exam_date,
+        start_time: mockExamData.start_time,
+        end_time: mockExamData.end_time,
+        location: mockExamData.location,
+        capacity: mockExamData.capacity,
+        total_bookings: mockExamData.total_bookings || 0,
+        is_active: mockExamData.is_active !== undefined ? mockExamData.is_active : 'true'
       };
 
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}`, {
@@ -733,16 +736,17 @@ class HubSpotService {
         throw new Error('Time slots array is required');
       }
 
-      // Prepare batch inputs
+      // Prepare batch inputs using correct HubSpot property names
       const inputs = timeSlots.map(slot => {
         const properties = {
-          ...commonProperties,
-          date: slot.date,
-          time: slot.time,
-          slots_available: commonProperties.slots_total || 20,
-          mock_exam_status: 'active',
-          price_credits: commonProperties.price_credits || 1,
-          created_at: new Date().toISOString()
+          mock_type: commonProperties.mock_type,
+          exam_date: slot.exam_date || slot.date,  // Support both formats
+          start_time: slot.start_time,
+          end_time: slot.end_time,
+          location: commonProperties.location,
+          capacity: commonProperties.capacity || 20,
+          total_bookings: 0,
+          is_active: 'true'
         };
 
         return { properties };
