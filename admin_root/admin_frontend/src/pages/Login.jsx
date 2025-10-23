@@ -55,7 +55,7 @@ function Login() {
           Admin Dashboard
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          PrepDoctors Mock Booking System
+          PrepDoctors Booking System
         </p>
       </div>
 

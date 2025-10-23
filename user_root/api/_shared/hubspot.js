@@ -1667,4 +1667,31 @@ ${cancellationData.reason ? `<strong>Reason:</strong> ${cancellationData.reason}
 
 }
 
-module.exports = { HubSpotService, HUBSPOT_OBJECTS };
+// Create singleton instance lazily for backward compatibility
+let hubspotInstance = null;
+
+// Create a proxy that lazily initializes the HubSpotService instance
+const hubspotProxy = new Proxy({}, {
+  get(target, prop) {
+    // Always export the class and objects directly
+    if (prop === 'HubSpotService') return HubSpotService;
+    if (prop === 'HUBSPOT_OBJECTS') return HUBSPOT_OBJECTS;
+
+    // For any other property, create the instance if needed and delegate
+    if (!hubspotInstance) {
+      hubspotInstance = new HubSpotService();
+    }
+
+    const value = hubspotInstance[prop];
+    if (typeof value === 'function') {
+      // Bind methods to the instance
+      return value.bind(hubspotInstance);
+    }
+    return value;
+  }
+});
+
+// Export the proxy as default, with class and objects as properties
+module.exports = hubspotProxy;
+module.exports.HubSpotService = HubSpotService;
+module.exports.HUBSPOT_OBJECTS = HUBSPOT_OBJECTS;
