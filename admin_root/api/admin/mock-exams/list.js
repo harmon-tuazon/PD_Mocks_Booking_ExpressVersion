@@ -78,13 +78,23 @@ module.exports = async (req, res) => {
 
     // Transform results to include calculated fields
     // Helper function to format time to 12-hour AM/PM format
-    const formatTime = (timeString) => {
-      if (!timeString) return '';
+    const formatTime = (timeValue) => {
+      if (!timeValue) return '';
       
       try {
+        // Handle Unix timestamp (number in milliseconds)
+        if (typeof timeValue === 'number' || !isNaN(Number(timeValue))) {
+          const date = new Date(Number(timeValue));
+          return date.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          });
+        }
+        
         // Handle ISO timestamp format (e.g., "2025-09-26T16:00:00Z")
-        if (timeString.includes('T') || timeString.includes('Z')) {
-          const date = new Date(timeString);
+        if (typeof timeValue === 'string' && (timeValue.includes('T') || timeValue.includes('Z'))) {
+          const date = new Date(timeValue);
           return date.toLocaleTimeString('en-US', {
             hour: 'numeric',
             minute: '2-digit',
@@ -93,18 +103,18 @@ module.exports = async (req, res) => {
         }
         
         // Handle HH:MM format (e.g., "14:30")
-        if (timeString.includes(':')) {
-          const [hours, minutes] = timeString.split(':');
+        if (typeof timeValue === 'string' && timeValue.includes(':')) {
+          const [hours, minutes] = timeValue.split(':');
           const hour = parseInt(hours, 10);
           const ampm = hour >= 12 ? 'PM' : 'AM';
           const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
           return `${displayHour}:${minutes} ${ampm}`;
         }
         
-        return timeString;
+        return String(timeValue);
       } catch (error) {
         console.error('Error formatting time:', error);
-        return timeString;
+        return String(timeValue);
       }
     };
 

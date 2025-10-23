@@ -117,6 +117,30 @@ class HubSpotService {
   }
 
   /**
+   * Convert exam date and time string to Unix timestamp (milliseconds)
+   * @param {string} examDate - Date in YYYY-MM-DD format
+   * @param {string} timeString - Time in HH:MM format (24-hour)
+   * @returns {number} Unix timestamp in milliseconds
+   */
+  convertToTimestamp(examDate, timeString) {
+    if (!examDate || !timeString) {
+      throw new Error('Both examDate and timeString are required for timestamp conversion');
+    }
+
+    // Parse time string (HH:MM)
+    const [hours, minutes] = timeString.split(':').map(Number);
+    
+    // Create date object from exam date
+    const date = new Date(examDate);
+    
+    // Set the time
+    date.setHours(hours, minutes, 0, 0);
+    
+    // Return Unix timestamp in milliseconds
+    return date.getTime();
+  }
+
+  /**
    * Search for available mock exams with optional filtering
    * This is a high-level search used by booking flow
    */
@@ -701,12 +725,16 @@ class HubSpotService {
         }
       }
 
-      // Set defaults - using correct HubSpot property names
+      // Convert time strings to Unix timestamps
+      const startTimestamp = this.convertToTimestamp(mockExamData.exam_date, mockExamData.start_time);
+      const endTimestamp = this.convertToTimestamp(mockExamData.exam_date, mockExamData.end_time);
+
+      // Set exam data with correct HubSpot property names and timestamp format
       const examData = {
         mock_type: mockExamData.mock_type,
         exam_date: mockExamData.exam_date,
-        start_time: mockExamData.start_time,
-        end_time: mockExamData.end_time,
+        start_time: startTimestamp,  // Unix timestamp in milliseconds
+        end_time: endTimestamp,      // Unix timestamp in milliseconds
         location: mockExamData.location,
         capacity: mockExamData.capacity,
         total_bookings: mockExamData.total_bookings || 0,
@@ -736,13 +764,19 @@ class HubSpotService {
         throw new Error('Time slots array is required');
       }
 
-      // Prepare batch inputs using correct HubSpot property names
+      // Prepare batch inputs using correct HubSpot property names and timestamp format
       const inputs = timeSlots.map(slot => {
+        const examDate = slot.exam_date || slot.date;  // Support both formats
+        
+        // Convert time strings to Unix timestamps
+        const startTimestamp = this.convertToTimestamp(examDate, slot.start_time);
+        const endTimestamp = this.convertToTimestamp(examDate, slot.end_time);
+
         const properties = {
           mock_type: commonProperties.mock_type,
-          exam_date: slot.exam_date || slot.date,  // Support both formats
-          start_time: slot.start_time,
-          end_time: slot.end_time,
+          exam_date: examDate,
+          start_time: startTimestamp,  // Unix timestamp in milliseconds
+          end_time: endTimestamp,      // Unix timestamp in milliseconds
           location: commonProperties.location,
           capacity: commonProperties.capacity || 20,
           total_bookings: 0,
