@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }) => {
           return;
         }
 
-        // Get initial session
+        // Get initial session from Supabase
         const { session: currentSession, error } = await authHelpers.getSession();
 
         if (currentSession) {
@@ -84,6 +84,44 @@ export const AuthProvider = ({ children }) => {
           const userDetails = await fetchUserDetails(currentSession.access_token);
           if (userDetails) {
             setUser({ ...currentUser, ...userDetails });
+          }
+        } else {
+          // If no session found, try to restore from localStorage
+          const storedAccessToken = localStorage.getItem('access_token');
+          const storedRefreshToken = localStorage.getItem('refresh_token');
+
+          if (storedAccessToken && storedRefreshToken) {
+            console.log('🔄 Restoring session from localStorage...');
+
+            try {
+              // Restore session to Supabase
+              const { data, error: setError } = await supabase.auth.setSession({
+                access_token: storedAccessToken,
+                refresh_token: storedRefreshToken
+              });
+
+              if (data?.session && !setError) {
+                setSession(data.session);
+                setUser(data.user);
+
+                // Fetch additional user details
+                const userDetails = await fetchUserDetails(data.session.access_token);
+                if (userDetails) {
+                  setUser({ ...data.user, ...userDetails });
+                }
+
+                console.log('✅ Session restored successfully');
+              } else {
+                // Tokens are invalid, clear them
+                console.log('❌ Failed to restore session, clearing tokens');
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+              }
+            } catch (restoreError) {
+              console.error('Session restore error:', restoreError);
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('refresh_token');
+            }
           }
         }
       } catch (error) {
