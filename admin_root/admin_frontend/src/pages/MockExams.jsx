@@ -117,8 +117,8 @@ function MockExams() {
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
       <div className="container-app py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Mock Exams Management</h1>
-          <p className="mt-2 text-base text-gray-500">Create single or multiple mock exam sessions</p>
+          <h1 className="font-headline text-h1 font-bold text-navy-900 dark:text-gray-100">Mock Exams Management</h1>
+          <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">Create single or multiple mock exam sessions</p>
         </div>
 
         {/* Success/Error Messages */}
@@ -175,9 +175,9 @@ function MockExams() {
                   setMode('single');
                   setShowPreview(false);
                 }}
-                className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                   mode === 'single'
-                    ? 'bg-[#6366F1] text-white shadow-sm'
+                    ? 'bg-primary-600 text-white shadow-sm hover:bg-primary-700'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -188,9 +188,9 @@ function MockExams() {
                   setMode('bulk');
                   setShowPreview(false);
                 }}
-                className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                   mode === 'bulk'
-                    ? 'bg-[#6366F1] text-white shadow-sm'
+                    ? 'bg-primary-600 text-white shadow-sm hover:bg-primary-700'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -211,7 +211,7 @@ function MockExams() {
                   <select
                     value={formData.mock_type}
                     onChange={(e) => setFormData({ ...formData, mock_type: e.target.value })}
-                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
+                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                     required
                   >
                     {MOCK_TYPES.map((type) => (
@@ -230,7 +230,7 @@ function MockExams() {
                     type="date"
                     value={formData.exam_date}
                     onChange={(e) => setFormData({ ...formData, exam_date: e.target.value })}
-                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
+                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                     required
                   />
                 </div>
@@ -245,7 +245,7 @@ function MockExams() {
                     max="100"
                     value={formData.capacity}
                     onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
+                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                     required
                   />
                 </div>
@@ -257,7 +257,7 @@ function MockExams() {
                   <select
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
+                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                     required
                   >
                     {LOCATIONS.map((loc) => (
@@ -276,7 +276,7 @@ function MockExams() {
                   id="is_active"
                   checked={formData.is_active}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="h-4 w-4 text-[#6366F1] focus:ring-[#6366F1] border-gray-300 rounded checked:bg-[#6366F1] checked:border-[#6366F1]"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded checked:bg-primary-600 checked:border-primary-600"
                 />
                 <label htmlFor="is_active" className="ml-2 block text-sm text-gray-700">
                   Active (available for booking)
@@ -299,7 +299,7 @@ function MockExams() {
                           type="time"
                           value={formData.start_time}
                           onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                          className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
+                          className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                           required
                         />
                       </div>
@@ -312,7 +312,7 @@ function MockExams() {
                           type="time"
                           value={formData.end_time}
                           onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                          className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
+                          className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                           required
                         />
                       </div>
@@ -341,7 +341,7 @@ function MockExams() {
                   type="button"
                   onClick={() => setShowPreview(!showPreview)}
                   disabled={!isFormValid() || isLoading}
-                  className="inline-flex items-center px-5 py-2.5 border border-gray-300 text-sm font-medium rounded-md text-gray-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6366F1] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center px-5 py-2.5 border border-gray-300 text-sm font-medium rounded-md text-gray-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {showPreview ? 'Hide Preview' : 'Show Preview'}
                 </button>
@@ -351,7 +351,7 @@ function MockExams() {
                     type="button"
                     onClick={resetForm}
                     disabled={isLoading}
-                    className="inline-flex items-center px-5 py-2.5 border border-gray-300 text-sm font-medium rounded-md text-gray-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6366F1] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="inline-flex items-center px-5 py-2.5 border border-gray-300 text-sm font-medium rounded-md text-gray-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Reset
                   </button>
@@ -359,7 +359,7 @@ function MockExams() {
                   <button
                     type="submit"
                     disabled={!isFormValid() || isLoading}
-                    className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-md text-white bg-[#6366F1] hover:bg-[#5558E3] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6366F1] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+                    className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
                   >
                     {isLoading ? (
                       <>

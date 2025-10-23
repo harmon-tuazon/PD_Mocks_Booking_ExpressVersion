@@ -114,7 +114,7 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
         <button
           type="button"
           onClick={addTimeSlot}
-          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-[#6366F1] bg-[#E0E7FF] hover:bg-[#C7D2FE] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6366F1] transition-colors"
+          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-primary-600 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
         >
           + Add Time Slot
         </button>
@@ -126,7 +126,7 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
           <button
             type="button"
             onClick={addTimeSlot}
-            className="mt-2 text-[#6366F1] hover:text-[#5558E3] font-medium"
+            className="mt-2 text-primary-600 hover:text-primary-700 font-medium"
           >
             Add your first time slot
           </button>
@@ -154,7 +154,7 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
                   type="time"
                   value={slot.start_time}
                   onChange={(e) => updateTimeSlot(index, 'start_time', e.target.value)}
-                  className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
+                  className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                   required
                 />
               </div>
@@ -167,7 +167,7 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
                   type="time"
                   value={slot.end_time}
                   onChange={(e) => updateTimeSlot(index, 'end_time', e.target.value)}
-                  className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#6366F1] focus:border-[#6366F1] text-sm"
+                  className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                   required
                 />
               </div>
