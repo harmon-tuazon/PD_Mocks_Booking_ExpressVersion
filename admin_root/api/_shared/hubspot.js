@@ -805,7 +805,7 @@ class HubSpotService {
 
       if (startDate) {
         filters.push({
-          propertyName: 'date',
+          propertyName: 'exam_date',
           operator: 'GTE',
           value: startDate
         });
@@ -813,7 +813,7 @@ class HubSpotService {
 
       if (endDate) {
         filters.push({
-          propertyName: 'date',
+          propertyName: 'exam_date',
           operator: 'LTE',
           value: endDate
         });
@@ -833,13 +833,20 @@ class HubSpotService {
       // Build search request
       const searchRequest = {
         properties: [
-          'mock_type', 'date', 'time', 'location',
-          'slots_available', 'slots_total', 'mock_exam_status',
-          'price_credits', 'created_at'
+          'mock_type',
+          'exam_date',
+          'start_time',
+          'end_time',
+          'location',
+          'capacity',
+          'total_bookings',
+          'is_active',
+          'hs_createdate',
+          'hs_lastmodifieddate'
         ],
         limit,
         sorts: [{
-          propertyName: sortBy,
+          propertyName: sortBy === 'date' ? 'exam_date' : sortBy,
           direction: sortOrder.toUpperCase()
         }]
       };
