@@ -59,6 +59,8 @@ export const AuthProvider = ({ children }) => {
 
   // Initialize auth state
   useEffect(() => {
+    let mounted = true;
+
     const initAuth = async () => {
       try {
         // Check if Supabase is properly configured
@@ -71,10 +73,11 @@ export const AuthProvider = ({ children }) => {
           return;
         }
 
-        // Get initial session from Supabase
-        const { session: currentSession, error } = await authHelpers.getSession();
+        // Get initial session from Supabase (this checks Supabase's internal storage)
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
 
-        if (currentSession) {
+        if (mounted && currentSession) {
+          console.log('✅ Session found on init:', currentSession.user?.email);
           const { user: currentUser } = currentSession;
 
           setSession(currentSession);
@@ -82,95 +85,88 @@ export const AuthProvider = ({ children }) => {
 
           // Fetch additional user details (optional)
           const userDetails = await fetchUserDetails(currentSession.access_token);
-          if (userDetails) {
+          if (userDetails && mounted) {
             setUser({ ...currentUser, ...userDetails });
           }
-        } else {
-          // If no session found, try to restore from localStorage
-          const storedAccessToken = localStorage.getItem('access_token');
-          const storedRefreshToken = localStorage.getItem('refresh_token');
-
-          if (storedAccessToken && storedRefreshToken) {
-            console.log('🔄 Restoring session from localStorage...');
-
-            try {
-              // Restore session to Supabase
-              const { data, error: setError } = await supabase.auth.setSession({
-                access_token: storedAccessToken,
-                refresh_token: storedRefreshToken
-              });
-
-              if (data?.session && !setError) {
-                setSession(data.session);
-                setUser(data.user);
-
-                // Fetch additional user details
-                const userDetails = await fetchUserDetails(data.session.access_token);
-                if (userDetails) {
-                  setUser({ ...data.user, ...userDetails });
-                }
-
-                console.log('✅ Session restored successfully');
-              } else {
-                // Tokens are invalid, clear them
-                console.log('❌ Failed to restore session, clearing tokens');
-                localStorage.removeItem('access_token');
-                localStorage.removeItem('refresh_token');
-              }
-            } catch (restoreError) {
-              console.error('Session restore error:', restoreError);
-              localStorage.removeItem('access_token');
-              localStorage.removeItem('refresh_token');
-            }
-          }
+        } else if (mounted) {
+          console.log('ℹ️ No session found on init');
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
-    initAuth();
-
-    // Listen to auth changes
+    // Set up auth state listener FIRST (before initAuth)
+    // This ensures we catch all auth events including INITIAL_SESSION
     const { data: { subscription } } = authHelpers.onAuthStateChange(async (event, newSession) => {
-      if (event === 'SIGNED_IN' && newSession) {
-        const { user: newUser } = newSession;
+      console.log('🔔 Auth event:', event);
 
-        setSession(newSession);
-        setUser(newUser);
+      if (event === 'INITIAL_SESSION' && newSession) {
+        // Handle initial session on page load
+        console.log('✅ Initial session restored:', newSession.user?.email);
+        if (mounted) {
+          setSession(newSession);
+          setUser(newSession.user);
 
-        // Store tokens in localStorage
-        localStorage.setItem('access_token', newSession.access_token);
-        if (newSession.refresh_token) {
-          localStorage.setItem('refresh_token', newSession.refresh_token);
+          const userDetails = await fetchUserDetails(newSession.access_token);
+          if (userDetails && mounted) {
+            setUser({ ...newSession.user, ...userDetails });
+          }
+          setLoading(false);
         }
+      } else if (event === 'SIGNED_IN' && newSession) {
+        console.log('✅ User signed in:', newSession.user?.email);
+        if (mounted) {
+          const { user: newUser } = newSession;
 
-        // Fetch additional user details (optional)
-        const userDetails = await fetchUserDetails(newSession.access_token);
-        if (userDetails) {
-          setUser({ ...newUser, ...userDetails });
+          setSession(newSession);
+          setUser(newUser);
+
+          // Store tokens in localStorage
+          localStorage.setItem('access_token', newSession.access_token);
+          if (newSession.refresh_token) {
+            localStorage.setItem('refresh_token', newSession.refresh_token);
+          }
+
+          // Fetch additional user details (optional)
+          const userDetails = await fetchUserDetails(newSession.access_token);
+          if (userDetails && mounted) {
+            setUser({ ...newUser, ...userDetails });
+          }
         }
       } else if (event === 'SIGNED_OUT') {
-        setSession(null);
-        setUser(null);
+        console.log('👋 User signed out');
+        if (mounted) {
+          setSession(null);
+          setUser(null);
 
-        // Clear tokens from localStorage
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+          // Clear tokens from localStorage
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+        }
       } else if (event === 'TOKEN_REFRESHED' && newSession) {
-        setSession(newSession);
+        console.log('🔄 Token refreshed');
+        if (mounted) {
+          setSession(newSession);
 
-        // Update token in localStorage
-        localStorage.setItem('access_token', newSession.access_token);
-        if (newSession.refresh_token) {
-          localStorage.setItem('refresh_token', newSession.refresh_token);
+          // Update token in localStorage
+          localStorage.setItem('access_token', newSession.access_token);
+          if (newSession.refresh_token) {
+            localStorage.setItem('refresh_token', newSession.refresh_token);
+          }
         }
       }
     });
 
+    // Now initialize auth (listener is already set up)
+    initAuth();
+
     return () => {
+      mounted = false;
       subscription?.unsubscribe();
     };
   }, []);
