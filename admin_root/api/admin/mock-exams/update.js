@@ -1,10 +1,13 @@
 /**
  * PATCH /api/admin/mock-exams/:id
  * Update a mock exam
+ *
+ * Invalidates related caches after successful update.
  */
 
 const { requireAdmin } = require('../middleware/requireAdmin');
 const { validationMiddleware } = require('../../_shared/validation');
+const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
 
 module.exports = async (req, res) => {
@@ -61,6 +64,12 @@ module.exports = async (req, res) => {
 
       // Update mock exam in HubSpot
       const updatedMockExam = await hubspot.updateMockExam(mockExamId, properties);
+
+      // Invalidate caches after successful update
+      const cache = getCache();
+      await cache.deletePattern('admin:mock-exams:list:*');
+      await cache.delete(`admin:mock-exam:${mockExamId}`);
+      console.log(`🗑️ Cache invalidated for mock exam ${mockExamId}`);
 
       res.status(200).json({
         success: true,

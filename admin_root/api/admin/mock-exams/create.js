@@ -3,11 +3,13 @@
  * POST /api/admin/mock-exams/create
  *
  * Allows admin users to create a single mock exam session
+ * Invalidates related caches after successful creation.
  */
 
 const { HubSpotService } = require('../../_shared/hubspot');
 const { validateInput } = require('../../_shared/validation');
 const { requireAdmin } = require('../middleware/requireAdmin');
+const { getCache } = require('../../_shared/cache');
 
 /**
  * Handler for creating a single mock exam
@@ -38,6 +40,11 @@ async function createMockExamHandler(req, res) {
       mock_type: validatedData.mock_type,
       exam_date: validatedData.exam_date
     });
+
+    // Invalidate caches after successful creation
+    const cache = getCache();
+    await cache.deletePattern('admin:mock-exams:list:*');
+    console.log('🗑️ Cache invalidated: admin:mock-exams:list:*');
 
     // Return success response
     return res.status(201).json({

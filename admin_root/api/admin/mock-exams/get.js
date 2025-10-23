@@ -1,9 +1,12 @@
 /**
  * GET /api/admin/mock-exams/:id
  * Get single mock exam with details and bookings
+ *
+ * Implements Redis caching with 3-minute TTL for performance optimization.
  */
 
 const { requireAdmin } = require('../middleware/requireAdmin');
+const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
 
 module.exports = async (req, res) => {
@@ -19,6 +22,19 @@ module.exports = async (req, res) => {
         error: 'Mock exam ID is required'
       });
     }
+
+    // Initialize cache
+    const cache = getCache();
+    const cacheKey = `admin:mock-exam:${mockExamId}`;
+
+    // Check cache first
+    const cachedData = await cache.get(cacheKey);
+    if (cachedData) {
+      console.log(`🎯 [Cache HIT] Mock exam ${mockExamId}`);
+      return res.status(200).json(cachedData);
+    }
+
+    console.log(`📋 [Cache MISS] Fetching mock exam ${mockExamId} from HubSpot`);
 
     // Fetch mock exam with bookings
     const result = await hubspot.getMockExamWithBookings(mockExamId);
@@ -56,7 +72,7 @@ module.exports = async (req, res) => {
       exam_date: booking.properties.exam_date || ''
     }));
 
-    res.status(200).json({
+    const response = {
       success: true,
       mockExam: {
         id: result.mockExam.id,
@@ -76,7 +92,13 @@ module.exports = async (req, res) => {
           updated_at: properties.hs_lastmodifieddate || ''
         }
       }
-    });
+    };
+
+    // Cache the response (3 minutes TTL)
+    await cache.set(cacheKey, response, 180);
+    console.log(`💾 [Cached] Mock exam ${mockExamId} for 3 minutes`);
+
+    res.status(200).json(response);
 
   } catch (error) {
     // Add auth-specific error handling FIRST

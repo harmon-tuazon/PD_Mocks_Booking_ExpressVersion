@@ -3,11 +3,13 @@
  * POST /api/admin/mock-exams/bulk-create
  *
  * Allows admin users to create multiple mock exam sessions with different time slots
+ * Invalidates related caches after successful creation.
  */
 
 const { HubSpotService } = require('../../_shared/hubspot');
 const { validateInput } = require('../../_shared/validation');
 const { requireAdmin } = require('../middleware/requireAdmin');
+const { getCache } = require('../../_shared/cache');
 
 /**
  * Handler for bulk creating mock exams
@@ -61,6 +63,11 @@ async function bulkCreateMockExamsHandler(req, res) {
 
     // Log success
     console.log(`✅ Bulk created ${result.created_count} mock exams successfully`);
+
+    // Invalidate caches after successful bulk creation
+    const cache = getCache();
+    await cache.deletePattern('admin:mock-exams:list:*');
+    console.log('🗑️ Cache invalidated: admin:mock-exams:list:*');
 
     // Return success response
     return res.status(201).json({

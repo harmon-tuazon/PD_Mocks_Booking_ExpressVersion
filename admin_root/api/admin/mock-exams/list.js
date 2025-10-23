@@ -1,10 +1,13 @@
 /**
  * GET /api/admin/mock-exams
  * List mock exams with pagination, filtering, and sorting
+ *
+ * Implements Redis caching with 2-minute TTL for performance optimization.
  */
 
 const { requireAdmin } = require('../middleware/requireAdmin');
 const { validationMiddleware } = require('../../_shared/validation');
+const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
 
 module.exports = async (req, res) => {
@@ -41,6 +44,28 @@ module.exports = async (req, res) => {
     if (filter_status && filter_status !== 'all') filters.status = filter_status;
     if (filter_date_from) filters.date_from = filter_date_from;
     if (filter_date_to) filters.date_to = filter_date_to;
+
+    // Initialize cache
+    const cache = getCache();
+
+    // Generate cache key from query parameters
+    const cacheKey = `admin:mock-exams:list:${JSON.stringify({
+      page,
+      limit,
+      sort_by,
+      sort_order,
+      ...filters,
+      search
+    })}`;
+
+    // Check cache first
+    const cachedData = await cache.get(cacheKey);
+    if (cachedData) {
+      console.log(`🎯 [Cache HIT] ${cacheKey.substring(0, 80)}...`);
+      return res.status(200).json(cachedData);
+    }
+
+    console.log(`📋 [Cache MISS] Fetching from HubSpot: ${cacheKey.substring(0, 80)}...`);
 
     // Fetch mock exams from HubSpot
     const result = await hubspot.listMockExams({
@@ -125,7 +150,7 @@ module.exports = async (req, res) => {
     const totalRecords = search ? filteredResults.length : result.total;
     const totalPages = Math.ceil(totalRecords / limit);
 
-    res.status(200).json({
+    const response = {
       success: true,
       pagination: {
         current_page: page,
@@ -134,7 +159,13 @@ module.exports = async (req, res) => {
         records_per_page: limit
       },
       data: filteredResults
-    });
+    };
+
+    // Cache the response (2 minutes TTL)
+    await cache.set(cacheKey, response, 120);
+    console.log(`💾 [Cached] ${filteredResults.length} exams for 2 minutes`);
+
+    res.status(200).json(response);
 
   } catch (error) {
     // Add auth-specific error handling FIRST

@@ -1,9 +1,12 @@
 /**
  * DELETE /api/admin/mock-exams/:id
  * Delete a mock exam
+ *
+ * Invalidates related caches after successful deletion.
  */
 
 const { requireAdmin } = require('../middleware/requireAdmin');
+const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
 
 module.exports = async (req, res) => {
@@ -33,6 +36,12 @@ module.exports = async (req, res) => {
 
     // Delete mock exam from HubSpot
     await hubspot.deleteMockExam(mockExamId);
+
+    // Invalidate caches after successful deletion
+    const cache = getCache();
+    await cache.deletePattern('admin:mock-exams:list:*');
+    await cache.delete(`admin:mock-exam:${mockExamId}`);
+    console.log(`🗑️ Cache invalidated for deleted mock exam ${mockExamId}`);
 
     res.status(200).json({
       success: true,
