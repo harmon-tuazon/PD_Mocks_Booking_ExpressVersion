@@ -63,6 +63,7 @@ export function useMockExamsInfinite(params = {}, options = {}) {
     queryKey: ['mockExamsInfinite', JSON.stringify(params)],
     queryFn: ({ pageParam = 1 }) =>
       mockExamsApi.list({ ...params, page: pageParam }),
+    initialPageParam: 1,
     getNextPageParam: (lastPage) => {
       const { pagination } = lastPage;
       if (!pagination) return undefined;
@@ -70,7 +71,8 @@ export function useMockExamsInfinite(params = {}, options = {}) {
       const hasNextPage = pagination.current_page < pagination.total_pages;
       return hasNextPage ? pagination.current_page + 1 : undefined;
     },
-    staleTime: 30000, // 30 seconds
+    staleTime: 0, // Force refetch when query key changes
+    gcTime: 0, // Don't cache old data when filters change
     ...options
   });
 }

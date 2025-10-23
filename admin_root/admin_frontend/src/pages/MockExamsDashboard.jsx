@@ -114,6 +114,7 @@ function MockExamsDashboard() {
 
         {/* Mock Exams Table */}
         <MockExamsTable
+          key={JSON.stringify(getQueryParams)}
           data={allExams}
           isLoading={isLoadingExams}
           onSort={handleSort}
