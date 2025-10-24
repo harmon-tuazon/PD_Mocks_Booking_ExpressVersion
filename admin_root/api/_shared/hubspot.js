@@ -834,10 +834,14 @@ class HubSpotService {
       }
 
       if (status) {
+        // Map frontend status values to HubSpot is_active property
+        // Frontend sends: "active" or "inactive"
+        // HubSpot expects: "true" or "false" (as strings)
+        const isActiveValue = status === 'active' ? 'true' : 'false';
         filters.push({
-          propertyName: 'mock_exam_status',
+          propertyName: 'is_active',
           operator: 'EQ',
-          value: status
+          value: isActiveValue
         });
       }
 
