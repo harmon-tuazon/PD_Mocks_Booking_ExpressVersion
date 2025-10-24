@@ -37,36 +37,32 @@ module.exports = async (req, res) => {
 
     // Parse the key to reconstruct filters
     // Key format: "mock_type_location_date" (e.g., "usmle_step_1_miami_2025-01-15")
-    const keyParts = key.split('_');
+    // Note: The date contains hyphens, not underscores
 
-    // Find the date pattern (yyyy-mm-dd) in the key
-    let dateIndex = -1;
-    for (let i = 0; i < keyParts.length; i++) {
-      // Check if this part looks like a year (4 digits starting with 20)
-      if (keyParts[i].match(/^20\d{2}$/)) {
-        // Check if next two parts look like month and day
-        if (i + 2 < keyParts.length &&
-            keyParts[i + 1].match(/^\d{2}$/) &&
-            keyParts[i + 2].match(/^\d{2}$/)) {
-          dateIndex = i;
-          break;
-        }
-      }
-    }
+    console.log(`📊 Parsing aggregate key: ${key}`);
 
-    if (dateIndex === -1) {
+    // Find the date pattern (YYYY-MM-DD) at the end of the key
+    const datePattern = /\d{4}-\d{2}-\d{2}$/;
+    const dateMatch = key.match(datePattern);
+
+    if (!dateMatch) {
+      console.error(`❌ Failed to parse date from key: ${key}`);
       return res.status(400).json({
         success: false,
-        error: 'Invalid aggregate key format - could not parse date'
+        error: 'Invalid aggregate key format - could not parse date',
+        details: `Expected date pattern (YYYY-MM-DD) at end of key, got: ${key}`
       });
     }
 
-    const exam_date = `${keyParts[dateIndex]}-${keyParts[dateIndex + 1]}-${keyParts[dateIndex + 2]}`;
+    const exam_date = dateMatch[0];
+    console.log(`📅 Parsed exam date: ${exam_date}`);
 
-    // Extract location (everything between mock type and date)
-    // The first parts before location are the mock type
-    // Everything after date is ignored
-    const locationParts = keyParts.slice(0, dateIndex);
+    // Remove the date and trailing underscore to get the prefix
+    const prefixWithoutDate = key.substring(0, key.length - exam_date.length - 1);
+
+    // The prefix contains mock_type and location separated by underscores
+    // We'll use this to match against the aggregate
+    console.log(`🔍 Key prefix (mock_type_location): ${prefixWithoutDate}`);
 
     // Fetch aggregates matching this key to get session IDs
     const filters = {
@@ -78,14 +74,65 @@ module.exports = async (req, res) => {
     const aggregate = aggregates.find(agg => agg.aggregate_key === key);
 
     if (!aggregate) {
+      console.warn(`⚠️ Aggregate not found for key: ${key}`);
+      console.log(`   Available aggregates for date ${exam_date}:`,
+        aggregates.map(a => a.aggregate_key).join(', ') || 'none');
+
       return res.status(404).json({
         success: false,
-        error: 'Aggregate not found'
+        error: 'Aggregate not found',
+        details: {
+          requested_key: key,
+          parsed_date: exam_date,
+          available_keys: aggregates.map(a => a.aggregate_key)
+        }
       });
     }
 
+    console.log(`✅ Found aggregate: ${aggregate.mock_type} at ${aggregate.location} on ${aggregate.exam_date}`);
+    console.log(`   Session count: ${aggregate.session_count}, IDs: ${aggregate.session_ids.join(', ')}`);
+
+    // Check if there are any sessions to fetch
+    if (!aggregate.session_ids || aggregate.session_ids.length === 0) {
+      console.log(`ℹ️ No sessions found for aggregate: ${key}`);
+      const response = {
+        success: true,
+        aggregate_key: key,
+        aggregate_info: {
+          mock_type: aggregate.mock_type,
+          exam_date: aggregate.exam_date,
+          location: aggregate.location,
+          session_count: 0,
+          total_capacity: 0,
+          total_bookings: 0
+        },
+        sessions: []
+      };
+
+      // Cache empty response for 1 minute
+      await cacheService.set(cacheKey, response, 60);
+      return res.status(200).json(response);
+    }
+
     // Use batch API to fetch all sessions efficiently
-    const sessions = await hubspot.batchFetchMockExams(aggregate.session_ids);
+    let sessions;
+    try {
+      sessions = await hubspot.batchFetchMockExams(aggregate.session_ids);
+      console.log(`📦 Fetched ${sessions.length} sessions from HubSpot`);
+    } catch (batchError) {
+      console.error('Error fetching sessions via batch API:', batchError);
+      console.error('Session IDs that failed:', aggregate.session_ids);
+
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch session details from HubSpot',
+        details: {
+          aggregate_key: key,
+          session_count: aggregate.session_ids.length,
+          error_message: batchError.message
+        }
+      });
+    }
 
     // Transform sessions to include additional calculated fields
     const transformedSessions = sessions.map(session => {

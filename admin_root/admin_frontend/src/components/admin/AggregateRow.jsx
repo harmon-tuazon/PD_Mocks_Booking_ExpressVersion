@@ -59,15 +59,10 @@ const AggregateRow = ({ aggregate, onView }) => {
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center">
               <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium">
                 {aggregate.session_count} {aggregate.session_count === 1 ? 'session' : 'sessions'}
               </span>
-              {aggregate.total_capacity && (
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {aggregate.total_bookings || 0}/{aggregate.total_capacity} booked
-                </div>
-              )}
             </div>
           </div>
         </td>
