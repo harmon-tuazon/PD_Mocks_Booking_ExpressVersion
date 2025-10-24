@@ -434,12 +434,6 @@ const schemas = {
       .optional()
       .messages({
         'string.pattern.base': 'filter_date_to must be in YYYY-MM-DD format'
-      }),
-    search: Joi.string()
-      .max(200)
-      .optional()
-      .messages({
-        'string.max': 'search cannot exceed 200 characters'
       })
   }),
 

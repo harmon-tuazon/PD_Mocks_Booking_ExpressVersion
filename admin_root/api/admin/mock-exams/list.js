@@ -33,8 +33,7 @@ module.exports = async (req, res) => {
       filter_mock_type,
       filter_status,
       filter_date_from,
-      filter_date_to,
-      search
+      filter_date_to
     } = req.validatedData;
 
     // Build filters object
@@ -54,8 +53,7 @@ module.exports = async (req, res) => {
       limit,
       sort_by,
       sort_order,
-      ...filters,
-      search
+      ...filters
     })}`;
 
     // Check cache first
@@ -163,24 +161,10 @@ module.exports = async (req, res) => {
         created_at: properties.hs_createdate || '',
         updated_at: properties.hs_lastmodifieddate || ''
       };
-    });;
-
-    // Apply client-side search filter if provided
-    let filteredResults = transformedResults;
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filteredResults = transformedResults.filter(exam => {
-        return (
-          exam.mock_type.toLowerCase().includes(searchLower) ||
-          exam.location.toLowerCase().includes(searchLower) ||
-          exam.exam_date.includes(searchLower) ||
-          exam.status.toLowerCase().includes(searchLower)
-        );
-      });
-    }
+    });
 
     // Calculate pagination metadata
-    const totalRecords = search ? filteredResults.length : result.total;
+    const totalRecords = result.total;
     const totalPages = Math.ceil(totalRecords / limit);
 
     const response = {
@@ -191,12 +175,12 @@ module.exports = async (req, res) => {
         total_records: totalRecords,
         records_per_page: limit
       },
-      data: filteredResults
+      data: transformedResults
     };
 
     // Cache the response (2 minutes TTL)
     await cache.set(cacheKey, response, 120);
-    console.log(`💾 [Cached] ${filteredResults.length} exams for 2 minutes`);
+    console.log(`💾 [Cached] ${transformedResults.length} exams for 2 minutes`);
 
     res.status(200).json(response);
 

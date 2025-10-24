@@ -13,9 +13,8 @@ const DEFAULT_FILTERS = {
   filter_mock_type: '',
   filter_status: 'all',
   filter_date_from: '',
-  filter_date_to: '',
-  search: ''
-};;
+  filter_date_to: ''
+};
 
 /**
  * Hook to manage table filters and sorting
@@ -109,8 +108,7 @@ export function useTableFilters(initialFilters = {}) {
       filters.filter_mock_type !== '' ||
       filters.filter_status !== 'all' ||
       filters.filter_date_from !== '' ||
-      filters.filter_date_to !== '' ||
-      filters.search !== ''
+      filters.filter_date_to !== ''
     );
   }, [filters]);
 
@@ -124,7 +122,6 @@ export function useTableFilters(initialFilters = {}) {
     if (filters.filter_status !== 'all') count++;
     if (filters.filter_date_from) count++;
     if (filters.filter_date_to) count++;
-    if (filters.search) count++;
     return count;
   }, [filters]);
 
