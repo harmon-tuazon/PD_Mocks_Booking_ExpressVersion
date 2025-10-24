@@ -1,8 +1,19 @@
 import React from 'react';
 import StatusBadge from './StatusBadge';
-import { PencilIcon, TrashIcon, ClockIcon, UsersIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, ClockIcon, UsersIcon } from '@heroicons/react/24/outline';
 
-const SessionRow = ({ session, nested = false, onEdit, onDelete }) => {
+const SessionRow = ({ session, nested = false, onView }) => {
+  // Format Unix timestamp to date string
+  const formatDate = (timestamp) => {
+    if (!timestamp) return '--';
+    const date = new Date(parseInt(timestamp));
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   // Format Unix timestamp to time string
   const formatTime = (timestamp) => {
     if (!timestamp) return '--';
@@ -20,11 +31,21 @@ const SessionRow = ({ session, nested = false, onEdit, onDelete }) => {
 
   return (
     <tr className={rowClasses}>
+      {/* Type Column */}
       <td className={`px-6 py-3 ${nested ? 'pl-12' : ''}`}>
         <div className="text-sm font-medium text-gray-900 dark:text-white">
           {session.mock_type}
         </div>
       </td>
+
+      {/* Date Column */}
+      <td className="px-6 py-3">
+        <div className="text-sm text-gray-900 dark:text-white">
+          {formatDate(session.exam_date)}
+        </div>
+      </td>
+
+      {/* Time Column */}
       <td className="px-6 py-3">
         <div className="flex items-center gap-2">
           <ClockIcon className="w-4 h-4 text-gray-400" />
@@ -33,6 +54,15 @@ const SessionRow = ({ session, nested = false, onEdit, onDelete }) => {
           </div>
         </div>
       </td>
+
+      {/* Location Column */}
+      <td className="px-6 py-3">
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          {session.location || '--'}
+        </div>
+      </td>
+
+      {/* Capacity Column */}
       <td className="px-6 py-3">
         <div className="flex items-center gap-2">
           <UsersIcon className="w-4 h-4 text-gray-400" />
@@ -46,6 +76,8 @@ const SessionRow = ({ session, nested = false, onEdit, onDelete }) => {
           </div>
         </div>
       </td>
+
+      {/* Utilization Column */}
       <td className="px-6 py-3">
         <div className="flex items-center">
           <div className="w-full max-w-[100px] bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
@@ -64,39 +96,25 @@ const SessionRow = ({ session, nested = false, onEdit, onDelete }) => {
           </span>
         </div>
       </td>
+
+      {/* Status Column */}
       <td className="px-6 py-3">
         <StatusBadge status={session.status || 'inactive'} />
       </td>
-      {!nested && (
-        <td className="px-6 py-3">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            {session.location}
-          </div>
-        </td>
-      )}
-      <td className="px-6 py-3">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit?.(session);
-            }}
-            className="p-1.5 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg transition-colors"
-            title="Edit session"
-          >
-            <PencilIcon className="w-4 h-4" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete?.(session);
-            }}
-            className="p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-colors"
-            title="Delete session"
-          >
-            <TrashIcon className="w-4 h-4" />
-          </button>
-        </div>
+
+      {/* Actions Column */}
+      <td className="px-6 py-3 text-right">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onView?.(session);
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 rounded-lg transition-colors"
+          title="View session details"
+        >
+          <EyeIcon className="w-4 h-4" />
+          <span>View</span>
+        </button>
       </td>
     </tr>
   );

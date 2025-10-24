@@ -18,8 +18,7 @@ const MockExamsTable = ({
   fetchNextPage,
   isFetchingNextPage,
   viewMode = 'list', // 'list' or 'aggregate'
-  onEdit,
-  onDelete
+  onView
 }) => {
   const loadMoreRef = useRef(null);
 
@@ -190,8 +189,7 @@ const MockExamsTable = ({
                 key={exam.id}
                 session={exam}
                 nested={false}
-                onEdit={onEdit || ((session) => window.location.href = `/admin/mock-exams/${session.id}/edit`)}
-                onDelete={onDelete || ((session) => console.log('Delete clicked but no handler provided:', session.id))}
+                onView={onView || ((session) => window.location.href = `/mock-exams/${session.id}`)}
               />
             ))}
           </tbody>

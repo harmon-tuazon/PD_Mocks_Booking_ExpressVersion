@@ -70,18 +70,9 @@ function MockExamsDashboard() {
     toggleSort(column);
   };
 
-  // Handler for editing a mock exam session
-  const handleEdit = (session) => {
-    window.location.href = `/mock-exams/${session.id}/edit`;
-  };
-
-  // Handler for deleting a mock exam session
-  const handleDelete = (session) => {
-    if (window.confirm(`Are you sure you want to delete this mock exam session?\n\nType: ${session.mock_type}\nDate: ${session.exam_date}\nTime: ${session.start_time} - ${session.end_time}`)) {
-      // TODO: Implement delete functionality
-      console.log('Delete session:', session.id);
-      alert('Delete functionality will be implemented soon.');
-    }
+  // Handler for viewing a mock exam session
+  const handleView = (session) => {
+    window.location.href = `/mock-exams/${session.id}`;
   };
 
   return (
@@ -184,8 +175,7 @@ function MockExamsDashboard() {
           fetchNextPage={viewMode === 'aggregate' ? undefined : fetchNextPage}
           isFetchingNextPage={viewMode === 'aggregate' ? false : isFetchingNextPage}
           viewMode={viewMode}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+          onView={handleView}
         />
       </div>
     </div>
