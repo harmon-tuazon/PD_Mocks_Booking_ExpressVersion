@@ -105,17 +105,24 @@ export const AuthProvider = ({ children }) => {
     const { data: { subscription } } = authHelpers.onAuthStateChange(async (event, newSession) => {
       console.log('🔔 Auth event:', event);
 
-      if (event === 'INITIAL_SESSION' && newSession) {
-        // Handle initial session on page load
-        console.log('✅ Initial session restored:', newSession.user?.email);
-        if (mounted) {
-          setSession(newSession);
-          setUser(newSession.user);
+      if (event === 'INITIAL_SESSION') {
+        // Handle initial session on page load (whether present or not)
+        if (newSession) {
+          console.log('✅ Initial session restored:', newSession.user?.email);
+          if (mounted) {
+            setSession(newSession);
+            setUser(newSession.user);
 
-          const userDetails = await fetchUserDetails(newSession.access_token);
-          if (userDetails && mounted) {
-            setUser({ ...newSession.user, ...userDetails });
+            const userDetails = await fetchUserDetails(newSession.access_token);
+            if (userDetails && mounted) {
+              setUser({ ...newSession.user, ...userDetails });
+            }
           }
+        } else {
+          console.log('ℹ️ No initial session found');
+        }
+        // Always set loading to false after INITIAL_SESSION event
+        if (mounted) {
           setLoading(false);
         }
       } else if (event === 'SIGNED_IN' && newSession) {

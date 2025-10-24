@@ -29,19 +29,9 @@ export const supabase = createClient(safeUrl, safeKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: false,
-    storage: {
-      getItem: (key) => {
-        // Use localStorage for persistence
-        const item = localStorage.getItem(key);
-        return item ? JSON.parse(item) : null;
-      },
-      setItem: (key, value) => {
-        localStorage.setItem(key, JSON.stringify(value));
-      },
-      removeItem: (key) => {
-        localStorage.removeItem(key);
-      }
-    }
+    // Use default localStorage storage (Supabase handles serialization internally)
+    // Removed custom storage adapter that was causing double-serialization
+    storage: window.localStorage
   }
 });
 
