@@ -16,7 +16,7 @@ function MockExamsDashboard() {
   const navigate = useNavigate();
 
   // State for view mode
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'aggregate'
+  const [viewMode, setViewMode] = useState('aggregate'); // 'list' or 'aggregate'
 
   // Initialize filter management
   const {

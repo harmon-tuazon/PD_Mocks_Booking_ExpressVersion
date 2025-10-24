@@ -6,7 +6,10 @@ import { useFetchAggregateSessions } from '../../hooks/useFetchAggregateSessions
 const AggregateRow = ({ aggregate, onView }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Lazy load sessions only when expanded
+  // Check if sessions are preloaded in the aggregate data
+  const hasPreloadedSessions = Boolean(aggregate.sessions);
+
+  // Only use lazy loading if sessions are not preloaded
   const {
     data: sessionsData,
     isLoading,
@@ -15,8 +18,19 @@ const AggregateRow = ({ aggregate, onView }) => {
     refetch
   } = useFetchAggregateSessions(
     aggregate.aggregate_key,
-    { enabled: isExpanded }
+    {
+      enabled: isExpanded && !hasPreloadedSessions // Only fetch if expanded AND no preloaded data
+    }
   );
+
+  // Use preloaded sessions if available, otherwise fall back to fetched data
+  const sessions = hasPreloadedSessions ? aggregate.sessions : sessionsData?.sessions;
+
+  // Determine loading state (only show loading if we're actually fetching)
+  const showLoading = !hasPreloadedSessions && isExpanded && isLoading;
+
+  // Determine error state (only show error if we're fetching and there's an error)
+  const showError = !hasPreloadedSessions && isExpanded && isError;
 
   const handleToggle = () => {
     setIsExpanded(!isExpanded);
@@ -73,7 +87,7 @@ const AggregateRow = ({ aggregate, onView }) => {
         <tr>
           <td colSpan="8" className="p-0">
             <div className="bg-gray-50 dark:bg-gray-900 border-l-4 border-blue-500">
-              {isLoading ? (
+              {showLoading ? (
                 <div className="py-8 text-center text-gray-500">
                   <div className="inline-flex items-center gap-2">
                     <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -83,7 +97,7 @@ const AggregateRow = ({ aggregate, onView }) => {
                     Loading sessions...
                   </div>
                 </div>
-              ) : isError ? (
+              ) : showError ? (
                 <div className="py-8 text-center">
                   <div className="text-red-600 dark:text-red-400 mb-2">
                     Failed to load sessions
@@ -101,10 +115,10 @@ const AggregateRow = ({ aggregate, onView }) => {
                     Retry
                   </button>
                 </div>
-              ) : sessionsData?.sessions?.length > 0 ? (
+              ) : sessions?.length > 0 ? (
                 <table className="w-full">
                   <tbody>
-                    {sessionsData.sessions.map(session => (
+                    {sessions.map(session => (
                       <SessionRow
                         key={session.id}
                         session={session}
