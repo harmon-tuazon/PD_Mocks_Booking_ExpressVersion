@@ -1,4 +1,4 @@
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import adminApi from '../services/adminApi';
 
 export const useFetchAggregates = (filters = {}, options = {}) => {
@@ -21,8 +21,8 @@ export const useFetchAggregates = (filters = {}, options = {}) => {
       return response.data;
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
-    placeholderData: keepPreviousData, // Keep previous data while fetching new data (replaces keepPreviousData: true)
+    cacheTime: 5 * 60 * 1000, // 5 minutes
+    keepPreviousData: true, // Keep previous data while fetching new data
     ...options
   });
 };
