@@ -1067,17 +1067,14 @@ class HubSpotService {
       // Process bookings with contact details
       const processedBookings = bookings.map(booking => ({
         id: booking.id,
-        ...booking.properties,
+        properties: booking.properties,
         contact: contacts[booking.properties.contact_id] || null
       }));
 
       console.log(`✅ Optimized getMockExamWithBookings: Fetched mock exam ${mockExamId} with ${bookings.length} bookings in single call`);
 
       return {
-        mockExam: {
-          id: mockExam.id,
-          ...mockExam.properties
-        },
+        mockExam: mockExam,  // Keep properties nested under 'properties' key
         bookings: processedBookings,
         statistics: {
           total: bookings.length,
