@@ -49,7 +49,7 @@ function MockExamsDashboard() {
     data: aggregatesData,
     isLoading: isLoadingAggregates,
     error: aggregatesError
-  } = useFetchAggregates(getQueryParams(), {
+  } = useFetchAggregates(getQueryParams, {
     enabled: viewMode === 'aggregate'
   });
 
