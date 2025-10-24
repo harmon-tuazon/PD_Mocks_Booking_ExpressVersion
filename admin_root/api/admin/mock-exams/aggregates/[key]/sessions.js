@@ -7,7 +7,7 @@
 
 const { requireAdmin } = require('../../../middleware/requireAdmin');
 const hubspot = require('../../../../_shared/hubspot');
-const cache = require('../../../../_shared/cache');
+const { getCache } = require('../../../../_shared/cache');
 
 module.exports = async (req, res) => {
   try {
@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    const cacheService = cache;
+    const cacheService = getCache();
     const cacheKey = `admin:aggregate:sessions:${key}`;
 
     // Check cache first

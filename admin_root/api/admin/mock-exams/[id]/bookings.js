@@ -18,7 +18,7 @@
 
 const { requireAdmin } = require('../../middleware/requireAdmin');
 const hubspot = require('../../../_shared/hubspot');
-const cache = require('../../../_shared/cache');
+const { getCache } = require('../../../_shared/cache');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -77,7 +77,7 @@ module.exports = async (req, res) => {
     }
 
     // Create cache key based on all parameters
-    const cacheService = cache;
+    const cacheService = getCache();
     const cacheKey = `admin:mock-exam:${mockExamId}:bookings:p${page}:l${limit}:${sortBy}:${sortOrder}${searchTerm ? `:s${Buffer.from(searchTerm).toString('base64')}` : ''}`;
 
     // Check cache first

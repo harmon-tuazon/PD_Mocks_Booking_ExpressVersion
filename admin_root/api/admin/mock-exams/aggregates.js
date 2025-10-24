@@ -7,7 +7,7 @@
 
 const { requireAdmin } = require('../middleware/requireAdmin');
 const hubspot = require('../../_shared/hubspot');
-const cache = require('../../_shared/cache');
+const { getCache } = require('../../_shared/cache');
 
 module.exports = async (req, res) => {
   try {
@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
       sort_order = 'asc'
     } = req.query;
 
-    const cacheService = cache;
+    const cacheService = getCache();
     const filters = {
       filter_location,
       filter_mock_type,
