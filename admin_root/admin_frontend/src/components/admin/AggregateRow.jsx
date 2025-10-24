@@ -7,7 +7,13 @@ const AggregateRow = ({ aggregate, onView }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Lazy load sessions only when expanded
-  const { data: sessionsData, isLoading } = useFetchAggregateSessions(
+  const {
+    data: sessionsData,
+    isLoading,
+    isError,
+    error,
+    refetch
+  } = useFetchAggregateSessions(
     aggregate.aggregate_key,
     { enabled: isExpanded }
   );
@@ -81,6 +87,24 @@ const AggregateRow = ({ aggregate, onView }) => {
                     </svg>
                     Loading sessions...
                   </div>
+                </div>
+              ) : isError ? (
+                <div className="py-8 text-center">
+                  <div className="text-red-600 dark:text-red-400 mb-2">
+                    Failed to load sessions
+                  </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    {error?.message || 'An error occurred while loading sessions'}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      refetch();
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    Retry
+                  </button>
                 </div>
               ) : sessionsData?.sessions?.length > 0 ? (
                 <table className="w-full">
