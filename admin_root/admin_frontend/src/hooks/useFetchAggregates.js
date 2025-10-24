@@ -15,7 +15,7 @@ export const useFetchAggregates = (filters = {}, options = {}) => {
   return useQuery({
     queryKey: ['mock-exam-aggregates', sortedFilters],
     queryFn: async () => {
-      const response = await adminApi.get('/mock-exams/aggregates', {
+      const response = await adminApi.get('/admin/mock-exams/aggregates', {
         params: sortedFilters
       });
       return response.data;
@@ -25,4 +25,4 @@ export const useFetchAggregates = (filters = {}, options = {}) => {
     keepPreviousData: true, // Keep previous data while fetching new data
     ...options
   });
-};
+};;

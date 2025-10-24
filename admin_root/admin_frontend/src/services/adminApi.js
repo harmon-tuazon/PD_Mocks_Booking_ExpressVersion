@@ -130,6 +130,26 @@ export const mockExamsApi = {
   delete: async (id) => {
     const response = await api.delete('/admin/mock-exams/delete', { params: { id } });
     return response.data;
+  },
+
+  /**
+   * Get aggregated mock exams
+   * @param {Object} filters - Optional filters
+   * @returns {Promise<Object>} Aggregated mock exams
+   */
+  getAggregates: async (filters = {}) => {
+    const response = await api.get('/admin/mock-exams/aggregates', { params: filters });
+    return response.data;
+  },
+
+  /**
+   * Get sessions for a specific aggregate
+   * @param {string} aggregateKey - The aggregate key to get sessions for
+   * @returns {Promise<Object>} Sessions for the aggregate
+   */
+  getAggregateSessions: async (aggregateKey) => {
+    const response = await api.get(`/admin/mock-exams/aggregates/${aggregateKey}/sessions`);
+    return response.data;
   }
 };
 
@@ -155,5 +175,8 @@ export const authApi = {
     return response.data;
   }
 };
+
+// Export the axios instance as adminApi for direct use in hooks
+export const adminApi = api;
 
 export default api;

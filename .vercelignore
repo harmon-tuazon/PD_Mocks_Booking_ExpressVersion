@@ -28,6 +28,9 @@ coverage/
 # node_modules
 node_modules/
 frontend/node_modules/
+admin_root/admin_frontend/node_modules/
+user_root/frontend/node_modules/
+**/node_modules/
 
 # Build outputs (except our target dist)
 build/
@@ -87,6 +90,9 @@ package-lock.json
 
 # Vercel
 .vercel
+
+# Serena cache
+.serena/
 
 # Environment variables backup
 .env.backup

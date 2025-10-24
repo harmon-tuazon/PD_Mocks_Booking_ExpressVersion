@@ -7,11 +7,11 @@ export const useFetchAggregateSessions = (aggregateKey, options = {}) => {
     queryFn: async () => {
       if (!aggregateKey) return null;
 
-      const response = await adminApi.get(`/mock-exams/aggregates/${aggregateKey}/sessions`);
+      const response = await adminApi.get(`/admin/mock-exams/aggregates/${aggregateKey}/sessions`);
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     cacheTime: 10 * 60 * 1000, // 10 minutes
     ...options
   });
-};
+};;
