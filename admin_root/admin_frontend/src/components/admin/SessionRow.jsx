@@ -3,26 +3,31 @@ import StatusBadge from './StatusBadge';
 import { EyeIcon, ClockIcon, UsersIcon } from '@heroicons/react/24/outline';
 
 const SessionRow = ({ session, nested = false, onView }) => {
-  // Format Unix timestamp to date string
-  const formatDate = (timestamp) => {
-    if (!timestamp) return '--';
-    const date = new Date(parseInt(timestamp));
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+  // Format date string (YYYY-MM-DD) to readable format
+  const formatDate = (dateString) => {
+    if (!dateString) return '--';
+
+    try {
+      // Handle YYYY-MM-DD format from HubSpot
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '--';
+
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', dateString, error);
+      return '--';
+    }
   };
 
-  // Format Unix timestamp to time string
-  const formatTime = (timestamp) => {
-    if (!timestamp) return '--';
-    const date = new Date(parseInt(timestamp));
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+  // Return time string as-is (already formatted by backend)
+  const formatTime = (timeString) => {
+    if (!timeString) return '--';
+    // Backend already formats times as "2:00 PM", so just return as-is
+    return timeString;
   };
 
   const rowClasses = nested
