@@ -71,13 +71,13 @@ const AggregateRow = ({ aggregate, onView }) => {
                 </div>
 
                 {/* Location - fixed width */}
-                <div className="text-base font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
                   <span className="flex-shrink-0 text-lg">📍</span>
                   <span className="truncate">{aggregate.location}</span>
                 </div>
 
                 {/* Date - fixed width */}
-                <div className="text-base font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
                   <span className="flex-shrink-0 text-lg">📅</span>
                   <span className="truncate">{formatDate(aggregate.exam_date)}</span>
                 </div>
