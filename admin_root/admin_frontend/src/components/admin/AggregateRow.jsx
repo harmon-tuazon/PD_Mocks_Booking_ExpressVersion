@@ -127,7 +127,7 @@ const AggregateRow = ({ aggregate, onView }) => {
                     Retry
                   </button>
                 </div>
-              ) : sessions?.length > 0 ? (
+              ) : Array.isArray(sessions) && sessions.length > 0 ? (
                 <table className="w-full">
                   <tbody>
                     {sessions.map(session => (

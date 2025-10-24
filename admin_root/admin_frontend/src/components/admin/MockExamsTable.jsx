@@ -93,7 +93,8 @@ const MockExamsTable = ({
     );
   }
 
-  if (!data || data.length === 0) {
+  // Ensure data is an array before rendering
+  if (!data || !Array.isArray(data) || data.length === 0) {
     return (
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <div className="text-center py-12">
