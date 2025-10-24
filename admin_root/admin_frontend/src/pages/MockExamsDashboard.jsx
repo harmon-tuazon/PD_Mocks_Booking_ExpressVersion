@@ -6,16 +6,16 @@
 import { Link } from 'react-router-dom';
 import { useMockExamsInfinite, useMockExamsMetrics } from '../hooks/useMockExamsData';
 import { useTableFilters } from '../hooks/useTableFilters';
-import { useFetchAggregates } from '../hooks/useFetchAggregates';
+// import { useFetchAggregates } from '../hooks/useFetchAggregates';
 import DashboardMetrics from '../components/admin/DashboardMetrics';
 import FilterBar from '../components/admin/FilterBar';
 import MockExamsTable from '../components/admin/MockExamsTable';
-import { useMemo, useState } from 'react';
-import { ListBulletIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
+import { useMemo } from 'react';
+// import { ListBulletIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 
 function MockExamsDashboard() {
-  // State for view mode
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'aggregate'
+  // State for view mode - DISABLED FOR NOW
+  // const [viewMode, setViewMode] = useState('list'); // 'list' or 'aggregate'
 
   // Initialize filter management
   const {
@@ -44,14 +44,14 @@ function MockExamsDashboard() {
     return mockExamsData.pages.flatMap(page => page.data || []);
   }, [mockExamsData]);
 
-  // Fetch aggregates data when in aggregate view mode
-  const {
-    data: aggregatesData,
-    isLoading: isLoadingAggregates,
-    error: aggregatesError
-  } = useFetchAggregates(getQueryParams(), {
-    enabled: viewMode === 'aggregate'
-  });
+  // DISABLED: Fetch aggregates data when in aggregate view mode
+  // const {
+  //   data: aggregatesData,
+  //   isLoading: isLoadingAggregates,
+  //   error: aggregatesError
+  // } = useFetchAggregates(getQueryParams(), {
+  //   enabled: viewMode === 'aggregate'
+  // });
 
   // Fetch metrics data (only pass non-empty date filters)
   const metricsFilters = useMemo(() => {
@@ -82,8 +82,8 @@ function MockExamsDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            {/* View Mode Toggle */}
-            <div className="inline-flex rounded-md shadow-sm" role="group">
+            {/* DISABLED: View Mode Toggle - causing production errors */}
+            {/* <div className="inline-flex rounded-md shadow-sm" role="group">
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
@@ -108,7 +108,7 @@ function MockExamsDashboard() {
                 <Squares2X2Icon className="h-5 w-5 mr-1" />
                 Group View
               </button>
-            </div>
+            </div> */}
 
             <Link
               to="/mock-exams/create"
@@ -158,18 +158,18 @@ function MockExamsDashboard() {
 
         {/* Mock Exams Table */}
         <MockExamsTable
-          key={JSON.stringify(getQueryParams) + viewMode}
-          data={viewMode === 'aggregate' ? (aggregatesData?.aggregates || []) : allExams}
-          isLoading={viewMode === 'aggregate' ? isLoadingAggregates : isLoadingExams}
+          key={JSON.stringify(getQueryParams)}
+          data={allExams}
+          isLoading={isLoadingExams}
           onSort={handleSort}
           currentSort={{
             sort_by: filters.sort_by,
             sort_order: filters.sort_order
           }}
-          hasNextPage={viewMode === 'aggregate' ? false : hasNextPage}
-          fetchNextPage={viewMode === 'aggregate' ? undefined : fetchNextPage}
-          isFetchingNextPage={viewMode === 'aggregate' ? false : isFetchingNextPage}
-          viewMode={viewMode}
+          hasNextPage={hasNextPage}
+          fetchNextPage={fetchNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          viewMode="list"
         />
       </div>
     </div>
