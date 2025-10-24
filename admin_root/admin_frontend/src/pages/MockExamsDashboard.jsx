@@ -3,7 +3,7 @@
  * Main dashboard for viewing and managing all mock exams
  */
 
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMockExamsInfinite, useMockExamsMetrics } from '../hooks/useMockExamsData';
 import { useTableFilters } from '../hooks/useTableFilters';
 import { useFetchAggregates } from '../hooks/useFetchAggregates';
@@ -14,6 +14,8 @@ import { useMemo, useState } from 'react';
 import { ListBulletIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 
 function MockExamsDashboard() {
+  const navigate = useNavigate();
+
   // State for view mode
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'aggregate'
 
@@ -72,7 +74,7 @@ function MockExamsDashboard() {
 
   // Handler for viewing a mock exam session
   const handleView = (session) => {
-    window.location.href = `/mock-exams/${session.id}`;
+    navigate(`/mock-exams/${session.id}`);
   };
 
   return (

@@ -109,11 +109,11 @@ const SessionRow = ({ session, nested = false, onView }) => {
             e.stopPropagation();
             onView?.(session);
           }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 rounded-lg transition-colors"
-          title="View session details"
+          className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/30 rounded-md transition-colors"
+          aria-label="View exam details"
         >
-          <EyeIcon className="w-4 h-4" />
-          <span>View</span>
+          <EyeIcon className="h-4 w-4 mr-1" />
+          View
         </button>
       </td>
     </tr>

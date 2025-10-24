@@ -5,6 +5,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute'
 import MockExams from './pages/MockExams'
 import MockExamsDashboard from './pages/MockExamsDashboard'
+import MockExamDetail from './pages/MockExamDetail'
 import Login from './pages/Login'
 import MainLayout from './components/layout/MainLayout'
 
@@ -42,6 +43,9 @@ function App() {
 
                 {/* Mock Exams Creation - Form View */}
                 <Route path="mock-exams/create" element={<MockExams />} />
+
+                {/* Mock Exam Detail View */}
+                <Route path="mock-exams/:id" element={<MockExamDetail />} />
               </Route>
             </Routes>
           </AuthProvider>

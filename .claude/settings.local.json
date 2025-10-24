@@ -25,7 +25,9 @@
       "mcp__serena__check_onboarding_performed",
       "Bash(vercel --prod --yes:*)",
       "Bash(node tests/test-requireAdmin-fix.js:*)",
-      "Bash(node -c:*)"
+      "Bash(node -c:*)",
+      "Bash(node tests/verify-mock-exam-endpoint.js:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

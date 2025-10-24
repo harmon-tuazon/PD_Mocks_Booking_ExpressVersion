@@ -107,7 +107,18 @@ export const mockExamsApi = {
    * @returns {Promise<Object>} Mock exam details with bookings
    */
   getById: async (id) => {
-    const response = await api.get('/admin/mock-exams/get', { params: { id } });
+    const response = await api.get(`/admin/mock-exams/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Get bookings for a specific mock exam
+   * @param {string} id - Mock exam ID
+   * @param {Object} params - Query parameters for filtering, sorting, pagination
+   * @returns {Promise<Object>} Bookings with pagination metadata
+   */
+  getBookings: async (id, params = {}) => {
+    const response = await api.get(`/admin/mock-exams/${id}/bookings`, { params });
     return response.data;
   },
 

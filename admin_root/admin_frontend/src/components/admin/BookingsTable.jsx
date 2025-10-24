@@ -1,0 +1,265 @@
+/**
+ * BookingsTable Component
+ * Displays booking data in a sortable, searchable, paginated table
+ */
+
+import { useState, useEffect } from 'react';
+import BookingRow from './BookingRow';
+import { MagnifyingGlassIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+
+const BookingsTable = ({
+  bookings,
+  isLoading,
+  error,
+  searchTerm,
+  onSearch,
+  sortConfig,
+  onSort,
+  currentPage,
+  totalPages,
+  totalItems,
+  onPageChange
+}) => {
+  const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm || '');
+
+  // Sync local search term with parent
+  useEffect(() => {
+    setLocalSearchTerm(searchTerm || '');
+  }, [searchTerm]);
+
+  // Handle search input with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearchTerm !== searchTerm) {
+        onSearch(localSearchTerm);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [localSearchTerm, searchTerm, onSearch]);
+
+  // Get sort icon for column
+  const getSortIcon = (column) => {
+    if (sortConfig.column !== column) {
+      return (
+        <svg className="w-4 h-4 ml-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+        </svg>
+      );
+    }
+
+    return sortConfig.direction === 'asc' ? (
+      <svg className="w-4 h-4 ml-1 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+      </svg>
+    ) : (
+      <svg className="w-4 h-4 ml-1 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+    );
+  };
+
+  // Sortable header component
+  const SortableHeader = ({ column, children, align = 'left' }) => (
+    <th
+      scope="col"
+      className={`px-6 py-3 text-${align} text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors`}
+      onClick={() => onSort(column)}
+    >
+      <div className={`flex items-center ${align === 'right' ? 'justify-end' : ''}`}>
+        {children}
+        {getSortIcon(column)}
+      </div>
+    </th>
+  );
+
+  // Calculate pagination info
+  const startItem = totalItems > 0 ? (currentPage - 1) * 50 + 1 : 0;
+  const endItem = Math.min(currentPage * 50, totalItems);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse space-y-4">
+          {/* Search bar skeleton */}
+          <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded-md w-full md:w-80"></div>
+
+          {/* Table skeleton */}
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                {error.message || 'Failed to load bookings'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Search Bar */}
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            value={localSearchTerm}
+            onChange={(e) => setLocalSearchTerm(e.target.value)}
+            placeholder="Search by name, email, or student ID..."
+            className="block w-full md:w-80 pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+          />
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        {bookings.length === 0 ? (
+          /* Empty State */
+          <div className="text-center py-12">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+              />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No bookings found</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {searchTerm ? 'Try adjusting your search criteria' : 'No bookings have been made for this exam yet'}
+            </p>
+          </div>
+        ) : (
+          <>
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <SortableHeader column="name">Name</SortableHeader>
+                  <SortableHeader column="email">Email</SortableHeader>
+                  <SortableHeader column="student_id">Student ID</SortableHeader>
+                  <SortableHeader column="dominant_hand">Dominant Hand</SortableHeader>
+                  <SortableHeader column="created_at">Booking Date</SortableHeader>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
+                {bookings.map((booking) => (
+                  <BookingRow key={booking.id} booking={booking} />
+                ))}
+              </tbody>
+            </table>
+
+            {/* Pagination Controls */}
+            <div className="bg-white dark:bg-dark-card px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button
+                  onClick={() => onPageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => onPageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    Showing <span className="font-medium">{startItem}</span> to{' '}
+                    <span className="font-medium">{endItem}</span> of{' '}
+                    <span className="font-medium">{totalItems}</span> results
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button
+                      onClick={() => onPageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span className="sr-only">Previous</span>
+                      <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
+                    </button>
+
+                    {/* Page numbers */}
+                    {[...Array(Math.min(5, totalPages))].map((_, index) => {
+                      let pageNumber;
+                      if (totalPages <= 5) {
+                        pageNumber = index + 1;
+                      } else if (currentPage <= 3) {
+                        pageNumber = index + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNumber = totalPages - 4 + index;
+                      } else {
+                        pageNumber = currentPage - 2 + index;
+                      }
+
+                      return (
+                        <button
+                          key={pageNumber}
+                          onClick={() => onPageChange(pageNumber)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            currentPage === pageNumber
+                              ? 'z-10 bg-primary-50 dark:bg-primary-900/30 border-primary-500 text-primary-600 dark:text-primary-400'
+                              : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      onClick={() => onPageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span className="sr-only">Next</span>
+                      <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default BookingsTable;

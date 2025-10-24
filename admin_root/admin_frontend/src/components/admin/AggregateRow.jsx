@@ -3,7 +3,7 @@ import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import SessionRow from './SessionRow';
 import { useFetchAggregateSessions } from '../../hooks/useFetchAggregateSessions';
 
-const AggregateRow = ({ aggregate }) => {
+const AggregateRow = ({ aggregate, onView }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Lazy load sessions only when expanded
@@ -86,7 +86,12 @@ const AggregateRow = ({ aggregate }) => {
                 <table className="w-full">
                   <tbody>
                     {sessionsData.sessions.map(session => (
-                      <SessionRow key={session.id} session={session} nested={true} />
+                      <SessionRow
+                        key={session.id}
+                        session={session}
+                        nested={true}
+                        onView={onView}
+                      />
                     ))}
                   </tbody>
                 </table>

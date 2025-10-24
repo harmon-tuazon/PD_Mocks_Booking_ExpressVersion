@@ -5,6 +5,7 @@
  */
 
 import { useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import StatusBadge from './StatusBadge';
 import AggregateRow from './AggregateRow';
 import SessionRow from './SessionRow';
@@ -21,6 +22,7 @@ const MockExamsTable = ({
   onView
 }) => {
   const loadMoreRef = useRef(null);
+  const navigate = useNavigate();
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
@@ -131,7 +133,11 @@ const MockExamsTable = ({
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {data.map((aggregate) => (
-                <AggregateRow key={aggregate.aggregate_key} aggregate={aggregate} />
+                <AggregateRow
+                  key={aggregate.aggregate_key}
+                  aggregate={aggregate}
+                  onView={(session) => navigate(`/mock-exams/${session.id}`)}
+                />
               ))}
             </tbody>
           </table>
@@ -189,7 +195,7 @@ const MockExamsTable = ({
                 key={exam.id}
                 session={exam}
                 nested={false}
-                onView={onView || ((session) => window.location.href = `/mock-exams/${session.id}`)}
+                onView={(session) => navigate(`/mock-exams/${session.id}`)}
               />
             ))}
           </tbody>

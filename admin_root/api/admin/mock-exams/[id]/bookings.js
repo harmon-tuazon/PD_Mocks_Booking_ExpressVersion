@@ -1,0 +1,292 @@
+/**
+ * GET /api/admin/mock-exams/[id]/bookings
+ * Fetch all bookings associated with a specific mock exam from HubSpot
+ *
+ * Features:
+ * - Fetches bookings associated with a mock exam via HubSpot associations
+ * - Supports pagination, sorting, and search filtering
+ * - Implements Redis caching with 2-minute TTL
+ * - Returns detailed booking information including contact details
+ *
+ * Query Parameters:
+ * - page (number): Page number for pagination (default: 1)
+ * - limit (number): Items per page (default: 50, max: 100)
+ * - sort_by (string): Sort field - created_at|name|email (default: created_at)
+ * - sort_order (string): Sort direction - asc|desc (default: desc)
+ * - search (string): Search term for filtering by name or email
+ */
+
+const { requireAdmin } = require('../../middleware/requireAdmin');
+const hubspot = require('../../../_shared/hubspot');
+const cache = require('../../../_shared/cache');
+
+// HubSpot Object Type IDs
+const HUBSPOT_OBJECTS = {
+  'bookings': '2-50158943',
+  'mock_exams': '2-50158913',
+  'contacts': '0-1'
+};
+
+module.exports = async (req, res) => {
+  try {
+    // Verify admin authentication
+    const user = await requireAdmin(req);
+
+    // Extract mock exam ID from URL path parameter
+    const mockExamId = req.query.id;
+
+    if (!mockExamId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Mock exam ID is required'
+      });
+    }
+
+    // Validate ID format (should be numeric)
+    if (!/^\d+$/.test(mockExamId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid mock exam ID format'
+      });
+    }
+
+    // Extract and validate query parameters
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const requestedLimit = parseInt(req.query.limit) || 50;
+    const limit = Math.min(Math.max(1, requestedLimit), 100); // Cap at 100
+    const sortBy = req.query.sort_by || 'created_at';
+    const sortOrder = (req.query.sort_order || 'desc').toLowerCase();
+    const searchTerm = req.query.search ? req.query.search.toLowerCase().trim() : '';
+
+    // Validate sort parameters
+    const validSortFields = ['created_at', 'name', 'email'];
+    const validSortOrders = ['asc', 'desc'];
+
+    if (!validSortFields.includes(sortBy)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid sort_by field. Valid options: ${validSortFields.join(', ')}`
+      });
+    }
+
+    if (!validSortOrders.includes(sortOrder)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid sort_order. Valid options: asc, desc'
+      });
+    }
+
+    // Create cache key based on all parameters
+    const cacheService = cache;
+    const cacheKey = `admin:mock-exam:${mockExamId}:bookings:p${page}:l${limit}:${sortBy}:${sortOrder}${searchTerm ? `:s${Buffer.from(searchTerm).toString('base64')}` : ''}`;
+
+    // Check cache first
+    const cachedData = await cacheService.get(cacheKey);
+    if (cachedData) {
+      console.log(`🎯 [Cache HIT] Bookings for mock exam ${mockExamId}`);
+      return res.status(200).json({
+        ...cachedData,
+        meta: {
+          ...cachedData.meta,
+          cached: true
+        }
+      });
+    }
+
+    console.log(`📋 [Cache MISS] Fetching bookings for mock exam ${mockExamId}`);
+
+    // Step 1: Verify the mock exam exists
+    let mockExam;
+    try {
+      mockExam = await hubspot.getMockExam(mockExamId);
+      if (!mockExam) {
+        return res.status(404).json({
+          success: false,
+          error: 'Mock exam not found'
+        });
+      }
+    } catch (error) {
+      if (error.response?.status === 404 || error.message?.includes('404')) {
+        return res.status(404).json({
+          success: false,
+          error: 'Mock exam not found'
+        });
+      }
+      throw error;
+    }
+
+    // Step 2: Search for bookings associated with this mock exam
+    // Use the mock_exam_id property to find bookings
+    const filters = [
+      {
+        propertyName: 'mock_exam_id',
+        operator: 'EQ',
+        value: mockExamId
+      }
+    ];
+
+    // Fetch all bookings for this mock exam (we'll handle pagination client-side)
+    let allBookings = [];
+    let after = null;
+    let hasMore = true;
+
+    while (hasMore) {
+      const searchBody = {
+        filterGroups: [{ filters }],
+        properties: [
+          'booking_id',
+          'name',
+          'email',
+          'student_id',
+          'dominant_hand',
+          'contact_id',
+          'booking_status',
+          'hs_createdate',
+          'hs_lastmodifieddate'
+        ],
+        limit: 100 // HubSpot max limit per request
+      };
+
+      if (after) {
+        searchBody.after = after;
+      }
+
+      const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/search`, searchBody);
+
+      if (response.results) {
+        allBookings = allBookings.concat(response.results);
+      }
+
+      if (response.paging?.next?.after) {
+        after = response.paging.next.after;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    // Step 3: Apply search filter if provided
+    let filteredBookings = allBookings;
+    if (searchTerm) {
+      filteredBookings = allBookings.filter(booking => {
+        const name = (booking.properties.name || '').toLowerCase();
+        const email = (booking.properties.email || '').toLowerCase();
+        return name.includes(searchTerm) || email.includes(searchTerm);
+      });
+    }
+
+    // Step 4: Sort the bookings
+    const sortedBookings = [...filteredBookings].sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sortBy) {
+        case 'name':
+          aValue = (a.properties.name || '').toLowerCase();
+          bValue = (b.properties.name || '').toLowerCase();
+          break;
+        case 'email':
+          aValue = (a.properties.email || '').toLowerCase();
+          bValue = (b.properties.email || '').toLowerCase();
+          break;
+        case 'created_at':
+        default:
+          aValue = new Date(a.properties.hs_createdate || 0);
+          bValue = new Date(b.properties.hs_createdate || 0);
+          break;
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    // Step 5: Apply pagination
+    const totalBookings = sortedBookings.length;
+    const totalPages = Math.ceil(totalBookings / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = Math.min(startIndex + limit, totalBookings);
+    const paginatedBookings = sortedBookings.slice(startIndex, endIndex);
+
+    // Step 6: Transform bookings into response format
+    const transformedBookings = paginatedBookings.map(booking => {
+      const props = booking.properties;
+
+      // Determine dominant hand value (convert from string to readable format)
+      let dominantHand = props.dominant_hand;
+      if (dominantHand === 'true' || dominantHand === true) {
+        dominantHand = 'right';
+      } else if (dominantHand === 'false' || dominantHand === false) {
+        dominantHand = 'left';
+      } else if (!dominantHand) {
+        dominantHand = 'not specified';
+      }
+
+      return {
+        id: booking.id,
+        booking_id: props.booking_id || '',
+        name: props.name || '',
+        email: props.email || '',
+        student_id: props.student_id || '',
+        dominant_hand: dominantHand,
+        contact_id: props.contact_id || '',
+        created_at: props.hs_createdate || '',
+        updated_at: props.hs_lastmodifieddate || props.hs_createdate || ''
+      };
+    });
+
+    // Build response
+    const response = {
+      success: true,
+      data: {
+        bookings: transformedBookings,
+        pagination: {
+          page: page,
+          limit: limit,
+          total_bookings: totalBookings,
+          total_pages: totalPages,
+          has_next: page < totalPages,
+          has_prev: page > 1
+        }
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        cached: false,
+        exam_id: mockExamId,
+        search_term: searchTerm || null,
+        sort: {
+          field: sortBy,
+          order: sortOrder
+        }
+      }
+    };
+
+    // Cache for 2 minutes (120 seconds)
+    await cacheService.set(cacheKey, response, 120);
+    console.log(`💾 [Cached] ${transformedBookings.length} bookings for mock exam ${mockExamId} (2 min TTL)`);
+
+    res.status(200).json(response);
+
+  } catch (error) {
+    console.error('Error fetching mock exam bookings:', error);
+
+    // Check if it's an authentication error from requireAdmin
+    if (error.message && (error.message.includes('Authentication') || error.message.includes('Unauthorized'))) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: error.message || 'Authentication required'
+        }
+      });
+    }
+
+    // Generic server error
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: 'Failed to fetch bookings for mock exam',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      }
+    });
+  }
+};
