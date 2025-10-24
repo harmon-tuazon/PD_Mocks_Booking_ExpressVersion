@@ -1236,25 +1236,45 @@ class HubSpotService {
           'mock_type', 'exam_date', 'start_time', 'end_time',
           'capacity', 'total_bookings', 'location', 'is_active'
         ],
-        limit: 1000,  // Fetch more to aggregate
+        limit: 200,  // HubSpot max limit per request
         sorts: [{
           propertyName: 'exam_date',
           direction: 'ASCENDING'
         }]
       };
-      
+
       // Add filters if any
       if (searchFilters.length > 0) {
         searchRequest.filterGroups = [{ filters: searchFilters }];
       }
-      
-      // Fetch all mock exams matching filters
-      const response = await this.apiCall('POST', 
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, 
-        searchRequest
-      );
-      
-      const allExams = response.results || [];
+
+      // Fetch all mock exams matching filters with pagination
+      const allExams = [];
+      let after = undefined;
+
+      do {
+        // Add pagination token if available
+        if (after) {
+          searchRequest.after = after;
+        }
+
+        const response = await this.apiCall('POST',
+          `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`,
+          searchRequest
+        );
+
+        // Add results to collection
+        if (response.results) {
+          allExams.push(...response.results);
+        }
+
+        // Get next page token
+        after = response.paging?.next?.after;
+
+        // Log pagination progress
+        console.log(`Fetched ${response.results?.length || 0} exams, total so far: ${allExams.length}, has more: ${!!after}`);
+
+      } while (after); // Continue while there are more pages
       
       // Group by (mock_type + date + location)
       const aggregates = {};
