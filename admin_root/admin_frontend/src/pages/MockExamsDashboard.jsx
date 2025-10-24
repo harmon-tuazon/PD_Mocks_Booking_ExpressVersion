@@ -6,16 +6,16 @@
 import { Link } from 'react-router-dom';
 import { useMockExamsInfinite, useMockExamsMetrics } from '../hooks/useMockExamsData';
 import { useTableFilters } from '../hooks/useTableFilters';
-// import { useFetchAggregates } from '../hooks/useFetchAggregates';
+import { useFetchAggregates } from '../hooks/useFetchAggregates';
 import DashboardMetrics from '../components/admin/DashboardMetrics';
 import FilterBar from '../components/admin/FilterBar';
 import MockExamsTable from '../components/admin/MockExamsTable';
-import { useMemo } from 'react';
-// import { ListBulletIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
+import { useMemo, useState } from 'react';
+import { ListBulletIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 
 function MockExamsDashboard() {
-  // State for view mode - DISABLED FOR NOW
-  // const [viewMode, setViewMode] = useState('list'); // 'list' or 'aggregate'
+  // State for view mode
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'aggregate'
 
   // Initialize filter management
   const {
@@ -44,14 +44,14 @@ function MockExamsDashboard() {
     return mockExamsData.pages.flatMap(page => page.data || []);
   }, [mockExamsData]);
 
-  // DISABLED: Fetch aggregates data when in aggregate view mode
-  // const {
-  //   data: aggregatesData,
-  //   isLoading: isLoadingAggregates,
-  //   error: aggregatesError
-  // } = useFetchAggregates(getQueryParams(), {
-  //   enabled: viewMode === 'aggregate'
-  // });
+  // Fetch aggregates data when in aggregate view mode
+  const {
+    data: aggregatesData,
+    isLoading: isLoadingAggregates,
+    error: aggregatesError
+  } = useFetchAggregates(getQueryParams(), {
+    enabled: viewMode === 'aggregate'
+  });
 
   // Fetch metrics data (only pass non-empty date filters)
   const metricsFilters = useMemo(() => {
@@ -70,6 +70,20 @@ function MockExamsDashboard() {
     toggleSort(column);
   };
 
+  // Handler for editing a mock exam session
+  const handleEdit = (session) => {
+    window.location.href = `/mock-exams/${session.id}/edit`;
+  };
+
+  // Handler for deleting a mock exam session
+  const handleDelete = (session) => {
+    if (window.confirm(`Are you sure you want to delete this mock exam session?\n\nType: ${session.mock_type}\nDate: ${session.exam_date}\nTime: ${session.start_time} - ${session.end_time}`)) {
+      // TODO: Implement delete functionality
+      console.log('Delete session:', session.id);
+      alert('Delete functionality will be implemented soon.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
       <div className="container-app py-8">
@@ -82,8 +96,8 @@ function MockExamsDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            {/* DISABLED: View Mode Toggle - causing production errors */}
-            {/* <div className="inline-flex rounded-md shadow-sm" role="group">
+            {/* View Mode Toggle */}
+            <div className="inline-flex rounded-md shadow-sm" role="group">
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
@@ -108,7 +122,7 @@ function MockExamsDashboard() {
                 <Squares2X2Icon className="h-5 w-5 mr-1" />
                 Group View
               </button>
-            </div> */}
+            </div>
 
             <Link
               to="/mock-exams/create"
@@ -158,18 +172,20 @@ function MockExamsDashboard() {
 
         {/* Mock Exams Table */}
         <MockExamsTable
-          key={JSON.stringify(getQueryParams)}
-          data={allExams}
-          isLoading={isLoadingExams}
+          key={JSON.stringify(getQueryParams) + viewMode}
+          data={viewMode === 'aggregate' ? (aggregatesData?.data || []) : allExams}
+          isLoading={viewMode === 'aggregate' ? isLoadingAggregates : isLoadingExams}
           onSort={handleSort}
           currentSort={{
             sort_by: filters.sort_by,
             sort_order: filters.sort_order
           }}
-          hasNextPage={hasNextPage}
-          fetchNextPage={fetchNextPage}
-          isFetchingNextPage={isFetchingNextPage}
-          viewMode="list"
+          hasNextPage={viewMode === 'aggregate' ? false : hasNextPage}
+          fetchNextPage={viewMode === 'aggregate' ? undefined : fetchNextPage}
+          isFetchingNextPage={viewMode === 'aggregate' ? false : isFetchingNextPage}
+          viewMode={viewMode}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
         />
       </div>
     </div>

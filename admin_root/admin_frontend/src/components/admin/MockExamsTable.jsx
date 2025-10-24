@@ -191,7 +191,7 @@ const MockExamsTable = ({
                 session={exam}
                 nested={false}
                 onEdit={onEdit || ((session) => window.location.href = `/admin/mock-exams/${session.id}/edit`)}
-                onDelete={onDelete}
+                onDelete={onDelete || ((session) => console.log('Delete clicked but no handler provided:', session.id))}
               />
             ))}
           </tbody>
