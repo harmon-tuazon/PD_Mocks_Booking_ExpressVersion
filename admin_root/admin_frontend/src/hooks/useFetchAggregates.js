@@ -21,8 +21,8 @@ export const useFetchAggregates = (filters = {}, options = {}) => {
       return response.data;
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
-    cacheTime: 5 * 60 * 1000, // 5 minutes
-    keepPreviousData: true, // Keep previous data while fetching new data
+    gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
+    placeholderData: (previousData) => previousData, // Keep previous data while fetching new data (replaces keepPreviousData)
     ...options
   });
 };
