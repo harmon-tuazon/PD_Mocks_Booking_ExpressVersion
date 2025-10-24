@@ -997,13 +997,16 @@ class HubSpotService {
    */
   async getMockExamWithBookings(mockExamId) {
     try {
-      // Get mock exam details with associations
+      // Get mock exam details with associations and full properties in a single call
       const mockExamResponse = await this.apiCall('GET',
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}`
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}&properties=mock_type,exam_date,start_time,end_time,capacity,total_bookings,location,is_active,hs_createdate,hs_lastmodifieddate`
       );
 
-      // Get the full mock exam details
-      const mockExam = await this.getMockExam(mockExamId);
+      // Extract mock exam data (no need for separate getMockExam call!)
+      const mockExam = {
+        id: mockExamResponse.id,
+        properties: mockExamResponse.properties
+      };
 
       // Extract booking IDs from associations
       const bookingIds = [];
@@ -1067,6 +1070,8 @@ class HubSpotService {
         ...booking.properties,
         contact: contacts[booking.properties.contact_id] || null
       }));
+
+      console.log(`✅ Optimized getMockExamWithBookings: Fetched mock exam ${mockExamId} with ${bookings.length} bookings in single call`);
 
       return {
         mockExam: {
@@ -1196,9 +1201,11 @@ class HubSpotService {
       batches.push(sessionIds.slice(i, i + BATCH_SIZE));
     }
 
-    // Fetch all batches sequentially to avoid rate limits
-    const allResults = [];
-    for (const batchIds of batches) {
+    console.log(`🚀 Parallel batch fetching ${sessionIds.length} sessions across ${batches.length} batches...`);
+    const startTime = Date.now();
+
+    // Fetch all batches in parallel for faster performance
+    const batchPromises = batches.map(async (batchIds, index) => {
       try {
         const response = await this.apiCall('POST',
           `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/read`, {
@@ -1211,14 +1218,23 @@ class HubSpotService {
           }
         );
 
-        if (response.results) {
-          allResults.push(...response.results);
-        }
+        console.log(`✅ Batch ${index + 1}/${batches.length} completed: ${response.results?.length || 0} sessions`);
+        return response.results || [];
       } catch (error) {
-        console.error(`Error in batch fetch for ${batchIds.length} mock exams:`, error);
-        // Continue with other batches even if one fails
+        console.error(`❌ Error in batch ${index + 1}/${batches.length} for ${batchIds.length} mock exams:`, error);
+        // Return empty array on error to continue with other batches
+        return [];
       }
-    }
+    });
+
+    // Wait for all batches to complete in parallel
+    const allBatchResults = await Promise.all(batchPromises);
+    
+    // Flatten results from all batches
+    const allResults = allBatchResults.flat();
+
+    const duration = Date.now() - startTime;
+    console.log(`⚡ Parallel batch fetch completed: ${allResults.length} sessions in ${duration}ms`);
 
     return allResults;
   }
