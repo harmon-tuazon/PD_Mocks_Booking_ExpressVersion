@@ -54,7 +54,7 @@ const AggregateRow = ({ aggregate, onView }) => {
         onClick={handleToggle}
         className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors"
       >
-        <td colSpan="8" className="px-6 py-4">
+        <td colSpan="7" className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 flex-1">
               {isExpanded ? (
@@ -71,14 +71,14 @@ const AggregateRow = ({ aggregate, onView }) => {
                 </div>
 
                 {/* Location - fixed width */}
-                <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                  <span className="flex-shrink-0">📍</span>
+                <div className="text-base font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <span className="flex-shrink-0 text-lg">📍</span>
                   <span className="truncate">{aggregate.location}</span>
                 </div>
 
                 {/* Date - fixed width */}
-                <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                  <span className="flex-shrink-0">📅</span>
+                <div className="text-base font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <span className="flex-shrink-0 text-lg">📅</span>
                   <span className="truncate">{formatDate(aggregate.exam_date)}</span>
                 </div>
               </div>
@@ -97,7 +97,7 @@ const AggregateRow = ({ aggregate, onView }) => {
       {/* Expanded Sessions */}
       {isExpanded && (
         <tr>
-          <td colSpan="8" className="p-0">
+          <td colSpan="7" className="p-0">
             <div className="bg-gray-50 dark:bg-gray-900 border-l-4 border-blue-500">
               {showLoading ? (
                 <div className="py-8 text-center text-gray-500">

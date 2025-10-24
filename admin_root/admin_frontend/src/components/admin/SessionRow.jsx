@@ -1,5 +1,4 @@
 import React from 'react';
-import StatusBadge from './StatusBadge';
 import { EyeIcon, ClockIcon, UsersIcon } from '@heroicons/react/24/outline';
 
 const SessionRow = ({ session, nested = false, onView }) => {
@@ -23,11 +22,30 @@ const SessionRow = ({ session, nested = false, onView }) => {
     }
   };
 
-  // Return time string as-is (already formatted by backend)
+  // Format ISO timestamp to readable time (e.g., "2:00 PM")
   const formatTime = (timeString) => {
     if (!timeString) return '--';
-    // Backend already formats times as "2:00 PM", so just return as-is
-    return timeString;
+
+    try {
+      // If it's already formatted (e.g., "2:00 PM"), return as-is
+      if (timeString.includes('AM') || timeString.includes('PM')) {
+        return timeString;
+      }
+
+      // Parse ISO timestamp (e.g., "2025-09-26T16:00:00Z")
+      const date = new Date(timeString);
+      if (isNaN(date.getTime())) return timeString;
+
+      // Format to readable time
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.error('Error formatting time:', timeString, error);
+      return timeString;
+    }
   };
 
   const rowClasses = nested
@@ -100,11 +118,6 @@ const SessionRow = ({ session, nested = false, onView }) => {
             {session.utilization_rate || 0}%
           </span>
         </div>
-      </td>
-
-      {/* Status Column */}
-      <td className="px-6 py-3">
-        <StatusBadge status={session.status || 'inactive'} />
       </td>
 
       {/* Actions Column */}

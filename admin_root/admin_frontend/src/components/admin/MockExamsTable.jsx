@@ -6,7 +6,6 @@
 
 import { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import StatusBadge from './StatusBadge';
 import AggregateRow from './AggregateRow';
 import SessionRow from './SessionRow';
 
@@ -180,9 +179,6 @@ const MockExamsTable = ({
               <SortableHeader column="capacity">Capacity</SortableHeader>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Utilization
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
               </th>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
