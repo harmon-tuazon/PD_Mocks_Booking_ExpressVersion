@@ -417,48 +417,53 @@ class HubSpotService {
    */
   async getActiveBookingsCount(mockExamId) {
     try {
-      const filters = [
-        {
-          propertyName: 'mock_exam_id',
-          operator: 'EQ',
-          value: mockExamId
-        },
-        {
-          propertyName: 'booking_status',
-          operator: 'IN',
-          values: ['confirmed', 'pending']
-        }
-      ];
+      // Get mock exam with associations to get all booking IDs
+      const mockExamResponse = await this.apiCall('GET',
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}`
+      );
 
-      let allBookings = [];
-      let after = null;
-      let hasMore = true;
+      // Extract booking IDs from associations
+      const bookingIds = [];
+      if (mockExamResponse.associations?.[HUBSPOT_OBJECTS.bookings]?.results?.length > 0) {
+        mockExamResponse.associations[HUBSPOT_OBJECTS.bookings].results.forEach(association => {
+          bookingIds.push(association.id);
+        });
+      }
 
-      while (hasMore) {
-        const searchBody = {
-          filterGroups: [{ filters }],
-          properties: ['booking_status'],
-          limit: 100
-        };
+      // If no bookings, return 0
+      if (bookingIds.length === 0) {
+        return 0;
+      }
 
-        if (after) {
-          searchBody.after = after;
-        }
+      // Batch fetch booking details to check status (HubSpot batch read supports up to 100 objects)
+      let activeCount = 0;
+      const batchChunks = [];
+      for (let i = 0; i < bookingIds.length; i += 100) {
+        batchChunks.push(bookingIds.slice(i, i + 100));
+      }
 
-        const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/search`, searchBody);
+      for (const chunk of batchChunks) {
+        try {
+          const batchResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
+            properties: ['booking_status'],
+            inputs: chunk.map(id => ({ id }))
+          });
 
-        if (response.results) {
-          allBookings = allBookings.concat(response.results);
-        }
-
-        if (response.paging?.next?.after) {
-          after = response.paging.next.after;
-        } else {
-          hasMore = false;
+          if (batchResponse.results) {
+            // Count active bookings (confirmed or pending)
+            batchResponse.results.forEach(booking => {
+              const status = booking.properties.booking_status;
+              if (status === 'confirmed' || status === 'pending') {
+                activeCount++;
+              }
+            });
+          }
+        } catch (batchError) {
+          console.error(`Error fetching booking batch for count:`, batchError);
         }
       }
 
-      return allBookings.length;
+      return activeCount;
     } catch (error) {
       console.error('Error getting active bookings count:', error);
       throw error;
@@ -992,26 +997,51 @@ class HubSpotService {
    */
   async getMockExamWithBookings(mockExamId) {
     try {
-      // Get mock exam details
+      // Get mock exam details with associations
+      const mockExamResponse = await this.apiCall('GET',
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}`
+      );
+
+      // Get the full mock exam details
       const mockExam = await this.getMockExam(mockExamId);
 
-      // Search for all bookings for this mock exam
-      const bookingsResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/search`, {
-        filterGroups: [{
-          filters: [{
-            propertyName: 'mock_exam_id',
-            operator: 'EQ',
-            value: mockExamId
-          }]
-        }],
-        properties: [
-          'booking_status', 'contact_id', 'created_at',
-          'payment_method', 'confirmation_number'
-        ],
-        limit: 100
-      });
+      // Extract booking IDs from associations
+      const bookingIds = [];
+      if (mockExamResponse.associations?.[HUBSPOT_OBJECTS.bookings]?.results?.length > 0) {
+        mockExamResponse.associations[HUBSPOT_OBJECTS.bookings].results.forEach(association => {
+          bookingIds.push(association.id);
+        });
+      }
 
-      const bookings = bookingsResponse.results || [];
+      // If there are no bookings, return empty array
+      let bookings = [];
+      if (bookingIds.length > 0) {
+        // Batch fetch booking details (HubSpot batch read supports up to 100 objects)
+        const batchChunks = [];
+        for (let i = 0; i < bookingIds.length; i += 100) {
+          batchChunks.push(bookingIds.slice(i, i + 100));
+        }
+
+        for (const chunk of batchChunks) {
+          try {
+            const batchResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
+              properties: [
+                'booking_status', 'contact_id', 'created_at',
+                'payment_method', 'confirmation_number',
+                'student_id', 'student_name', 'student_email',
+                'exam_date', 'hs_createdate'
+              ],
+              inputs: chunk.map(id => ({ id }))
+            });
+
+            if (batchResponse.results) {
+              bookings = bookings.concat(batchResponse.results);
+            }
+          } catch (batchError) {
+            console.error(`Error fetching booking batch:`, batchError);
+          }
+        }
+      }
 
       // Get unique contact IDs
       const contactIds = [...new Set(bookings.map(b => b.properties.contact_id).filter(Boolean))];

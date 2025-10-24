@@ -115,52 +115,54 @@ module.exports = async (req, res) => {
       throw error;
     }
 
-    // Step 2: Search for bookings associated with this mock exam
-    // Use the mock_exam_id property to find bookings
-    const filters = [
-      {
-        propertyName: 'mock_exam_id',
-        operator: 'EQ',
-        value: mockExamId
-      }
-    ];
+    // Step 2: Get bookings associated with this mock exam via associations
+    // Get mock exam with associations to get all booking IDs
+    const mockExamWithAssociations = await hubspot.apiCall('GET',
+      `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}`
+    );
 
-    // Fetch all bookings for this mock exam (we'll handle pagination client-side)
+    // Extract booking IDs from associations
+    const bookingIds = [];
+    if (mockExamWithAssociations.associations?.[HUBSPOT_OBJECTS.bookings]?.results?.length > 0) {
+      mockExamWithAssociations.associations[HUBSPOT_OBJECTS.bookings].results.forEach(association => {
+        bookingIds.push(association.id);
+      });
+    }
+
+    // If there are no bookings, return empty result
     let allBookings = [];
-    let after = null;
-    let hasMore = true;
-
-    while (hasMore) {
-      const searchBody = {
-        filterGroups: [{ filters }],
-        properties: [
-          'booking_id',
-          'name',
-          'email',
-          'student_id',
-          'dominant_hand',
-          'contact_id',
-          'booking_status',
-          'hs_createdate',
-          'hs_lastmodifieddate'
-        ],
-        limit: 100 // HubSpot max limit per request
-      };
-
-      if (after) {
-        searchBody.after = after;
+    if (bookingIds.length === 0) {
+      console.log(`No bookings found for mock exam ${mockExamId}`);
+    } else {
+      // Batch fetch booking details (HubSpot batch read supports up to 100 objects)
+      const batchChunks = [];
+      for (let i = 0; i < bookingIds.length; i += 100) {
+        batchChunks.push(bookingIds.slice(i, i + 100));
       }
 
-      const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/search`, searchBody);
+      for (const chunk of batchChunks) {
+        try {
+          const batchResponse = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
+            properties: [
+              'booking_id',
+              'name',
+              'email',
+              'student_id',
+              'dominant_hand',
+              'contact_id',
+              'booking_status',
+              'hs_createdate',
+              'hs_lastmodifieddate'
+            ],
+            inputs: chunk.map(id => ({ id }))
+          });
 
-      if (response.results) {
-        allBookings = allBookings.concat(response.results);
-      }
-
-      if (response.paging?.next?.after) {
-        after = response.paging.next.after;
-      } else {
-        hasMore = false;
+          if (batchResponse.results) {
+            allBookings = allBookings.concat(batchResponse.results);
+          }
+        } catch (batchError) {
+          console.error(`Error fetching booking batch:`, batchError);
+        }
       }
     }
 
