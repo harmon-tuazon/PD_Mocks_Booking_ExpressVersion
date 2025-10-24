@@ -114,7 +114,9 @@ module.exports = async (req, res) => {
       ]);
     }
 
-    // Return success response
+    // CRITICAL: Always return refresh_token for session persistence
+    // Supabase requires both access_token AND refresh_token to store session in localStorage
+    // The rememberMe feature controls the cookie duration, not the refresh_token availability
     res.status(200).json({
       success: true,
       user: {
@@ -124,7 +126,7 @@ module.exports = async (req, res) => {
       },
       session: {
         access_token: session.access_token,
-        refresh_token: rememberMe ? session.refresh_token : undefined,
+        refresh_token: session.refresh_token, // Always return - required for session persistence
         expires_at: session.expires_at,
         expires_in: session.expires_in
       }
