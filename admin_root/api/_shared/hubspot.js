@@ -84,6 +84,27 @@ class HubSpotService {
           'Content-Type': 'application/json'
         }
       });
+      
+      // Monitor rate limit headers
+      const rateLimitHeaders = response.headers;
+      const dailyLimit = rateLimitHeaders['x-hubspot-ratelimit-daily'];
+      const dailyRemaining = rateLimitHeaders['x-hubspot-ratelimit-daily-remaining'];
+      const secondlyLimit = rateLimitHeaders['x-hubspot-ratelimit-secondly'];
+      const secondlyRemaining = rateLimitHeaders['x-hubspot-ratelimit-secondly-remaining'];
+      
+      // Log rate limit info if we're getting close to limits
+      if (secondlyRemaining && parseInt(secondlyRemaining) < 20) {
+        console.warn(`⚠️ HubSpot API Rate Limit Warning: Only ${secondlyRemaining}/${secondlyLimit} requests remaining this second`);
+      }
+      
+      if (secondlyRemaining && parseInt(secondlyRemaining) < 5) {
+        console.error(`🚨 HubSpot API Rate Limit Critical: Only ${secondlyRemaining}/${secondlyLimit} requests remaining this second!`);
+      }
+      
+      if (dailyRemaining && parseInt(dailyRemaining) < 1000) {
+        console.warn(`⚠️ HubSpot API Daily Limit Warning: Only ${dailyRemaining}/${dailyLimit} requests remaining today`);
+      }
+      
       return response.data;
     } catch (error) {
       // Handle rate limiting with exponential backoff
@@ -1108,6 +1129,168 @@ class HubSpotService {
       };
     } catch (error) {
       console.error('Error calculating metrics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Batch fetch mock exams by IDs to reduce API calls
+   * @param {Array<string>} sessionIds - Array of mock exam session IDs
+   * @returns {Promise<Array>} Array of mock exam objects
+   */
+  async batchFetchMockExams(sessionIds) {
+    if (!sessionIds || sessionIds.length === 0) {
+      return [];
+    }
+
+    const BATCH_SIZE = 50;  // Conservative batch size per HubSpot limits
+    const batches = [];
+
+    // Split into chunks of 50
+    for (let i = 0; i < sessionIds.length; i += BATCH_SIZE) {
+      batches.push(sessionIds.slice(i, i + BATCH_SIZE));
+    }
+
+    // Fetch all batches sequentially to avoid rate limits
+    const allResults = [];
+    for (const batchIds of batches) {
+      try {
+        const response = await this.apiCall('POST',
+          `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/read`, {
+            properties: [
+              'mock_type', 'exam_date', 'start_time', 'end_time',
+              'capacity', 'total_bookings', 'location', 'is_active',
+              'hs_createdate', 'hs_lastmodifieddate'
+            ],
+            inputs: batchIds.map(id => ({ id }))
+          }
+        );
+
+        if (response.results) {
+          allResults.push(...response.results);
+        }
+      } catch (error) {
+        console.error(`Error in batch fetch for ${batchIds.length} mock exams:`, error);
+        // Continue with other batches even if one fails
+      }
+    }
+
+    return allResults;
+  }
+
+  /**
+   * Fetch mock exams and aggregate them by mock_type + location + exam_date
+   * @param {Object} filters - Filter options for mock exams
+   * @returns {Promise<Array>} Array of aggregated mock exam groups
+   */
+  async fetchMockExamsForAggregation(filters = {}) {
+    try {
+      // Build filter array for the search
+      const searchFilters = [];
+      
+      if (filters.filter_location) {
+        searchFilters.push({
+          propertyName: 'location',
+          operator: 'EQ',
+          value: filters.filter_location
+        });
+      }
+      
+      if (filters.filter_mock_type) {
+        searchFilters.push({
+          propertyName: 'mock_type',
+          operator: 'EQ',
+          value: filters.filter_mock_type
+        });
+      }
+      
+      if (filters.filter_date_from) {
+        searchFilters.push({
+          propertyName: 'exam_date',
+          operator: 'GTE',
+          value: filters.filter_date_from
+        });
+      }
+      
+      if (filters.filter_date_to) {
+        searchFilters.push({
+          propertyName: 'exam_date',
+          operator: 'LTE',
+          value: filters.filter_date_to
+        });
+      }
+      
+      if (filters.filter_status) {
+        // Map frontend status to HubSpot is_active property
+        const isActiveValue = filters.filter_status === 'active' ? 'true' : 'false';
+        searchFilters.push({
+          propertyName: 'is_active',
+          operator: 'EQ',
+          value: isActiveValue
+        });
+      }
+      
+      // Build search request
+      const searchRequest = {
+        properties: [
+          'mock_type', 'exam_date', 'start_time', 'end_time',
+          'capacity', 'total_bookings', 'location', 'is_active'
+        ],
+        limit: 1000,  // Fetch more to aggregate
+        sorts: [{
+          propertyName: 'exam_date',
+          direction: 'ASCENDING'
+        }]
+      };
+      
+      // Add filters if any
+      if (searchFilters.length > 0) {
+        searchRequest.filterGroups = [{ filters: searchFilters }];
+      }
+      
+      // Fetch all mock exams matching filters
+      const response = await this.apiCall('POST', 
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, 
+        searchRequest
+      );
+      
+      const allExams = response.results || [];
+      
+      // Group by (mock_type + date + location)
+      const aggregates = {};
+      
+      allExams.forEach(exam => {
+        const properties = exam.properties;
+        const key = `${properties.mock_type}_${properties.location}_${properties.exam_date}`
+          .toLowerCase()
+          .replace(/\s+/g, '_');
+        
+        if (!aggregates[key]) {
+          aggregates[key] = {
+            aggregate_key: key,
+            mock_type: properties.mock_type,
+            exam_date: properties.exam_date,
+            location: properties.location,
+            session_ids: [],
+            session_count: 0,
+            total_capacity: 0,
+            total_bookings: 0
+          };
+        }
+        
+        aggregates[key].session_ids.push(exam.id);
+        aggregates[key].session_count++;
+        aggregates[key].total_capacity += parseInt(properties.capacity || 0);
+        aggregates[key].total_bookings += parseInt(properties.total_bookings || 0);
+      });
+      
+      // Convert to array and sort by date
+      return Object.values(aggregates).sort((a, b) => {
+        return new Date(a.exam_date) - new Date(b.exam_date);
+      });
+      
+    } catch (error) {
+      console.error('Error fetching mock exams for aggregation:', error);
       throw error;
     }
   }

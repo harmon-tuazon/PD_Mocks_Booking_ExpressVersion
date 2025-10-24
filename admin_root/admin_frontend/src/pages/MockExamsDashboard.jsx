@@ -6,12 +6,17 @@
 import { Link } from 'react-router-dom';
 import { useMockExamsInfinite, useMockExamsMetrics } from '../hooks/useMockExamsData';
 import { useTableFilters } from '../hooks/useTableFilters';
+import { useFetchAggregates } from '../hooks/useFetchAggregates';
 import DashboardMetrics from '../components/admin/DashboardMetrics';
 import FilterBar from '../components/admin/FilterBar';
 import MockExamsTable from '../components/admin/MockExamsTable';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { ListBulletIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 
 function MockExamsDashboard() {
+  // State for view mode
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'aggregate'
+
   // Initialize filter management
   const {
     filters,
@@ -38,6 +43,15 @@ function MockExamsDashboard() {
     if (!mockExamsData?.pages) return [];
     return mockExamsData.pages.flatMap(page => page.data || []);
   }, [mockExamsData]);
+
+  // Fetch aggregates data when in aggregate view mode
+  const {
+    data: aggregatesData,
+    isLoading: isLoadingAggregates,
+    error: aggregatesError
+  } = useFetchAggregates(getQueryParams(), {
+    enabled: viewMode === 'aggregate'
+  });
 
   // Fetch metrics data (only pass non-empty date filters)
   const metricsFilters = useMemo(() => {
@@ -67,15 +81,45 @@ function MockExamsDashboard() {
               View and manage all mock exam sessions
             </p>
           </div>
-          <Link
-            to="/mock-exams/create"
-            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
-          >
-            <svg className="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Create New Session
-          </Link>
+          <div className="flex items-center gap-4">
+            {/* View Mode Toggle */}
+            <div className="inline-flex rounded-md shadow-sm" role="group">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-l-md border ${
+                  viewMode === 'list'
+                    ? 'bg-primary-600 text-white border-primary-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <ListBulletIcon className="h-5 w-5 mr-1" />
+                List View
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('aggregate')}
+                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+                  viewMode === 'aggregate'
+                    ? 'bg-primary-600 text-white border-primary-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <Squares2X2Icon className="h-5 w-5 mr-1" />
+                Group View
+              </button>
+            </div>
+
+            <Link
+              to="/mock-exams/create"
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
+            >
+              <svg className="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Create New Session
+            </Link>
+          </div>
         </div>
 
         {/* Dashboard Metrics */}
@@ -114,17 +158,18 @@ function MockExamsDashboard() {
 
         {/* Mock Exams Table */}
         <MockExamsTable
-          key={JSON.stringify(getQueryParams)}
-          data={allExams}
-          isLoading={isLoadingExams}
+          key={JSON.stringify(getQueryParams) + viewMode}
+          data={viewMode === 'aggregate' ? (aggregatesData?.aggregates || []) : allExams}
+          isLoading={viewMode === 'aggregate' ? isLoadingAggregates : isLoadingExams}
           onSort={handleSort}
           currentSort={{
             sort_by: filters.sort_by,
             sort_order: filters.sort_order
           }}
-          hasNextPage={hasNextPage}
-          fetchNextPage={fetchNextPage}
-          isFetchingNextPage={isFetchingNextPage}
+          hasNextPage={viewMode === 'aggregate' ? false : hasNextPage}
+          fetchNextPage={viewMode === 'aggregate' ? undefined : fetchNextPage}
+          isFetchingNextPage={viewMode === 'aggregate' ? false : isFetchingNextPage}
+          viewMode={viewMode}
         />
       </div>
     </div>

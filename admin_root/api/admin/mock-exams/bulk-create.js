@@ -67,7 +67,10 @@ async function bulkCreateMockExamsHandler(req, res) {
     // Invalidate caches after successful bulk creation
     const cache = getCache();
     await cache.deletePattern('admin:mock-exams:list:*');
+    await cache.deletePattern('admin:mock-exams:aggregates:*');
+    await cache.deletePattern('admin:aggregate:sessions:*');
     console.log('🗑️ Cache invalidated: admin:mock-exams:list:*');
+    console.log('🔄 [Cache] Invalidated aggregate caches after mutation');
 
     // Return success response
     return res.status(201).json({

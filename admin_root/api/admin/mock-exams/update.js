@@ -69,7 +69,10 @@ module.exports = async (req, res) => {
       const cache = getCache();
       await cache.deletePattern('admin:mock-exams:list:*');
       await cache.delete(`admin:mock-exam:${mockExamId}`);
+      await cache.deletePattern('admin:mock-exams:aggregates:*');
+      await cache.deletePattern('admin:aggregate:sessions:*');
       console.log(`🗑️ Cache invalidated for mock exam ${mockExamId}`);
+      console.log('🔄 [Cache] Invalidated aggregate caches after mutation');
 
       res.status(200).json({
         success: true,
