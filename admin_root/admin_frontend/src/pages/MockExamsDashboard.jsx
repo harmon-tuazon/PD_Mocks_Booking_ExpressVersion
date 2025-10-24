@@ -139,7 +139,7 @@ function MockExamsDashboard() {
         {/* Mock Exams Table */}
         <MockExamsTable
           key={JSON.stringify(getQueryParams) + viewMode}
-          data={viewMode === 'aggregate' ? (aggregatesData?.data || []) : allExams}
+          data={viewMode === 'aggregate' ? (aggregatesData || []) : allExams}
           isLoading={viewMode === 'aggregate' ? isLoadingAggregates : isLoadingExams}
           onSort={handleSort}
           currentSort={{
