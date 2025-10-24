@@ -130,7 +130,8 @@ class HubSpotService {
         message: errorMessage,
         fullResponse: error.response?.data,
         requestUrl: url,
-        requestMethod: method
+        requestMethod: method,
+        requestBody: requestData
       });
 
       throw new Error(`HubSpot API Error (${statusCode}): ${errorMessage}`);
@@ -866,21 +867,10 @@ class HubSpotService {
         });
       }
 
-      if (startDate) {
-        filters.push({
-          propertyName: 'exam_date',
-          operator: 'GTE',
-          value: startDate
-        });
-      }
-
-      if (endDate) {
-        filters.push({
-          propertyName: 'exam_date',
-          operator: 'LTE',
-          value: endDate
-        });
-      }
+      // NOTE: exam_date is stored as a string property in HubSpot
+      // Date filtering will be done in application code after fetching results
+      // Store date filters for post-processing
+      const dateFilters = { startDate, endDate };
 
       if (location) {
         filters.push({
@@ -926,9 +916,29 @@ class HubSpotService {
 
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, searchRequest);
 
+      // Apply date filtering in application code
+      let results = response.results || [];
+
+      if (dateFilters.startDate || dateFilters.endDate) {
+        results = results.filter(exam => {
+          const examDate = exam.properties.exam_date;
+
+          if (dateFilters.startDate && examDate < dateFilters.startDate) {
+            return false;
+          }
+          if (dateFilters.endDate && examDate > dateFilters.endDate) {
+            return false;
+          }
+
+          return true;
+        });
+
+        console.log(`Date filtering applied: ${response.results?.length || 0} -> ${results.length} exams`);
+      }
+
       // Format response with pagination info
       return {
-        results: response.results || [],
+        results: results,
         pagination: {
           page,
           limit,
@@ -1059,26 +1069,13 @@ class HubSpotService {
       const examFilters = [];
       const today = new Date().toISOString().split('T')[0];
 
-      // Date range filters
-      if (date_from) {
-        examFilters.push({
-          propertyName: 'exam_date',
-          operator: 'GTE',
-          value: date_from
-        });
-      }
-      if (date_to) {
-        examFilters.push({
-          propertyName: 'exam_date',
-          operator: 'LTE',
-          value: date_to
-        });
-      }
+      // NOTE: exam_date is stored as a string property, not a date property
+      // Date filtering will be done in application code
 
-      // Get all mock exams matching filters
+      // Get all mock exams (we'll filter by date in application code)
       const searchRequest = {
         properties: ['exam_date', 'capacity', 'total_bookings', 'is_active'],
-        limit: 100
+        limit: 200  // Increased limit to get more results before filtering
       };
 
       if (examFilters.length > 0) {
@@ -1086,7 +1083,25 @@ class HubSpotService {
       }
 
       const examsResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, searchRequest);
-      const exams = examsResponse.results || [];
+      let exams = examsResponse.results || [];
+
+      // Apply date filtering in application code
+      if (date_from || date_to) {
+        exams = exams.filter(exam => {
+          const examDate = exam.properties.exam_date;
+
+          if (date_from && examDate < date_from) {
+            return false;
+          }
+          if (date_to && examDate > date_to) {
+            return false;
+          }
+
+          return true;
+        });
+
+        console.log(`Metrics date filtering: ${examsResponse.results?.length || 0} -> ${exams.length} exams`);
+      }
 
       // Calculate metrics
       let totalSessions = exams.length;
@@ -1187,7 +1202,7 @@ class HubSpotService {
     try {
       // Build filter array for the search
       const searchFilters = [];
-      
+
       if (filters.filter_location) {
         searchFilters.push({
           propertyName: 'location',
@@ -1195,7 +1210,7 @@ class HubSpotService {
           value: filters.filter_location
         });
       }
-      
+
       if (filters.filter_mock_type) {
         searchFilters.push({
           propertyName: 'mock_type',
@@ -1203,22 +1218,10 @@ class HubSpotService {
           value: filters.filter_mock_type
         });
       }
-      
-      if (filters.filter_date_from) {
-        searchFilters.push({
-          propertyName: 'exam_date',
-          operator: 'GTE',
-          value: filters.filter_date_from
-        });
-      }
-      
-      if (filters.filter_date_to) {
-        searchFilters.push({
-          propertyName: 'exam_date',
-          operator: 'LTE',
-          value: filters.filter_date_to
-        });
-      }
+
+      // NOTE: exam_date is stored as a string property in HubSpot, not a date property
+      // Date comparison operators (GTE, LTE, EQ) don't work on string properties
+      // We'll fetch all records and filter dates in application code
       
       if (filters.filter_status) {
         // Map frontend status to HubSpot is_active property
@@ -1248,6 +1251,9 @@ class HubSpotService {
         searchRequest.filterGroups = [{ filters: searchFilters }];
       }
 
+      // Log the search request for debugging
+      console.log('📝 HubSpot Search Request:', JSON.stringify(searchRequest, null, 2));
+
       // Fetch all mock exams matching filters with pagination
       const allExams = [];
       let after = undefined;
@@ -1275,11 +1281,34 @@ class HubSpotService {
         console.log(`Fetched ${response.results?.length || 0} exams, total so far: ${allExams.length}, has more: ${!!after}`);
 
       } while (after); // Continue while there are more pages
+
+      // Apply date filtering in application code since HubSpot doesn't support date operators on string fields
+      let filteredExams = allExams;
+
+      if (filters.filter_date_from || filters.filter_date_to) {
+        console.log(`Applying date filters in application: from ${filters.filter_date_from || 'any'} to ${filters.filter_date_to || 'any'}`);
+
+        filteredExams = allExams.filter(exam => {
+          const examDate = exam.properties.exam_date;
+
+          // Check if date is within range
+          if (filters.filter_date_from && examDate < filters.filter_date_from) {
+            return false;
+          }
+          if (filters.filter_date_to && examDate > filters.filter_date_to) {
+            return false;
+          }
+
+          return true;
+        });
+
+        console.log(`Date filtering: ${allExams.length} exams -> ${filteredExams.length} exams after date filter`);
+      }
       
       // Group by (mock_type + date + location)
       const aggregates = {};
-      
-      allExams.forEach(exam => {
+
+      filteredExams.forEach(exam => {
         const properties = exam.properties;
         const key = `${properties.mock_type}_${properties.location}_${properties.exam_date}`
           .toLowerCase()

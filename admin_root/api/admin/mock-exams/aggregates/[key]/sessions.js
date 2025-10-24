@@ -70,7 +70,26 @@ module.exports = async (req, res) => {
       filter_date_to: exam_date
     };
 
-    const aggregates = await hubspot.fetchMockExamsForAggregation(filters);
+    console.log(`🔎 Fetching aggregates with filters:`, filters);
+
+    let aggregates;
+    try {
+      aggregates = await hubspot.fetchMockExamsForAggregation(filters);
+    } catch (aggregationError) {
+      console.error('Error fetching mock exams for aggregation:', aggregationError.message);
+      console.error('Full error:', aggregationError);
+
+      // Return a more informative error response
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch mock exam aggregates',
+        details: {
+          requested_key: key,
+          parsed_date: exam_date,
+          error_message: aggregationError.message
+        }
+      });
+    }
     const aggregate = aggregates.find(agg => agg.aggregate_key === key);
 
     if (!aggregate) {
