@@ -129,7 +129,7 @@ export const mockExamsApi = {
    * @returns {Promise<Object>} Updated mock exam
    */
   update: async (id, updateData) => {
-    const response = await api.patch('/admin/mock-exams/update', updateData, { params: { id } });
+    const response = await api.patch(`/admin/mock-exams/${id}`, updateData);
     return response.data;
   },
 

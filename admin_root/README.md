@@ -14,6 +14,12 @@ The Admin Dashboard is a modern React-based web application for managing the Pre
 - **Advanced Filtering**: Filter by location, type, status, and date range
 - **Bulk Creation**: Create multiple exam sessions simultaneously
 - **Single Creation**: Create individual sessions with time slot builder
+- **Detail View**: View complete exam details and all associated bookings
+  - Non-editable exam information display
+  - Sortable, searchable bookings table
+  - Pagination support (50 items per page)
+  - Real-time search with debouncing
+  - Capacity progress bar with color coding
 
 ### Authentication & Security
 - **Supabase Auth**: Secure authentication with session persistence
@@ -178,7 +184,18 @@ All endpoints (except login) require authentication via Supabase session token. 
 - `GET /api/admin/mock-exams/metrics` - Dashboard statistics
   - Returns: Total sessions, upcoming, fully booked, avg utilization
 
-- `GET /api/admin/mock-exams/:id` - Get single exam details
+- `GET /api/admin/mock-exams/:id` - Get single exam details (legacy)
+
+- `GET /api/admin/mock-exams/[id]` - Get detailed exam information
+  - Query param: `id` (required)
+  - Returns: Complete exam details with calculated fields
+  - Cache: 2-minute TTL
+
+- `GET /api/admin/mock-exams/[id]/bookings` - Get bookings for specific exam
+  - Path param: `id` (exam ID)
+  - Query params: `page`, `limit`, `sort_by`, `sort_order`, `search`
+  - Returns: Paginated bookings with search and sort
+  - Cache: 2-minute TTL
 
 #### Create & Update
 - `POST /api/admin/mock-exams/create` - Create single exam session
@@ -408,10 +425,11 @@ vercel logs --prod api/admin/mock-exams/list.js
 
 ## Support & Documentation
 
-- **Detailed Architecture**: See `CURRENT_APP_STATE.md`
-- **API Documentation**: See `documentation/api/`
-- **Frontend Documentation**: See `documentation/frontend/`
-- **HubSpot Schema**: See `documentation/HUBSPOT_SCHEMA_DOCUMENTATION.md`
+- **Feature Documentation**: See `FEATURES.md` - Comprehensive feature guides and user flows
+- **Detailed Architecture**: See `CURRENT_APP_STATE.md` - Complete system architecture
+- **API Documentation**: See `documentation/api/` - API endpoint references
+- **Frontend Documentation**: See `documentation/frontend/` - Component documentation
+- **HubSpot Schema**: See `documentation/HUBSPOT_SCHEMA_DOCUMENTATION.md` - CRM schema details
 
 ## License
 
@@ -419,7 +437,16 @@ Private - PrepDoctors Internal Use Only
 
 ---
 
-**Version**: 2.0.0
-**Last Updated**: January 24, 2025
+**Version**: 2.1.0
+**Last Updated**: January 24, 2025 10:24 PM UTC
 **Status**: ✅ Production Ready
 **Production URL**: https://your-admin-domain.vercel.app
+
+## Recent Changes
+
+**v2.1.0** (January 24, 2025):
+- Added Mock Exam Detail View feature with booking management
+- New sortable, searchable bookings table with pagination
+- Capacity progress bar with color-coded indicators
+- Enhanced navigation with "View" button in mock exams table
+- Full dark mode and responsive design support

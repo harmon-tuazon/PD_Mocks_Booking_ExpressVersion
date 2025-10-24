@@ -1,13 +1,16 @@
 /**
  * MockExamDetail Page
  * Displays detailed view of a single mock exam with its bookings
+ * Supports inline editing of exam details
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMockExamDetail } from '../hooks/useMockExamDetail';
 import { useBookingsByExam } from '../hooks/useBookingsByExam';
+import { useExamEdit } from '../hooks/useExamEdit';
 import ExamDetailsForm from '../components/admin/ExamDetailsForm';
 import BookingsTable from '../components/admin/BookingsTable';
+import EditControls from '../components/admin/EditControls';
 import { useState } from 'react';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
@@ -30,6 +33,9 @@ function MockExamDetail() {
     isLoading: isLoadingExam,
     error: examError
   } = useMockExamDetail(id);
+
+  // Initialize edit state management
+  const examEdit = useExamEdit(examData?.data);
 
   // Fetch bookings with pagination, sorting, and search
   const {
@@ -133,26 +139,49 @@ function MockExamDetail() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
       <div className="container-app py-8">
-        {/* Page Header with Back Button */}
+        {/* Page Header with Back Button and Edit Controls */}
         <div className="mb-8">
-          <button
-            onClick={handleBack}
-            className="mb-4 inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-          >
-            <ArrowLeftIcon className="h-4 w-4 mr-1" />
-            Back to Dashboard
-          </button>
+          <div className="flex justify-between items-start mb-4">
+            <button
+              onClick={handleBack}
+              className="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+              disabled={examEdit.isSaving}
+            >
+              <ArrowLeftIcon className="h-4 w-4 mr-1" />
+              Back to Dashboard
+            </button>
+            {/* Edit Controls */}
+            <EditControls
+              isEditing={examEdit.isEditing}
+              isSaving={examEdit.isSaving}
+              isDirty={examEdit.isDirty}
+              onEdit={examEdit.toggleEdit}
+              onSave={examEdit.saveChanges}
+              onCancel={examEdit.forceCancelEdit}
+            />
+          </div>
           <h1 className="font-headline text-h1 font-bold text-navy-900 dark:text-gray-100">
-            Mock Exam Details
+            {examEdit.isEditing ? 'Editing Mock Exam' : 'Mock Exam Details'}
           </h1>
           <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">
-            View exam information and manage bookings
+            {examEdit.isEditing
+              ? 'Make changes to the exam details and save when ready'
+              : 'View exam information and manage bookings'}
           </p>
         </div>
 
         {/* Exam Details Form */}
         <div className="mb-8">
-          <ExamDetailsForm exam={exam} />
+          <ExamDetailsForm
+            exam={exam}
+            isEditing={examEdit.isEditing}
+            formData={examEdit.formData}
+            errors={examEdit.errors}
+            touched={examEdit.touched}
+            onFieldChange={examEdit.updateField}
+            onFieldBlur={examEdit.handleFieldBlur}
+            isSaving={examEdit.isSaving}
+          />
         </div>
 
         {/* Bookings Table Section */}

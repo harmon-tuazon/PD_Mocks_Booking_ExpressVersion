@@ -1,20 +1,35 @@
 /**
  * ExamDetailsForm Component
- * Non-editable display of mock exam details with visual enhancements
+ * Displays mock exam details with support for editable and non-editable modes
  */
 
 import StatusBadge from './StatusBadge';
 import { format } from 'date-fns';
+import { ExclamationCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { fieldInfoMessages } from '../../utils/examValidation';
 
-const ExamDetailsForm = ({ exam }) => {
-  if (!exam) return null;
+const ExamDetailsForm = ({
+  exam,
+  isEditing = false,
+  formData = {},
+  errors = {},
+  touched = {},
+  onFieldChange,
+  onFieldBlur,
+  isSaving = false
+}) => {
+  if (!exam && !formData) return null;
+
+  // Use formData when editing, otherwise use exam data
+  const displayData = isEditing ? formData : exam;
+  if (!displayData) return null;
 
   // Get booking count (API returns either booked_count or total_bookings)
-  const bookingCount = exam.booked_count || exam.total_bookings || 0;
+  const bookingCount = displayData.booked_count || displayData.total_bookings || 0;
 
   // Calculate capacity percentage
-  const capacityPercentage = exam.capacity > 0
-    ? Math.round((bookingCount / exam.capacity) * 100)
+  const capacityPercentage = displayData.capacity > 0
+    ? Math.round((bookingCount / displayData.capacity) * 100)
     : 0;
 
   // Determine capacity color based on percentage
@@ -59,6 +74,27 @@ const ExamDetailsForm = ({ exam }) => {
     }
   };
 
+  // Helper to get field error
+  const getFieldError = (fieldName) => {
+    return touched[fieldName] ? errors[fieldName] : null;
+  };
+
+  // Helper for input field classes
+  const getInputClasses = (fieldName) => {
+    const hasError = getFieldError(fieldName);
+    const baseClasses = 'block w-full rounded-md transition-colors';
+
+    if (!isEditing) {
+      return `${baseClasses} bg-gray-50 dark:bg-gray-800 border-0 text-gray-900 dark:text-gray-100 cursor-not-allowed`;
+    }
+
+    if (hasError) {
+      return `${baseClasses} border-red-500 bg-red-50 dark:bg-red-900/20 text-gray-900 dark:text-gray-100 focus:border-red-500 focus:ring-red-500`;
+    }
+
+    return `${baseClasses} border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-primary-500 focus:ring-primary-500`;
+  };
+
   return (
     <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm p-6">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
@@ -71,11 +107,35 @@ const ExamDetailsForm = ({ exam }) => {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Mock Type
           </label>
-          <div>
-            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getMockTypeBadgeColor(exam.mock_type)}`}>
-              {exam.mock_type}
-            </span>
-          </div>
+          {isEditing ? (
+            <div>
+              <select
+                name="mock_type"
+                value={displayData.mock_type || ''}
+                onChange={(e) => onFieldChange('mock_type', e.target.value)}
+                onBlur={() => onFieldBlur('mock_type')}
+                disabled={isSaving}
+                className={getInputClasses('mock_type')}
+              >
+                <option value="">Select a type</option>
+                <option value="Situational Judgment">Situational Judgment</option>
+                <option value="Clinical Skills">Clinical Skills</option>
+                <option value="Mini-mock">Mini-mock</option>
+              </select>
+              {getFieldError('mock_type') && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                  {getFieldError('mock_type')}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getMockTypeBadgeColor(displayData.mock_type)}`}>
+                {displayData.mock_type}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Status */}
@@ -83,9 +143,27 @@ const ExamDetailsForm = ({ exam }) => {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Status
           </label>
-          <div>
-            <StatusBadge status={exam.status || (exam.is_active ? 'active' : 'inactive')} />
-          </div>
+          {isEditing ? (
+            <div>
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  name="is_active"
+                  checked={displayData.is_active !== undefined ? displayData.is_active : true}
+                  onChange={(e) => onFieldChange('is_active', e.target.checked)}
+                  disabled={isSaving}
+                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700"
+                />
+                <span className="ml-2 text-gray-900 dark:text-gray-100">
+                  {displayData.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </label>
+            </div>
+          ) : (
+            <div>
+              <StatusBadge status={displayData.status || (displayData.is_active ? 'active' : 'inactive')} />
+            </div>
+          )}
         </div>
 
         {/* Exam Date */}
@@ -93,9 +171,29 @@ const ExamDetailsForm = ({ exam }) => {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Exam Date
           </label>
-          <div className="text-gray-900 dark:text-gray-100 font-medium">
-            {formatDate(exam.exam_date)}
-          </div>
+          {isEditing ? (
+            <div>
+              <input
+                type="date"
+                name="exam_date"
+                value={displayData.exam_date || ''}
+                onChange={(e) => onFieldChange('exam_date', e.target.value)}
+                onBlur={() => onFieldBlur('exam_date')}
+                disabled={isSaving}
+                className={getInputClasses('exam_date')}
+              />
+              {getFieldError('exam_date') && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                  {getFieldError('exam_date')}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="text-gray-900 dark:text-gray-100 font-medium">
+              {formatDate(displayData.exam_date)}
+            </div>
+          )}
         </div>
 
         {/* Location */}
@@ -103,9 +201,35 @@ const ExamDetailsForm = ({ exam }) => {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Location
           </label>
-          <div className="text-gray-900 dark:text-gray-100 font-medium">
-            {exam.location || 'N/A'}
-          </div>
+          {isEditing ? (
+            <div>
+              <select
+                name="location"
+                value={displayData.location || ''}
+                onChange={(e) => onFieldChange('location', e.target.value)}
+                onBlur={() => onFieldBlur('location')}
+                disabled={isSaving}
+                className={getInputClasses('location')}
+              >
+                <option value="">Select a location</option>
+                <option value="Mississauga">Mississauga</option>
+                <option value="Vancouver">Vancouver</option>
+                <option value="Montreal">Montreal</option>
+                <option value="Calgary">Calgary</option>
+                <option value="Richmond Hill">Richmond Hill</option>
+              </select>
+              {getFieldError('location') && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                  {getFieldError('location')}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="text-gray-900 dark:text-gray-100 font-medium">
+              {displayData.location || 'N/A'}
+            </div>
+          )}
         </div>
 
         {/* Start Time */}
@@ -113,9 +237,29 @@ const ExamDetailsForm = ({ exam }) => {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Start Time
           </label>
-          <div className="text-gray-900 dark:text-gray-100 font-medium">
-            {formatTime(exam.start_time)}
-          </div>
+          {isEditing ? (
+            <div>
+              <input
+                type="time"
+                name="start_time"
+                value={displayData.start_time || ''}
+                onChange={(e) => onFieldChange('start_time', e.target.value)}
+                onBlur={() => onFieldBlur('start_time')}
+                disabled={isSaving}
+                className={getInputClasses('start_time')}
+              />
+              {getFieldError('start_time') && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                  {getFieldError('start_time')}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="text-gray-900 dark:text-gray-100 font-medium">
+              {formatTime(displayData.start_time)}
+            </div>
+          )}
         </div>
 
         {/* End Time */}
@@ -123,9 +267,29 @@ const ExamDetailsForm = ({ exam }) => {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             End Time
           </label>
-          <div className="text-gray-900 dark:text-gray-100 font-medium">
-            {formatTime(exam.end_time)}
-          </div>
+          {isEditing ? (
+            <div>
+              <input
+                type="time"
+                name="end_time"
+                value={displayData.end_time || ''}
+                onChange={(e) => onFieldChange('end_time', e.target.value)}
+                onBlur={() => onFieldBlur('end_time')}
+                disabled={isSaving}
+                className={getInputClasses('end_time')}
+              />
+              {getFieldError('end_time') && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                  {getFieldError('end_time')}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="text-gray-900 dark:text-gray-100 font-medium">
+              {formatTime(displayData.end_time)}
+            </div>
+          )}
         </div>
 
         {/* Capacity - Full Width */}
@@ -133,38 +297,104 @@ const ExamDetailsForm = ({ exam }) => {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Capacity
           </label>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-900 dark:text-gray-100 font-medium">
-                {bookingCount} / {exam.capacity || 0} booked
-              </span>
-              <span className={`text-sm font-medium ${
-                capacityPercentage <= 70 ? 'text-green-600 dark:text-green-400' :
-                capacityPercentage <= 90 ? 'text-yellow-600 dark:text-yellow-400' :
-                'text-red-600 dark:text-red-400'
-              }`}>
-                {capacityPercentage}% full
-              </span>
-            </div>
-            {/* Progress Bar */}
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-              <div
-                className={`h-2.5 rounded-full transition-all duration-300 ${getCapacityColor(capacityPercentage)}`}
-                style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
+          {isEditing ? (
+            <div className="space-y-2">
+              <input
+                type="number"
+                name="capacity"
+                value={displayData.capacity || 0}
+                onChange={(e) => onFieldChange('capacity', parseInt(e.target.value) || 0)}
+                onBlur={() => onFieldBlur('capacity')}
+                disabled={isSaving}
+                min="1"
+                className={getInputClasses('capacity')}
               />
+              {getFieldError('capacity') && (
+                <p className="text-sm text-red-600 dark:text-red-400 flex items-center">
+                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                  {getFieldError('capacity')}
+                </p>
+              )}
+              {!getFieldError('capacity') && bookingCount > 0 && (
+                <p className="text-sm text-blue-600 dark:text-blue-400 flex items-center">
+                  <InformationCircleIcon className="h-4 w-4 mr-1" />
+                  {fieldInfoMessages.capacity(bookingCount)}
+                </p>
+              )}
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-gray-900 dark:text-gray-100 font-medium">
+                  {bookingCount} / {displayData.capacity || 0} booked
+                </span>
+                <span className={`text-sm font-medium ${
+                  capacityPercentage <= 70 ? 'text-green-600 dark:text-green-400' :
+                  capacityPercentage <= 90 ? 'text-yellow-600 dark:text-yellow-400' :
+                  'text-red-600 dark:text-red-400'
+                }`}>
+                  {capacityPercentage}% full
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                <div
+                  className={`h-2.5 rounded-full transition-all duration-300 ${getCapacityColor(capacityPercentage)}`}
+                  style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-900 dark:text-gray-100 font-medium">
+                  {bookingCount} / {displayData.capacity || 0} booked
+                </span>
+                <span className={`text-sm font-medium ${
+                  capacityPercentage <= 70 ? 'text-green-600 dark:text-green-400' :
+                  capacityPercentage <= 90 ? 'text-yellow-600 dark:text-yellow-400' :
+                  'text-red-600 dark:text-red-400'
+                }`}>
+                  {capacityPercentage}% full
+                </span>
+              </div>
+              {/* Progress Bar */}
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                <div
+                  className={`h-2.5 rounded-full transition-all duration-300 ${getCapacityColor(capacityPercentage)}`}
+                  style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Additional Info */}
-        {exam.notes && (
+        {/* Additional Info - Address (optional) */}
+        {(isEditing || displayData.address) && (
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Notes
+              Address (Optional)
             </label>
-            <div className="text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 rounded-md p-3">
-              {exam.notes}
-            </div>
+            {isEditing ? (
+              <div>
+                <textarea
+                  name="address"
+                  value={displayData.address || ''}
+                  onChange={(e) => onFieldChange('address', e.target.value)}
+                  onBlur={() => onFieldBlur('address')}
+                  disabled={isSaving}
+                  rows="2"
+                  placeholder="Enter venue address..."
+                  className={getInputClasses('address')}
+                />
+                {getFieldError('address') && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                    <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                    {getFieldError('address')}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 rounded-md p-3">
+                {displayData.address || 'N/A'}
+              </div>
+            )}
           </div>
         )}
 
@@ -173,9 +403,9 @@ const ExamDetailsForm = ({ exam }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500 dark:text-gray-400">
             <div>
               <span className="font-medium">Created: </span>
-              {exam.created_at ? format(new Date(exam.created_at), 'MMM d, yyyy h:mm a') : 'N/A'}
+              {exam?.created_at ? format(new Date(exam.created_at), 'MMM d, yyyy h:mm a') : 'N/A'}
             </div>
-            {exam.updated_at && (
+            {exam?.updated_at && (
               <div>
                 <span className="font-medium">Last Updated: </span>
                 {format(new Date(exam.updated_at), 'MMM d, yyyy h:mm a')}
