@@ -38,4 +38,4 @@ export const useFetchAggregateSessions = (aggregateKey, options = {}) => {
   }, [enabled, aggregateKey]);
 
   return queryResult;
-};;;
+};

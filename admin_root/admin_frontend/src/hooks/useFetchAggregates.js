@@ -26,4 +26,4 @@ export const useFetchAggregates = (filters = {}, options = {}) => {
     keepPreviousData: true, // Keep previous data while fetching new data
     ...options
   });
-};;;
+};
