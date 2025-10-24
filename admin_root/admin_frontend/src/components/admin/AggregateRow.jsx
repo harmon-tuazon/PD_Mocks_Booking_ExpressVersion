@@ -56,25 +56,37 @@ const AggregateRow = ({ aggregate, onView }) => {
       >
         <td colSpan="8" className="px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-1">
               {isExpanded ? (
-                <ChevronDownIcon className="w-5 h-5 text-gray-500 transition-transform" />
+                <ChevronDownIcon className="w-5 h-5 text-gray-500 transition-transform flex-shrink-0" />
               ) : (
-                <ChevronRightIcon className="w-5 h-5 text-gray-500 transition-transform" />
+                <ChevronRightIcon className="w-5 h-5 text-gray-500 transition-transform flex-shrink-0" />
               )}
 
-              <div>
-                <div className="font-semibold text-gray-900 dark:text-white">
+              {/* Use grid layout for consistent alignment */}
+              <div className="grid grid-cols-[1fr_200px_280px] gap-4 flex-1 items-center">
+                {/* Mock Type - flexible width */}
+                <div className="font-semibold text-gray-900 dark:text-white truncate">
                   {aggregate.mock_type}
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  📍 {aggregate.location} · 📅 {formatDate(aggregate.exam_date)}
+
+                {/* Location - fixed width */}
+                <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                  <span className="flex-shrink-0">📍</span>
+                  <span className="truncate">{aggregate.location}</span>
+                </div>
+
+                {/* Date - fixed width */}
+                <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                  <span className="flex-shrink-0">📅</span>
+                  <span className="truncate">{formatDate(aggregate.exam_date)}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center">
-              <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium">
+            {/* Session count badge - fixed minimum width */}
+            <div className="flex items-center ml-4">
+              <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium min-w-[110px] text-center">
                 {aggregate.session_count} {aggregate.session_count === 1 ? 'session' : 'sessions'}
               </span>
             </div>
