@@ -3,7 +3,7 @@
  * Manages auth state and provides auth methods throughout the app
  */
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase, auth as authHelpers } from '../utils/supabaseClient';
 import axios from 'axios';
 
@@ -56,6 +56,86 @@ export const AuthProvider = ({ children }) => {
       return null;
     }
   };
+
+  // Handle auth errors by clearing state and redirecting to login
+  const handleAuthError = useCallback(async () => {
+    console.log('🚨 Authentication failed - redirecting to login');
+
+    // Clear auth state
+    setSession(null);
+    setUser(null);
+
+    // Clear tokens
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+
+    // Sign out from Supabase
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error during signOut:', error);
+    }
+
+    // Redirect to login (using window.location since we're in a context)
+    window.location.href = '/login';
+  }, []);
+
+  // Set up axios response interceptor for handling 401 errors
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+
+        // Check if error is 401 and we haven't already tried to refresh
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          console.log('🔄 401 error - attempting token refresh...');
+
+          try {
+            // Try to refresh the session using Supabase
+            const { data, error: refreshError } = await supabase.auth.refreshSession();
+
+            if (data?.session && !refreshError) {
+              console.log('✅ Token refreshed successfully');
+
+              // Update session state
+              setSession(data.session);
+
+              // Update axios header
+              originalRequest.headers['Authorization'] = `Bearer ${data.session.access_token}`;
+
+              // Update localStorage
+              localStorage.setItem('access_token', data.session.access_token);
+              if (data.session.refresh_token) {
+                localStorage.setItem('refresh_token', data.session.refresh_token);
+              }
+
+              // Retry the original request
+              return axios(originalRequest);
+            } else {
+              console.error('❌ Token refresh failed:', refreshError);
+              await handleAuthError();
+              return Promise.reject(error);
+            }
+          } catch (refreshError) {
+            console.error('❌ Exception during token refresh:', refreshError);
+            await handleAuthError();
+            return Promise.reject(error);
+          }
+        }
+
+        // For other errors or if retry fails, just reject
+        return Promise.reject(error);
+      }
+    );
+
+    // Cleanup interceptor on unmount
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [handleAuthError]);
 
   // Initialize auth state
   useEffect(() => {
@@ -165,6 +245,11 @@ export const AuthProvider = ({ children }) => {
           if (newSession.refresh_token) {
             localStorage.setItem('refresh_token', newSession.refresh_token);
           }
+        }
+      } else if (event === 'USER_DELETED' || (event === 'USER_UPDATED' && !newSession)) {
+        console.log('🚨 User session invalidated');
+        if (mounted) {
+          await handleAuthError();
         }
       }
     });
@@ -296,24 +381,25 @@ export const AuthProvider = ({ children }) => {
   // Refresh token
   const refreshToken = async () => {
     try {
-      const response = await axios.post('/admin/auth/refresh');
+      const { data, error } = await supabase.auth.refreshSession();
 
-      if (response.data?.session) {
-        const { session: newSession } = response.data;
-
+      if (data?.session && !error) {
         // Update Supabase session
         await supabase.auth.setSession({
-          access_token: newSession.access_token,
-          refresh_token: newSession.refresh_token
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token
         });
 
         return { success: true };
+      } else {
+        console.error('❌ Token refresh failed:', error);
+        await handleAuthError();
+        return { success: false, error };
       }
-
-      return { success: false };
     } catch (error) {
-      console.error('Token refresh error:', error);
-      return { success: false };
+      console.error('❌ Token refresh exception:', error);
+      await handleAuthError();
+      return { success: false, error };
     }
   };
 
