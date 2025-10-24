@@ -5,12 +5,15 @@
  * Used when expanding accordion items in the admin dashboard
  */
 
-const requireAdmin = require('../../../middleware/requireAdmin');
+const { requireAdmin } = require('../../../middleware/requireAdmin');
 const hubspot = require('../../../../_shared/hubspot');
 const cache = require('../../../../_shared/cache');
 
-module.exports = requireAdmin(async (req, res) => {
+module.exports = async (req, res) => {
   try {
+    // Verify admin authentication
+    const user = await requireAdmin(req);
+
     const { key } = req.query; // Dynamic route parameter from Vercel
 
     if (!key) {
@@ -129,9 +132,21 @@ module.exports = requireAdmin(async (req, res) => {
     res.status(200).json(response);
   } catch (error) {
     console.error('Error fetching aggregate sessions:', error);
+
+    // Check if it's an authentication error from requireAdmin
+    if (error.message && error.message.includes('Authentication') || error.message.includes('Unauthorized')) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: error.message || 'Authentication required'
+        }
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to fetch sessions'
     });
   }
-});
+};

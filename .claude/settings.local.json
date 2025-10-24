@@ -21,7 +21,11 @@
       "mcp__serena__insert_after_symbol",
       "mcp__serena__list_dir",
       "mcp__serena__find_file",
-      "mcp__serena__think_about_collected_information"
+      "mcp__serena__think_about_collected_information",
+      "mcp__serena__check_onboarding_performed",
+      "Bash(vercel --prod --yes:*)",
+      "Bash(node tests/test-requireAdmin-fix.js:*)",
+      "Bash(node -c:*)"
     ],
     "deny": [],
     "ask": []

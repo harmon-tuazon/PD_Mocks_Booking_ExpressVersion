@@ -271,6 +271,101 @@ rg --files -g "*.js"
    - Implement exponential backoff for retries
    - Use existing rate limiting middleware
 
+## Authentication Policy
+
+### Authentication-Only Model (No Role-Based Authorization)
+
+The admin system uses a **simplified authentication model** without role-based authorization. This means:
+
+#### Key Principles
+
+✅ **Authentication**: Verifies user identity (logged in via Supabase)
+❌ **Authorization**: No role-based permissions or access control levels
+✅ **Access Model**: Any authenticated user has full admin access
+✅ **Simplicity**: Reduces complexity, easier to maintain
+
+#### Implementation Pattern
+
+**Correct Usage** (Authentication Check Only):
+```javascript
+// api/admin/mock-exams/list.js
+const { requireAdmin } = require('../middleware/requireAdmin');
+
+module.exports = async (req, res) => {
+  try {
+    // requireAdmin only verifies authentication - no role checking
+    const user = await requireAdmin(req);
+
+    // User is authenticated, proceed with admin operation
+    const exams = await hubspot.listMockExams();
+
+    return res.status(200).json({ success: true, data: exams });
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      error: { code: 'UNAUTHORIZED', message: 'Authentication required' }
+    });
+  }
+};
+```
+
+**Legacy Compatibility**:
+- `requireAdmin` middleware name kept for backward compatibility
+- Internally, it only calls `requireAuth` (no role checking)
+- Any authenticated user can access all admin endpoints
+
+#### Security Considerations
+
+**What This Means**:
+- Single authentication tier: logged in vs not logged in
+- No admin vs regular user distinction at API level
+- Access control managed externally (if needed in future)
+- Simplified token validation and session management
+
+**When to Use**:
+- Internal admin tools with trusted user base
+- Applications where all authenticated users should have full access
+- Systems where external authorization layer exists (e.g., network ACLs)
+- Prototypes and MVPs requiring fast iteration
+
+**Migration Path** (if role-based auth needed in future):
+```javascript
+// Future enhancement (not currently implemented)
+const user = await requireAdmin(req);
+
+// Add role check if needed
+if (user.role !== 'admin') {
+  throw new Error('Admin role required');
+}
+```
+
+#### Middleware Architecture
+
+```
+Request → requireAdmin() → requireAuth() → Supabase JWT Validation
+                              ↓
+                    ✅ Valid Token → Allow Access
+                    ❌ Invalid Token → 401 Unauthorized
+```
+
+**No Role Checking Layer**:
+```javascript
+// admin_root/api/admin/middleware/requireAdmin.js
+async function requireAdmin(req) {
+  // Only verifies authentication, not roles
+  const user = await requireAuth(req);
+  return user;  // No role validation
+}
+```
+
+#### Best Practices
+
+1. **Always use `requireAdmin` for admin endpoints** (even though it's just auth)
+2. **Do not implement custom role checking** unless explicitly required
+3. **Trust that authentication = authorization** for this system
+4. **Document any future role requirements** before implementation
+5. **Keep middleware simple and focused** on authentication only
+
 ## 🎯 Framework Project Structure
 
 **This structure applies to ANY automation you build:**

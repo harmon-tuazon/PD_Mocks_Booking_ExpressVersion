@@ -17,9 +17,10 @@ The Admin Dashboard is a modern React-based web application for managing the Pre
 
 ### Authentication & Security
 - **Supabase Auth**: Secure authentication with session persistence
-- **Protected Routes**: Role-based access control
+- **Protected Routes**: Authentication-only access control (no role-based permissions)
 - **Session Management**: Automatic token refresh and validation
 - **Secure Headers**: XSS protection, frame options, and HSTS
+- **Simplified Security**: Any authenticated user has full admin access
 
 ### User Experience
 - **Dark Mode**: Full dark mode support with theme persistence
@@ -123,10 +124,41 @@ admin_root/
 └── CURRENT_APP_STATE.md            # Detailed architecture docs
 ```
 
+## Authentication Policy
+
+### Authentication-Only Model (No Role-Based Authorization)
+
+**Important**: This admin system uses a **simplified authentication model**:
+
+✅ **Authentication**: Verifies user identity (logged in via Supabase)
+❌ **Authorization**: No role-based permissions or access control levels
+✅ **Access Policy**: Any authenticated user has full admin access
+✅ **Design Philosophy**: Simplicity over complexity, faster development, easier maintenance
+
+#### What This Means
+
+- The `requireAdmin` middleware only verifies that a user is logged in
+- It does NOT check roles, permissions, or access levels
+- Any user who can successfully authenticate via Supabase has full admin privileges
+- This is intentional for internal tools with a trusted user base
+
+#### Middleware Implementation
+
+```javascript
+// admin_root/api/admin/middleware/requireAdmin.js
+async function requireAdmin(req) {
+  // Only verifies authentication - no role checking
+  const user = await requireAuth(req);
+  return user;  // No role validation
+}
+```
+
+**Note**: The name `requireAdmin` is kept for backward compatibility and semantic clarity, but it only performs authentication checks.
+
 ## API Endpoints
 
 ### Authentication
-All endpoints (except login) require authentication via Supabase session token.
+All endpoints (except login) require authentication via Supabase session token. Once authenticated, users have access to all admin endpoints.
 
 #### Auth Endpoints
 - `POST /api/admin/auth/login` - User login with email/password
