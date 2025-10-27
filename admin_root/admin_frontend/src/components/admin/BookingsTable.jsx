@@ -66,7 +66,7 @@ const BookingsTable = ({
       className={`px-6 py-3 text-${align} text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors`}
       onClick={() => onSort(column)}
     >
-      <div className={`flex items-center ${align === 'right' ? 'justify-end' : ''}`}>
+      <div className={`flex items-center ${align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : ''}`}>
         {children}
         {getSortIcon(column)}
       </div>
@@ -167,11 +167,11 @@ const BookingsTable = ({
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  <SortableHeader column="name">Name</SortableHeader>
-                  <SortableHeader column="email">Email</SortableHeader>
-                  <SortableHeader column="student_id">Student ID</SortableHeader>
-                  <SortableHeader column="dominant_hand">Dominant Hand</SortableHeader>
-                  <SortableHeader column="created_at">Booking Date</SortableHeader>
+                  <SortableHeader column="name" align="center">Name</SortableHeader>
+                  <SortableHeader column="email" align="center">Email</SortableHeader>
+                  <SortableHeader column="student_id" align="center">Student ID</SortableHeader>
+                  <SortableHeader column="dominant_hand" align="center">Dominant Hand</SortableHeader>
+                  <SortableHeader column="created_at" align="center">Booking Date</SortableHeader>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">

@@ -35,7 +35,7 @@ const BookingRow = ({ booking }) => {
   return (
     <tr className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
       {/* Name */}
-      <td className="px-6 py-4 whitespace-nowrap">
+      <td className="px-6 py-4 whitespace-nowrap text-center">
         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
           {booking.first_name && booking.last_name
             ? `${booking.first_name} ${booking.last_name}`
@@ -44,28 +44,28 @@ const BookingRow = ({ booking }) => {
       </td>
 
       {/* Email */}
-      <td className="px-6 py-4 whitespace-nowrap">
+      <td className="px-6 py-4 whitespace-nowrap text-center">
         <div className="text-sm text-gray-900 dark:text-gray-100">
           {booking.email || 'N/A'}
         </div>
       </td>
 
       {/* Student ID */}
-      <td className="px-6 py-4 whitespace-nowrap text-left">
+      <td className="px-6 py-4 whitespace-nowrap text-center">
         <div className="text-sm text-gray-900 dark:text-gray-100">
           {formatStudentId(booking.student_id)}
         </div>
       </td>
 
       {/* Dominant Hand */}
-      <td className="px-6 py-4 whitespace-nowrap text-left">
+      <td className="px-6 py-4 whitespace-nowrap text-center">
         <div className="text-sm text-gray-900 dark:text-gray-100">
           {formatDominantHand(booking.dominant_hand)}
         </div>
       </td>
 
       {/* Booking Date */}
-      <td className="px-6 py-4 whitespace-nowrap">
+      <td className="px-6 py-4 whitespace-nowrap text-center">
         <div className="text-sm text-gray-500 dark:text-gray-400">
           {formatBookingDate(booking.created_at)}
         </div>
