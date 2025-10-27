@@ -15,10 +15,10 @@ export const useFetchAggregateSessions = (aggregateKey, options = {}) => {
 
       console.log(`📊 Fetching sessions for aggregate: ${aggregateKey}`);
       const response = await adminApi.get(`/admin/mock-exams/aggregates/${aggregateKey}/sessions`);
-      // Extract the sessions array from the response object
+      // Defensive: Extract and validate the sessions array from the response object
       return {
-        sessions: response.data.sessions || [],
-        aggregate_info: response.data.aggregate_info
+        sessions: Array.isArray(response.data?.sessions) ? response.data.sessions : [],
+        aggregate_info: response.data?.aggregate_info
       };
     },
     // Only enable if aggregateKey exists AND enabled is true

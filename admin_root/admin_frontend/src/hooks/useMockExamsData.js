@@ -61,8 +61,21 @@ export function useMockExamDetails(id, options = {}) {
 export function useMockExamsInfinite(params = {}, options = {}) {
   return useInfiniteQuery({
     queryKey: ['mockExamsInfinite', JSON.stringify(params)],
-    queryFn: ({ pageParam = 1 }) =>
-      mockExamsApi.list({ ...params, page: pageParam }),
+    queryFn: async ({ pageParam = 1 }) => {
+      const result = await mockExamsApi.list({ ...params, page: pageParam });
+      
+      // Defensive: Ensure we always return properly structured data
+      return {
+        ...result,
+        data: Array.isArray(result?.data) ? result.data : [],
+        pagination: result?.pagination || {
+          current_page: pageParam,
+          total_pages: 1,
+          total_records: 0,
+          records_per_page: 20
+        }
+      };
+    },
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
       const { pagination } = lastPage;

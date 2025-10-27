@@ -118,6 +118,9 @@ const BookingsTable = ({
     );
   }
 
+  // Defensive: Ensure bookings is an array
+  const safeBookings = Array.isArray(bookings) ? bookings : [];
+
   return (
     <div>
       {/* Search Bar */}
@@ -138,7 +141,7 @@ const BookingsTable = ({
 
       {/* Table */}
       <div className="overflow-x-auto">
-        {bookings.length === 0 ? (
+        {safeBookings.length === 0 ? (
           /* Empty State */
           <div className="text-center py-12">
             <svg
@@ -172,7 +175,7 @@ const BookingsTable = ({
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
-                {bookings.map((booking) => (
+                {safeBookings.map((booking) => (
                   <BookingRow key={booking.id} booking={booking} />
                 ))}
               </tbody>

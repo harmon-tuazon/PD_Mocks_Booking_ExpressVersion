@@ -41,8 +41,11 @@ function MockExamsDashboard() {
 
   // Flatten all pages of data into a single array
   const allExams = useMemo(() => {
-    if (!mockExamsData?.pages) return [];
-    return mockExamsData.pages.flatMap(page => page.data || []);
+    if (!mockExamsData?.pages || !Array.isArray(mockExamsData.pages)) return [];
+    return mockExamsData.pages.flatMap(page => {
+      // Defensive: Ensure page.data is an array before flattening
+      return Array.isArray(page?.data) ? page.data : [];
+    });
   }, [mockExamsData]);
 
   // Fetch aggregates data when in aggregate view mode

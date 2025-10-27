@@ -42,10 +42,10 @@ export const useBookingsByExam = (examId, params = {}) => {
       // The API returns data in this structure
       const result = response.data;
 
-      // Ensure we have the expected structure
+      // Defensive: Ensure we always return properly structured data with arrays
       return {
-        data: result.data || [],
-        pagination: result.pagination || {
+        data: Array.isArray(result?.data) ? result.data : [],
+        pagination: result?.pagination || {
           page,
           limit,
           total: 0,
