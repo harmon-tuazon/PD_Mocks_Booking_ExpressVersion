@@ -772,6 +772,39 @@ class HubSpotService {
    * Create a new mock exam
    * Core admin functionality for setting up new exam sessions
    */
+  /**
+   * Get the maximum mock_exam_index value from existing mock exams
+   * Used for auto-incrementing the index when creating new exams
+   * @returns {Promise<number>} The current maximum index, or 0 if no exams exist
+   */
+  async getMaxMockExamIndex() {
+    try {
+      // Query all mock exams sorted by mock_exam_index in descending order
+      // We only need the first result to get the max value
+      const response = await this.apiCall('GET', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}`, {
+        limit: 1,
+        properties: ['mock_exam_index'],
+        sorts: ['-mock_exam_index'] // Sort descending to get max first
+      });
+
+      // If no exams exist or no results, start from 0
+      if (!response.results || response.results.length === 0) {
+        console.log('No existing mock exams found, starting mock_exam_index from 1');
+        return 0;
+      }
+
+      // Get the mock_exam_index from the first result
+      const maxIndex = parseInt(response.results[0].properties.mock_exam_index) || 0;
+      console.log(`Current max mock_exam_index: ${maxIndex}`);
+      return maxIndex;
+    } catch (error) {
+      console.error('Error getting max mock_exam_index:', error);
+      // If there's an error (e.g., property doesn't exist yet), start from 0
+      console.log('Defaulting to mock_exam_index = 0 due to error');
+      return 0;
+    }
+  }
+
   async createMockExam(mockExamData) {
     try {
       // Validate required fields
@@ -781,6 +814,11 @@ class HubSpotService {
           throw new Error(`Missing required field: ${field}`);
         }
       }
+
+      // Get the current max mock_exam_index and increment it
+      const maxIndex = await this.getMaxMockExamIndex();
+      const newIndex = maxIndex + 1;
+      console.log(`Assigning mock_exam_index: ${newIndex}`);
 
       // Convert time strings to Unix timestamps
       const startTimestamp = this.convertToTimestamp(mockExamData.exam_date, mockExamData.start_time);
@@ -795,14 +833,15 @@ class HubSpotService {
         location: mockExamData.location,
         capacity: mockExamData.capacity,
         total_bookings: mockExamData.total_bookings || 0,
-        is_active: mockExamData.is_active !== undefined ? mockExamData.is_active : 'true'
+        is_active: mockExamData.is_active !== undefined ? mockExamData.is_active : 'true',
+        mock_exam_index: newIndex  // Auto-incremented index
       };
 
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}`, {
         properties: examData
       });
 
-      console.log(`Created mock exam ${response.id}`);
+      console.log(`Created mock exam ${response.id} with index ${newIndex}`);
       return response;
     } catch (error) {
       console.error('Error creating mock exam:', error);
@@ -821,13 +860,20 @@ class HubSpotService {
         throw new Error('Time slots array is required');
       }
 
+      // Get the current max mock_exam_index ONCE for the entire batch
+      const maxIndex = await this.getMaxMockExamIndex();
+      console.log(`Starting batch with mock_exam_index from: ${maxIndex + 1}`);
+
       // Prepare batch inputs using correct HubSpot property names and timestamp format
-      const inputs = timeSlots.map(slot => {
+      const inputs = timeSlots.map((slot, index) => {
         const examDate = slot.exam_date || slot.date;  // Support both formats
         
         // Convert time strings to Unix timestamps
         const startTimestamp = this.convertToTimestamp(examDate, slot.start_time);
         const endTimestamp = this.convertToTimestamp(examDate, slot.end_time);
+
+        // Assign sequential mock_exam_index starting from maxIndex + 1
+        const mockExamIndex = maxIndex + index + 1;
 
         const properties = {
           mock_type: commonProperties.mock_type,
@@ -837,9 +883,11 @@ class HubSpotService {
           location: commonProperties.location,
           capacity: commonProperties.capacity || 20,
           total_bookings: 0,
-          is_active: 'true'
+          is_active: 'true',
+          mock_exam_index: mockExamIndex  // Auto-incremented sequential index
         };
 
+        console.log(`Assigning mock_exam_index ${mockExamIndex} to time slot ${slot.start_time}-${slot.end_time}`);
         return { properties };
       });
 
@@ -849,7 +897,7 @@ class HubSpotService {
       });
 
       if (response.status === 'COMPLETE') {
-        console.log(`Successfully created ${response.results.length} mock exams`);
+        console.log(`Successfully created ${response.results.length} mock exams with indices ${maxIndex + 1} to ${maxIndex + timeSlots.length}`);
         return response.results;
       } else {
         console.error('Batch creation partially failed:', response);
