@@ -131,15 +131,27 @@ module.exports = async (req, res) => {
     // DEBUG: Log the full associations response
     console.log('🔍 [DEBUG] Full HubSpot associations response:', JSON.stringify(mockExamWithAssociations, null, 2));
     console.log('🔍 [DEBUG] Associations object:', mockExamWithAssociations.associations);
-    console.log('🔍 [DEBUG] Looking for key:', HUBSPOT_OBJECTS.bookings);
     console.log('🔍 [DEBUG] Association keys available:', Object.keys(mockExamWithAssociations.associations || {}));
 
     // Extract booking IDs from associations
+    // HubSpot returns association keys in various formats depending on portal configuration:
+    // - Standard format: '2-50158943' (object type ID)
+    // - Portal-specific format: 'p46814382_bookings_' (portal ID + object name)
+    // We need to check for both formats
     const bookingIds = [];
-    if (mockExamWithAssociations.associations?.[HUBSPOT_OBJECTS.bookings]?.results?.length > 0) {
-      mockExamWithAssociations.associations[HUBSPOT_OBJECTS.bookings].results.forEach(association => {
-        bookingIds.push(association.id);
-      });
+    if (mockExamWithAssociations.associations) {
+      // Find the bookings association key (flexible matching)
+      const bookingsKey = Object.keys(mockExamWithAssociations.associations).find(key =>
+        key === HUBSPOT_OBJECTS.bookings || key.includes('bookings')
+      );
+
+      console.log('🔍 [DEBUG] Found bookings key:', bookingsKey);
+
+      if (bookingsKey && mockExamWithAssociations.associations[bookingsKey]?.results?.length > 0) {
+        mockExamWithAssociations.associations[bookingsKey].results.forEach(association => {
+          bookingIds.push(association.id);
+        });
+      }
     }
 
     console.log('🔍 [DEBUG] Extracted booking IDs:', bookingIds);

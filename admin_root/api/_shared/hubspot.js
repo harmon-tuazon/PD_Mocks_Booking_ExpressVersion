@@ -42,6 +42,32 @@ class HubSpotService {
   }
 
   /**
+   * Helper to find association key in response
+   * HubSpot returns association keys in different formats:
+   * - Standard: '2-50158943' (object type ID)
+   * - Portal-specific: 'p46814382_bookings_' (portal ID + object name)
+   * This helper searches for the correct key flexibly
+   */
+  findAssociationKey(associations, objectTypeId, objectName) {
+    if (!associations) return null;
+
+    const keys = Object.keys(associations);
+
+    // Try exact match first (standard format)
+    if (keys.includes(objectTypeId)) {
+      return objectTypeId;
+    }
+
+    // Try finding by object name (portal-specific format)
+    const keyWithName = keys.find(key => key.includes(objectName));
+    if (keyWithName) {
+      return keyWithName;
+    }
+
+    return null;
+  }
+
+  /**
    * Make API call with automatic retry on rate limit errors
    * Supports both object style and parameter style calls
    */
@@ -422,10 +448,12 @@ class HubSpotService {
         `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}`
       );
 
-      // Extract booking IDs from associations
+      // Extract booking IDs from associations (using flexible key matching)
       const bookingIds = [];
-      if (mockExamResponse.associations?.[HUBSPOT_OBJECTS.bookings]?.results?.length > 0) {
-        mockExamResponse.associations[HUBSPOT_OBJECTS.bookings].results.forEach(association => {
+      const bookingsKey = this.findAssociationKey(mockExamResponse.associations, HUBSPOT_OBJECTS.bookings, 'bookings');
+
+      if (bookingsKey && mockExamResponse.associations[bookingsKey]?.results?.length > 0) {
+        mockExamResponse.associations[bookingsKey].results.forEach(association => {
           bookingIds.push(association.id);
         });
       }
@@ -677,9 +705,10 @@ class HubSpotService {
         mockExam: null
       };
 
-      // Get associated contact details if exists
-      if (bookingResponse.associations?.[HUBSPOT_OBJECTS.contacts]?.results?.length > 0) {
-        const contactId = bookingResponse.associations[HUBSPOT_OBJECTS.contacts].results[0].id;
+      // Get associated contact details if exists (using flexible key matching)
+      const contactsKey = this.findAssociationKey(bookingResponse.associations, HUBSPOT_OBJECTS.contacts, 'contacts');
+      if (contactsKey && bookingResponse.associations[contactsKey]?.results?.length > 0) {
+        const contactId = bookingResponse.associations[contactsKey].results[0].id;
         try {
           const contactResponse = await this.apiCall('GET',
             `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contactId}?properties=email,firstname,lastname,student_id`
@@ -693,9 +722,10 @@ class HubSpotService {
         }
       }
 
-      // Get associated mock exam details if exists
-      if (bookingResponse.associations?.[HUBSPOT_OBJECTS.mock_exams]?.results?.length > 0) {
-        const mockExamId = bookingResponse.associations[HUBSPOT_OBJECTS.mock_exams].results[0].id;
+      // Get associated mock exam details if exists (using flexible key matching)
+      const mockExamsKey = this.findAssociationKey(bookingResponse.associations, HUBSPOT_OBJECTS.mock_exams, 'mock_exams');
+      if (mockExamsKey && bookingResponse.associations[mockExamsKey]?.results?.length > 0) {
+        const mockExamId = bookingResponse.associations[mockExamsKey].results[0].id;
         try {
           const mockExamResponse = await this.getMockExam(mockExamId);
           result.mockExam = {
@@ -1008,10 +1038,12 @@ class HubSpotService {
         properties: mockExamResponse.properties
       };
 
-      // Extract booking IDs from associations
+      // Extract booking IDs from associations (using flexible key matching)
       const bookingIds = [];
-      if (mockExamResponse.associations?.[HUBSPOT_OBJECTS.bookings]?.results?.length > 0) {
-        mockExamResponse.associations[HUBSPOT_OBJECTS.bookings].results.forEach(association => {
+      const bookingsKey = this.findAssociationKey(mockExamResponse.associations, HUBSPOT_OBJECTS.bookings, 'bookings');
+
+      if (bookingsKey && mockExamResponse.associations[bookingsKey]?.results?.length > 0) {
+        mockExamResponse.associations[bookingsKey].results.forEach(association => {
           bookingIds.push(association.id);
         });
       }
