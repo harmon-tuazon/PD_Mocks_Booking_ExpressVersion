@@ -12,6 +12,13 @@ The Admin Dashboard is a modern React-based web application for managing the Pre
 - **Dashboard View**: Real-time statistics and utilization metrics
 - **Infinite Scroll**: Efficiently browse large datasets with pagination
 - **Advanced Filtering**: Filter by location, type, status, and date range
+- **Dual View Modes**: Toggle between aggregate (grouped) and list (individual) views
+  - **Aggregate View**: Groups sessions by type, location, and date with expandable accordions
+    - Client-side sorting by type, location, or date
+    - Instant sort toggle (no API calls required)
+    - Independent sort state from list view
+    - Dark mode support for all table headers
+  - **List View**: Traditional table showing individual sessions
 - **Bulk Creation**: Create multiple exam sessions simultaneously
 - **Single Creation**: Create individual sessions with time slot builder
 - **Detail View**: View complete exam details and all associated bookings
@@ -425,11 +432,18 @@ vercel logs --prod api/admin/mock-exams/list.js
 
 ## Support & Documentation
 
+- **Documentation Index**: See `DOCUMENTATION_INDEX.md` - Complete guide to all documentation
 - **Feature Documentation**: See `FEATURES.md` - Comprehensive feature guides and user flows
 - **Detailed Architecture**: See `CURRENT_APP_STATE.md` - Complete system architecture
 - **API Documentation**: See `documentation/api/` - API endpoint references
 - **Frontend Documentation**: See `documentation/frontend/` - Component documentation
 - **HubSpot Schema**: See `documentation/HUBSPOT_SCHEMA_DOCUMENTATION.md` - CRM schema details
+
+### Recent Feature Documentation
+- **Aggregate Sorting**: See `AGGREGATE_SORTING_IMPLEMENTATION.md` - Client-side sorting feature documentation
+- **Feature Summary v2.2.0**: See `FEATURE_SUMMARY_v2.2.0.md` - Quick reference for v2.2.0 features
+- **API Optimizations**: See `OPTIMIZATION_IMPLEMENTATION_SUMMARY.md` - Performance optimization details
+- **Preloaded Sessions**: See `IMPLEMENTATION_SUMMARY.md` - Aggregate session preloading implementation
 
 ## License
 
@@ -437,12 +451,25 @@ Private - PrepDoctors Internal Use Only
 
 ---
 
-**Version**: 2.1.0
-**Last Updated**: January 24, 2025 10:24 PM UTC
+**Version**: 2.2.0
+**Last Updated**: October 27, 2025
 **Status**: ✅ Production Ready
 **Production URL**: https://your-admin-domain.vercel.app
 
 ## Recent Changes
+
+**v2.2.0** (October 27, 2025):
+- Added client-side sorting for aggregate view
+  - Three sortable columns: Type, Location, and Date
+  - Instant sorting without API calls
+  - Toggle ascending/descending order
+  - Independent sort state from list view
+  - Default sort by exam date (ascending)
+- Enhanced aggregate view table structure
+  - Replaced single colspan header with four separate columns
+  - Improved column alignment in expanded sessions
+  - Added dark mode support to all table headers
+  - Visual indicators with emoji icons (📍 location, 📅 date)
 
 **v2.1.0** (January 24, 2025):
 - Added Mock Exam Detail View feature with booking management

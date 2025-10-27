@@ -37,20 +37,29 @@ module.exports = async (req, res) => {
       const properties = { ...updateData };
 
       if (updateData.start_time || updateData.end_time) {
-        const examDate = new Date(updateData.exam_date || new Date().toISOString().split('T')[0]);
+        console.log('🕐 [UPDATE] Converting timestamps with timezone fix');
+
+        // Initialize HubSpot service to access convertToTimestamp method
+        const { HubSpotService } = require('../../_shared/hubspot');
+        const hubspotService = new HubSpotService();
+
+        // Use exam_date from update or fall back to existing (we need the date for conversion)
+        const examDate = updateData.exam_date;
+
+        if (!examDate) {
+          throw new Error('exam_date is required when updating start_time or end_time');
+        }
 
         if (updateData.start_time) {
-          const [startHour, startMinute] = updateData.start_time.split(':');
-          const startDateTime = new Date(examDate);
-          startDateTime.setHours(parseInt(startHour), parseInt(startMinute), 0, 0);
-          properties.start_time = startDateTime.getTime().toString();
+          console.log('🕐 [UPDATE] Converting start_time:', { examDate, time: updateData.start_time });
+          properties.start_time = hubspotService.convertToTimestamp(examDate, updateData.start_time).toString();
+          console.log('🕐 [UPDATE] Converted start_time to timestamp:', properties.start_time);
         }
 
         if (updateData.end_time) {
-          const [endHour, endMinute] = updateData.end_time.split(':');
-          const endDateTime = new Date(examDate);
-          endDateTime.setHours(parseInt(endHour), parseInt(endMinute), 0, 0);
-          properties.end_time = endDateTime.getTime().toString();
+          console.log('🕐 [UPDATE] Converting end_time:', { examDate, time: updateData.end_time });
+          properties.end_time = hubspotService.convertToTimestamp(examDate, updateData.end_time).toString();
+          console.log('🕐 [UPDATE] Converted end_time to timestamp:', properties.end_time);
         }
       }
 

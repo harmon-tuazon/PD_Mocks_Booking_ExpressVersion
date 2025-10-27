@@ -175,17 +175,67 @@ class HubSpotService {
       throw new Error('Both examDate and timeString are required for timestamp conversion');
     }
 
-    // Parse time string (HH:MM)
-    const [hours, minutes] = timeString.split(':').map(Number);
+    console.log('🕐 [CONVERT-TIMESTAMP] Input:', { examDate, timeString });
+
+    // Parse time string (HH:MM or HH:MM:SS)
+    const timeParts = timeString.split(':');
+    const hours = parseInt(timeParts[0]);
+    const minutes = parseInt(timeParts[1] || '0');
+    const seconds = parseInt(timeParts[2] || '0');
+
+    // Create a date object for the given date at the specified time in America/Toronto timezone
+    // We need to determine if DST is in effect on this date to use the correct offset
     
-    // Create date object from exam date
-    const date = new Date(examDate);
+    // Parse the exam date
+    const [year, month, day] = examDate.split('-').map(Number);
     
-    // Set the time
-    date.setHours(hours, minutes, 0, 0);
+    // Create a date string in ISO format at noon UTC to check DST
+    // Using noon avoids edge cases around midnight
+    const testDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+    
+    // Format the date in America/Toronto timezone to check the offset
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Toronto',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+      timeZoneName: 'short'
+    });
+    
+    const formatted = formatter.format(testDate);
+    const isDST = formatted.includes('EDT'); // EDT = Daylight Time (UTC-4), EST = Standard Time (UTC-5)
+    
+    // Use the appropriate offset
+    const offset = isDST ? '-04:00' : '-05:00';
+    const offsetName = isDST ? 'EDT' : 'EST';
+    
+    // Create ISO string with the correct timezone offset for America/Toronto
+    const hoursStr = String(hours).padStart(2, '0');
+    const minutesStr = String(minutes).padStart(2, '0');
+    const secondsStr = String(seconds).padStart(2, '0');
+    const isoString = `${examDate}T${hoursStr}:${minutesStr}:${secondsStr}${offset}`;
+    
+    console.log(`🕐 [CONVERT-TIMESTAMP] Detected timezone: ${offsetName} (${offset})`);
+    console.log('🕐 [CONVERT-TIMESTAMP] ISO String:', isoString);
+    
+    // Parse ISO string to Date object
+    const date = new Date(isoString);
+    
+    if (isNaN(date.getTime())) {
+      console.error('❌ [CONVERT-TIMESTAMP] Invalid date created:', { isoString, examDate, timeString });
+      throw new Error('Invalid date or time format');
+    }
+    
+    const timestamp = date.getTime();
+    console.log('🕐 [CONVERT-TIMESTAMP] Output timestamp:', timestamp);
+    console.log('🕐 [CONVERT-TIMESTAMP] Represents:', new Date(timestamp).toISOString());
     
     // Return Unix timestamp in milliseconds
-    return date.getTime();
+    return timestamp;
   }
 
   /**
