@@ -16,16 +16,38 @@ const convertTimestampToTime = (timestamp) => {
       return timestamp;
     }
 
-    // Convert Unix timestamp (milliseconds) to Date object
-    const date = new Date(parseInt(timestamp));
+    // HubSpot stores times as Unix timestamps in milliseconds
+    // Convert to Date object and extract LOCAL time
+    const timestampNum = typeof timestamp === 'string' ? parseInt(timestamp) : timestamp;
 
-    // Extract hours and minutes
+    // Validate it's a reasonable timestamp
+    if (isNaN(timestampNum) || timestampNum <= 0) {
+      console.warn('Invalid timestamp:', timestamp);
+      return '';
+    }
+
+    const date = new Date(timestampNum);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date from timestamp:', timestamp);
+      return '';
+    }
+
+    // Extract hours and minutes in LOCAL timezone
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
 
+    console.log('Time conversion:', {
+      input: timestamp,
+      timestampNum,
+      date: date.toISOString(),
+      localTime: `${hours}:${minutes}`
+    });
+
     return `${hours}:${minutes}`;
   } catch (error) {
-    console.error('Error converting timestamp to time:', error);
+    console.error('Error converting timestamp to time:', error, 'input:', timestamp);
     return '';
   }
 };

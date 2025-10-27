@@ -10,8 +10,8 @@ const BookingRow = ({ booking }) => {
   const formatDominantHand = (hand) => {
     if (!hand) return 'N/A';
     const handLower = hand.toLowerCase();
-    if (handLower === 'right' || handLower === 'r') return 'R';
-    if (handLower === 'left' || handLower === 'l') return 'L';
+    if (handLower === 'right' || handLower === 'r') return 'Right';
+    if (handLower === 'left' || handLower === 'l') return 'Left';
     return hand;
   };
 
@@ -59,15 +59,9 @@ const BookingRow = ({ booking }) => {
 
       {/* Dominant Hand */}
       <td className="px-6 py-4 whitespace-nowrap">
-        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-          formatDominantHand(booking.dominant_hand) === 'R'
-            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-            : formatDominantHand(booking.dominant_hand) === 'L'
-            ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
-            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-        }`}>
+        <div className="text-sm text-gray-900 dark:text-gray-100">
           {formatDominantHand(booking.dominant_hand)}
-        </span>
+        </div>
       </td>
 
       {/* Booking Date */}
