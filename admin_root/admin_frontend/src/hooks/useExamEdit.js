@@ -47,6 +47,13 @@ export function useExamEdit(examData) {
   // Initialize form data when exam data changes
   useEffect(() => {
     if (examData) {
+      console.log('🔍 [useExamEdit] Initializing formData from examData:', {
+        start_time: examData.start_time,
+        start_time_type: typeof examData.start_time,
+        end_time: examData.end_time,
+        end_time_type: typeof examData.end_time
+      });
+
       const initialData = {
         mock_type: examData.mock_type || '',
         exam_date: examData.exam_date || '',
@@ -60,6 +67,8 @@ export function useExamEdit(examData) {
         booked_count: examData.booked_count || examData.total_bookings || 0,
         total_bookings: examData.total_bookings || examData.booked_count || 0
       };
+
+      console.log('🔍 [useExamEdit] Final formData:', initialData);
       setFormData(initialData);
       originalDataRef.current = { ...initialData };
     }
