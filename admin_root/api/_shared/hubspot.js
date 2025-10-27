@@ -780,23 +780,24 @@ class HubSpotService {
   async getMaxMockExamIndex() {
     try {
       console.log('🚀 [GET-MAX-INDEX] Starting to get max mock_exam_index');
+      console.log('📋 [GET-MAX-INDEX] Attempting with internal property name: mock_exam_id');
       
-      // OPTIMIZED: Single API call with filtering to exclude null values and sorting
-      // This respects our batch operations policy - no sequential API calls in loops
+      // Try using "mock_exam_id" as the internal HubSpot property name
+      // HubSpot often has different internal names vs display names
       console.log('🔍 [GET-MAX-INDEX] Calling HubSpot Search API with filter and sort...');
       console.log(`📡 [GET-MAX-INDEX] API endpoint: POST /crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`);
 
       const searchRequest = {
-        // Filter OUT exams with null/empty mock_exam_index
+        // Filter OUT exams with null/empty mock_exam_id (internal property name)
         filterGroups: [{
           filters: [{
-            propertyName: 'mock_exam_index',
-            operator: 'HAS_PROPERTY'  // Only get exams that have this property set
+            propertyName: 'mock_exam_id',  // Using internal HubSpot property name
+            operator: 'HAS_PROPERTY'
           }]
         }],
-        properties: ['mock_exam_index'],
+        properties: ['mock_exam_id'],  // Request the internal property
         sorts: [{
-          propertyName: 'mock_exam_index',
+          propertyName: 'mock_exam_id',  // Sort by internal property
           direction: 'DESCENDING'  // Highest first
         }],
         limit: 1  // Only need the top result
@@ -813,15 +814,15 @@ class HubSpotService {
         fullResponse: JSON.stringify(response, null, 2)
       });
 
-      // If no exams with mock_exam_index exist, start from 0
+      // If no exams with mock_exam_id exist, start from 0
       if (!response.results || response.results.length === 0) {
-        console.log('⚠️ [GET-MAX-INDEX] No mock exams with mock_exam_index found, starting from 1');
+        console.log('⚠️ [GET-MAX-INDEX] No mock exams with mock_exam_id found, starting from 1');
         return 0;
       }
 
-      // Get the mock_exam_index from the first (highest) result
-      const indexValue = response.results[0].properties.mock_exam_index;
-      console.log('📊 [GET-MAX-INDEX] Highest mock_exam_index value:', {
+      // Get the mock_exam_id from the first (highest) result
+      const indexValue = response.results[0].properties.mock_exam_id;
+      console.log('📊 [GET-MAX-INDEX] Highest mock_exam_id value:', {
         value: indexValue,
         type: typeof indexValue,
         examId: response.results[0].id
@@ -831,17 +832,17 @@ class HubSpotService {
       
       // Validate the parsed value
       if (isNaN(maxIndex)) {
-        console.error('❌ [GET-MAX-INDEX] Invalid mock_exam_index value:', indexValue);
+        console.error('❌ [GET-MAX-INDEX] Invalid mock_exam_id value:', indexValue);
         console.log('⚠️ [GET-MAX-INDEX] Defaulting to 0 due to invalid value');
         return 0;
       }
 
-      console.log(`✅ [GET-MAX-INDEX] Current max mock_exam_index: ${maxIndex}`);
-      console.log(`📊 [GET-MAX-INDEX] Retrieved in SINGLE API call (optimized)`);
+      console.log(`✅ [GET-MAX-INDEX] Current max mock_exam_id: ${maxIndex}`);
+      console.log(`📊 [GET-MAX-INDEX] Retrieved in SINGLE API call (optimized with internal property name)`);
       return maxIndex;
       
     } catch (error) {
-      console.error('❌ [GET-MAX-INDEX] ERROR getting max mock_exam_index:', {
+      console.error('❌ [GET-MAX-INDEX] ERROR getting max with mock_exam_id:', {
         errorMessage: error.message,
         errorStack: error.stack,
         errorName: error.name,
@@ -849,7 +850,7 @@ class HubSpotService {
         fullError: error
       });
       
-      // If there's an error (e.g., property doesn't exist yet), start from 0
+      // If there's an error (e.g., property doesn't exist), start from 0
       console.log('⚠️ [GET-MAX-INDEX] Defaulting to mock_exam_index = 0 due to error');
       return 0;
     }
@@ -868,7 +869,7 @@ class HubSpotService {
       // Get the current max mock_exam_index and increment it
       const maxIndex = await this.getMaxMockExamIndex();
       const newIndex = maxIndex + 1;
-      console.log(`Assigning mock_exam_index: ${newIndex}`);
+      console.log(`Assigning mock_exam_id (internal property): ${newIndex}`);
 
       // Convert time strings to Unix timestamps
       const startTimestamp = this.convertToTimestamp(mockExamData.exam_date, mockExamData.start_time);
@@ -884,14 +885,14 @@ class HubSpotService {
         capacity: mockExamData.capacity,
         total_bookings: mockExamData.total_bookings || 0,
         is_active: mockExamData.is_active !== undefined ? mockExamData.is_active : 'true',
-        mock_exam_index: newIndex  // Auto-incremented index
+        mock_exam_id: newIndex  // Using internal HubSpot property name
       };
 
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}`, {
         properties: examData
       });
 
-      console.log(`Created mock exam ${response.id} with index ${newIndex}`);
+      console.log(`Created mock exam ${response.id} with mock_exam_id ${newIndex}`);
       return response;
     } catch (error) {
       console.error('Error creating mock exam:', error);
@@ -963,7 +964,7 @@ class HubSpotService {
           capacity: commonProperties.capacity || 20,
           total_bookings: 0,
           is_active: 'true',
-          mock_exam_index: mockExamIndex  // Auto-incremented sequential index
+          mock_exam_id: mockExamIndex  // Using internal HubSpot property name
         };
 
         console.log(`📋 [BATCH-CREATE] Slot ${index + 1} final properties:`, properties);
