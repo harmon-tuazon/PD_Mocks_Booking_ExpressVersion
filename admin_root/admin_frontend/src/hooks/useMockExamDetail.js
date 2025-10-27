@@ -1,62 +1,14 @@
 /**
  * useMockExamDetail Hook
  * React Query hook for fetching mock exam details
+ *
+ * Matches production implementation - passes timestamps directly from HubSpot
+ * without conversion. Timestamps are Unix milliseconds that get formatted by
+ * display components using timeFormatters.js
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { mockExamsApi, adminApi } from '../services/adminApi';
-
-// Helper function to convert Unix timestamp (milliseconds) to HH:mm format
-const convertTimestampToTime = (timestamp) => {
-  console.log('⏰ [convertTimestampToTime] Called with input:', timestamp, 'Type:', typeof timestamp);
-
-  if (!timestamp) {
-    console.log('⏰ [convertTimestampToTime] Empty timestamp, returning empty string');
-    return '';
-  }
-
-  try {
-    // If it's already in HH:mm format, return as is
-    if (typeof timestamp === 'string' && timestamp.includes(':')) {
-      console.log('⏰ [convertTimestampToTime] Already in HH:mm format, returning:', timestamp);
-      return timestamp;
-    }
-
-    // HubSpot stores times as Unix timestamps in milliseconds
-    // Convert to Date object and extract LOCAL time
-    const timestampNum = typeof timestamp === 'string' ? parseInt(timestamp) : timestamp;
-
-    // Validate it's a reasonable timestamp
-    if (isNaN(timestampNum) || timestampNum <= 0) {
-      console.warn('Invalid timestamp:', timestamp);
-      return '';
-    }
-
-    const date = new Date(timestampNum);
-
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      console.warn('Invalid date from timestamp:', timestamp);
-      return '';
-    }
-
-    // Extract hours and minutes in LOCAL timezone
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-
-    console.log('Time conversion:', {
-      input: timestamp,
-      timestampNum,
-      date: date.toISOString(),
-      localTime: `${hours}:${minutes}`
-    });
-
-    return `${hours}:${minutes}`;
-  } catch (error) {
-    console.error('Error converting timestamp to time:', error, 'input:', timestamp);
-    return '';
-  }
-};
 
 export const useMockExamDetail = (id) => {
   return useQuery({
@@ -71,8 +23,6 @@ export const useMockExamDetail = (id) => {
       // Transform to match frontend expectations: { success: true, data: { id, ...properties, created_at, updated_at } }
       const apiData = response.data;
 
-      console.log('🔍 [useMockExamDetail] Full API response:', JSON.stringify(apiData, null, 2));
-
       if (!apiData?.mockExam) {
         throw new Error('Invalid API response: missing mockExam data');
       }
@@ -81,23 +31,17 @@ export const useMockExamDetail = (id) => {
       const properties = mockExam.properties || {};
       const metadata = mockExam.metadata || {};
 
-      console.log('🔍 [useMockExamDetail] Raw properties:', {
-        start_time: properties.start_time,
-        start_time_type: typeof properties.start_time,
-        end_time: properties.end_time,
-        end_time_type: typeof properties.end_time
-      });
-
       // Flatten the structure for easier use in the frontend
-      // Convert Unix timestamps to HH:mm format for times
-      const transformedData = {
+      // Pass start_time and end_time directly (they're Unix timestamps from HubSpot)
+      // These will be formatted by timeFormatters.js in display components
+      return {
         success: apiData.success,
         data: {
           id: mockExam.id,
           mock_type: properties.mock_type || '',
           exam_date: properties.exam_date || '',
-          start_time: convertTimestampToTime(properties.start_time),
-          end_time: convertTimestampToTime(properties.end_time),
+          start_time: properties.start_time,  // Unix timestamp (milliseconds) - passed directly
+          end_time: properties.end_time,      // Unix timestamp (milliseconds) - passed directly
           capacity: properties.capacity || 0,
           total_bookings: properties.total_bookings || 0,
           location: properties.location || '',
@@ -106,10 +50,6 @@ export const useMockExamDetail = (id) => {
           updated_at: metadata.updated_at || ''
         }
       };
-
-      console.log('🔍 [useMockExamDetail] Transformed data:', transformedData);
-
-      return transformedData;
     },
     enabled: !!id,
     staleTime: 2 * 60 * 1000, // 2 minutes

@@ -7,6 +7,7 @@ import StatusBadge from './StatusBadge';
 import { format } from 'date-fns';
 import { ExclamationCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { fieldInfoMessages } from '../../utils/examValidation';
+import { formatTime } from '../../utils/timeFormatters';
 
 const ExamDetailsForm = ({
   exam,
@@ -44,19 +45,11 @@ const ExamDetailsForm = ({
     }
   };
 
-  // Format time for display
-  const formatTime = (timeString) => {
-    if (!timeString) return 'N/A';
-    try {
-      // Parse time string (HH:mm:ss or HH:mm)
-      const [hours, minutes] = timeString.split(':');
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      return `${displayHour}:${minutes} ${ampm}`;
-    } catch {
-      return timeString;
-    }
+  // Format time for display - uses production formatter from timeFormatters.js
+  // Accepts Unix timestamps (milliseconds) or ISO strings
+  const formatTimeDisplay = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    return formatTime(timestamp);
   };
 
   // Helper to get field error
@@ -242,7 +235,7 @@ const ExamDetailsForm = ({
             </div>
           ) : (
             <div className="text-gray-900 dark:text-gray-100 font-medium">
-              {formatTime(displayData.start_time)}
+              {formatTimeDisplay(displayData.start_time)}
             </div>
           )}
         </div>
@@ -272,7 +265,7 @@ const ExamDetailsForm = ({
             </div>
           ) : (
             <div className="text-gray-900 dark:text-gray-100 font-medium">
-              {formatTime(displayData.end_time)}
+              {formatTimeDisplay(displayData.end_time)}
             </div>
           )}
         </div>
