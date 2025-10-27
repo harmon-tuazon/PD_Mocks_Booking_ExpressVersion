@@ -44,6 +44,30 @@ export function useExamEdit(examData) {
   // Initialize validation
   const validation = useFormValidation(formData);
 
+  // Convert ISO string or timestamp to HH:mm format for time inputs
+  const convertToTimeInput = (timeValue) => {
+    if (!timeValue) return '';
+
+    try {
+      // Create Date object (handles ISO strings, timestamps, etc.)
+      const date = new Date(timeValue);
+
+      // Check if valid date
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid time value:', timeValue);
+        return '';
+      }
+
+      // Extract hours and minutes in HH:mm format
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${hours}:${minutes}`;
+    } catch (error) {
+      console.error('Error converting time for input:', error, timeValue);
+      return '';
+    }
+  };
+
   // Initialize form data when exam data changes
   useEffect(() => {
     if (examData) {
@@ -57,8 +81,8 @@ export function useExamEdit(examData) {
       const initialData = {
         mock_type: examData.mock_type || '',
         exam_date: examData.exam_date || '',
-        start_time: examData.start_time || '',
-        end_time: examData.end_time || '',
+        start_time: convertToTimeInput(examData.start_time),
+        end_time: convertToTimeInput(examData.end_time),
         capacity: examData.capacity || 0,
         location: examData.location || '',
         address: examData.address || '',
