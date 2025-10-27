@@ -8,11 +8,17 @@ import { mockExamsApi, adminApi } from '../services/adminApi';
 
 // Helper function to convert Unix timestamp (milliseconds) to HH:mm format
 const convertTimestampToTime = (timestamp) => {
-  if (!timestamp) return '';
+  console.log('⏰ [convertTimestampToTime] Called with input:', timestamp, 'Type:', typeof timestamp);
+
+  if (!timestamp) {
+    console.log('⏰ [convertTimestampToTime] Empty timestamp, returning empty string');
+    return '';
+  }
 
   try {
     // If it's already in HH:mm format, return as is
     if (typeof timestamp === 'string' && timestamp.includes(':')) {
+      console.log('⏰ [convertTimestampToTime] Already in HH:mm format, returning:', timestamp);
       return timestamp;
     }
 
@@ -65,6 +71,8 @@ export const useMockExamDetail = (id) => {
       // Transform to match frontend expectations: { success: true, data: { id, ...properties, created_at, updated_at } }
       const apiData = response.data;
 
+      console.log('🔍 [useMockExamDetail] Full API response:', JSON.stringify(apiData, null, 2));
+
       if (!apiData?.mockExam) {
         throw new Error('Invalid API response: missing mockExam data');
       }
@@ -73,9 +81,16 @@ export const useMockExamDetail = (id) => {
       const properties = mockExam.properties || {};
       const metadata = mockExam.metadata || {};
 
+      console.log('🔍 [useMockExamDetail] Raw properties:', {
+        start_time: properties.start_time,
+        start_time_type: typeof properties.start_time,
+        end_time: properties.end_time,
+        end_time_type: typeof properties.end_time
+      });
+
       // Flatten the structure for easier use in the frontend
       // Convert Unix timestamps to HH:mm format for times
-      return {
+      const transformedData = {
         success: apiData.success,
         data: {
           id: mockExam.id,
@@ -91,6 +106,10 @@ export const useMockExamDetail = (id) => {
           updated_at: metadata.updated_at || ''
         }
       };
+
+      console.log('🔍 [useMockExamDetail] Transformed data:', transformedData);
+
+      return transformedData;
     },
     enabled: !!id,
     staleTime: 2 * 60 * 1000, // 2 minutes
