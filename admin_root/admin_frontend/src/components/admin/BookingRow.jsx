@@ -51,14 +51,14 @@ const BookingRow = ({ booking }) => {
       </td>
 
       {/* Student ID */}
-      <td className="px-6 py-4 whitespace-nowrap">
+      <td className="px-6 py-4 whitespace-nowrap text-left">
         <div className="text-sm text-gray-900 dark:text-gray-100">
           {formatStudentId(booking.student_id)}
         </div>
       </td>
 
       {/* Dominant Hand */}
-      <td className="px-6 py-4 whitespace-nowrap">
+      <td className="px-6 py-4 whitespace-nowrap text-left">
         <div className="text-sm text-gray-900 dark:text-gray-100">
           {formatDominantHand(booking.dominant_hand)}
         </div>
