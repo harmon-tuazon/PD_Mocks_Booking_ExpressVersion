@@ -779,7 +779,20 @@ class HubSpotService {
    */
   async getMaxMockExamIndex() {
     try {
+      console.log('🚀 [GET-MAX-INDEX] Starting to get max mock_exam_index');
+      
       // Use the SEARCH API (POST) which supports sorting, not the GET endpoint
+      console.log('🔍 [GET-MAX-INDEX] Calling HubSpot Search API...');
+      console.log(`📡 [GET-MAX-INDEX] API endpoint: POST /crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`);
+      console.log('📤 [GET-MAX-INDEX] Search request:', {
+        properties: ['mock_exam_index'],
+        sorts: [{
+          propertyName: 'mock_exam_index',
+          direction: 'DESCENDING'
+        }],
+        limit: 1
+      });
+
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, {
         properties: ['mock_exam_index'],
         sorts: [{
@@ -789,20 +802,39 @@ class HubSpotService {
         limit: 1  // Only need the first result
       });
 
+      console.log('📥 [GET-MAX-INDEX] Received response:', {
+        resultsCount: response.results?.length,
+        hasResults: !!(response.results && response.results.length > 0),
+        firstResult: response.results?.[0],
+        fullResponse: JSON.stringify(response, null, 2)
+      });
+
       // If no exams exist or no results, start from 0
       if (!response.results || response.results.length === 0) {
-        console.log('No existing mock exams found, starting mock_exam_index from 1');
+        console.log('⚠️ [GET-MAX-INDEX] No existing mock exams found, starting mock_exam_index from 1');
         return 0;
       }
 
       // Get the mock_exam_index from the first result
-      const maxIndex = parseInt(response.results[0].properties.mock_exam_index) || 0;
-      console.log(`Current max mock_exam_index: ${maxIndex}`);
+      const indexValue = response.results[0].properties.mock_exam_index;
+      console.log('📊 [GET-MAX-INDEX] Raw mock_exam_index value:', {
+        value: indexValue,
+        type: typeof indexValue
+      });
+
+      const maxIndex = parseInt(indexValue) || 0;
+      console.log(`✅ [GET-MAX-INDEX] Current max mock_exam_index: ${maxIndex}`);
       return maxIndex;
     } catch (error) {
-      console.error('Error getting max mock_exam_index:', error);
+      console.error('❌ [GET-MAX-INDEX] ERROR getting max mock_exam_index:', {
+        errorMessage: error.message,
+        errorStack: error.stack,
+        errorName: error.name,
+        errorResponse: error.response?.data,
+        fullError: error
+      });
       // If there's an error (e.g., property doesn't exist yet), start from 0
-      console.log('Defaulting to mock_exam_index = 0 due to error');
+      console.log('⚠️ [GET-MAX-INDEX] Defaulting to mock_exam_index = 0 due to error');
       return 0;
     }
   }
@@ -857,22 +889,45 @@ class HubSpotService {
    */
   async batchCreateMockExams(commonProperties, timeSlots) {
     try {
+      console.log('🚀 [BATCH-CREATE] Starting batch creation');
+      console.log('📥 [BATCH-CREATE] Input received:', {
+        commonProperties,
+        timeSlotsCount: timeSlots?.length,
+        timeSlots
+      });
+
       // Validate inputs
+      console.log('🔍 [BATCH-CREATE] Step 1: Validating inputs...');
       if (!timeSlots || !Array.isArray(timeSlots) || timeSlots.length === 0) {
+        console.error('❌ [BATCH-CREATE] Invalid timeSlots:', { timeSlots });
         throw new Error('Time slots array is required');
       }
+      console.log('✅ [BATCH-CREATE] Input validation passed');
 
       // Get the current max mock_exam_index ONCE for the entire batch
+      console.log('🔍 [BATCH-CREATE] Step 2: Getting max mock_exam_index...');
       const maxIndex = await this.getMaxMockExamIndex();
-      console.log(`Starting batch with mock_exam_index from: ${maxIndex + 1}`);
+      console.log(`✅ [BATCH-CREATE] Max index retrieved: ${maxIndex}`);
+      console.log(`📊 [BATCH-CREATE] Starting batch with mock_exam_index from: ${maxIndex + 1}`);
 
       // Prepare batch inputs using correct HubSpot property names and timestamp format
+      console.log('🔍 [BATCH-CREATE] Step 3: Preparing batch inputs...');
       const inputs = timeSlots.map((slot, index) => {
+        console.log(`🔧 [BATCH-CREATE] Processing slot ${index + 1}/${timeSlots.length}:`, slot);
+        
         const examDate = slot.exam_date || slot.date;  // Support both formats
+        console.log(`📅 [BATCH-CREATE] Slot ${index + 1} exam_date:`, examDate);
         
         // Convert time strings to Unix timestamps
+        console.log(`🕐 [BATCH-CREATE] Slot ${index + 1} converting times...`);
         const startTimestamp = this.convertToTimestamp(examDate, slot.start_time);
         const endTimestamp = this.convertToTimestamp(examDate, slot.end_time);
+        console.log(`✅ [BATCH-CREATE] Slot ${index + 1} timestamps:`, {
+          start_time: slot.start_time,
+          startTimestamp,
+          end_time: slot.end_time,
+          endTimestamp
+        });
 
         // Assign sequential mock_exam_index starting from maxIndex + 1
         const mockExamIndex = maxIndex + index + 1;
@@ -889,24 +944,49 @@ class HubSpotService {
           mock_exam_index: mockExamIndex  // Auto-incremented sequential index
         };
 
-        console.log(`Assigning mock_exam_index ${mockExamIndex} to time slot ${slot.start_time}-${slot.end_time}`);
+        console.log(`📋 [BATCH-CREATE] Slot ${index + 1} final properties:`, properties);
+        console.log(`✅ [BATCH-CREATE] Assigning mock_exam_index ${mockExamIndex} to time slot ${slot.start_time}-${slot.end_time}`);
         return { properties };
       });
 
+      console.log(`✅ [BATCH-CREATE] Prepared ${inputs.length} inputs for batch API`);
+      console.log('📤 [BATCH-CREATE] Full inputs array:', JSON.stringify(inputs, null, 2));
+
       // Use batch API to create all exams at once
+      console.log('🔍 [BATCH-CREATE] Step 4: Calling HubSpot batch API...');
+      console.log(`📡 [BATCH-CREATE] API endpoint: POST /crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/create`);
+      
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/create`, {
         inputs
       });
 
+      console.log('📥 [BATCH-CREATE] Received response from HubSpot:', {
+        status: response.status,
+        resultsCount: response.results?.length,
+        hasErrors: !!response.errors,
+        errorsCount: response.errors?.length,
+        fullResponse: JSON.stringify(response, null, 2)
+      });
+
       if (response.status === 'COMPLETE') {
-        console.log(`Successfully created ${response.results.length} mock exams with indices ${maxIndex + 1} to ${maxIndex + timeSlots.length}`);
+        console.log(`✅ [BATCH-CREATE] Successfully created ${response.results.length} mock exams with indices ${maxIndex + 1} to ${maxIndex + timeSlots.length}`);
+        console.log('📊 [BATCH-CREATE] Created exam IDs:', response.results.map(r => r.id));
         return response.results;
       } else {
-        console.error('Batch creation partially failed:', response);
+        console.error('❌ [BATCH-CREATE] Batch creation partially failed');
+        console.error('❌ [BATCH-CREATE] Response status:', response.status);
+        console.error('❌ [BATCH-CREATE] Response message:', response.message);
+        console.error('❌ [BATCH-CREATE] Errors:', response.errors);
         throw new Error(`Batch creation failed: ${response.message || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error batch creating mock exams:', error);
+      console.error('❌ [BATCH-CREATE] ERROR in batchCreateMockExams:', {
+        errorMessage: error.message,
+        errorStack: error.stack,
+        errorName: error.name,
+        errorResponse: error.response?.data,
+        fullError: error
+      });
       throw error;
     }
   }

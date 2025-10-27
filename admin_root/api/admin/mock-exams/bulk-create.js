@@ -16,12 +16,21 @@ const { getCache } = require('../../_shared/cache');
  */
 async function bulkCreateMockExamsHandler(req, res) {
   try {
+    console.log('🚀 [BULK-CREATE] Starting bulk creation request');
+    console.log('🚀 [BULK-CREATE] Request body:', JSON.stringify(req.body, null, 2));
+
     // Validate request body
+    console.log('🔍 [BULK-CREATE] Step 1: Validating input...');
     const validatedData = await validateInput(req.body, 'mockExamBulkCreation');
+    console.log('✅ [BULK-CREATE] Validation passed:', {
+      commonProperties: validatedData.commonProperties,
+      timeSlotsCount: validatedData.timeSlots.length,
+      timeSlots: validatedData.timeSlots
+    });
 
     const { commonProperties, timeSlots } = validatedData;
 
-    console.log('📝 Bulk creating mock exams:', {
+    console.log('📝 [BULK-CREATE] Bulk creating mock exams:', {
       mock_type: commonProperties.mock_type,
       exam_date: commonProperties.exam_date,
       location: commonProperties.location,
@@ -30,8 +39,10 @@ async function bulkCreateMockExamsHandler(req, res) {
     });
 
     // Check overlap in time slots
+    console.log('🔍 [BULK-CREATE] Step 2: Checking time slot overlaps...');
     const hasOverlap = checkTimeSlotOverlaps(timeSlots);
     if (hasOverlap) {
+      console.error('❌ [BULK-CREATE] Time slot overlap detected');
       return res.status(400).json({
         success: false,
         error: {
@@ -41,16 +52,32 @@ async function bulkCreateMockExamsHandler(req, res) {
         }
       });
     }
+    console.log('✅ [BULK-CREATE] No time slot overlaps detected');
 
     // Initialize HubSpot service
+    console.log('🔍 [BULK-CREATE] Step 3: Initializing HubSpot service...');
     const hubspot = new HubSpotService();
+    console.log('✅ [BULK-CREATE] HubSpot service initialized');
 
     // Create mock exams in HubSpot using batch API
+    console.log('🔍 [BULK-CREATE] Step 4: Calling batchCreateMockExams...');
+    console.log('📤 [BULK-CREATE] Sending to HubSpot:', {
+      commonProperties,
+      timeSlots
+    });
+    
     const result = await hubspot.batchCreateMockExams(commonProperties, timeSlots);
+    
+    console.log('📥 [BULK-CREATE] Received result from HubSpot:', {
+      resultType: typeof result,
+      isArray: Array.isArray(result),
+      length: Array.isArray(result) ? result.length : 'N/A',
+      firstItem: Array.isArray(result) && result.length > 0 ? result[0] : 'N/A'
+    });
 
     // Check result status
     if (!result.success && result.status === 'PARTIAL') {
-      console.warn(`⚠️ Partial success: ${result.created_count}/${timeSlots.length} mock exams created`);
+      console.warn(`⚠️ [BULK-CREATE] Partial success: ${result.created_count}/${timeSlots.length} mock exams created`);
 
       return res.status(207).json({ // 207 Multi-Status
         success: false,
@@ -62,32 +89,38 @@ async function bulkCreateMockExamsHandler(req, res) {
     }
 
     // Log success
-    console.log(`✅ Bulk created ${result.created_count} mock exams successfully`);
+    console.log(`✅ [BULK-CREATE] Bulk created ${result.length || 0} mock exams successfully`);
 
     // Invalidate caches after successful bulk creation
+    console.log('🔍 [BULK-CREATE] Step 5: Invalidating caches...');
     const cache = getCache();
     await cache.deletePattern('admin:mock-exams:list:*');
     await cache.deletePattern('admin:mock-exams:aggregates:*');
     await cache.deletePattern('admin:aggregate:sessions:*');
-    console.log('🗑️ Cache invalidated: admin:mock-exams:list:*');
-    console.log('🔄 [Cache] Invalidated aggregate caches after mutation');
+    console.log('✅ [BULK-CREATE] Cache invalidated successfully');
 
     // Return success response
+    const mockExams = Array.isArray(result) ? result : [];
+    console.log('📤 [BULK-CREATE] Sending success response with', mockExams.length, 'exams');
+    
     return res.status(201).json({
       success: true,
-      created_count: result.created_count,
-      mockExams: result.mockExams.map(exam => ({
+      created_count: mockExams.length,
+      mockExams: mockExams.map(exam => ({
         id: exam.id,
         properties: exam.properties
       })),
-      message: `Successfully created ${result.created_count} mock exam${result.created_count > 1 ? 's' : ''}`
+      message: `Successfully created ${mockExams.length} mock exam${mockExams.length > 1 ? 's' : ''}`
     });
 
   } catch (error) {
-    console.error('❌ Error bulk creating mock exams:', {
-      error: error.message,
-      stack: error.stack,
-      validationErrors: error.validationErrors
+    console.error('❌ [BULK-CREATE] ERROR CAUGHT:', {
+      errorMessage: error.message,
+      errorStack: error.stack,
+      errorName: error.name,
+      errorStatus: error.status,
+      validationErrors: error.validationErrors,
+      fullError: error
     });
 
     // Handle validation errors
@@ -118,7 +151,11 @@ async function bulkCreateMockExamsHandler(req, res) {
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: 'An error occurred while bulk creating mock exams'
+        message: 'An error occurred while bulk creating mock exams',
+        debug: {
+          errorMessage: error.message,
+          errorName: error.name
+        }
       }
     });
   }
