@@ -24,21 +24,6 @@ const ExamDetailsForm = ({
   const displayData = isEditing ? formData : exam;
   if (!displayData) return null;
 
-  // Get booking count (API returns either booked_count or total_bookings)
-  const bookingCount = displayData.booked_count || displayData.total_bookings || 0;
-
-  // Calculate capacity percentage
-  const capacityPercentage = displayData.capacity > 0
-    ? Math.round((bookingCount / displayData.capacity) * 100)
-    : 0;
-
-  // Determine capacity color based on percentage
-  const getCapacityColor = (percentage) => {
-    if (percentage <= 70) return 'bg-green-500';
-    if (percentage <= 90) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
-
   // Get mock type badge color
   const getMockTypeBadgeColor = (type) => {
     const typeColors = {
@@ -96,12 +81,12 @@ const ExamDetailsForm = ({
   };
 
   return (
-    <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm p-6">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
+    <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm p-4">
+      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
         Exam Information
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Mock Type */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -291,112 +276,6 @@ const ExamDetailsForm = ({
             </div>
           )}
         </div>
-
-        {/* Capacity - Full Width */}
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Capacity
-          </label>
-          {isEditing ? (
-            <div className="space-y-2">
-              <input
-                type="number"
-                name="capacity"
-                value={displayData.capacity || 0}
-                onChange={(e) => onFieldChange('capacity', parseInt(e.target.value) || 0)}
-                onBlur={() => onFieldBlur('capacity')}
-                disabled={isSaving}
-                min="1"
-                className={getInputClasses('capacity')}
-              />
-              {getFieldError('capacity') && (
-                <p className="text-sm text-red-600 dark:text-red-400 flex items-center">
-                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
-                  {getFieldError('capacity')}
-                </p>
-              )}
-              {!getFieldError('capacity') && bookingCount > 0 && (
-                <p className="text-sm text-blue-600 dark:text-blue-400 flex items-center">
-                  <InformationCircleIcon className="h-4 w-4 mr-1" />
-                  {fieldInfoMessages.capacity(bookingCount)}
-                </p>
-              )}
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-gray-900 dark:text-gray-100 font-medium">
-                  {bookingCount} / {displayData.capacity || 0} booked
-                </span>
-                <span className={`text-sm font-medium ${
-                  capacityPercentage <= 70 ? 'text-green-600 dark:text-green-400' :
-                  capacityPercentage <= 90 ? 'text-yellow-600 dark:text-yellow-400' :
-                  'text-red-600 dark:text-red-400'
-                }`}>
-                  {capacityPercentage}% full
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                <div
-                  className={`h-2.5 rounded-full transition-all duration-300 ${getCapacityColor(capacityPercentage)}`}
-                  style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-900 dark:text-gray-100 font-medium">
-                  {bookingCount} / {displayData.capacity || 0} booked
-                </span>
-                <span className={`text-sm font-medium ${
-                  capacityPercentage <= 70 ? 'text-green-600 dark:text-green-400' :
-                  capacityPercentage <= 90 ? 'text-yellow-600 dark:text-yellow-400' :
-                  'text-red-600 dark:text-red-400'
-                }`}>
-                  {capacityPercentage}% full
-                </span>
-              </div>
-              {/* Progress Bar */}
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                <div
-                  className={`h-2.5 rounded-full transition-all duration-300 ${getCapacityColor(capacityPercentage)}`}
-                  style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Additional Info - Address (optional) */}
-        {(isEditing || displayData.address) && (
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Address (Optional)
-            </label>
-            {isEditing ? (
-              <div>
-                <textarea
-                  name="address"
-                  value={displayData.address || ''}
-                  onChange={(e) => onFieldChange('address', e.target.value)}
-                  onBlur={() => onFieldBlur('address')}
-                  disabled={isSaving}
-                  rows="2"
-                  placeholder="Enter venue address..."
-                  className={getInputClasses('address')}
-                />
-                {getFieldError('address') && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
-                    <ExclamationCircleIcon className="h-4 w-4 mr-1" />
-                    {getFieldError('address')}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 rounded-md p-3">
-                {displayData.address || 'N/A'}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Timestamps */}
         <div className="md:col-span-2 pt-4 border-t border-gray-200 dark:border-gray-700">
