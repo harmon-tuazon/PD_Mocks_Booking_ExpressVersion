@@ -14,7 +14,36 @@ export const useMockExamDetail = (id) => {
       const response = await adminApi.get('/admin/mock-exams/get', {
         params: { id }
       });
-      return response.data;
+
+      // API returns: { success: true, mockExam: { id, properties: {...}, bookings: [], metadata: {} } }
+      // Transform to match frontend expectations: { success: true, data: { id, ...properties, created_at, updated_at } }
+      const apiData = response.data;
+
+      if (!apiData?.mockExam) {
+        throw new Error('Invalid API response: missing mockExam data');
+      }
+
+      const mockExam = apiData.mockExam;
+      const properties = mockExam.properties || {};
+      const metadata = mockExam.metadata || {};
+
+      // Flatten the structure for easier use in the frontend
+      return {
+        success: apiData.success,
+        data: {
+          id: mockExam.id,
+          mock_type: properties.mock_type || '',
+          exam_date: properties.exam_date || '',
+          start_time: properties.start_time || '',
+          end_time: properties.end_time || '',
+          capacity: properties.capacity || 0,
+          total_bookings: properties.total_bookings || 0,
+          location: properties.location || '',
+          is_active: properties.is_active === true || properties.is_active === 'true',
+          created_at: metadata.created_at || '',
+          updated_at: metadata.updated_at || ''
+        }
+      };
     },
     enabled: !!id,
     staleTime: 2 * 60 * 1000, // 2 minutes

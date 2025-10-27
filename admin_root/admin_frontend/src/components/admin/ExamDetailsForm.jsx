@@ -81,12 +81,12 @@ const ExamDetailsForm = ({
   };
 
   return (
-    <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm p-4">
-      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
+    <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm p-3">
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
         Exam Information
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Mock Type */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -277,21 +277,6 @@ const ExamDetailsForm = ({
           )}
         </div>
 
-        {/* Timestamps */}
-        <div className="md:col-span-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500 dark:text-gray-400">
-            <div>
-              <span className="font-medium">Created: </span>
-              {exam?.created_at ? format(new Date(exam.created_at), 'MMM d, yyyy h:mm a') : 'N/A'}
-            </div>
-            {exam?.updated_at && (
-              <div>
-                <span className="font-medium">Last Updated: </span>
-                {format(new Date(exam.updated_at), 'MMM d, yyyy h:mm a')}
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );
