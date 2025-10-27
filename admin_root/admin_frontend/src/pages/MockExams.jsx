@@ -23,16 +23,13 @@ const LOCATIONS = [
 ];
 
 function MockExams() {
-  const [mode, setMode] = useState('single'); // 'single' or 'bulk'
   const [showPreview, setShowPreview] = useState(false);
   const [formData, setFormData] = useState({
     mock_type: 'Situational Judgment',
     exam_date: '',
     capacity: 15,
     location: 'Mississauga',
-    is_active: true,
-    start_time: '',
-    end_time: ''
+    is_active: true
   });
   const [timeSlots, setTimeSlots] = useState([{ start_time: '', end_time: '' }]);
   const [successMessage, setSuccessMessage] = useState('');
@@ -74,10 +71,17 @@ function MockExams() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (mode === 'single') {
-      createSingleMutation.mutate(formData);
+    // Automatically detect single vs bulk based on time slots count
+    if (timeSlots.length === 1) {
+      // Single session - use the first time slot
+      const singleSessionData = {
+        ...formData,
+        start_time: timeSlots[0].start_time,
+        end_time: timeSlots[0].end_time
+      };
+      createSingleMutation.mutate(singleSessionData);
     } else {
-      // Bulk mode
+      // Multiple sessions - use bulk creation
       const commonProperties = {
         mock_type: formData.mock_type,
         exam_date: formData.exam_date,
@@ -95,22 +99,18 @@ function MockExams() {
       exam_date: '',
       capacity: 15,
       location: 'Mississauga',
-      is_active: true,
-      start_time: '',
-      end_time: ''
+      is_active: true
     });
     setTimeSlots([{ start_time: '', end_time: '' }]);
   };
 
   const isFormValid = () => {
     const commonFieldsValid = formData.mock_type && formData.exam_date && formData.capacity && formData.location;
-
-    if (mode === 'single') {
-      return commonFieldsValid && formData.start_time && formData.end_time;
-    } else {
-      // Bulk mode - check if all time slots are filled
-      return commonFieldsValid && timeSlots.length > 0 && timeSlots.every(slot => slot.start_time && slot.end_time);
-    }
+    
+    // Check if all time slots are filled
+    const timeSlotsValid = timeSlots.length > 0 && timeSlots.every(slot => slot.start_time && slot.end_time);
+    
+    return commonFieldsValid && timeSlotsValid;
   };
 
   const isLoading = createSingleMutation.isPending || createBulkMutation.isPending;
@@ -169,38 +169,6 @@ function MockExams() {
         )}
 
         <div className="bg-white shadow-sm rounded-lg">
-          {/* Mode Toggle */}
-          <div className="border-b border-gray-200 p-6">
-            <div className="flex space-x-2">
-              <button
-                onClick={() => {
-                  setMode('single');
-                  setShowPreview(false);
-                }}
-                className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  mode === 'single'
-                    ? 'bg-primary-600 text-white shadow-sm hover:bg-primary-700'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Single Session
-              </button>
-              <button
-                onClick={() => {
-                  setMode('bulk');
-                  setShowPreview(false);
-                }}
-                className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  mode === 'bulk'
-                    ? 'bg-primary-600 text-white shadow-sm hover:bg-primary-700'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Multiple Sessions
-              </button>
-            </div>
-          </div>
-
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6">
             <div className="space-y-6">
@@ -285,46 +253,8 @@ function MockExams() {
                 </label>
               </div>
 
-              {/* Time Slots - Different UI for single vs bulk */}
-              {mode === 'single' ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-4">
-                    Time Slots <span className="text-red-500">*</span>
-                  </label>
-                  <div className="border border-gray-300 rounded-md p-4 bg-gray-50">
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-2">
-                          Start Time
-                        </label>
-                        <input
-                          type="time"
-                          value={formData.start_time}
-                          onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                          className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-2">
-                          End Time
-                        </label>
-                        <input
-                          type="time"
-                          value={formData.end_time}
-                          onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                          className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
-                          required
-                        />
-                      </div>
-                    </div>
-                    <p className="mt-3 text-sm text-gray-500">1 time slot will create 1 mock exam session</p>
-                  </div>
-                </div>
-              ) : (
-                <TimeSlotBuilder timeSlots={timeSlots} onChange={setTimeSlots} />
-              )}
+              {/* Time Slots - Always show TimeSlotBuilder */}
+              <TimeSlotBuilder timeSlots={timeSlots} onChange={setTimeSlots} />
 
               {/* Preview Section */}
               {showPreview && isFormValid() && (
@@ -332,7 +262,7 @@ function MockExams() {
                   <MockExamPreview
                     mockExamData={formData}
                     timeSlots={timeSlots}
-                    mode={mode}
+                    mode={timeSlots.length === 1 ? 'single' : 'bulk'}
                   />
                 </div>
               )}
@@ -373,7 +303,7 @@ function MockExams() {
                       </>
                     ) : (
                       <>
-                        {mode === 'single' ? 'Create 1 Session' : `Create ${timeSlots.length} Sessions`}
+                        Create {timeSlots.length} {timeSlots.length === 1 ? 'Session' : 'Sessions'}
                       </>
                     )}
                   </button>
