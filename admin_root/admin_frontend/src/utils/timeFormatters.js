@@ -11,14 +11,29 @@
 
 /**
  * Format a timestamp or date string to localized time
- * @param {number|string} dateString - Unix timestamp (ms) or ISO string
+ * @param {number|string} dateString - Unix timestamp (ms), ISO string, or HH:mm string
  * @returns {string} Formatted time like "8:00 AM"
  */
 export const formatTime = (dateString) => {
   if (!dateString) return '';
 
-  // Handle UTC timestamps properly
+  // Special case: If it's already in HH:mm or HH:mm:ss format (from HubSpot)
+  // Convert to 12-hour format manually
+  if (typeof dateString === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(dateString)) {
+    const [hours, minutes] = dateString.split(':').map(Number);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHour = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+    return `${displayHour}:${String(minutes).padStart(2, '0')} ${ampm}`;
+  }
+
+  // Handle UTC timestamps and ISO strings
   const date = new Date(dateString);
+
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    console.warn('Invalid date string:', dateString);
+    return 'Invalid Date';
+  }
 
   // Convert UTC to local time for display
   return date.toLocaleTimeString('en-US', {

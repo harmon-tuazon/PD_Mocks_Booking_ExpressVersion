@@ -44,22 +44,13 @@ module.exports = async (req, res) => {
     const capacity = parseInt(properties.capacity) || 0;
     const totalBookings = parseInt(properties.total_bookings) || 0;
 
-    // Convert timestamps to readable time format
-    const startTime = properties.start_time
-      ? new Date(parseInt(properties.start_time)).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        })
-      : '';
-
-    const endTime = properties.end_time
-      ? new Date(parseInt(properties.end_time)).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        })
-      : '';
+    // Pass start_time and end_time RAW from HubSpot (no conversion)
+    // Frontend will handle formatting using formatTime() which accepts:
+    // - Unix timestamps (milliseconds)
+    // - ISO strings
+    // - HH:mm strings (will need special handling)
+    const startTime = properties.start_time || '';
+    const endTime = properties.end_time || '';
 
     // Transform bookings data
     const transformedBookings = result.bookings.map(booking => ({
