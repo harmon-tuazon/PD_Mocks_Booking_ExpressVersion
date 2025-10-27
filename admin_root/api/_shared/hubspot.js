@@ -781,38 +781,64 @@ class HubSpotService {
     try {
       console.log('🚀 [GET-MAX-INDEX] Starting to get max mock_exam_index');
       
-      // Use the SEARCH API to fetch all mock exams with mock_exam_index
-      // We'll sort in application code to ensure we get the right max value
-      console.log('🔍 [GET-MAX-INDEX] Calling HubSpot Search API...');
+      // Use the SEARCH API to fetch ALL mock exams with pagination
+      console.log('🔍 [GET-MAX-INDEX] Calling HubSpot Search API with pagination...');
       console.log(`📡 [GET-MAX-INDEX] API endpoint: POST /crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`);
-      console.log('📤 [GET-MAX-INDEX] Search request: Fetching all mock exams with mock_exam_index property');
 
-      const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, {
-        properties: ['mock_exam_index'],
-        limit: 100  // Fetch up to 100 exams to find max
-      });
+      let allExams = [];
+      let after = undefined;
+      let pageCount = 0;
 
-      console.log('📥 [GET-MAX-INDEX] Received response:', {
-        resultsCount: response.results?.length,
-        hasResults: !!(response.results && response.results.length > 0),
-        fullResponse: JSON.stringify(response, null, 2)
-      });
+      // Fetch all pages until no more results
+      do {
+        pageCount++;
+        console.log(`📄 [GET-MAX-INDEX] Fetching page ${pageCount}...`);
+        
+        const searchRequest = {
+          properties: ['mock_exam_index'],
+          limit: 100  // Max allowed per page
+        };
 
-      // If no exams exist or no results, start from 0
-      if (!response.results || response.results.length === 0) {
+        // Add pagination cursor if available
+        if (after) {
+          searchRequest.after = after;
+        }
+
+        const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, searchRequest);
+
+        console.log(`📥 [GET-MAX-INDEX] Page ${pageCount} received:`, {
+          resultsCount: response.results?.length,
+          hasMore: !!response.paging?.next,
+          nextAfter: response.paging?.next?.after
+        });
+
+        // Add results to our collection
+        if (response.results && response.results.length > 0) {
+          allExams = allExams.concat(response.results);
+        }
+
+        // Check if there are more pages
+        after = response.paging?.next?.after;
+
+      } while (after); // Continue while there's a next page
+
+      console.log(`✅ [GET-MAX-INDEX] Fetched all pages: ${pageCount} page(s), ${allExams.length} total exam(s)`);
+
+      // If no exams exist, start from 0
+      if (allExams.length === 0) {
         console.log('⚠️ [GET-MAX-INDEX] No existing mock exams found, starting mock_exam_index from 1');
         return 0;
       }
 
       // Log all mock_exam_index values to see what we have
       console.log('📊 [GET-MAX-INDEX] All mock_exam_index values found:');
-      response.results.forEach((exam, idx) => {
+      allExams.forEach((exam, idx) => {
         console.log(`  Exam ${idx + 1}: id=${exam.id}, mock_exam_index=${exam.properties.mock_exam_index}`);
       });
 
       // Find the maximum mock_exam_index in application code
       let maxIndex = 0;
-      response.results.forEach(exam => {
+      allExams.forEach(exam => {
         const indexValue = exam.properties.mock_exam_index;
         if (indexValue !== null && indexValue !== undefined && indexValue !== '') {
           const parsedIndex = parseInt(indexValue);
@@ -823,7 +849,7 @@ class HubSpotService {
       });
 
       console.log(`✅ [GET-MAX-INDEX] Current max mock_exam_index: ${maxIndex}`);
-      console.log(`📊 [GET-MAX-INDEX] Found max from ${response.results.length} exam(s)`);
+      console.log(`📊 [GET-MAX-INDEX] Found max from ${allExams.length} exam(s) across ${pageCount} page(s)`);
       return maxIndex;
     } catch (error) {
       console.error('❌ [GET-MAX-INDEX] ERROR getting max mock_exam_index:', {
