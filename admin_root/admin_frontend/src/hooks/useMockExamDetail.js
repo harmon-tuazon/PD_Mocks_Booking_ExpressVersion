@@ -6,6 +6,30 @@
 import { useQuery } from '@tanstack/react-query';
 import { mockExamsApi, adminApi } from '../services/adminApi';
 
+// Helper function to convert Unix timestamp (milliseconds) to HH:mm format
+const convertTimestampToTime = (timestamp) => {
+  if (!timestamp) return '';
+
+  try {
+    // If it's already in HH:mm format, return as is
+    if (typeof timestamp === 'string' && timestamp.includes(':')) {
+      return timestamp;
+    }
+
+    // Convert Unix timestamp (milliseconds) to Date object
+    const date = new Date(parseInt(timestamp));
+
+    // Extract hours and minutes
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+
+    return `${hours}:${minutes}`;
+  } catch (error) {
+    console.error('Error converting timestamp to time:', error);
+    return '';
+  }
+};
+
 export const useMockExamDetail = (id) => {
   return useQuery({
     queryKey: ['mockExam', id],
@@ -28,14 +52,15 @@ export const useMockExamDetail = (id) => {
       const metadata = mockExam.metadata || {};
 
       // Flatten the structure for easier use in the frontend
+      // Convert Unix timestamps to HH:mm format for times
       return {
         success: apiData.success,
         data: {
           id: mockExam.id,
           mock_type: properties.mock_type || '',
           exam_date: properties.exam_date || '',
-          start_time: properties.start_time || '',
-          end_time: properties.end_time || '',
+          start_time: convertTimestampToTime(properties.start_time),
+          end_time: convertTimestampToTime(properties.end_time),
           capacity: properties.capacity || 0,
           total_bookings: properties.total_bookings || 0,
           location: properties.location || '',

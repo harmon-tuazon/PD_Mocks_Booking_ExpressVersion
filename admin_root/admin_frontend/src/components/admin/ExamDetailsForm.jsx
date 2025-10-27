@@ -115,8 +115,8 @@ const ExamDetailsForm = ({
               )}
             </div>
           ) : (
-            <div>
-              <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getMockTypeBadgeColor(displayData.mock_type)}`}>
+            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800">
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getMockTypeBadgeColor(displayData.mock_type)}`}>
                 {displayData.mock_type}
               </span>
             </div>
@@ -145,7 +145,7 @@ const ExamDetailsForm = ({
               </label>
             </div>
           ) : (
-            <div>
+            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800">
               <StatusBadge status={displayData.status || (displayData.is_active ? 'active' : 'inactive')} />
             </div>
           )}
@@ -175,7 +175,7 @@ const ExamDetailsForm = ({
               )}
             </div>
           ) : (
-            <div className="text-gray-900 dark:text-gray-100 font-medium">
+            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm">
               {formatDate(displayData.exam_date)}
             </div>
           )}
@@ -211,7 +211,7 @@ const ExamDetailsForm = ({
               )}
             </div>
           ) : (
-            <div className="text-gray-900 dark:text-gray-100 font-medium">
+            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm">
               {displayData.location || 'N/A'}
             </div>
           )}
@@ -241,7 +241,7 @@ const ExamDetailsForm = ({
               )}
             </div>
           ) : (
-            <div className="text-gray-900 dark:text-gray-100 font-medium">
+            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm">
               {formatTime(displayData.start_time)}
             </div>
           )}
@@ -271,7 +271,7 @@ const ExamDetailsForm = ({
               )}
             </div>
           ) : (
-            <div className="text-gray-900 dark:text-gray-100 font-medium">
+            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm">
               {formatTime(displayData.end_time)}
             </div>
           )}
