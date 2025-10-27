@@ -781,31 +781,20 @@ class HubSpotService {
     try {
       console.log('🚀 [GET-MAX-INDEX] Starting to get max mock_exam_index');
       
-      // Use the SEARCH API (POST) which supports sorting, not the GET endpoint
+      // Use the SEARCH API to fetch all mock exams with mock_exam_index
+      // We'll sort in application code to ensure we get the right max value
       console.log('🔍 [GET-MAX-INDEX] Calling HubSpot Search API...');
       console.log(`📡 [GET-MAX-INDEX] API endpoint: POST /crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`);
-      console.log('📤 [GET-MAX-INDEX] Search request:', {
-        properties: ['mock_exam_index'],
-        sorts: [{
-          propertyName: 'mock_exam_index',
-          direction: 'DESCENDING'
-        }],
-        limit: 1
-      });
+      console.log('📤 [GET-MAX-INDEX] Search request: Fetching all mock exams with mock_exam_index property');
 
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, {
         properties: ['mock_exam_index'],
-        sorts: [{
-          propertyName: 'mock_exam_index',
-          direction: 'DESCENDING'  // Sort descending to get max first
-        }],
-        limit: 1  // Only need the first result
+        limit: 100  // Fetch up to 100 exams to find max
       });
 
       console.log('📥 [GET-MAX-INDEX] Received response:', {
         resultsCount: response.results?.length,
         hasResults: !!(response.results && response.results.length > 0),
-        firstResult: response.results?.[0],
         fullResponse: JSON.stringify(response, null, 2)
       });
 
@@ -815,15 +804,26 @@ class HubSpotService {
         return 0;
       }
 
-      // Get the mock_exam_index from the first result
-      const indexValue = response.results[0].properties.mock_exam_index;
-      console.log('📊 [GET-MAX-INDEX] Raw mock_exam_index value:', {
-        value: indexValue,
-        type: typeof indexValue
+      // Log all mock_exam_index values to see what we have
+      console.log('📊 [GET-MAX-INDEX] All mock_exam_index values found:');
+      response.results.forEach((exam, idx) => {
+        console.log(`  Exam ${idx + 1}: id=${exam.id}, mock_exam_index=${exam.properties.mock_exam_index}`);
       });
 
-      const maxIndex = parseInt(indexValue) || 0;
+      // Find the maximum mock_exam_index in application code
+      let maxIndex = 0;
+      response.results.forEach(exam => {
+        const indexValue = exam.properties.mock_exam_index;
+        if (indexValue !== null && indexValue !== undefined && indexValue !== '') {
+          const parsedIndex = parseInt(indexValue);
+          if (!isNaN(parsedIndex) && parsedIndex > maxIndex) {
+            maxIndex = parsedIndex;
+          }
+        }
+      });
+
       console.log(`✅ [GET-MAX-INDEX] Current max mock_exam_index: ${maxIndex}`);
+      console.log(`📊 [GET-MAX-INDEX] Found max from ${response.results.length} exam(s)`);
       return maxIndex;
     } catch (error) {
       console.error('❌ [GET-MAX-INDEX] ERROR getting max mock_exam_index:', {
@@ -912,14 +912,20 @@ class HubSpotService {
 
       // Prepare batch inputs using correct HubSpot property names and timestamp format
       console.log('🔍 [BATCH-CREATE] Step 3: Preparing batch inputs...');
+      console.log(`📅 [BATCH-CREATE] Using exam_date from commonProperties: ${commonProperties.exam_date}`);
+      
       const inputs = timeSlots.map((slot, index) => {
         console.log(`🔧 [BATCH-CREATE] Processing slot ${index + 1}/${timeSlots.length}:`, slot);
         
-        const examDate = slot.exam_date || slot.date;  // Support both formats
-        console.log(`📅 [BATCH-CREATE] Slot ${index + 1} exam_date:`, examDate);
+        // IMPORTANT: exam_date is in commonProperties, NOT in individual time slots
+        // Time slots only contain start_time and end_time
+        const examDate = commonProperties.exam_date;
+        console.log(`📅 [BATCH-CREATE] Slot ${index + 1} using exam_date:`, examDate);
         
         // Convert time strings to Unix timestamps
         console.log(`🕐 [BATCH-CREATE] Slot ${index + 1} converting times...`);
+        console.log(`🕐 [BATCH-CREATE] Slot ${index + 1} inputs: examDate=${examDate}, start_time=${slot.start_time}, end_time=${slot.end_time}`);
+        
         const startTimestamp = this.convertToTimestamp(examDate, slot.start_time);
         const endTimestamp = this.convertToTimestamp(examDate, slot.end_time);
         console.log(`✅ [BATCH-CREATE] Slot ${index + 1} timestamps:`, {
