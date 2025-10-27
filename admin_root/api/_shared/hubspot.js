@@ -781,76 +781,65 @@ class HubSpotService {
     try {
       console.log('🚀 [GET-MAX-INDEX] Starting to get max mock_exam_index');
       
-      // Use the SEARCH API to fetch ALL mock exams with pagination
-      console.log('🔍 [GET-MAX-INDEX] Calling HubSpot Search API with pagination...');
+      // OPTIMIZED: Single API call with filtering to exclude null values and sorting
+      // This respects our batch operations policy - no sequential API calls in loops
+      console.log('🔍 [GET-MAX-INDEX] Calling HubSpot Search API with filter and sort...');
       console.log(`📡 [GET-MAX-INDEX] API endpoint: POST /crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`);
 
-      let allExams = [];
-      let after = undefined;
-      let pageCount = 0;
+      const searchRequest = {
+        // Filter OUT exams with null/empty mock_exam_index
+        filterGroups: [{
+          filters: [{
+            propertyName: 'mock_exam_index',
+            operator: 'HAS_PROPERTY'  // Only get exams that have this property set
+          }]
+        }],
+        properties: ['mock_exam_index'],
+        sorts: [{
+          propertyName: 'mock_exam_index',
+          direction: 'DESCENDING'  // Highest first
+        }],
+        limit: 1  // Only need the top result
+      };
 
-      // Fetch all pages until no more results
-      do {
-        pageCount++;
-        console.log(`📄 [GET-MAX-INDEX] Fetching page ${pageCount}...`);
-        
-        const searchRequest = {
-          properties: ['mock_exam_index'],
-          limit: 100  // Max allowed per page
-        };
+      console.log('📤 [GET-MAX-INDEX] Search request:', JSON.stringify(searchRequest, null, 2));
 
-        // Add pagination cursor if available
-        if (after) {
-          searchRequest.after = after;
-        }
+      const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, searchRequest);
 
-        const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, searchRequest);
+      console.log('📥 [GET-MAX-INDEX] Received response:', {
+        resultsCount: response.results?.length,
+        hasResults: !!(response.results && response.results.length > 0),
+        firstResult: response.results?.[0],
+        fullResponse: JSON.stringify(response, null, 2)
+      });
 
-        console.log(`📥 [GET-MAX-INDEX] Page ${pageCount} received:`, {
-          resultsCount: response.results?.length,
-          hasMore: !!response.paging?.next,
-          nextAfter: response.paging?.next?.after
-        });
-
-        // Add results to our collection
-        if (response.results && response.results.length > 0) {
-          allExams = allExams.concat(response.results);
-        }
-
-        // Check if there are more pages
-        after = response.paging?.next?.after;
-
-      } while (after); // Continue while there's a next page
-
-      console.log(`✅ [GET-MAX-INDEX] Fetched all pages: ${pageCount} page(s), ${allExams.length} total exam(s)`);
-
-      // If no exams exist, start from 0
-      if (allExams.length === 0) {
-        console.log('⚠️ [GET-MAX-INDEX] No existing mock exams found, starting mock_exam_index from 1');
+      // If no exams with mock_exam_index exist, start from 0
+      if (!response.results || response.results.length === 0) {
+        console.log('⚠️ [GET-MAX-INDEX] No mock exams with mock_exam_index found, starting from 1');
         return 0;
       }
 
-      // Log all mock_exam_index values to see what we have
-      console.log('📊 [GET-MAX-INDEX] All mock_exam_index values found:');
-      allExams.forEach((exam, idx) => {
-        console.log(`  Exam ${idx + 1}: id=${exam.id}, mock_exam_index=${exam.properties.mock_exam_index}`);
+      // Get the mock_exam_index from the first (highest) result
+      const indexValue = response.results[0].properties.mock_exam_index;
+      console.log('📊 [GET-MAX-INDEX] Highest mock_exam_index value:', {
+        value: indexValue,
+        type: typeof indexValue,
+        examId: response.results[0].id
       });
 
-      // Find the maximum mock_exam_index in application code
-      let maxIndex = 0;
-      allExams.forEach(exam => {
-        const indexValue = exam.properties.mock_exam_index;
-        if (indexValue !== null && indexValue !== undefined && indexValue !== '') {
-          const parsedIndex = parseInt(indexValue);
-          if (!isNaN(parsedIndex) && parsedIndex > maxIndex) {
-            maxIndex = parsedIndex;
-          }
-        }
-      });
+      const maxIndex = parseInt(indexValue);
+      
+      // Validate the parsed value
+      if (isNaN(maxIndex)) {
+        console.error('❌ [GET-MAX-INDEX] Invalid mock_exam_index value:', indexValue);
+        console.log('⚠️ [GET-MAX-INDEX] Defaulting to 0 due to invalid value');
+        return 0;
+      }
 
       console.log(`✅ [GET-MAX-INDEX] Current max mock_exam_index: ${maxIndex}`);
-      console.log(`📊 [GET-MAX-INDEX] Found max from ${allExams.length} exam(s) across ${pageCount} page(s)`);
+      console.log(`📊 [GET-MAX-INDEX] Retrieved in SINGLE API call (optimized)`);
       return maxIndex;
+      
     } catch (error) {
       console.error('❌ [GET-MAX-INDEX] ERROR getting max mock_exam_index:', {
         errorMessage: error.message,
@@ -859,6 +848,7 @@ class HubSpotService {
         errorResponse: error.response?.data,
         fullError: error
       });
+      
       // If there's an error (e.g., property doesn't exist yet), start from 0
       console.log('⚠️ [GET-MAX-INDEX] Defaulting to mock_exam_index = 0 due to error');
       return 0;
