@@ -779,12 +779,14 @@ class HubSpotService {
    */
   async getMaxMockExamIndex() {
     try {
-      // Query all mock exams sorted by mock_exam_index in descending order
-      // We only need the first result to get the max value
-      const response = await this.apiCall('GET', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}`, {
-        limit: 1,
+      // Use the SEARCH API (POST) which supports sorting, not the GET endpoint
+      const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, {
         properties: ['mock_exam_index'],
-        sorts: ['-mock_exam_index'] // Sort descending to get max first
+        sorts: [{
+          propertyName: 'mock_exam_index',
+          direction: 'DESCENDING'  // Sort descending to get max first
+        }],
+        limit: 1  // Only need the first result
       });
 
       // If no exams exist or no results, start from 0
