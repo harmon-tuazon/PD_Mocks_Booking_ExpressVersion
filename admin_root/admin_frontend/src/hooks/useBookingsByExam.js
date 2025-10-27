@@ -1,9 +1,13 @@
 /**
  * useBookingsByExam Hook
- * React Query hook for fetching bookings by exam ID with pagination, sorting, and search
+ * React Query hook for fetching bookings by exam ID with CLIENT-SIDE pagination, sorting, and search
+ *
+ * Performance: Fetches all bookings once, then does sorting/filtering/pagination in memory
+ * This provides instant sorting/filtering with no API calls or network latency
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { adminApi } from '../services/adminApi';
 
 export const useBookingsByExam = (examId, params = {}) => {
@@ -15,69 +19,118 @@ export const useBookingsByExam = (examId, params = {}) => {
     limit = 50
   } = params;
 
-  // Build query params
-  const queryParams = {
-    search,
-    sort_by,
-    sort_order,
-    page,
-    limit
-  };
-
-  // Remove empty params
-  Object.keys(queryParams).forEach(key => {
-    if (queryParams[key] === '' || queryParams[key] === null || queryParams[key] === undefined) {
-      delete queryParams[key];
-    }
-  });
-
-  return useQuery({
-    queryKey: ['bookings', examId, queryParams],
+  // Fetch ALL bookings once (no server-side sorting/pagination)
+  const { data: apiData, isLoading, error } = useQuery({
+    queryKey: ['bookings', examId], // Only exam ID - no sort/page params!
     queryFn: async () => {
-      // Call the bookings endpoint with the exam ID as a path parameter
+      // Fetch all bookings with high limit (no pagination)
       const response = await adminApi.get(`/admin/mock-exams/${examId}/bookings`, {
-        params: queryParams
+        params: { limit: 1000 } // Get all bookings at once
       });
 
-      // The API returns: { success: true, data: { bookings: [], pagination: {} } }
       const result = response.data;
-
-      // Extract bookings array and pagination from the nested data structure
       const bookingsData = result?.data?.bookings;
-      const paginationData = result?.data?.pagination;
 
-      // Map API pagination fields (snake_case) to frontend format (camelCase)
-      const normalizedPagination = paginationData ? {
-        page: paginationData.page || page,
-        limit: paginationData.limit || limit,
-        total: paginationData.total_bookings || 0,
-        totalPages: paginationData.total_pages || 0,
-        hasNextPage: paginationData.has_next || false,
-        hasPrevPage: paginationData.has_prev || false
-      } : {
-        page,
-        limit,
-        total: 0,
-        totalPages: 0,
-        hasNextPage: false,
-        hasPrevPage: false
-      };
-
-      // Defensive: Ensure we always return properly structured data with arrays
-      return {
-        data: Array.isArray(bookingsData) ? bookingsData : [],
-        pagination: normalizedPagination
-      };
+      // Return raw bookings array
+      return Array.isArray(bookingsData) ? bookingsData : [];
     },
     enabled: !!examId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    cacheTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes (longer since we fetch once)
+    cacheTime: 10 * 60 * 1000, // 10 minutes
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     refetchOnWindowFocus: false,
-    keepPreviousData: true, // Keep previous data while fetching new page
     onError: (error) => {
       console.error('Error fetching bookings:', error);
     }
   });
+
+  // Client-side filtering, sorting, and pagination (instant, no API calls!)
+  const processedData = useMemo(() => {
+    if (!apiData) {
+      return {
+        data: [],
+        pagination: {
+          page: 1,
+          limit,
+          total: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPrevPage: false
+        }
+      };
+    }
+
+    // Step 1: Filter by search term
+    let filteredBookings = apiData;
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filteredBookings = apiData.filter(booking => {
+        const name = (booking.name || '').toLowerCase();
+        const email = (booking.email || '').toLowerCase();
+        const studentId = (booking.student_id || '').toLowerCase();
+        return name.includes(searchLower) ||
+               email.includes(searchLower) ||
+               studentId.includes(searchLower);
+      });
+    }
+
+    // Step 2: Sort bookings
+    const sortedBookings = [...filteredBookings].sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sort_by) {
+        case 'name':
+          aValue = (a.name || '').toLowerCase();
+          bValue = (b.name || '').toLowerCase();
+          break;
+        case 'email':
+          aValue = (a.email || '').toLowerCase();
+          bValue = (b.email || '').toLowerCase();
+          break;
+        case 'student_id':
+          aValue = (a.student_id || '').toLowerCase();
+          bValue = (b.student_id || '').toLowerCase();
+          break;
+        case 'dominant_hand':
+          aValue = (a.dominant_hand || '').toLowerCase();
+          bValue = (b.dominant_hand || '').toLowerCase();
+          break;
+        case 'created_at':
+        default:
+          aValue = new Date(a.created_at || 0);
+          bValue = new Date(b.created_at || 0);
+          break;
+      }
+
+      if (aValue < bValue) return sort_order === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sort_order === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    // Step 3: Paginate
+    const totalBookings = sortedBookings.length;
+    const totalPages = Math.ceil(totalBookings / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = Math.min(startIndex + limit, totalBookings);
+    const paginatedBookings = sortedBookings.slice(startIndex, endIndex);
+
+    return {
+      data: paginatedBookings,
+      pagination: {
+        page,
+        limit,
+        total: totalBookings,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    };
+  }, [apiData, search, sort_by, sort_order, page, limit]);
+
+  return {
+    data: processedData,
+    isLoading,
+    error
+  };
 };
