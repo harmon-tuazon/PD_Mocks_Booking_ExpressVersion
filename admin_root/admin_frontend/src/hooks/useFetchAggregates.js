@@ -18,8 +18,11 @@ export const useFetchAggregates = (filters = {}, options = {}) => {
       const response = await adminApi.get('/admin/mock-exams/aggregates', {
         params: sortedFilters
       });
-      // Extract the data array from the response object
-      return response.data.data || [];
+      // Extract and validate the data array from the response object
+      const extractedData = response.data?.data || response.data || [];
+
+      // Defensive check: Ensure we ALWAYS return an array, never an object
+      return Array.isArray(extractedData) ? extractedData : [];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
     cacheTime: 5 * 60 * 1000, // 5 minutes
