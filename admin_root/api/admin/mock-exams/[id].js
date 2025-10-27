@@ -432,11 +432,10 @@ function formatMockExamResponse(mockExam) {
         const timestamp = typeof timeValue === 'string' ? parseInt(timeValue) : timeValue;
         if (!isNaN(timestamp)) {
           const date = new Date(timestamp);
-          return date.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-          });
+          // Return HH:mm format (required by HTML5 time inputs)
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          return `${hours}:${minutes}`;
         }
       } catch (e) {
         console.error('Error formatting time:', e);
