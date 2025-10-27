@@ -96,7 +96,7 @@ async function handlePatchRequest(req, res) {
         .min(1)
         .optional(),
       location: Joi.string()
-        .valid('Mississauga', 'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill', 'Online')
+        .valid('Mississauga', 'Mississauga - B9', 'Mississauga - Lab D', 'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill', 'Online')
         .optional(),
       address: Joi.string()
         .max(500)

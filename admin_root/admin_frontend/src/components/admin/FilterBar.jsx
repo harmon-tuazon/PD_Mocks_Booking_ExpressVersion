@@ -8,6 +8,8 @@ import { ListBulletIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 
 const LOCATIONS = [
   'Mississauga',
+  'Mississauga - B9',
+  'Mississauga - Lab D',
   'Calgary',
   'Vancouver',
   'Montreal',

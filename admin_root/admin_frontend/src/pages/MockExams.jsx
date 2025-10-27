@@ -13,6 +13,8 @@ const MOCK_TYPES = [
 
 const LOCATIONS = [
   'Mississauga',
+  'Mississauga - B9',
+  'Mississauga - Lab D',
   'Calgary',
   'Vancouver',
   'Montreal',

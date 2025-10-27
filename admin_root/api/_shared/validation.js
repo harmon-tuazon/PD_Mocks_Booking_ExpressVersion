@@ -240,10 +240,10 @@ const schemas = {
         'any.required': 'Capacity is required'
       }),
     location: Joi.string()
-      .valid('Mississauga', 'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill', 'Online')
+      .valid('Mississauga', 'Mississauga - B9', 'Mississauga - Lab D', 'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill', 'Online')
       .required()
       .messages({
-        'any.only': 'Location must be one of: Mississauga, Calgary, Vancouver, Montreal, Richmond Hill, or Online',
+        'any.only': 'Location must be one of: Mississauga, Mississauga - B9, Mississauga - Lab D, Calgary, Vancouver, Montreal, Richmond Hill, or Online',
         'any.required': 'Location is required'
       }),
     is_active: Joi.boolean()
@@ -312,10 +312,10 @@ const schemas = {
           'any.required': 'Capacity is required'
         }),
       location: Joi.string()
-        .valid('Mississauga', 'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill', 'Online')
+        .valid('Mississauga', 'Mississauga - B9', 'Mississauga - Lab D', 'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill', 'Online')
         .required()
         .messages({
-          'any.only': 'Location must be one of: Mississauga, Calgary, Vancouver, Montreal, Richmond Hill, or Online',
+          'any.only': 'Location must be one of: Mississauga, Mississauga - B9, Mississauga - Lab D, Calgary, Vancouver, Montreal, Richmond Hill, or Online',
           'any.required': 'Location is required'
         }),
       is_active: Joi.boolean()
@@ -406,10 +406,10 @@ const schemas = {
         'any.only': 'sort_order must be either asc or desc'
       }),
     filter_location: Joi.string()
-      .valid('Mississauga', 'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill', 'Online')
+      .valid('Mississauga', 'Mississauga - B9', 'Mississauga - Lab D', 'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill', 'Online')
       .optional()
       .messages({
-        'any.only': 'filter_location must be one of: Mississauga, Calgary, Vancouver, Montreal, Richmond Hill, or Online'
+        'any.only': 'filter_location must be one of: Mississauga, Mississauga - B9, Mississauga - Lab D, Calgary, Vancouver, Montreal, Richmond Hill, or Online'
       }),
     filter_mock_type: Joi.string()
       .valid('Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion')
@@ -463,10 +463,10 @@ const schemas = {
         'number.max': 'Capacity cannot exceed 100'
       }),
     location: Joi.string()
-      .valid('Mississauga', 'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill', 'Online')
+      .valid('Mississauga', 'Mississauga - B9', 'Mississauga - Lab D', 'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill', 'Online')
       .optional()
       .messages({
-        'any.only': 'Location must be one of: Mississauga, Calgary, Vancouver, Montreal, Richmond Hill, or Online'
+        'any.only': 'Location must be one of: Mississauga, Mississauga - B9, Mississauga - Lab D, Calgary, Vancouver, Montreal, Richmond Hill, or Online'
       }),
     is_active: Joi.boolean()
       .optional()

@@ -104,10 +104,13 @@ export const validationRules = {
     validate: (value) => {
       const validLocations = [
         'Mississauga',
+        'Mississauga - B9',
+        'Mississauga - Lab D',
         'Vancouver',
         'Montreal',
         'Calgary',
-        'Richmond Hill'
+        'Richmond Hill',
+        'Online'
       ];
       return validLocations.includes(value);
     },

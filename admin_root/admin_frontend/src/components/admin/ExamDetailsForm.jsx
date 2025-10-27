@@ -191,10 +191,13 @@ const ExamDetailsForm = ({
               >
                 <option value="">Select a location</option>
                 <option value="Mississauga">Mississauga</option>
+                <option value="Mississauga - B9">Mississauga - B9</option>
+                <option value="Mississauga - Lab D">Mississauga - Lab D</option>
                 <option value="Vancouver">Vancouver</option>
                 <option value="Montreal">Montreal</option>
                 <option value="Calgary">Calgary</option>
                 <option value="Richmond Hill">Richmond Hill</option>
+                <option value="Online">Online</option>
               </select>
               {getFieldError('location') && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
