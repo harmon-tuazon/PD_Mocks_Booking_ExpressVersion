@@ -39,20 +39,34 @@ export const useBookingsByExam = (examId, params = {}) => {
         params: queryParams
       });
 
-      // The API returns data in this structure
+      // The API returns: { success: true, data: { bookings: [], pagination: {} } }
       const result = response.data;
+
+      // Extract bookings array and pagination from the nested data structure
+      const bookingsData = result?.data?.bookings;
+      const paginationData = result?.data?.pagination;
+
+      // Map API pagination fields (snake_case) to frontend format (camelCase)
+      const normalizedPagination = paginationData ? {
+        page: paginationData.page || page,
+        limit: paginationData.limit || limit,
+        total: paginationData.total_bookings || 0,
+        totalPages: paginationData.total_pages || 0,
+        hasNextPage: paginationData.has_next || false,
+        hasPrevPage: paginationData.has_prev || false
+      } : {
+        page,
+        limit,
+        total: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false
+      };
 
       // Defensive: Ensure we always return properly structured data with arrays
       return {
-        data: Array.isArray(result?.data) ? result.data : [],
-        pagination: result?.pagination || {
-          page,
-          limit,
-          total: 0,
-          totalPages: 0,
-          hasNextPage: false,
-          hasPrevPage: false
-        }
+        data: Array.isArray(bookingsData) ? bookingsData : [],
+        pagination: normalizedPagination
       };
     },
     enabled: !!examId,
