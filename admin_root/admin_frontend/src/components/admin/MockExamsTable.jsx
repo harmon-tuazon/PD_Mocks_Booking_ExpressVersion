@@ -70,7 +70,7 @@ const MockExamsTable = ({
   const SortableHeader = ({ column, children }) => (
     <th
       scope="col"
-      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
       onClick={() => onSort(column)}
     >
       <div className="flex items-center">
@@ -123,15 +123,20 @@ const MockExamsTable = ({
   // Render aggregate view
   if (viewMode === 'aggregate') {
     return (
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div className="bg-white dark:bg-dark-card shadow overflow-hidden sm:rounded-lg">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <SortableHeader column="mock_type">Type / Sessions</SortableHeader>
+                <SortableHeader column="mock_type">Type</SortableHeader>
+                <SortableHeader column="location">Location</SortableHeader>
+                <SortableHeader column="exam_date">Date</SortableHeader>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Sessions
+                </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
               {data.map((aggregate) => (
                 <AggregateRow
                   key={aggregate.aggregate_key}

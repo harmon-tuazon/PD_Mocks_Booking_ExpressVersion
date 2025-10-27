@@ -54,50 +54,52 @@ const AggregateRow = ({ aggregate, onView }) => {
         onClick={handleToggle}
         className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors"
       >
-        <td colSpan="7" className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1">
-              {isExpanded ? (
-                <ChevronDownIcon className="w-5 h-5 text-gray-500 transition-transform flex-shrink-0" />
-              ) : (
-                <ChevronRightIcon className="w-5 h-5 text-gray-500 transition-transform flex-shrink-0" />
-              )}
-
-              {/* Use grid layout for consistent alignment */}
-              <div className="grid grid-cols-[1fr_200px_280px] gap-4 flex-1 items-center">
-                {/* Mock Type - flexible width */}
-                <div className="font-semibold text-gray-900 dark:text-white truncate">
-                  {aggregate.mock_type}
-                </div>
-
-                {/* Location - fixed width */}
-                <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <span className="flex-shrink-0 text-lg">📍</span>
-                  <span className="truncate">{aggregate.location}</span>
-                </div>
-
-                {/* Date - fixed width */}
-                <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <span className="flex-shrink-0 text-lg">📅</span>
-                  <span className="truncate">{formatDate(aggregate.exam_date)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Session count badge - fixed minimum width */}
-            <div className="flex items-center ml-4">
-              <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium min-w-[110px] text-center">
-                {aggregate.session_count} {aggregate.session_count === 1 ? 'session' : 'sessions'}
-              </span>
-            </div>
+        {/* Type Column */}
+        <td className="px-6 py-4">
+          <div className="flex items-center gap-3">
+            {isExpanded ? (
+              <ChevronDownIcon className="w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform flex-shrink-0" />
+            ) : (
+              <ChevronRightIcon className="w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform flex-shrink-0" />
+            )}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              {aggregate.mock_type}
+            </span>
           </div>
+        </td>
+
+        {/* Location Column */}
+        <td className="px-6 py-4">
+          <div className="flex items-center gap-2">
+            <span className="flex-shrink-0 text-lg">📍</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {aggregate.location}
+            </span>
+          </div>
+        </td>
+
+        {/* Date Column */}
+        <td className="px-6 py-4">
+          <div className="flex items-center gap-2">
+            <span className="flex-shrink-0 text-lg">📅</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {formatDate(aggregate.exam_date)}
+            </span>
+          </div>
+        </td>
+
+        {/* Sessions Count Column */}
+        <td className="px-6 py-4">
+          <span className="inline-flex px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium">
+            {aggregate.session_count} {aggregate.session_count === 1 ? 'session' : 'sessions'}
+          </span>
         </td>
       </tr>
 
       {/* Expanded Sessions */}
       {isExpanded && (
         <tr>
-          <td colSpan="7" className="p-0">
+          <td colSpan="4" className="p-0">
             <div className="bg-gray-50 dark:bg-gray-900 border-l-4 border-blue-500">
               {showLoading ? (
                 <div className="py-8 text-center text-gray-500">

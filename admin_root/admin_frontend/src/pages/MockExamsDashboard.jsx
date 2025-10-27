@@ -70,13 +70,42 @@ function MockExamsDashboard() {
     isLoading: isLoadingMetrics
   } = useMockExamsMetrics(metricsFilters);
 
+  // Handle sorting for list view (backend)
   const handleSort = (column) => {
     toggleSort(column);
+  };
+
+  // Handle sorting for aggregate view (backend)
+  // Maps frontend column names to backend expected names
+  const handleAggregateSort = (column) => {
+    // Map frontend column names to backend names
+    const columnMap = {
+      'exam_date': 'date',
+      'mock_type': 'type',
+      'location': 'location'
+    };
+    
+    const backendColumn = columnMap[column] || column;
+    toggleSort(backendColumn);
   };
 
   // Handler for viewing a mock exam session
   const handleView = (session) => {
     navigate(`/mock-exams/${session.id}`);
+  };
+
+  // Map backend sort column names back to frontend for display
+  const getCurrentSortForAggregate = () => {
+    const reverseColumnMap = {
+      'date': 'exam_date',
+      'type': 'mock_type',
+      'location': 'location'
+    };
+    
+    return {
+      sort_by: reverseColumnMap[filters.sort_by] || filters.sort_by,
+      sort_order: filters.sort_order
+    };
   };
 
   return (
@@ -142,10 +171,10 @@ function MockExamsDashboard() {
         {/* Mock Exams Table */}
         <MockExamsTable
           key={JSON.stringify(getQueryParams) + viewMode}
-          data={viewMode === 'aggregate' ? (Array.isArray(aggregatesData) ? aggregatesData : []) : allExams}
+          data={viewMode === 'aggregate' ? aggregatesData : allExams}
           isLoading={viewMode === 'aggregate' ? isLoadingAggregates : isLoadingExams}
-          onSort={handleSort}
-          currentSort={{
+          onSort={viewMode === 'aggregate' ? handleAggregateSort : handleSort}
+          currentSort={viewMode === 'aggregate' ? getCurrentSortForAggregate() : {
             sort_by: filters.sort_by,
             sort_order: filters.sort_order
           }}

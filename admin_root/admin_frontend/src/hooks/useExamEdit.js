@@ -45,6 +45,7 @@ export function useExamEdit(examData) {
   const validation = useFormValidation(formData);
 
   // Convert ISO string or timestamp to HH:mm format for time inputs
+  // IMPORTANT: Always extracts time in EST timezone to match backend storage
   const convertToTimeInput = (timeValue) => {
     if (!timeValue) return '';
 
@@ -58,10 +59,25 @@ export function useExamEdit(examData) {
         return '';
       }
 
-      // Extract hours and minutes in HH:mm format
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return `${hours}:${minutes}`;
+      console.log('🕐 [convertToTimeInput] Converting timestamp to EST time:', {
+        input: timeValue,
+        inputType: typeof timeValue,
+        dateUTC: date.toISOString()
+      });
+
+      // Extract hours and minutes in EST timezone (America/Toronto handles EST/EDT automatically)
+      // This ensures the displayed time matches what was stored, regardless of user's timezone
+      const estTimeString = date.toLocaleTimeString('en-US', {
+        timeZone: 'America/Toronto',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+
+      console.log('🕐 [convertToTimeInput] Extracted EST time:', estTimeString);
+
+      // Return HH:MM format
+      return estTimeString;
     } catch (error) {
       console.error('Error converting time for input:', error, timeValue);
       return '';
