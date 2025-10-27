@@ -12,7 +12,7 @@ export const validationRules = {
   mock_type: {
     required: true,
     validate: (value) => {
-      const validTypes = ['Situational Judgment', 'Clinical Skills', 'Mini-mock'];
+      const validTypes = ['Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion'];
       return validTypes.includes(value);
     },
     errorMessage: 'Please select a valid mock type'

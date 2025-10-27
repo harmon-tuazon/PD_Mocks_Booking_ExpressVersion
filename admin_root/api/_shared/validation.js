@@ -559,18 +559,32 @@ async function validateInput(data, schemaName) {
 function validationMiddleware(schemaName) {
   return async (req, res, next) => {
     try {
+      console.log(`🔍 [VALIDATION-MIDDLEWARE] Validating with schema: ${schemaName}`);
+
       // Combine query params and body for validation
       const dataToValidate = {
         ...req.query,
         ...req.body
       };
 
+      console.log('🔍 [VALIDATION-MIDDLEWARE] Data to validate:', dataToValidate);
+      console.log('🔍 [VALIDATION-MIDDLEWARE] Data keys:', Object.keys(dataToValidate));
+      console.log('🔍 [VALIDATION-MIDDLEWARE] Data types:', Object.keys(dataToValidate).map(k => `${k}: ${typeof dataToValidate[k]}`));
+
       const validatedData = await validateInput(dataToValidate, schemaName);
+
+      console.log('✅ [VALIDATION-MIDDLEWARE] Validation successful');
+      console.log('✅ [VALIDATION-MIDDLEWARE] Validated data:', validatedData);
 
       // Store validated data for use in route handler
       req.validatedData = validatedData;
       next();
     } catch (error) {
+      console.error('❌ [VALIDATION-MIDDLEWARE] Validation failed');
+      console.error('❌ [VALIDATION-MIDDLEWARE] Error message:', error.message);
+      console.error('❌ [VALIDATION-MIDDLEWARE] Validation errors:', error.validationErrors);
+      console.error('❌ [VALIDATION-MIDDLEWARE] Full error:', error);
+
       res.status(error.status || 400).json({
         success: false,
         error: error.message,

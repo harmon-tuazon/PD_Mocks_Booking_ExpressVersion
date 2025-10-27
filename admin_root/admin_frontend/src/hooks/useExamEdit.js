@@ -256,11 +256,17 @@ export function useExamEdit(examData) {
    * Save changes
    */
   const saveChanges = useCallback(async () => {
+    console.log('🔧 [SAVE-CHANGES] Starting save operation');
+    console.log('🔧 [SAVE-CHANGES] Current formData:', formData);
+    console.log('🔧 [SAVE-CHANGES] Original data:', originalDataRef.current);
+
     // Touch all fields to show validation errors
     validation.touchAllFields();
 
     // Validate entire form
     const isValid = validation.validateAllFields(formData);
+    console.log('🔧 [SAVE-CHANGES] Validation result:', isValid);
+    console.log('🔧 [SAVE-CHANGES] Validation errors:', validation.errors);
 
     if (!isValid) {
       // Find first error field and focus it
@@ -272,14 +278,18 @@ export function useExamEdit(examData) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }
+      console.error('❌ [SAVE-CHANGES] Validation failed, cannot save');
       notify.error('Please fix the validation errors before saving');
       return false;
     }
 
     // Get only changed fields
     const changes = getChangedFields(originalDataRef.current, formData);
+    console.log('🔧 [SAVE-CHANGES] Changed fields:', changes);
+    console.log('🔧 [SAVE-CHANGES] Number of changes:', Object.keys(changes).length);
 
     if (Object.keys(changes).length === 0) {
+      console.log('ℹ️ [SAVE-CHANGES] No changes detected');
       notify.info('No changes to save');
       setIsEditing(false);
       return true;
@@ -287,10 +297,25 @@ export function useExamEdit(examData) {
 
     // Format data for API
     const apiData = formatFormDataForApi(changes);
+    console.log('🔧 [SAVE-CHANGES] Formatted API data:', apiData);
+    console.log('🔧 [SAVE-CHANGES] API data keys:', Object.keys(apiData));
+    console.log('🔧 [SAVE-CHANGES] API data types:', Object.keys(apiData).map(k => `${k}: ${typeof apiData[k]}`));
 
     // Execute save mutation
-    await saveMutation.mutateAsync(apiData);
-    return true;
+    console.log('🔧 [SAVE-CHANGES] Calling API update...');
+    try {
+      await saveMutation.mutateAsync(apiData);
+      console.log('✅ [SAVE-CHANGES] Save successful');
+      return true;
+    } catch (error) {
+      console.error('❌ [SAVE-CHANGES] Save failed:', error);
+      console.error('❌ [SAVE-CHANGES] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      throw error;
+    }
   }, [formData, validation, saveMutation]);
 
   /**

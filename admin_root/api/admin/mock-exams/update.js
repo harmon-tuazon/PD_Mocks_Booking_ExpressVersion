@@ -13,25 +13,45 @@ const hubspot = require('../../_shared/hubspot');
 module.exports = async (req, res) => {
   await requireAdmin(req, res, async () => {
     try {
+      console.log('🔧 [UPDATE-ENDPOINT] ===== UPDATE REQUEST RECEIVED =====');
+      console.log('🔧 [UPDATE-ENDPOINT] Request method:', req.method);
+      console.log('🔧 [UPDATE-ENDPOINT] Request query:', req.query);
+      console.log('🔧 [UPDATE-ENDPOINT] Request body:', req.body);
+      console.log('🔧 [UPDATE-ENDPOINT] Request headers:', {
+        'content-type': req.headers['content-type'],
+        'content-length': req.headers['content-length']
+      });
+
       const mockExamId = req.query.id;
+      console.log('🔧 [UPDATE-ENDPOINT] Mock Exam ID:', mockExamId);
 
       if (!mockExamId) {
+        console.error('❌ [UPDATE-ENDPOINT] Missing mock exam ID');
         return res.status(400).json({
           success: false,
           error: 'Mock exam ID is required'
         });
       }
 
+      console.log('🔧 [UPDATE-ENDPOINT] Starting validation...');
       // Validate update data
       const validator = validationMiddleware('mockExamUpdate');
       await new Promise((resolve, reject) => {
         validator(req, res, (error) => {
-          if (error) reject(error);
-          else resolve();
+          if (error) {
+            console.error('❌ [UPDATE-ENDPOINT] Validation error:', error);
+            reject(error);
+          } else {
+            console.log('✅ [UPDATE-ENDPOINT] Validation passed');
+            resolve();
+          }
         });
       });
 
       const updateData = req.validatedData;
+      console.log('🔧 [UPDATE-ENDPOINT] Validated data:', updateData);
+      console.log('🔧 [UPDATE-ENDPOINT] Validated data keys:', Object.keys(updateData || {}));
+      console.log('🔧 [UPDATE-ENDPOINT] Validated data types:', Object.keys(updateData || {}).map(k => `${k}: ${typeof updateData[k]}`));
 
       // Transform time fields if provided
       const properties = { ...updateData };

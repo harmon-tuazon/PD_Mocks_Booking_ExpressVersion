@@ -30,7 +30,8 @@ const ExamDetailsForm = ({
     const typeColors = {
       'Situational Judgment': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
       'Clinical Skills': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-      'Mini-mock': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+      'Mini-mock': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+      'Mock Discussion': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
     };
     return typeColors[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
   };
@@ -99,6 +100,7 @@ const ExamDetailsForm = ({
                 <option value="Situational Judgment">Situational Judgment</option>
                 <option value="Clinical Skills">Clinical Skills</option>
                 <option value="Mini-mock">Mini-mock</option>
+                <option value="Mock Discussion">Mock Discussion</option>
               </select>
               {getFieldError('mock_type') && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
