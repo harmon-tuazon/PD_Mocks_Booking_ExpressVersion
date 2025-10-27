@@ -80,17 +80,24 @@ module.exports = async (req, res) => {
     const cacheService = getCache();
     const cacheKey = `admin:mock-exam:${mockExamId}:bookings:p${page}:l${limit}:${sortBy}:${sortOrder}${searchTerm ? `:s${Buffer.from(searchTerm).toString('base64')}` : ''}`;
 
-    // Check cache first
-    const cachedData = await cacheService.get(cacheKey);
-    if (cachedData) {
-      console.log(`🎯 [Cache HIT] Bookings for mock exam ${mockExamId}`);
-      return res.status(200).json({
-        ...cachedData,
-        meta: {
-          ...cachedData.meta,
-          cached: true
-        }
-      });
+    // Allow bypassing cache with debug=true query parameter
+    const bypassCache = req.query.debug === 'true';
+
+    // Check cache first (unless bypassed)
+    if (!bypassCache) {
+      const cachedData = await cacheService.get(cacheKey);
+      if (cachedData) {
+        console.log(`🎯 [Cache HIT] Bookings for mock exam ${mockExamId}`);
+        return res.status(200).json({
+          ...cachedData,
+          meta: {
+            ...cachedData.meta,
+            cached: true
+          }
+        });
+      }
+    } else {
+      console.log('🔍 [DEBUG MODE] Cache bypassed due to debug=true parameter');
     }
 
     console.log(`📋 [Cache MISS] Fetching bookings for mock exam ${mockExamId}`);
@@ -121,6 +128,12 @@ module.exports = async (req, res) => {
       `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}`
     );
 
+    // DEBUG: Log the full associations response
+    console.log('🔍 [DEBUG] Full HubSpot associations response:', JSON.stringify(mockExamWithAssociations, null, 2));
+    console.log('🔍 [DEBUG] Associations object:', mockExamWithAssociations.associations);
+    console.log('🔍 [DEBUG] Looking for key:', HUBSPOT_OBJECTS.bookings);
+    console.log('🔍 [DEBUG] Association keys available:', Object.keys(mockExamWithAssociations.associations || {}));
+
     // Extract booking IDs from associations
     const bookingIds = [];
     if (mockExamWithAssociations.associations?.[HUBSPOT_OBJECTS.bookings]?.results?.length > 0) {
@@ -128,6 +141,8 @@ module.exports = async (req, res) => {
         bookingIds.push(association.id);
       });
     }
+
+    console.log('🔍 [DEBUG] Extracted booking IDs:', bookingIds);
 
     // If there are no bookings, return empty result
     let allBookings = [];
