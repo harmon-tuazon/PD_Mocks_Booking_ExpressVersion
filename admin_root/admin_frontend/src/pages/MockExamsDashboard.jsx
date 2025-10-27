@@ -26,10 +26,11 @@ function MockExamsDashboard() {
     toggleSort,
     hasActiveFilters,
     activeFilterCount,
-    getQueryParams
+    getQueryParams,
+    getFilterParams // NEW: Excludes sort params for client-side sorting
   } = useTableFilters();
 
-  // Fetch mock exams data with infinite scroll
+  // Fetch mock exams data with infinite scroll (list view)
   const {
     data: mockExamsData,
     isLoading: isLoadingExams,
@@ -49,13 +50,59 @@ function MockExamsDashboard() {
   }, [mockExamsData]);
 
   // Fetch aggregates data when in aggregate view mode
+  // Use getFilterParams to ONLY refetch when filters change, NOT when sort changes
   const {
     data: aggregatesData,
     isLoading: isLoadingAggregates,
     error: aggregatesError
-  } = useFetchAggregates(getQueryParams, {
+  } = useFetchAggregates(getFilterParams, {
     enabled: viewMode === 'aggregate'
   });
+
+  // Client-side sorted aggregates
+  // This ensures sorting doesn't trigger API calls
+  const sortedAggregates = useMemo(() => {
+    if (!aggregatesData || !Array.isArray(aggregatesData)) return [];
+
+    // Create a copy to avoid mutating original array
+    const sorted = [...aggregatesData];
+
+    // Map backend sort names to frontend column names for matching
+    const columnMap = {
+      'date': 'exam_date',
+      'type': 'mock_type',
+      'location': 'location'
+    };
+
+    const sortColumn = columnMap[filters.sort_by] || filters.sort_by;
+
+    // Sort based on current filter settings
+    sorted.sort((a, b) => {
+      let compareValue = 0;
+
+      switch (sortColumn) {
+        case 'location':
+          compareValue = (a.location || '').localeCompare(b.location || '');
+          break;
+        case 'exam_date':
+          // Compare dates
+          const dateA = new Date(a.exam_date);
+          const dateB = new Date(b.exam_date);
+          compareValue = dateA - dateB;
+          break;
+        case 'mock_type':
+          compareValue = (a.mock_type || '').localeCompare(b.mock_type || '');
+          break;
+        default:
+          compareValue = 0;
+      }
+
+      // Apply sort order (ascending or descending)
+      return filters.sort_order === 'asc' ? compareValue : -compareValue;
+    });
+
+    return sorted;
+  }, [aggregatesData, filters.sort_by, filters.sort_order]);
 
   // Fetch metrics data (only pass non-empty date filters)
   const metricsFilters = useMemo(() => {
@@ -70,15 +117,15 @@ function MockExamsDashboard() {
     isLoading: isLoadingMetrics
   } = useMockExamsMetrics(metricsFilters);
 
-  // Handle sorting for list view (backend)
+  // Handle sorting for list view (backend sorting with API call)
   const handleSort = (column) => {
     toggleSort(column);
   };
 
-  // Handle sorting for aggregate view (backend)
-  // Maps frontend column names to backend expected names
+  // Handle sorting for aggregate view (client-side sorting, no API call)
+  // Maps frontend column names to backend names for state consistency
   const handleAggregateSort = (column) => {
-    // Map frontend column names to backend names
+    // Map frontend column names to backend names for state
     const columnMap = {
       'exam_date': 'date',
       'mock_type': 'type',
@@ -87,6 +134,8 @@ function MockExamsDashboard() {
     
     const backendColumn = columnMap[column] || column;
     toggleSort(backendColumn);
+    // Note: This updates state but doesn't trigger API call because
+    // useFetchAggregates uses getFilterParams (which excludes sort)
   };
 
   // Handler for viewing a mock exam session
@@ -170,8 +219,8 @@ function MockExamsDashboard() {
 
         {/* Mock Exams Table */}
         <MockExamsTable
-          key={JSON.stringify(getQueryParams) + viewMode}
-          data={viewMode === 'aggregate' ? aggregatesData : allExams}
+          key={JSON.stringify(getFilterParams) + viewMode}
+          data={viewMode === 'aggregate' ? sortedAggregates : allExams}
           isLoading={viewMode === 'aggregate' ? isLoadingAggregates : isLoadingExams}
           onSort={viewMode === 'aggregate' ? handleAggregateSort : handleSort}
           currentSort={viewMode === 'aggregate' ? getCurrentSortForAggregate() : {

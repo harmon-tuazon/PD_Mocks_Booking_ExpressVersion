@@ -127,6 +127,7 @@ export function useTableFilters(initialFilters = {}) {
 
   /**
    * Get query params for API call (removes empty values)
+   * INCLUDES sort parameters - use for paginated list view
    */
   const getQueryParams = useMemo(() => {
     const params = {};
@@ -134,6 +135,24 @@ export function useTableFilters(initialFilters = {}) {
       const value = filters[key];
       if (value !== '' && value !== 'all') {
         params[key] = value;
+      }
+    });
+    return params;
+  }, [filters]);
+
+  /**
+   * Get filter params for API call (EXCLUDES sort and page parameters)
+   * Use for aggregate view to avoid refetching on sort changes
+   */
+  const getFilterParams = useMemo(() => {
+    const params = {};
+    Object.keys(filters).forEach(key => {
+      // Exclude sort_by, sort_order, and page from API params
+      if (key !== 'sort_by' && key !== 'sort_order' && key !== 'page') {
+        const value = filters[key];
+        if (value !== '' && value !== 'all') {
+          params[key] = value;
+        }
       }
     });
     return params;
@@ -149,7 +168,8 @@ export function useTableFilters(initialFilters = {}) {
     toggleSort,
     hasActiveFilters,
     activeFilterCount,
-    getQueryParams
+    getQueryParams,
+    getFilterParams // NEW: For client-side sorting scenarios
   };
 }
 
