@@ -392,11 +392,21 @@ const schemas = {
         'number.max': 'Limit cannot exceed 100'
       }),
     sort_by: Joi.string()
-      .valid('exam_date', 'start_time', 'capacity', 'total_bookings', 'location', 'mock_type', 'is_active', 'hs_createdate', 'hs_lastmodifieddate')
+      .valid(
+        'exam_date', 'date',          // Accept both mapped and unmapped
+        'start_time', 
+        'capacity', 
+        'total_bookings', 
+        'location', 
+        'mock_type', 'type',          // Accept both mapped and unmapped
+        'is_active', 
+        'hs_createdate', 
+        'hs_lastmodifieddate'
+      )
       .optional()
       .default('exam_date')
       .messages({
-        'any.only': 'sort_by must be one of: exam_date, start_time, capacity, total_bookings, location, mock_type, is_active, hs_createdate, hs_lastmodifieddate'
+        'any.only': 'sort_by must be one of: exam_date, date, start_time, capacity, total_bookings, location, mock_type, type, is_active, hs_createdate, hs_lastmodifieddate'
       }),
     sort_order: Joi.string()
       .valid('asc', 'desc')
@@ -435,7 +445,7 @@ const schemas = {
       .messages({
         'string.pattern.base': 'filter_date_to must be in YYYY-MM-DD format'
       })
-  }),
+  }),,
 
   // Schema for updating mock exams (Admin)
   mockExamUpdate: Joi.object({

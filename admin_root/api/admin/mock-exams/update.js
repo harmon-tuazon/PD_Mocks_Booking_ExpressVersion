@@ -34,12 +34,20 @@ module.exports = async (req, res) => {
       }
 
       console.log('🔧 [UPDATE-ENDPOINT] Starting validation...');
+      console.log('🔧 [UPDATE-ENDPOINT] Data being validated:', {
+        query: req.query,
+        body: req.body,
+        combined: { ...req.query, ...req.body }
+      });
+
       // Validate update data
       const validator = validationMiddleware('mockExamUpdate');
       await new Promise((resolve, reject) => {
         validator(req, res, (error) => {
           if (error) {
             console.error('❌ [UPDATE-ENDPOINT] Validation error:', error);
+            console.error('❌ [UPDATE-ENDPOINT] Error message:', error.message);
+            console.error('❌ [UPDATE-ENDPOINT] Validation details:', error.validationErrors);
             reject(error);
           } else {
             console.log('✅ [UPDATE-ENDPOINT] Validation passed');

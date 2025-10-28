@@ -65,12 +65,19 @@ module.exports = async (req, res) => {
 
     console.log(`📋 [Cache MISS] Fetching from HubSpot: ${cacheKey.substring(0, 80)}...`);
 
+    // Map frontend column names to HubSpot property names
+    const columnMap = {
+      'date': 'exam_date',
+      'type': 'mock_type'
+    };
+    const mappedSortBy = columnMap[sort_by] || sort_by;
+
     // Fetch mock exams from HubSpot
     // Transform parameters to match HubSpot service method expectations
     const result = await hubspot.listMockExams({
       page,
       limit,
-      sortBy: sort_by,
+      sortBy: mappedSortBy,
       sortOrder: sort_order === 'asc' ? 'ascending' : 'descending',
       location: filters.location,
       mockType: filters.mock_type,
