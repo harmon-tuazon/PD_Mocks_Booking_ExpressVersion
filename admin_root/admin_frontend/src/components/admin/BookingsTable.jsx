@@ -212,12 +212,19 @@ const BookingsTable = ({
                   <SortableHeader column="email" align="center">Email</SortableHeader>
                   <SortableHeader column="student_id" align="center">Student ID</SortableHeader>
                   <SortableHeader column="dominant_hand" align="center">Dominant Hand</SortableHeader>
-                  <SortableHeader column="created_at" align="center">Booking Date</SortableHeader>
 
-                  {/* Attendance status column - Always visible */}
+                  {/* Attendance status column - Always visible, moved before booking date */}
                   <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Attendance
                   </th>
+
+                  {/* Attending Location column */}
+                  <SortableHeader column="attending_location" align="center">Attending Location</SortableHeader>
+
+                  {/* Token Used column */}
+                  <SortableHeader column="token_used" align="center">Token Used</SortableHeader>
+
+                  <SortableHeader column="created_at" align="center">Booking Date</SortableHeader>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">

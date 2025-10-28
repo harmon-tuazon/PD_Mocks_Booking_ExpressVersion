@@ -179,6 +179,8 @@ module.exports = async (req, res) => {
               'contact_id',
               'booking_status',
               'attendance',
+              'attending_location',
+              'token_used',
               'hs_createdate',
               'hs_lastmodifieddate'
             ],
@@ -260,6 +262,8 @@ module.exports = async (req, res) => {
         contact_id: props.contact_id || '',
         booking_status: props.booking_status || '',
         attendance: props.attendance || '',
+        attending_location: props.attending_location || '',
+        token_used: props.token_used || '',
         created_at: props.hs_createdate || '',
         updated_at: props.hs_lastmodifieddate || props.hs_createdate || ''
       };
