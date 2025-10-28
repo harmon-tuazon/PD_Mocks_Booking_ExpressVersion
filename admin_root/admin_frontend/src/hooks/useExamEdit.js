@@ -20,24 +20,15 @@ import {
 const notify = {
   success: (message) => {
     console.log('✅ Success:', message);
-    toast.success(message, {
-      duration: 4000,
-      position: 'top-right',
-    });
+    toast.success(message);
   },
   error: (message) => {
     console.error('❌ Error:', message);
-    toast.error(message, {
-      duration: 5000,
-      position: 'top-right',
-    });
+    toast.error(message);
   },
   info: (message) => {
     console.log('ℹ️ Info:', message);
-    toast(message, {
-      duration: 3000,
-      position: 'top-right',
-    });
+    toast(message);
   }
 };
 

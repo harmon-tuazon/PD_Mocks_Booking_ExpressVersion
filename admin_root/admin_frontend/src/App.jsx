@@ -22,7 +22,46 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Toaster />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          // Default duration for all toasts
+          duration: 4000,
+          // Global base styling
+          style: {
+            padding: '16px 20px',
+            fontSize: '15px',
+            fontWeight: '500',
+            minWidth: '300px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            borderRadius: '8px',
+          },
+          // Success toast styling
+          success: {
+            duration: 4000,
+            style: {
+              background: '#10B981',
+              color: '#ffffff',
+            },
+            iconTheme: {
+              primary: '#ffffff',
+              secondary: '#10B981',
+            },
+          },
+          // Error toast styling
+          error: {
+            duration: 5000,
+            style: {
+              background: '#EF4444',
+              color: '#ffffff',
+            },
+            iconTheme: {
+              primary: '#ffffff',
+              secondary: '#EF4444',
+            },
+          },
+        }}
+      />
       <Router>
         <ThemeProvider>
           <AuthProvider>
