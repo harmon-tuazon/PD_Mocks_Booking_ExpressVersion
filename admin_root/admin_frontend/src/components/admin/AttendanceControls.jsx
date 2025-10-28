@@ -45,14 +45,21 @@ const AttendanceControls = ({
   // If not in attendance mode, show the toggle button
   if (!isAttendanceMode) {
     return (
-      <div className="flex items-center gap-4">
-        {/* Summary Badge */}
-        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-          <span className="font-medium">{attendedCount} / {totalCount}</span>
-          <span>attended</span>
+      <div className="flex items-center justify-between">
+        {/* Summary Badge - More Prominent */}
+        <div className="inline-flex items-center gap-3 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <CheckCircleIcon className="h-6 w-6 text-gray-600 dark:text-gray-400" />
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {attendedCount} / {totalCount}
+            </span>
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              attended
+            </span>
+          </div>
         </div>
 
-        {/* Toggle Button */}
+        {/* Toggle Button - Moved to Right */}
         <button
           onClick={onToggleMode}
           className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors shadow-sm"
