@@ -419,6 +419,118 @@
 }
 
 @layer utilities {
+  /* Modern Form Input Styling */
+
+  /* Select Dropdown Styling */
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+  }
+
+  /* Dark mode dropdown arrow */
+  @media (prefers-color-scheme: dark) {
+    select {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    }
+  }
+
+  /* Use brand color for native controls */
+  select,
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="week"],
+  input[type="month"] {
+    accent-color: #0660B2;
+  }
+
+  /* Custom styling for date/time picker icons */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="week"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+
+  input[type="date"]:hover::-webkit-calendar-picker-indicator,
+  input[type="time"]:hover::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator,
+  input[type="week"]:hover::-webkit-calendar-picker-indicator,
+  input[type="month"]:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
+  }
+
+  /* Option styling for select dropdowns */
+  select option {
+    padding: 0.5rem 0.75rem;
+    background-color: white;
+    color: rgb(17, 24, 39);
+  }
+
+  select option:hover,
+  select option:focus {
+    background-color: #0660B2;
+    color: white;
+  }
+
+  /* Selected option styling */
+  select option:checked {
+    background: linear-gradient(0deg, #0660B2 0%, #0660B2 100%);
+    color: white;
+    font-weight: 500;
+  }
+
+  /* Dark mode options */
+  @media (prefers-color-scheme: dark) {
+    select option {
+      background-color: rgb(55, 65, 81);
+      color: rgb(243, 244, 246);
+    }
+
+    select option:hover,
+    select option:focus {
+      background-color: #0660B2;
+      color: white;
+    }
+
+    select option:checked {
+      background: linear-gradient(0deg, #0660B2 0%, #0660B2 100%);
+      color: white;
+    }
+  }
+
+  /* Firefox-specific select styling */
+  @-moz-document url-prefix() {
+    select {
+      padding-right: 2rem;
+    }
+  }
+
+  /* Disabled state styling */
+  select:disabled,
+  input[type="date"]:disabled,
+  input[type="time"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: rgb(243, 244, 246);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    select:disabled,
+    input[type="date"]:disabled,
+    input[type="time"]:disabled {
+      background-color: rgb(31, 41, 55);
+      opacity: 0.4;
+    }
+  }
+
   .text-balance {
     text-wrap: balance;
   }

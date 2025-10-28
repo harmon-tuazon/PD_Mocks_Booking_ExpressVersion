@@ -154,7 +154,7 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
                   type="time"
                   value={slot.start_time}
                   onChange={(e) => updateTimeSlot(index, 'start_time', e.target.value)}
-                  className="block w-full px-3 py-1.5 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                  className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-150 text-sm"
                   required
                 />
               </div>
@@ -167,7 +167,7 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
                   type="time"
                   value={slot.end_time}
                   onChange={(e) => updateTimeSlot(index, 'end_time', e.target.value)}
-                  className="block w-full px-3 py-1.5 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                  className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-150 text-sm"
                   required
                 />
               </div>

@@ -52,7 +52,7 @@ const ExamDetailsForm = ({
   // Helper for input field classes
   const getInputClasses = (fieldName) => {
     const hasError = getFieldError(fieldName);
-    const baseClasses = 'block w-full rounded-md transition-colors px-3 py-2';
+    const baseClasses = 'block w-full rounded-md shadow-sm transition-colors duration-150 px-3 py-2 text-sm focus:outline-none focus:ring-2';
 
     if (!isEditing) {
       return `${baseClasses} bg-gray-50 dark:bg-gray-800 border-0 text-gray-900 dark:text-gray-100 cursor-not-allowed`;
