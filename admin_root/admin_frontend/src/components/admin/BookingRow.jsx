@@ -75,7 +75,7 @@ const BookingRow = ({
     >
       {/* Checkbox (only in attendance mode) */}
       {isAttendanceMode && (
-        <td className="px-6 py-4 whitespace-nowrap text-center w-12">
+        <td className="px-4 py-3 whitespace-nowrap text-center w-12">
           {isAttended ? (
             <div className="flex items-center justify-center">
               <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -93,8 +93,8 @@ const BookingRow = ({
       )}
 
       {/* Name */}
-      <td className="px-6 py-4 whitespace-nowrap text-center">
-        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
           {booking.first_name && booking.last_name
             ? `${booking.first_name} ${booking.last_name}`
             : booking.name || 'N/A'}
@@ -102,28 +102,28 @@ const BookingRow = ({
       </td>
 
       {/* Email */}
-      <td className="px-6 py-4 whitespace-nowrap text-center">
-        <div className="text-sm text-gray-900 dark:text-gray-100">
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        <div className="text-xs text-gray-900 dark:text-gray-100">
           {booking.email || 'N/A'}
         </div>
       </td>
 
       {/* Student ID */}
-      <td className="px-6 py-4 whitespace-nowrap text-center">
-        <div className="text-sm text-gray-900 dark:text-gray-100">
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        <div className="text-xs text-gray-900 dark:text-gray-100">
           {formatStudentId(booking.student_id)}
         </div>
       </td>
 
       {/* Dominant Hand */}
-      <td className="px-6 py-4 whitespace-nowrap text-center">
-        <div className="text-sm text-gray-900 dark:text-gray-100">
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        <div className="text-xs text-gray-900 dark:text-gray-100">
           {formatDominantHand(booking.dominant_hand)}
         </div>
       </td>
 
       {/* Attendance Status - Moved before booking date */}
-      <td className="px-6 py-4 whitespace-nowrap text-center">
+      <td className="px-4 py-3 whitespace-nowrap text-center">
         {booking.attendance && booking.attendance !== '' ? (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
             {booking.attendance}
@@ -136,22 +136,22 @@ const BookingRow = ({
       </td>
 
       {/* Attending Location */}
-      <td className="px-6 py-4 whitespace-nowrap text-center">
-        <div className="text-sm text-gray-900 dark:text-gray-100">
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        <div className="text-xs text-gray-900 dark:text-gray-100">
           {booking.attending_location || '-'}
         </div>
       </td>
 
       {/* Token Used */}
-      <td className="px-6 py-4 whitespace-nowrap text-center">
-        <div className="text-sm text-gray-900 dark:text-gray-100">
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        <div className="text-xs text-gray-900 dark:text-gray-100">
           {booking.token_used || '-'}
         </div>
       </td>
 
       {/* Booking Date */}
-      <td className="px-6 py-4 whitespace-nowrap text-center">
-        <div className="text-sm text-gray-500 dark:text-gray-400">
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        <div className="text-xs text-gray-500 dark:text-gray-400">
           {formatBookingDate(booking.created_at)}
         </div>
         {booking.created_at && (

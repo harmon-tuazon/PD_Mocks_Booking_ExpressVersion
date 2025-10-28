@@ -73,7 +73,7 @@ const BookingsTable = ({
   const SortableHeader = ({ column, children, align = 'left' }) => (
     <th
       scope="col"
-      className={`px-6 py-3 text-${align} text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors`}
+      className={`px-4 py-3 text-${align} text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors`}
       onClick={() => onSort(column)}
     >
       <div className={`flex items-center ${align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : ''}`}>
@@ -203,7 +203,7 @@ const BookingsTable = ({
                 <tr>
                   {/* Checkbox column (attendance mode only) */}
                   {isAttendanceMode && (
-                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">
+                    <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">
                       <input type="checkbox" disabled className="h-4 w-4 opacity-0" />
                     </th>
                   )}
@@ -214,7 +214,7 @@ const BookingsTable = ({
                   <SortableHeader column="dominant_hand" align="center">Dominant Hand</SortableHeader>
 
                   {/* Attendance status column - Always visible, moved before booking date */}
-                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Attendance
                   </th>
 
@@ -260,7 +260,7 @@ const BookingsTable = ({
               </div>
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <p className="text-xs text-gray-700 dark:text-gray-300">
                     Showing <span className="font-medium">{startItem}</span> to{' '}
                     <span className="font-medium">{endItem}</span> of{' '}
                     <span className="font-medium">{totalItems}</span> results
