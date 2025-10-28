@@ -178,6 +178,9 @@ module.exports = async (req, res) => {
               'dominant_hand',
               'contact_id',
               'booking_status',
+              'attendance_status',
+              'attendance_marked_at',
+              'attendance_marked_by',
               'hs_createdate',
               'hs_lastmodifieddate'
             ],
@@ -257,6 +260,10 @@ module.exports = async (req, res) => {
         student_id: props.student_id || '',
         dominant_hand: dominantHand,
         contact_id: props.contact_id || '',
+        booking_status: props.booking_status || '',
+        attendance_status: props.attendance_status || '',
+        attendance_marked_at: props.attendance_marked_at || null,
+        attendance_marked_by: props.attendance_marked_by || null,
         created_at: props.hs_createdate || '',
         updated_at: props.hs_lastmodifieddate || props.hs_createdate || ''
       };
