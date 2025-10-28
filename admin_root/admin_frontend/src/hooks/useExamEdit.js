@@ -5,6 +5,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { mockExamsApi } from '../services/adminApi';
 import { useFormValidation } from './useFormValidation';
 import {
@@ -14,21 +15,29 @@ import {
 } from '../utils/examValidation';
 
 /**
- * Simple notification helper (can be replaced with react-hot-toast later)
+ * Notification helper using react-hot-toast
  */
 const notify = {
   success: (message) => {
     console.log('✅ Success:', message);
-    // You can replace this with a proper toast notification library
-    alert(`Success: ${message}`);
+    toast.success(message, {
+      duration: 4000,
+      position: 'top-right',
+    });
   },
   error: (message) => {
     console.error('❌ Error:', message);
-    alert(`Error: ${message}`);
+    toast.error(message, {
+      duration: 5000,
+      position: 'top-right',
+    });
   },
   info: (message) => {
     console.log('ℹ️ Info:', message);
-    alert(`Info: ${message}`);
+    toast(message, {
+      duration: 3000,
+      position: 'top-right',
+    });
   }
 };
 
