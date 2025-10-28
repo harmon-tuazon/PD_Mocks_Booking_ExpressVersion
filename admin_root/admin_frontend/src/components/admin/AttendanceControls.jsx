@@ -46,11 +46,11 @@ const AttendanceControls = ({
   if (!isAttendanceMode) {
     return (
       <div className="flex items-center justify-between">
-        {/* Summary Badge - More Prominent */}
-        <div className="inline-flex items-center gap-3 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <CheckCircleIcon className="h-6 w-6 text-gray-600 dark:text-gray-400" />
+        {/* Summary Badge - Same dimensions as button */}
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
+          <CheckCircleIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <span className="text-base font-bold text-gray-900 dark:text-gray-100">
               {attendedCount} / {totalCount}
             </span>
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
