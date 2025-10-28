@@ -73,18 +73,12 @@ module.exports = async (req, res) => {
       const { HubSpotService } = require('../../_shared/hubspot');
       const hubspotService = new HubSpotService();
 
-      // Use exam_date from update or fetch from existing mock exam
-      let examDate = updateData.exam_date;
+      // exam_date should be provided by frontend when updating times
+      const examDate = updateData.exam_date;
 
       if (!examDate) {
-        console.log('🕐 [UPDATE] exam_date not in update, fetching from HubSpot');
-        const existingExam = await hubspot.getMockExam(mockExamId);
-        examDate = existingExam.properties.exam_date;
-        console.log('🕐 [UPDATE] Fetched exam_date from existing exam:', examDate);
-
-        if (!examDate) {
-          throw new Error('Could not determine exam_date for timezone conversion');
-        }
+        console.error('❌ [UPDATE] exam_date missing for time conversion');
+        throw new Error('exam_date is required when updating start_time or end_time');
       }
 
       if (updateData.start_time) {

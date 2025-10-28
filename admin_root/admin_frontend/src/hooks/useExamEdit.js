@@ -295,6 +295,12 @@ export function useExamEdit(examData) {
       return true;
     }
 
+    // If updating time fields, include exam_date for timezone conversion (even if date didn't change)
+    if ((changes.start_time || changes.end_time) && !changes.exam_date && formData.exam_date) {
+      console.log('🕐 [SAVE-CHANGES] Time fields updated, appending exam_date from formData:', formData.exam_date);
+      changes.exam_date = formData.exam_date;
+    }
+
     // Format data for API
     const apiData = formatFormDataForApi(changes);
     console.log('🔧 [SAVE-CHANGES] Formatted API data:', apiData);
