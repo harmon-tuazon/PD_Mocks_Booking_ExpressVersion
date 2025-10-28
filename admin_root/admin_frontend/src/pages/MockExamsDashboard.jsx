@@ -37,14 +37,14 @@ function MockExamsDashboard() {
   // Build query params with page number
   const queryParamsWithPage = useMemo(() => {
     return {
-      ...getQueryParams(),
+      ...getQueryParams,  // getQueryParams is already a memoized value, not a function
       page: currentPage,
       limit: itemsPerPage
     };
   }, [getQueryParams, currentPage]);
 
-  // Memoize filter params (without sort) for aggregates
-  const filterParamsOnly = useMemo(() => getFilterParams(), [getFilterParams]);
+  // Use filter params directly (it's already memoized in useTableFilters)
+  const filterParamsOnly = getFilterParams;  // Already a memoized value, not a function
 
   // Fetch mock exams data with pagination (list view)
   const {
