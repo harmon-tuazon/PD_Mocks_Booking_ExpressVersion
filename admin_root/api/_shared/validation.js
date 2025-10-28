@@ -445,7 +445,7 @@ const schemas = {
       .messages({
         'string.pattern.base': 'filter_date_to must be in YYYY-MM-DD format'
       })
-  }),,
+  }),
 
   // Schema for updating mock exams (Admin)
   mockExamUpdate: Joi.object({
