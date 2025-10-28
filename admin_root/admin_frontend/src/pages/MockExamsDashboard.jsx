@@ -163,7 +163,7 @@ function MockExamsDashboard() {
         {/* Page Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="font-headline text-2xl font-bold text-navy-900 dark:text-gray-100">Mock Exams Dashboard</h1>
+            <h1 className="font-headline text-3xl font-bold text-navy-900 dark:text-gray-100">Mock Exams Dashboard</h1>
             <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">
               View and manage all mock exam sessions
             </p>
