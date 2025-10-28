@@ -44,8 +44,8 @@ const BookingRow = ({
     return id;
   };
 
-  // Check if this booking is already attended
-  const isAttended = booking.attendance_status === 'attended';
+  // Check if this booking is already attended (attendance property is "Yes" or has any value)
+  const isAttended = booking.attendance && booking.attendance !== '';
 
   // Handle row click in attendance mode
   const handleRowClick = () => {
@@ -140,16 +140,16 @@ const BookingRow = ({
         )}
       </td>
 
-      {/* Attendance Status (in attendance mode) */}
+      {/* Attendance Status (in attendance mode) - Show actual attendance property value */}
       {isAttendanceMode && (
         <td className="px-6 py-4 whitespace-nowrap text-center">
-          {isAttended ? (
+          {booking.attendance && booking.attendance !== '' ? (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
-              Attended
+              {booking.attendance}
             </span>
           ) : (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-              Pending
+              -
             </span>
           )}
         </td>

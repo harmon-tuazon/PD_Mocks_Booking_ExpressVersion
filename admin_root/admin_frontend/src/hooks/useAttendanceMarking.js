@@ -18,14 +18,14 @@ const useAttendanceMarking = (bookings = []) => {
   // Selected booking IDs (using Set for O(1) lookups)
   const [selectedIds, setSelectedIds] = useState(new Set());
 
-  // Get bookings that can be selected (not already attended)
+  // Get bookings that can be selected (only those with empty attendance)
   const selectableBookings = bookings.filter(
-    booking => booking.attendance_status !== 'attended'
+    booking => !booking.attendance || booking.attendance === ''
   );
 
-  // Count attended bookings
+  // Count attended bookings (those with non-empty attendance value)
   const attendedCount = bookings.filter(
-    booking => booking.attendance_status === 'attended'
+    booking => booking.attendance && booking.attendance !== ''
   ).length;
 
   /**
@@ -46,8 +46,8 @@ const useAttendanceMarking = (bookings = []) => {
    * Toggle selection of a single booking
    */
   const toggleSelection = useCallback((bookingId, booking) => {
-    // Cannot select already attended bookings
-    if (booking?.attendance_status === 'attended') {
+    // Cannot select bookings with attendance already marked (non-empty attendance)
+    if (booking?.attendance && booking.attendance !== '') {
       return false;
     }
 

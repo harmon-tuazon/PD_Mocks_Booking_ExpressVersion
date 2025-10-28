@@ -43,7 +43,7 @@ const useMarkAttendanceMutation = (mockExamId) => {
       // Snapshot the previous value
       const previousBookings = queryClient.getQueryData(['admin', 'bookings', mockExamId]);
 
-      // Optimistically update to the new value
+      // Optimistically update to the new value (simplified - only update attendance)
       queryClient.setQueryData(['admin', 'bookings', mockExamId], (old) => {
         if (!old?.data) return old;
 
@@ -53,9 +53,7 @@ const useMarkAttendanceMutation = (mockExamId) => {
             if (bookingIds.includes(booking.id)) {
               return {
                 ...booking,
-                attendance_status: 'attended',
-                attendance_marked_at: new Date().toISOString(),
-                booking_status: 'completed'
+                attendance: 'Yes'
               };
             }
             return booking;

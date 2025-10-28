@@ -42,12 +42,11 @@ const HUBSPOT_OBJECTS = {
 const MAX_BOOKINGS_PER_REQUEST = 100;
 const HUBSPOT_BATCH_SIZE = 100;
 
-// Attendance status mapping
-const ATTENDANCE_STATUS = {
-  attended: 'attended',
-  no_show: 'no_show',
-  pending: 'pending',
-  cancelled: 'cancelled'
+// Attendance values (simplified - using single property)
+const ATTENDANCE_VALUES = {
+  YES: 'Yes',
+  NO: 'No',
+  EMPTY: ''
 };
 
 module.exports = async (req, res) => {
@@ -218,30 +217,25 @@ module.exports = async (req, res) => {
         continue;
       }
 
-      // Determine the new attendance status
-      const newAttendanceStatus = requestedUpdate.attended ? ATTENDANCE_STATUS.attended : ATTENDANCE_STATUS.no_show;
-      const currentAttendanceStatus = existingBooking.properties.attendance_status;
+      // Determine the new attendance value (simplified)
+      const newAttendance = requestedUpdate.attended ? ATTENDANCE_VALUES.YES : ATTENDANCE_VALUES.NO;
+      const currentAttendance = existingBooking.properties.attendance || ATTENDANCE_VALUES.EMPTY;
 
       // Check if update is needed (idempotency)
-      if (currentAttendanceStatus === newAttendanceStatus) {
+      if (currentAttendance === newAttendance) {
         results.skipped.push({
           bookingId: booking.bookingId,
-          reason: 'Already has the requested attendance status',
-          currentStatus: currentAttendanceStatus
+          reason: 'Already has the requested attendance value',
+          currentValue: currentAttendance
         });
         continue;
       }
 
-      // Prepare update
+      // Prepare update (simplified - only update attendance property)
       updates.push({
         id: booking.bookingId,
         properties: {
-          attendance_status: newAttendanceStatus,
-          attendance_marked_at: new Date().toISOString(),
-          attendance_marked_by: adminEmail,
-          attendance_notes: requestedUpdate.notes || '',
-          // Update booking status to completed if attended
-          booking_status: requestedUpdate.attended ? 'completed' : existingBooking.properties.booking_status
+          attendance: newAttendance
         }
       });
     }
@@ -372,11 +366,8 @@ async function fetchBookingsBatch(bookingIds) {
       const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
         properties: [
           'booking_status',
-          'mock_exam_id',
           'contact_id',
-          'attendance_status',
-          'attendance_marked_at',
-          'attendance_marked_by'
+          'attendance'
         ],
         inputs: chunk.map(id => ({ id }))
       });
