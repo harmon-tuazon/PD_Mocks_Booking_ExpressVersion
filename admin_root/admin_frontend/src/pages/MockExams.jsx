@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { mockExamsApi } from '../services/adminApi';
 import TimeSlotBuilder from '../components/admin/TimeSlotBuilder';
 import MockExamPreview from '../components/admin/MockExamPreview';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 const MOCK_TYPES = [
   'Situational Judgment',
@@ -23,6 +25,8 @@ const LOCATIONS = [
 ];
 
 function MockExams() {
+  const navigate = useNavigate();
+
   const [showPreview, setShowPreview] = useState(false);
   const [formData, setFormData] = useState({
     mock_type: 'Situational Judgment',
@@ -106,11 +110,15 @@ function MockExams() {
 
   const isFormValid = () => {
     const commonFieldsValid = formData.mock_type && formData.exam_date && formData.capacity && formData.location;
-    
+
     // Check if all time slots are filled
     const timeSlotsValid = timeSlots.length > 0 && timeSlots.every(slot => slot.start_time && slot.end_time);
-    
+
     return commonFieldsValid && timeSlotsValid;
+  };
+
+  const handleBack = () => {
+    navigate('/mock-exams');
   };
 
   const isLoading = createSingleMutation.isPending || createBulkMutation.isPending;
@@ -119,6 +127,13 @@ function MockExams() {
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
       <div className="container-app py-8">
         <div className="mb-8">
+          <button
+            onClick={handleBack}
+            className="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors mb-4"
+          >
+            <ArrowLeftIcon className="h-4 w-4 mr-1" />
+            Back to Dashboard
+          </button>
           <h1 className="font-headline text-h1 font-bold text-navy-900 dark:text-gray-100">Mock Exams Management</h1>
           <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">Create single or multiple mock exam sessions</p>
         </div>
