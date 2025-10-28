@@ -129,23 +129,9 @@ export function useExamEdit(examData) {
       const updatedProperties = response.mockExam?.properties || {};
       console.log('✅ [SAVE-SUCCESS] Updated properties:', updatedProperties);
 
-      // Update React Query cache with new data
-      queryClient.setQueryData(['mockExam', examData.id], (oldData) => {
-        if (!oldData) return oldData;
-
-        return {
-          ...oldData,
-          mockExam: {
-            ...oldData.mockExam,
-            properties: {
-              ...oldData.mockExam.properties,
-              ...updatedProperties
-            }
-          }
-        };
-      });
-
-      // Invalidate related queries to refetch fresh data
+      // Invalidate queries to refetch fresh data
+      // This is simpler and more reliable than manually updating cache
+      queryClient.invalidateQueries(['mockExam', examData.id]);
       queryClient.invalidateQueries(['mockExams']);
       queryClient.invalidateQueries(['mockExamMetrics']);
       queryClient.invalidateQueries(['mockExamAggregates']);
