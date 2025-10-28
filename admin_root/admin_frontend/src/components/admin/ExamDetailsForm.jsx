@@ -8,6 +8,12 @@ import { ExclamationCircleIcon, InformationCircleIcon } from '@heroicons/react/2
 import { fieldInfoMessages } from '../../utils/examValidation';
 import { formatTime } from '../../utils/timeFormatters';
 import { formatDateLong } from '../../utils/dateUtils';
+import {
+  modernSelectClasses,
+  modernDateTimeClasses,
+  modernCheckboxClasses,
+  modernLabelClasses
+} from '../../constants/formStyles';
 
 const ExamDetailsForm = ({
   exam,
@@ -50,19 +56,30 @@ const ExamDetailsForm = ({
   };
 
   // Helper for input field classes
-  const getInputClasses = (fieldName) => {
+  const getInputClasses = (fieldName, inputType = 'text') => {
     const hasError = getFieldError(fieldName);
-    const baseClasses = 'block w-full rounded-md shadow-sm transition-colors duration-150 px-3 py-2 text-sm focus:outline-none focus:ring-2';
+
+    // Choose base classes based on input type
+    let baseClasses;
+    if (inputType === 'select') {
+      baseClasses = modernSelectClasses;
+    } else if (inputType === 'date' || inputType === 'time') {
+      baseClasses = modernDateTimeClasses;
+    } else if (inputType === 'checkbox') {
+      baseClasses = modernCheckboxClasses;
+    } else {
+      baseClasses = modernSelectClasses; // Default to select classes since most are selects
+    }
 
     if (!isEditing) {
-      return `${baseClasses} bg-gray-50 dark:bg-gray-800 border-0 text-gray-900 dark:text-gray-100 cursor-not-allowed`;
+      return `${baseClasses} opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800`;
     }
 
     if (hasError) {
-      return `${baseClasses} border-2 border-red-500 bg-red-50 dark:bg-red-900/20 text-gray-900 dark:text-gray-100 focus:border-red-500 focus:ring-red-500`;
+      return `${baseClasses} border-red-500 dark:border-red-400 focus:ring-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20`;
     }
 
-    return `${baseClasses} border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-primary-500 focus:ring-primary-500`;
+    return baseClasses;
   };
 
   return (
@@ -74,7 +91,7 @@ const ExamDetailsForm = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {/* Mock Type */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className={modernLabelClasses}>
             Mock Type
           </label>
           {isEditing ? (
@@ -85,7 +102,7 @@ const ExamDetailsForm = ({
                 onChange={(e) => onFieldChange('mock_type', e.target.value)}
                 onBlur={() => onFieldBlur('mock_type')}
                 disabled={isSaving}
-                className={getInputClasses('mock_type')}
+                className={getInputClasses('mock_type', 'select')}
               >
                 <option value="">Select a type</option>
                 <option value="Situational Judgment">Situational Judgment</option>
@@ -111,7 +128,7 @@ const ExamDetailsForm = ({
 
         {/* Status */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className={modernLabelClasses}>
             Status
           </label>
           {isEditing ? (
@@ -123,7 +140,7 @@ const ExamDetailsForm = ({
                   checked={displayData.is_active !== undefined ? displayData.is_active : true}
                   onChange={(e) => onFieldChange('is_active', e.target.checked)}
                   disabled={isSaving}
-                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700"
+                  className={modernCheckboxClasses}
                 />
                 <span className="ml-2 text-gray-900 dark:text-gray-100">
                   {displayData.is_active ? 'Active' : 'Inactive'}
@@ -139,7 +156,7 @@ const ExamDetailsForm = ({
 
         {/* Exam Date */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className={modernLabelClasses}>
             Exam Date
           </label>
           {isEditing ? (
@@ -151,7 +168,7 @@ const ExamDetailsForm = ({
                 onChange={(e) => onFieldChange('exam_date', e.target.value)}
                 onBlur={() => onFieldBlur('exam_date')}
                 disabled={isSaving}
-                className={getInputClasses('exam_date')}
+                className={getInputClasses('exam_date', 'date')}
               />
               {getFieldError('exam_date') && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
@@ -169,7 +186,7 @@ const ExamDetailsForm = ({
 
         {/* Location */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className={modernLabelClasses}>
             Location
           </label>
           {isEditing ? (
@@ -180,7 +197,7 @@ const ExamDetailsForm = ({
                 onChange={(e) => onFieldChange('location', e.target.value)}
                 onBlur={() => onFieldBlur('location')}
                 disabled={isSaving}
-                className={getInputClasses('location')}
+                className={getInputClasses('location', 'select')}
               >
                 <option value="">Select a location</option>
                 <option value="Mississauga">Mississauga</option>
@@ -208,7 +225,7 @@ const ExamDetailsForm = ({
 
         {/* Start Time */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className={modernLabelClasses}>
             Start Time
           </label>
           {isEditing ? (
@@ -220,7 +237,7 @@ const ExamDetailsForm = ({
                 onChange={(e) => onFieldChange('start_time', e.target.value)}
                 onBlur={() => onFieldBlur('start_time')}
                 disabled={isSaving}
-                className={getInputClasses('start_time')}
+                className={getInputClasses('start_time', 'time')}
               />
               {getFieldError('start_time') && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
@@ -238,7 +255,7 @@ const ExamDetailsForm = ({
 
         {/* End Time */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className={modernLabelClasses}>
             End Time
           </label>
           {isEditing ? (
@@ -250,7 +267,7 @@ const ExamDetailsForm = ({
                 onChange={(e) => onFieldChange('end_time', e.target.value)}
                 onBlur={() => onFieldBlur('end_time')}
                 disabled={isSaving}
-                className={getInputClasses('end_time')}
+                className={getInputClasses('end_time', 'time')}
               />
               {getFieldError('end_time') && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">

@@ -5,6 +5,10 @@
  */
 
 import { ListBulletIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
+import {
+  modernSelectClasses,
+  modernDateTimeClasses
+} from '../../constants/formStyles';
 
 const LOCATIONS = [
   'Mississauga',
@@ -43,7 +47,7 @@ const FilterBar = ({
             type="date"
             value={filters.filter_date_from || ''}
             onChange={(e) => onFilterChange('filter_date_from', e.target.value)}
-            className="block px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-150 text-sm"
+            className={modernDateTimeClasses}
             title="From Date"
           />
           <span className="text-gray-500 dark:text-gray-400 text-sm">to</span>
@@ -51,7 +55,7 @@ const FilterBar = ({
             type="date"
             value={filters.filter_date_to || ''}
             onChange={(e) => onFilterChange('filter_date_to', e.target.value)}
-            className="block px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-150 text-sm"
+            className={modernDateTimeClasses}
             title="To Date"
           />
         </div>
@@ -61,7 +65,7 @@ const FilterBar = ({
           <select
             value={filters.filter_location || ''}
             onChange={(e) => onFilterChange('filter_location', e.target.value)}
-            className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-150 text-sm"
+            className={modernSelectClasses}
             title="Location"
           >
             <option value="">All Locations</option>
@@ -78,7 +82,7 @@ const FilterBar = ({
           <select
             value={filters.filter_mock_type || ''}
             onChange={(e) => onFilterChange('filter_mock_type', e.target.value)}
-            className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-150 text-sm"
+            className={modernSelectClasses}
             title="Mock Type"
           >
             <option value="">All Types</option>
@@ -95,7 +99,7 @@ const FilterBar = ({
           <select
             value={filters.filter_status || 'all'}
             onChange={(e) => onFilterChange('filter_status', e.target.value)}
-            className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-150 text-sm"
+            className={modernSelectClasses}
             title="Status"
           >
             <option value="all">All Status</option>

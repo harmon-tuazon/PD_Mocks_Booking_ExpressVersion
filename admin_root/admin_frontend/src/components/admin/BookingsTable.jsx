@@ -14,6 +14,7 @@ import { useState, useEffect } from 'react';
 import BookingRow from './BookingRow';
 import AttendanceControls from './AttendanceControls';
 import { MagnifyingGlassIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { modernInputClasses, modernCheckboxClasses } from '../../constants/formStyles';
 
 const BookingsTable = ({
   bookings,
@@ -167,7 +168,7 @@ const BookingsTable = ({
               value={localSearchTerm}
               onChange={(e) => setLocalSearchTerm(e.target.value)}
               placeholder="Search by name, email, or student ID..."
-              className="block w-full md:w-80 pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+              className={`${modernInputClasses} pl-10 md:w-80`}
             />
           </div>
         </div>
@@ -204,7 +205,7 @@ const BookingsTable = ({
                   {/* Checkbox column (attendance mode only) */}
                   {isAttendanceMode && (
                     <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">
-                      <input type="checkbox" disabled className="h-4 w-4 opacity-0" />
+                      <input type="checkbox" disabled className={`${modernCheckboxClasses} opacity-0`} />
                     </th>
                   )}
 

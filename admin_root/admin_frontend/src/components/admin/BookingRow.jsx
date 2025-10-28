@@ -11,6 +11,7 @@
 
 import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
+import { modernCheckboxClasses } from '../../constants/formStyles';
 
 const BookingRow = ({
   booking,
@@ -86,7 +87,7 @@ const BookingRow = ({
               checked={isSelected}
               onChange={handleCheckboxClick}
               onClick={(e) => e.stopPropagation()}
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+              className={`${modernCheckboxClasses} cursor-pointer`}
             />
           )}
         </td>

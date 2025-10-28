@@ -419,44 +419,190 @@
 }
 
 @layer utilities {
-  /* Modern Form Input Styling */
+  /* AGGRESSIVE Form Input Styling - Override ALL Browser Defaults */
 
-  /* Select Dropdown Styling */
-  select {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.5rem center;
-    background-repeat: no-repeat;
-    background-size: 1.5em 1.5em;
-    padding-right: 2.5rem;
+  /* FORCE Override ALL Select Elements with Maximum Specificity */
+  select,
+  select.form-select,
+  .form-select,
+  select[class*="block"],
+  select[class*="w-full"],
+  body select,
+  main select,
+  div select,
+  form select {
+    /* Remove ALL browser styling */
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+
+    /* Custom dropdown arrow with proper colors */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23374151'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 1.25em 1.25em !important;
+    padding-right: 2.5rem !important;
+
+    /* FORCE white background in light mode */
+    background-color: white !important;
   }
 
-  /* Dark mode dropdown arrow */
+  /* Dark mode - FORCE gray background and light arrow */
   @media (prefers-color-scheme: dark) {
-    select {
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    select,
+    select.form-select,
+    .form-select,
+    select[class*="block"],
+    select[class*="w-full"],
+    body select,
+    main select,
+    div select,
+    form select {
+      background-color: rgb(55, 65, 81) !important; /* gray-700 */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") !important;
     }
   }
 
-  /* Use brand color for native controls */
+  /* FORCE Option Styling - Light Mode */
+  select option,
+  select optgroup,
+  select option:not(:checked),
+  select option:not(:selected) {
+    background-color: white !important;
+    color: black !important;
+    padding: 0.5rem 0.75rem !important;
+  }
+
+  /* Selected/Hovered Option - Light Mode */
+  select option:checked,
+  select option:selected,
+  select option:hover,
+  select option:focus,
+  select option:active {
+    background: #0660B2 !important;
+    background-color: #0660B2 !important;
+    color: white !important;
+    font-weight: 500 !important;
+  }
+
+  /* FORCE Option Styling - Dark Mode */
+  @media (prefers-color-scheme: dark) {
+    select option,
+    select optgroup,
+    select option:not(:checked),
+    select option:not(:selected) {
+      background-color: rgb(55, 65, 81) !important; /* gray-700 */
+      color: white !important;
+    }
+
+    select option:checked,
+    select option:selected,
+    select option:hover,
+    select option:focus,
+    select option:active {
+      background: #0660B2 !important;
+      background-color: #0660B2 !important;
+      color: white !important;
+    }
+  }
+
+  /* FORCE Input Field Styling for ALL Types */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="week"],
+  input[type="month"],
+  input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+  textarea {
+    /* Remove browser styling */
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+
+    /* Consistent styling */
+    background-color: white !important;
+    border: 1px solid rgb(209, 213, 219) !important; /* gray-300 */
+    border-radius: 0.375rem !important;
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+    color: rgb(17, 24, 39) !important; /* gray-900 */
+
+    /* Transitions */
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+  }
+
+  /* Dark mode inputs */
+  @media (prefers-color-scheme: dark) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="search"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    input[type="week"],
+    input[type="month"],
+    input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+    textarea {
+      background-color: rgb(55, 65, 81) !important; /* gray-700 */
+      border-color: rgb(75, 85, 99) !important; /* gray-600 */
+      color: rgb(243, 244, 246) !important; /* gray-100 */
+    }
+  }
+
+  /* Focus states for ALL form elements */
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none !important;
+    border-color: #0660B2 !important;
+    box-shadow: 0 0 0 3px rgba(6, 96, 178, 0.1) !important;
+  }
+
+  /* Brand color for native controls */
   select,
   input[type="date"],
   input[type="time"],
   input[type="datetime-local"],
   input[type="week"],
-  input[type="month"] {
-    accent-color: #0660B2;
+  input[type="month"],
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: #0660B2 !important;
   }
 
-  /* Custom styling for date/time picker icons */
+  /* Date/Time picker icon styling */
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="time"]::-webkit-calendar-picker-indicator,
   input[type="datetime-local"]::-webkit-calendar-picker-indicator,
   input[type="week"]::-webkit-calendar-picker-indicator,
   input[type="month"]::-webkit-calendar-picker-indicator {
-    cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
+    cursor: pointer !important;
+    opacity: 0.7 !important;
+    transition: opacity 0.2s ease !important;
+    filter: invert(0) !important;
+  }
+
+  /* Dark mode calendar icons */
+  @media (prefers-color-scheme: dark) {
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator,
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+    input[type="week"]::-webkit-calendar-picker-indicator,
+    input[type="month"]::-webkit-calendar-picker-indicator {
+      filter: invert(1) !important;
+    }
   }
 
   input[type="date"]:hover::-webkit-calendar-picker-indicator,
@@ -464,70 +610,120 @@
   input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator,
   input[type="week"]:hover::-webkit-calendar-picker-indicator,
   input[type="month"]:hover::-webkit-calendar-picker-indicator {
-    opacity: 1;
+    opacity: 1 !important;
   }
 
-  /* Option styling for select dropdowns */
-  select option {
-    padding: 0.5rem 0.75rem;
-    background-color: white;
-    color: rgb(17, 24, 39);
+  /* Remove Safari/WebKit specific styling */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
   }
 
-  select option:hover,
-  select option:focus {
-    background-color: #0660B2;
-    color: white;
-  }
-
-  /* Selected option styling */
-  select option:checked {
-    background: linear-gradient(0deg, #0660B2 0%, #0660B2 100%);
-    color: white;
-    font-weight: 500;
-  }
-
-  /* Dark mode options */
-  @media (prefers-color-scheme: dark) {
-    select option {
-      background-color: rgb(55, 65, 81);
-      color: rgb(243, 244, 246);
-    }
-
-    select option:hover,
-    select option:focus {
-      background-color: #0660B2;
-      color: white;
-    }
-
-    select option:checked {
-      background: linear-gradient(0deg, #0660B2 0%, #0660B2 100%);
-      color: white;
-    }
-  }
-
-  /* Firefox-specific select styling */
+  /* Firefox specific overrides */
   @-moz-document url-prefix() {
     select {
-      padding-right: 2rem;
+      padding-right: 2rem !important;
+    }
+
+    input[type="number"] {
+      -moz-appearance: textfield !important;
+    }
+  }
+
+  /* Remove Edge/IE clear button */
+  input::-ms-clear,
+  input::-ms-reveal {
+    display: none !important;
+  }
+
+  /* Override select expand button in IE */
+  select::-ms-expand {
+    display: none !important;
+  }
+
+  /* Scrollbar styling for select dropdowns */
+  select::-webkit-scrollbar {
+    width: 8px !important;
+  }
+
+  select::-webkit-scrollbar-track {
+    background: #f1f1f1 !important;
+    border-radius: 4px !important;
+  }
+
+  select::-webkit-scrollbar-thumb {
+    background: #888 !important;
+    border-radius: 4px !important;
+  }
+
+  select::-webkit-scrollbar-thumb:hover {
+    background: #555 !important;
+  }
+
+  /* Dark mode scrollbar */
+  @media (prefers-color-scheme: dark) {
+    select::-webkit-scrollbar-track {
+      background: rgb(31, 41, 55) !important;
+    }
+
+    select::-webkit-scrollbar-thumb {
+      background: rgb(107, 114, 128) !important;
+    }
+
+    select::-webkit-scrollbar-thumb:hover {
+      background: rgb(156, 163, 175) !important;
     }
   }
 
   /* Disabled state styling */
   select:disabled,
-  input[type="date"]:disabled,
-  input[type="time"]:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background-color: rgb(243, 244, 246);
+  input:disabled,
+  textarea:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    background-color: rgb(243, 244, 246) !important;
   }
 
   @media (prefers-color-scheme: dark) {
     select:disabled,
-    input[type="date"]:disabled,
-    input[type="time"]:disabled {
-      background-color: rgb(31, 41, 55);
-      opacity: 0.4;
+    input:disabled,
+    textarea:disabled {
+      background-color: rgb(31, 41, 55) !important;
+      opacity: 0.4 !important;
+    }
+  }
+
+  /* Placeholder text colors */
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(156, 163, 175) !important; /* gray-400 */
+    opacity: 1 !important;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    input::placeholder,
+    textarea::placeholder {
+      color: rgb(107, 114, 128) !important; /* gray-500 */
+    }
+  }
+
+  /* Autofill background color fix */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px white inset !important;
+    -webkit-text-fill-color: rgb(17, 24, 39) !important;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    input:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 30px rgb(55, 65, 81) inset !important;
+      -webkit-text-fill-color: rgb(243, 244, 246) !important;
     }
   }
 

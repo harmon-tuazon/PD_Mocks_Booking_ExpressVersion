@@ -5,6 +5,13 @@ import { mockExamsApi } from '../services/adminApi';
 import TimeSlotBuilder from '../components/admin/TimeSlotBuilder';
 import MockExamPreview from '../components/admin/MockExamPreview';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import {
+  modernSelectClasses,
+  modernDateTimeClasses,
+  modernInputClasses,
+  modernCheckboxClasses,
+  modernLabelClasses
+} from '../constants/formStyles';
 
 const MOCK_TYPES = [
   'Situational Judgment',
@@ -190,13 +197,13 @@ function MockExams() {
               {/* Common Properties */}
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className={modernLabelClasses}>
                     Mock Type <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.mock_type}
                     onChange={(e) => setFormData({ ...formData, mock_type: e.target.value })}
-                    className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-150 text-sm"
+                    className={modernSelectClasses}
                     required
                   >
                     {MOCK_TYPES.map((type) => (
@@ -208,20 +215,20 @@ function MockExams() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className={modernLabelClasses}>
                     Exam Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
                     value={formData.exam_date}
                     onChange={(e) => setFormData({ ...formData, exam_date: e.target.value })}
-                    className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-150 text-sm"
+                    className={modernDateTimeClasses}
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className={modernLabelClasses}>
                     Capacity <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -230,19 +237,19 @@ function MockExams() {
                     max="100"
                     value={formData.capacity}
                     onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-                    className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-150 text-sm"
+                    className={modernInputClasses}
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className={modernLabelClasses}>
                     Location <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-150 text-sm"
+                    className={modernSelectClasses}
                     required
                   >
                     {LOCATIONS.map((loc) => (
@@ -261,7 +268,7 @@ function MockExams() {
                   id="is_active"
                   checked={formData.is_active}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded checked:bg-primary-600 checked:border-primary-600"
+                  className={modernCheckboxClasses}
                 />
                 <label htmlFor="is_active" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                   Active (available for booking)

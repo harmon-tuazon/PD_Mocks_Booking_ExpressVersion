@@ -4,6 +4,10 @@
  */
 
 import { useState } from 'react';
+import {
+  modernDateTimeClasses,
+  modernLabelClasses
+} from '../../constants/formStyles';
 
 const TimeSlotBuilder = ({ timeSlots, onChange }) => {
   const [errors, setErrors] = useState({});
@@ -108,7 +112,7 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label className={modernLabelClasses}>
           Time Slots <span className="text-red-500">*</span>
         </label>
         <button
@@ -147,27 +151,27 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
           >
             <div className="flex-1 grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">
+                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
                   Start Time
                 </label>
                 <input
                   type="time"
                   value={slot.start_time}
                   onChange={(e) => updateTimeSlot(index, 'start_time', e.target.value)}
-                  className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-150 text-sm"
+                  className={modernDateTimeClasses}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">
+                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
                   End Time
                 </label>
                 <input
                   type="time"
                   value={slot.end_time}
                   onChange={(e) => updateTimeSlot(index, 'end_time', e.target.value)}
-                  className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-150 text-sm"
+                  className={modernDateTimeClasses}
                   required
                 />
               </div>
