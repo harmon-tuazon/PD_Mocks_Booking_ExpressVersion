@@ -1,11 +1,23 @@
 /**
  * BookingRow Component
  * Individual row in the bookings table
+ *
+ * Enhanced with attendance marking:
+ * - Checkbox for selection (attendance mode only)
+ * - Attendance status badge
+ * - Selection highlighting
+ * - Click to toggle selection
  */
 
 import { formatDistanceToNow } from 'date-fns';
+import { CheckCircleIcon } from '@heroicons/react/24/solid';
 
-const BookingRow = ({ booking }) => {
+const BookingRow = ({
+  booking,
+  isAttendanceMode = false,
+  isSelected = false,
+  onToggleSelection
+}) => {
   // Format dominant hand display
   const formatDominantHand = (hand) => {
     if (!hand) return 'N/A';
@@ -32,8 +44,54 @@ const BookingRow = ({ booking }) => {
     return id;
   };
 
+  // Check if this booking is already attended
+  const isAttended = booking.attendance_status === 'attended';
+
+  // Handle row click in attendance mode
+  const handleRowClick = () => {
+    if (isAttendanceMode && onToggleSelection && !isAttended) {
+      onToggleSelection(booking.id, booking);
+    }
+  };
+
+  // Handle checkbox click (prevent row click event)
+  const handleCheckboxClick = (e) => {
+    e.stopPropagation();
+    if (onToggleSelection && !isAttended) {
+      onToggleSelection(booking.id, booking);
+    }
+  };
+
   return (
-    <tr className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+    <tr
+      className={`transition-colors ${
+        isSelected
+          ? 'bg-primary-50 dark:bg-primary-900/20'
+          : isAttendanceMode && !isAttended
+          ? 'hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer'
+          : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+      }`}
+      onClick={handleRowClick}
+    >
+      {/* Checkbox (only in attendance mode) */}
+      {isAttendanceMode && (
+        <td className="px-6 py-4 whitespace-nowrap text-center w-12">
+          {isAttended ? (
+            <div className="flex items-center justify-center">
+              <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
+          ) : (
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={handleCheckboxClick}
+              onClick={(e) => e.stopPropagation()}
+              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+            />
+          )}
+        </td>
+      )}
+
       {/* Name */}
       <td className="px-6 py-4 whitespace-nowrap text-center">
         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -81,6 +139,21 @@ const BookingRow = ({ booking }) => {
           </div>
         )}
       </td>
+
+      {/* Attendance Status (in attendance mode) */}
+      {isAttendanceMode && (
+        <td className="px-6 py-4 whitespace-nowrap text-center">
+          {isAttended ? (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
+              Attended
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+              Pending
+            </span>
+          )}
+        </td>
+      )}
     </tr>
   );
 };

@@ -528,6 +528,43 @@ const schemas = {
       .messages({
         'string.pattern.base': 'date_to must be in YYYY-MM-DD format'
       })
+  }),
+
+  // Schema for batch attendance update (Admin)
+  batchAttendanceUpdate: Joi.object({
+    bookings: Joi.array()
+      .items(
+        Joi.object({
+          bookingId: Joi.string()
+            .pattern(/^\d+$/)
+            .required()
+            .messages({
+              'string.pattern.base': 'Booking ID must be numeric',
+              'any.required': 'Booking ID is required'
+            }),
+          attended: Joi.boolean()
+            .required()
+            .messages({
+              'boolean.base': 'Attended must be a boolean value',
+              'any.required': 'Attended status is required'
+            }),
+          notes: Joi.string()
+            .max(500)
+            .optional()
+            .allow('')
+            .messages({
+              'string.max': 'Notes cannot exceed 500 characters'
+            })
+        })
+      )
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one booking must be provided',
+        'array.max': 'Maximum 100 bookings can be updated per request',
+        'any.required': 'Bookings array is required'
+      })
   })
 
 };

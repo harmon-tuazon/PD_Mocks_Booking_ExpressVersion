@@ -1,10 +1,18 @@
 /**
  * BookingsTable Component
  * Displays booking data in a sortable, searchable, paginated table
+ *
+ * Enhanced with attendance marking:
+ * - Attendance controls component
+ * - Checkbox column (attendance mode only)
+ * - Attendance status column (attendance mode only)
+ * - Hide search in attendance mode
+ * - Selection highlighting
  */
 
 import { useState, useEffect } from 'react';
 import BookingRow from './BookingRow';
+import AttendanceControls from './AttendanceControls';
 import { MagnifyingGlassIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 const BookingsTable = ({
@@ -18,7 +26,9 @@ const BookingsTable = ({
   currentPage,
   totalPages,
   totalItems,
-  onPageChange
+  onPageChange,
+  // Attendance marking props
+  attendanceProps = null
 }) => {
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm || '');
 
@@ -121,23 +131,47 @@ const BookingsTable = ({
   // Defensive: Ensure bookings is an array
   const safeBookings = Array.isArray(bookings) ? bookings : [];
 
+  // Extract attendance props if provided
+  const isAttendanceMode = attendanceProps?.isAttendanceMode || false;
+  const attendanceState = attendanceProps || {};
+
   return (
     <div>
-      {/* Search Bar */}
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-          </div>
-          <input
-            type="text"
-            value={localSearchTerm}
-            onChange={(e) => setLocalSearchTerm(e.target.value)}
-            placeholder="Search by name, email, or student ID..."
-            className="block w-full md:w-80 pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+      {/* Attendance Controls (shown when attendance functionality is available) */}
+      {attendanceProps && (
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <AttendanceControls
+            isAttendanceMode={attendanceState.isAttendanceMode}
+            isSubmitting={attendanceState.isSubmitting}
+            selectedCount={attendanceState.selectedCount}
+            selectableCount={attendanceState.selectableCount}
+            attendedCount={attendanceState.attendedCount}
+            totalCount={attendanceState.totalCount}
+            onToggleMode={attendanceState.onToggleMode}
+            onSelectAll={attendanceState.onSelectAll}
+            onClearAll={attendanceState.onClearAll}
+            onMarkAttended={attendanceState.onMarkAttended}
           />
         </div>
-      </div>
+      )}
+
+      {/* Search Bar (hidden in attendance mode) */}
+      {!isAttendanceMode && (
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={localSearchTerm}
+              onChange={(e) => setLocalSearchTerm(e.target.value)}
+              placeholder="Search by name, email, or student ID..."
+              className="block w-full md:w-80 pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto">
@@ -167,16 +201,36 @@ const BookingsTable = ({
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
+                  {/* Checkbox column (attendance mode only) */}
+                  {isAttendanceMode && (
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">
+                      <input type="checkbox" disabled className="h-4 w-4 opacity-0" />
+                    </th>
+                  )}
+
                   <SortableHeader column="name" align="center">Name</SortableHeader>
                   <SortableHeader column="email" align="center">Email</SortableHeader>
                   <SortableHeader column="student_id" align="center">Student ID</SortableHeader>
                   <SortableHeader column="dominant_hand" align="center">Dominant Hand</SortableHeader>
                   <SortableHeader column="created_at" align="center">Booking Date</SortableHeader>
+
+                  {/* Attendance status column (attendance mode only) */}
+                  {isAttendanceMode && (
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Status
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
                 {safeBookings.map((booking) => (
-                  <BookingRow key={booking.id} booking={booking} />
+                  <BookingRow
+                    key={booking.id}
+                    booking={booking}
+                    isAttendanceMode={isAttendanceMode}
+                    isSelected={attendanceState.isSelected?.(booking.id)}
+                    onToggleSelection={attendanceState.onToggleSelection}
+                  />
                 ))}
               </tbody>
             </table>

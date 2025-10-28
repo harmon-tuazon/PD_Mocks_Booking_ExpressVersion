@@ -2,12 +2,19 @@
  * MockExamDetail Page
  * Displays detailed view of a single mock exam with its bookings
  * Supports inline editing of exam details
+ *
+ * Enhanced with attendance marking:
+ * - Mark attendance for multiple bookings in batch
+ * - Optimistic UI updates
+ * - Comprehensive error handling
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMockExamDetail } from '../hooks/useMockExamDetail';
 import { useBookingsByExam } from '../hooks/useBookingsByExam';
 import { useExamEdit } from '../hooks/useExamEdit';
+import useAttendanceMarking from '../hooks/useAttendanceMarking';
+import useMarkAttendanceMutation from '../hooks/useMarkAttendanceMutation';
 import ExamDetailsForm from '../components/admin/ExamDetailsForm';
 import BookingsTable from '../components/admin/BookingsTable';
 import EditControls from '../components/admin/EditControls';
@@ -49,6 +56,36 @@ function MockExamDetail() {
     page: currentPage,
     limit: itemsPerPage
   });
+
+  // Initialize attendance marking state
+  const bookings = bookingsData?.data || [];
+  const attendance = useAttendanceMarking(bookings);
+
+  // Initialize attendance mutation
+  const markAttendanceMutation = useMarkAttendanceMutation(id);
+
+  // Handle mark attended action
+  const handleMarkAttended = () => {
+    if (attendance.selectedCount === 0) return;
+
+    // Set to submitting state
+    attendance.startSubmitting();
+
+    // Call mutation
+    markAttendanceMutation.mutate(
+      { bookingIds: attendance.selectedIds },
+      {
+        onSuccess: () => {
+          // Exit attendance mode and clear selections
+          attendance.exitToView();
+        },
+        onError: () => {
+          // Return to selecting mode (keep selections for retry)
+          attendance.returnToSelecting();
+        }
+      }
+    );
+  };
 
   // Handle sorting
   const handleSort = (column) => {
@@ -204,6 +241,20 @@ function MockExamDetail() {
             totalPages={bookingsData?.pagination?.totalPages || 1}
             totalItems={bookingsData?.pagination?.total || 0}
             onPageChange={handlePageChange}
+            attendanceProps={{
+              isAttendanceMode: attendance.isAttendanceMode,
+              isSubmitting: attendance.isSubmitting,
+              selectedCount: attendance.selectedCount,
+              selectableCount: attendance.selectableCount,
+              attendedCount: attendance.attendedCount,
+              totalCount: attendance.totalCount,
+              onToggleMode: attendance.toggleMode,
+              onSelectAll: attendance.selectAll,
+              onClearAll: attendance.clearAll,
+              onMarkAttended: handleMarkAttended,
+              isSelected: attendance.isSelected,
+              onToggleSelection: attendance.toggleSelection
+            }}
           />
         </div>
       </div>
