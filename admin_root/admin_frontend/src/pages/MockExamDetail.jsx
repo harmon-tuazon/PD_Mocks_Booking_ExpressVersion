@@ -197,7 +197,7 @@ function MockExamDetail() {
               onCancel={examEdit.forceCancelEdit}
             />
           </div>
-          <h1 className="font-headline text-h1 font-bold text-navy-900 dark:text-gray-100">
+          <h1 className="font-headline text-2xl font-bold text-navy-900 dark:text-gray-100">
             {examEdit.isEditing ? 'Editing Mock Exam' : 'Mock Exam Details'}
           </h1>
           <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">

@@ -134,7 +134,7 @@ function MockExams() {
             <ArrowLeftIcon className="h-4 w-4 mr-1" />
             Back to Dashboard
           </button>
-          <h1 className="font-headline text-h1 font-bold text-navy-900 dark:text-gray-100">Mock Exams Management</h1>
+          <h1 className="font-headline text-2xl font-bold text-navy-900 dark:text-gray-100">Mock Exams Management</h1>
           <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">Create single or multiple mock exam sessions</p>
         </div>
 
