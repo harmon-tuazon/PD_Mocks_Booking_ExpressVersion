@@ -80,7 +80,7 @@ const AggregateRow = ({ aggregate, onView }) => {
 
         {/* Sessions Count Column */}
         <td className="px-6 py-4">
-          <span className="inline-flex px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium">
+          <span className="inline-flex items-center justify-center min-w-[120px] px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium">
             {aggregate.session_count} {aggregate.session_count === 1 ? 'session' : 'sessions'}
           </span>
         </td>
