@@ -43,6 +43,9 @@ function MockExamsDashboard() {
     };
   }, [getQueryParams, currentPage]);
 
+  // Memoize filter params (without sort) for aggregates
+  const filterParamsOnly = useMemo(() => getFilterParams(), [getFilterParams]);
+
   // Fetch mock exams data with pagination (list view)
   const {
     data: mockExamsResponse,
@@ -71,12 +74,12 @@ function MockExamsDashboard() {
   }, [mockExamsResponse]);
 
   // Fetch aggregates data when in aggregate view mode
-  // Use getFilterParams to ONLY refetch when filters change, NOT when sort changes
+  // Use filterParamsOnly to ONLY refetch when filters change, NOT when sort changes
   const {
     data: aggregatesData,
     isLoading: isLoadingAggregates,
     error: aggregatesError
-  } = useFetchAggregates(getFilterParams, {
+  } = useFetchAggregates(filterParamsOnly, {
     enabled: viewMode === 'aggregate'
   });
 
@@ -261,7 +264,7 @@ function MockExamsDashboard() {
 
         {/* Mock Exams Table */}
         <MockExamsTable
-          key={JSON.stringify(getFilterParams) + viewMode}
+          key={JSON.stringify(filterParamsOnly) + viewMode}
           data={viewMode === 'aggregate' ? sortedAggregates : mockExamsData}
           isLoading={viewMode === 'aggregate' ? isLoadingAggregates : isLoadingExams}
           onSort={viewMode === 'aggregate' ? handleAggregateSort : handleSort}
