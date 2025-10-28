@@ -4,7 +4,7 @@
  */
 
 import { Link, useNavigate } from 'react-router-dom';
-import { useMockExamsInfinite, useMockExamsMetrics } from '../hooks/useMockExamsData';
+import { useMockExamsData, useMockExamsMetrics } from '../hooks/useMockExamsData';
 import { useTableFilters } from '../hooks/useTableFilters';
 import { useFetchAggregates } from '../hooks/useFetchAggregates';
 import DashboardMetrics from '../components/admin/DashboardMetrics';
@@ -18,6 +18,10 @@ function MockExamsDashboard() {
   // State for view mode
   const [viewMode, setViewMode] = useState('aggregate'); // 'list' or 'aggregate'
 
+  // State for pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50; // Match BookingsTable
+
   // Initialize filter management
   const {
     filters,
@@ -30,24 +34,41 @@ function MockExamsDashboard() {
     getFilterParams // NEW: Excludes sort params for client-side sorting
   } = useTableFilters();
 
-  // Fetch mock exams data with infinite scroll (list view)
-  const {
-    data: mockExamsData,
-    isLoading: isLoadingExams,
-    error: examsError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage
-  } = useMockExamsInfinite(getQueryParams);
+  // Build query params with page number
+  const queryParamsWithPage = useMemo(() => {
+    return {
+      ...getQueryParams(),
+      page: currentPage,
+      limit: itemsPerPage
+    };
+  }, [getQueryParams, currentPage]);
 
-  // Flatten all pages of data into a single array
-  const allExams = useMemo(() => {
-    if (!mockExamsData?.pages || !Array.isArray(mockExamsData.pages)) return [];
-    return mockExamsData.pages.flatMap(page => {
-      // Defensive: Ensure page.data is an array before flattening
-      return Array.isArray(page?.data) ? page.data : [];
-    });
-  }, [mockExamsData]);
+  // Fetch mock exams data with pagination (list view)
+  const {
+    data: mockExamsResponse,
+    isLoading: isLoadingExams,
+    error: examsError
+  } = useMockExamsData(queryParamsWithPage, {
+    enabled: viewMode === 'list'
+  });
+
+  // Extract data and pagination info
+  const mockExamsData = useMemo(() => {
+    if (!mockExamsResponse) return [];
+    // Defensive: Ensure data is an array
+    return Array.isArray(mockExamsResponse.data) ? mockExamsResponse.data : [];
+  }, [mockExamsResponse]);
+
+  const paginationInfo = useMemo(() => {
+    if (!mockExamsResponse?.pagination) {
+      return {
+        total_pages: 1,
+        total_records: 0,
+        current_page: 1
+      };
+    }
+    return mockExamsResponse.pagination;
+  }, [mockExamsResponse]);
 
   // Fetch aggregates data when in aggregate view mode
   // Use getFilterParams to ONLY refetch when filters change, NOT when sort changes
@@ -117,9 +138,27 @@ function MockExamsDashboard() {
     isLoading: isLoadingMetrics
   } = useMockExamsMetrics(metricsFilters);
 
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
+
+  // Handle filter change - reset to first page when filters change
+  const handleFilterChange = (filterName, value) => {
+    updateFilter(filterName, value);
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+
+  // Handle reset filters - also reset page
+  const handleResetFilters = () => {
+    resetFilters();
+    setCurrentPage(1); // Reset to first page when filters are cleared
+  };
+
   // Handle sorting for list view (backend sorting with API call)
   const handleSort = (column) => {
     toggleSort(column);
+    setCurrentPage(1); // Reset to first page when sorting changes
   };
 
   // Handle sorting for aggregate view (client-side sorting, no API call)
@@ -131,7 +170,7 @@ function MockExamsDashboard() {
       'mock_type': 'type',
       'location': 'location'
     };
-    
+
     const backendColumn = columnMap[column] || column;
     toggleSort(backendColumn);
     // Note: This updates state but doesn't trigger API call because
@@ -192,11 +231,14 @@ function MockExamsDashboard() {
         {/* Filter Bar */}
         <FilterBar
           filters={filters}
-          onFilterChange={updateFilter}
-          onReset={resetFilters}
+          onFilterChange={handleFilterChange}
+          onReset={handleResetFilters}
           activeFilterCount={activeFilterCount}
           viewMode={viewMode}
-          onViewModeChange={setViewMode}
+          onViewModeChange={(newMode) => {
+            setViewMode(newMode);
+            setCurrentPage(1); // Reset to first page when view mode changes
+          }}
         />
 
         {/* Error Message */}
@@ -220,18 +262,20 @@ function MockExamsDashboard() {
         {/* Mock Exams Table */}
         <MockExamsTable
           key={JSON.stringify(getFilterParams) + viewMode}
-          data={viewMode === 'aggregate' ? sortedAggregates : allExams}
+          data={viewMode === 'aggregate' ? sortedAggregates : mockExamsData}
           isLoading={viewMode === 'aggregate' ? isLoadingAggregates : isLoadingExams}
           onSort={viewMode === 'aggregate' ? handleAggregateSort : handleSort}
           currentSort={viewMode === 'aggregate' ? getCurrentSortForAggregate() : {
             sort_by: filters.sort_by,
             sort_order: filters.sort_order
           }}
-          hasNextPage={viewMode === 'aggregate' ? false : hasNextPage}
-          fetchNextPage={viewMode === 'aggregate' ? undefined : fetchNextPage}
-          isFetchingNextPage={viewMode === 'aggregate' ? false : isFetchingNextPage}
           viewMode={viewMode}
           onView={handleView}
+          // Pagination props
+          currentPage={viewMode === 'aggregate' ? 1 : currentPage}
+          totalPages={viewMode === 'aggregate' ? 1 : paginationInfo.total_pages}
+          totalItems={viewMode === 'aggregate' ? sortedAggregates.length : paginationInfo.total_records}
+          onPageChange={handlePageChange}
         />
       </div>
     </div>
