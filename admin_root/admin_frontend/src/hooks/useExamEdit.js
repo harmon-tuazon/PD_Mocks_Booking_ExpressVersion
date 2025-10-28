@@ -123,20 +123,38 @@ export function useExamEdit(examData) {
       return await mockExamsApi.update(examData.id, updates);
     },
     onSuccess: (response) => {
-      // Update cache with new data
-      queryClient.setQueryData(['mockExam', examData.id], (oldData) => ({
-        ...oldData,
-        data: { ...oldData?.data, ...response.data }
-      }));
+      console.log('✅ [SAVE-SUCCESS] Update response:', response);
 
-      // Invalidate related queries
+      // Extract updated properties from response
+      const updatedProperties = response.mockExam?.properties || {};
+      console.log('✅ [SAVE-SUCCESS] Updated properties:', updatedProperties);
+
+      // Update React Query cache with new data
+      queryClient.setQueryData(['mockExam', examData.id], (oldData) => {
+        if (!oldData) return oldData;
+
+        return {
+          ...oldData,
+          mockExam: {
+            ...oldData.mockExam,
+            properties: {
+              ...oldData.mockExam.properties,
+              ...updatedProperties
+            }
+          }
+        };
+      });
+
+      // Invalidate related queries to refetch fresh data
       queryClient.invalidateQueries(['mockExams']);
       queryClient.invalidateQueries(['mockExamMetrics']);
+      queryClient.invalidateQueries(['mockExamAggregates']);
 
-      // Update local state
-      const updatedData = { ...formData, ...response.data };
-      setFormData(updatedData);
-      originalDataRef.current = { ...updatedData };
+      // Update local form state with the updated properties
+      const updatedFormData = { ...formData, ...updatedProperties };
+      console.log('✅ [SAVE-SUCCESS] Updated formData:', updatedFormData);
+      setFormData(updatedFormData);
+      originalDataRef.current = { ...updatedFormData };
 
       // Exit edit mode
       setIsEditing(false);
@@ -147,6 +165,7 @@ export function useExamEdit(examData) {
       notify.success('Mock exam updated successfully');
     },
     onError: (error) => {
+      console.error('❌ [SAVE-ERROR]:', error);
       // Show error message
       const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to save changes';
       notify.error(errorMessage);
