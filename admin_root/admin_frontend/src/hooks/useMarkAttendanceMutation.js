@@ -38,34 +38,33 @@ const useMarkAttendanceMutation = (mockExamId) => {
 
     onMutate: async ({ bookingIds }) => {
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries(['admin', 'bookings', mockExamId]);
+      await queryClient.cancelQueries(['bookings', mockExamId]);
 
       // Snapshot the previous value
-      const previousBookings = queryClient.getQueryData(['admin', 'bookings', mockExamId]);
+      const previousBookings = queryClient.getQueryData(['bookings', mockExamId]);
 
       // Optimistically update to the new value (simplified - only update attendance)
-      queryClient.setQueryData(['admin', 'bookings', mockExamId], (old) => {
-        if (!old?.data) return old;
+      // Update the cache with the correct key structure used by useBookingsByExam
+      queryClient.setQueryData(['bookings', mockExamId], (old) => {
+        if (!Array.isArray(old)) return old;
 
-        return {
-          ...old,
-          data: old.data.map(booking => {
-            if (bookingIds.includes(booking.id)) {
-              return {
-                ...booking,
-                attendance: 'Yes'
-              };
-            }
-            return booking;
-          })
-        };
+        // Update the array directly as that's what useBookingsByExam returns
+        return old.map(booking => {
+          if (bookingIds.includes(booking.id)) {
+            return {
+              ...booking,
+              attendance: 'Yes'
+            };
+          }
+          return booking;
+        });
       });
 
       // Return a context object with the snapshotted value
       return { previousBookings };
     },
 
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       const { summary, results } = data;
 
       // Show success message
@@ -92,17 +91,20 @@ const useMarkAttendanceMutation = (mockExamId) => {
         );
       }
 
-      // Invalidate queries to refetch fresh data
-      queryClient.invalidateQueries(['admin', 'bookings', mockExamId]);
-      queryClient.invalidateQueries(['admin', 'mock-exam', mockExamId]);
-      queryClient.invalidateQueries(['admin', 'metrics']);
+      // Immediately refetch bookings to show updated attendance status
+      // Using the correct query key that matches useBookingsByExam hook
+      await queryClient.refetchQueries(['bookings', mockExamId], { exact: true });
+
+      // Also invalidate related queries for consistency
+      await queryClient.invalidateQueries(['admin', 'mock-exam', mockExamId]);
+      await queryClient.invalidateQueries(['admin', 'metrics']);
     },
 
     onError: (error, variables, context) => {
       // Rollback optimistic update on error
       if (context?.previousBookings) {
         queryClient.setQueryData(
-          ['admin', 'bookings', mockExamId],
+          ['bookings', mockExamId],
           context.previousBookings
         );
       }

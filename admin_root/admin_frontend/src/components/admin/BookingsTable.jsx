@@ -214,12 +214,10 @@ const BookingsTable = ({
                   <SortableHeader column="dominant_hand" align="center">Dominant Hand</SortableHeader>
                   <SortableHeader column="created_at" align="center">Booking Date</SortableHeader>
 
-                  {/* Attendance status column (attendance mode only) */}
-                  {isAttendanceMode && (
-                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Status
-                    </th>
-                  )}
+                  {/* Attendance status column - Always visible */}
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Attendance
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
