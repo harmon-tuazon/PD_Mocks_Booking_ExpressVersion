@@ -108,25 +108,25 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Time Slots <span className="text-red-500">*</span>
         </label>
         <button
           type="button"
           onClick={addTimeSlot}
-          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-primary-600 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-primary-600 dark:text-primary-400 bg-primary-100 dark:bg-primary-900/30 hover:bg-primary-200 dark:hover:bg-primary-900/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
         >
           + Add Time Slot
         </button>
       </div>
 
       {timeSlots.length === 0 && (
-        <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-md bg-gray-50">
-          <p className="text-gray-500">No time slots added yet</p>
+        <div className="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800">
+          <p className="text-gray-500 dark:text-gray-400">No time slots added yet</p>
           <button
             type="button"
             onClick={addTimeSlot}
-            className="mt-2 text-primary-600 hover:text-primary-700 font-medium"
+            className="mt-2 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
           >
             Add your first time slot
           </button>
@@ -134,40 +134,40 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
       )}
 
       {timeSlots.length > 0 && (
-        <div className="border border-gray-300 rounded-md p-4 bg-gray-50">
+        <div className="border border-gray-300 dark:border-gray-600 rounded-md p-4 bg-gray-50 dark:bg-gray-800">
           <div className="space-y-3">
             {timeSlots.map((slot, index) => (
           <div
             key={index}
             className={`flex gap-3 items-start p-3 border rounded-md ${
               overlappingSlots.includes(index)
-                ? 'border-red-300 bg-red-50'
-                : 'border-gray-200 bg-white'
+                ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20'
+                : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700'
             }`}
           >
             <div className="flex-1 grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-gray-600 mb-2">
+                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">
                   Start Time
                 </label>
                 <input
                   type="time"
                   value={slot.start_time}
                   onChange={(e) => updateTimeSlot(index, 'start_time', e.target.value)}
-                  className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                  className="block w-full px-3 py-1.5 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-gray-600 mb-2">
+                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">
                   End Time
                 </label>
                 <input
                   type="time"
                   value={slot.end_time}
                   onChange={(e) => updateTimeSlot(index, 'end_time', e.target.value)}
-                  className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                  className="block w-full px-3 py-1.5 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                   required
                 />
               </div>
@@ -176,7 +176,7 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
             <button
               type="button"
               onClick={() => removeTimeSlot(index)}
-              className="mt-7 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+              className="mt-7 p-2 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
               title="Remove time slot"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,28 +185,28 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
             </button>
 
             {errors[index] && (
-              <div className="col-span-2 text-sm text-red-600">
+              <div className="col-span-2 text-sm text-red-600 dark:text-red-400">
                 {errors[index]}
               </div>
             )}
 
             {overlappingSlots.includes(index) && !errors[index] && (
-              <div className="col-span-2 text-sm text-red-600">
+              <div className="col-span-2 text-sm text-red-600 dark:text-red-400">
                 This time slot overlaps with another slot
               </div>
             )}
           </div>
         ))}
           </div>
-          <p className="mt-3 text-sm text-gray-500">
+          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
             {timeSlots.length} time slot{timeSlots.length > 1 ? 's' : ''} will create {timeSlots.length} mock exam session{timeSlots.length > 1 ? 's' : ''}
           </p>
         </div>
       )}
 
       {overlappingSlots.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-3">
-          <p className="text-sm text-red-800">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
+          <p className="text-sm text-red-800 dark:text-red-200">
             Some time slots are overlapping. Please adjust them before proceeding.
           </p>
         </div>
