@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import SessionRow from './SessionRow';
 import { useFetchAggregateSessions } from '../../hooks/useFetchAggregateSessions';
+import { formatDateLong } from '../../utils/dateUtils';
 
 const AggregateRow = ({ aggregate, onView }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -34,17 +35,6 @@ const AggregateRow = ({ aggregate, onView }) => {
 
   const handleToggle = () => {
     setIsExpanded(!isExpanded);
-  };
-
-  // Format date for display
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
   };
 
   return (
@@ -83,7 +73,7 @@ const AggregateRow = ({ aggregate, onView }) => {
           <div className="flex items-center gap-2">
             <span className="flex-shrink-0 text-lg">📅</span>
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {formatDate(aggregate.exam_date)}
+              {formatDateLong(aggregate.exam_date)}
             </span>
           </div>
         </td>

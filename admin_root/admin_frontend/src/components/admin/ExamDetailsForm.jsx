@@ -4,10 +4,10 @@
  */
 
 import StatusBadge from './StatusBadge';
-import { format } from 'date-fns';
 import { ExclamationCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { fieldInfoMessages } from '../../utils/examValidation';
 import { formatTime } from '../../utils/timeFormatters';
+import { formatDateLong } from '../../utils/dateUtils';
 
 const ExamDetailsForm = ({
   exam,
@@ -36,15 +36,6 @@ const ExamDetailsForm = ({
     return typeColors[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
   };
 
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-      return format(new Date(dateString), 'EEEE, MMMM d, yyyy');
-    } catch {
-      return dateString;
-    }
-  };
 
   // Format time for display - uses production formatter from timeFormatters.js
   // Accepts Unix timestamps (milliseconds) or ISO strings
@@ -171,7 +162,7 @@ const ExamDetailsForm = ({
             </div>
           ) : (
             <div className="text-gray-900 dark:text-gray-100 font-medium">
-              {formatDate(displayData.exam_date)}
+              {formatDateLong(displayData.exam_date)}
             </div>
           )}
         </div>

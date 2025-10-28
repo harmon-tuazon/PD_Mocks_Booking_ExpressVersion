@@ -3,19 +3,9 @@
  * Shows a preview of mock exam(s) that will be created
  */
 
+import { formatDateLong } from '../../utils/dateUtils';
+
 const MockExamPreview = ({ mockExamData, timeSlots, mode }) => {
-  /**
-   * Format date for display
-   */
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
 
   /**
    * Get preview items based on mode
@@ -84,7 +74,7 @@ const MockExamPreview = ({ mockExamData, timeSlots, mode }) => {
               <div className="border-t border-gray-100 pt-2">
                 <div className="text-sm text-gray-700">
                   <span className="font-medium">Date:</span>{' '}
-                  {formatDate(item.exam_date)}
+                  {formatDateLong(item.exam_date)}
                 </div>
               </div>
 

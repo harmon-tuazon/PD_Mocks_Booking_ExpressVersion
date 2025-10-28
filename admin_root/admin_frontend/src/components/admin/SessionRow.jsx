@@ -1,26 +1,8 @@
 import React from 'react';
 import { EyeIcon, ClockIcon, UsersIcon } from '@heroicons/react/24/outline';
+import { formatDateShort } from '../../utils/dateUtils';
 
 const SessionRow = ({ session, nested = false, onView }) => {
-  // Format date string (YYYY-MM-DD) to readable format
-  const formatDate = (dateString) => {
-    if (!dateString) return '--';
-
-    try {
-      // Handle YYYY-MM-DD format from HubSpot
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return '--';
-
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-    } catch (error) {
-      console.error('Error formatting date:', dateString, error);
-      return '--';
-    }
-  };
 
   // Format ISO timestamp to readable time (e.g., "2:00 PM")
   const formatTime = (timeString) => {
@@ -64,7 +46,7 @@ const SessionRow = ({ session, nested = false, onView }) => {
       {/* Date Column */}
       <td className="px-6 py-3">
         <div className="text-sm text-gray-900 dark:text-white">
-          {formatDate(session.exam_date)}
+          {formatDateShort(session.exam_date)}
         </div>
       </td>
 
