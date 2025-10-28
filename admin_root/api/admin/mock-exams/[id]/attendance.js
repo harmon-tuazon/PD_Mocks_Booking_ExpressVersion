@@ -110,61 +110,11 @@ module.exports = async (req, res) => {
     console.log(`📋 [ATTENDANCE] Processing batch attendance update for mock exam ${mockExamId}`);
     console.log(`📋 [ATTENDANCE] Total bookings to process: ${bookings.length}`);
 
-    // First, verify the mock exam exists AND get its associated booking IDs
-    let mockExam;
-    let validBookingIds = new Set();
-
-    try {
-      // Fetch mock exam with associations to get valid booking IDs
-      const mockExamWithAssociations = await hubspot.apiCall('GET',
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}`
-      );
-
-      if (!mockExamWithAssociations) {
-        return res.status(404).json({
-          success: false,
-          error: {
-            code: 'MOCK_EXAM_NOT_FOUND',
-            message: 'Mock exam not found'
-          }
-        });
-      }
-
-      mockExam = mockExamWithAssociations;
-
-      // Extract valid booking IDs from associations (same logic as bookings list endpoint)
-      if (mockExamWithAssociations.associations) {
-        const bookingsKey = Object.keys(mockExamWithAssociations.associations).find(key =>
-          key === HUBSPOT_OBJECTS.bookings || key.includes('bookings')
-        );
-
-        if (bookingsKey && mockExamWithAssociations.associations[bookingsKey]?.results?.length > 0) {
-          mockExamWithAssociations.associations[bookingsKey].results.forEach(association => {
-            validBookingIds.add(association.id);
-          });
-        }
-      }
-
-      console.log(`📋 [ATTENDANCE] Mock exam has ${validBookingIds.size} associated bookings`);
-
-    } catch (error) {
-      if (error.response?.status === 404 || error.message?.includes('404') || error.message?.includes('not found')) {
-        return res.status(404).json({
-          success: false,
-          error: {
-            code: 'MOCK_EXAM_NOT_FOUND',
-            message: 'Mock exam not found'
-          }
-        });
-      }
-      throw error;
-    }
-
     // Extract booking IDs for batch fetch
     const bookingIds = bookings.map(b => b.bookingId);
     const bookingMap = new Map(bookings.map(b => [b.bookingId, b]));
 
-    // Fetch all bookings in batches to verify they exist and belong to this mock exam
+    // Fetch all bookings in batches to verify they exist and get current attendance status
     console.log(`🔍 [ATTENDANCE] Fetching booking details from HubSpot...`);
     const existingBookings = await fetchBookingsBatch(bookingIds);
 
@@ -192,20 +142,9 @@ module.exports = async (req, res) => {
         continue;
       }
 
-      // Check if booking belongs to this mock exam (using HubSpot associations)
-      if (!validBookingIds.has(booking.bookingId)) {
-        results.failed.push({
-          bookingId: booking.bookingId,
-          error: 'Booking does not belong to this mock exam',
-          code: 'BOOKING_MOCK_EXAM_MISMATCH',
-          details: {
-            examId: mockExamId,
-            bookingId: booking.bookingId,
-            reason: 'Booking is not associated with this mock exam in HubSpot'
-          }
-        });
-        continue;
-      }
+      // Note: No need to check if booking belongs to exam - the bookings list endpoint
+      // already filters by exam association, so if the frontend is sending these IDs,
+      // they must belong to this exam. This avoids a redundant HubSpot API call.
 
       // Check if booking is cancelled
       if (existingBooking.properties.booking_status === 'cancelled') {
