@@ -8,10 +8,10 @@ const DashboardMetrics = ({ metrics, isLoading }) => {
     return (
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white overflow-hidden shadow rounded-lg animate-pulse">
+          <div key={i} className="bg-white dark:bg-dark-card overflow-hidden shadow rounded-lg animate-pulse">
             <div className="p-5">
-              <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-              <div className="h-8 bg-gray-200 rounded w-16"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
+              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
             </div>
           </div>
         ))}
@@ -71,19 +71,19 @@ const DashboardMetrics = ({ metrics, isLoading }) => {
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
-        <div key={card.name} className="bg-white overflow-hidden shadow rounded-lg">
+        <div key={card.name} className="bg-white dark:bg-dark-card overflow-hidden shadow dark:shadow-gray-900/50 rounded-lg">
           <div className="p-5">
             <div className="flex items-center">
-              <div className={`flex-shrink-0 ${card.bgColor} rounded-md p-3`}>
+              <div className={`flex-shrink-0 ${card.bgColor} dark:bg-opacity-20 rounded-md p-3`}>
                 {card.icon}
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
                     {card.name}
                   </dt>
                   <dd>
-                    <div className={`text-2xl font-semibold ${card.textColor}`}>
+                    <div className={`text-2xl font-semibold ${card.textColor} dark:text-gray-100`}>
                       {card.value}
                     </div>
                   </dd>

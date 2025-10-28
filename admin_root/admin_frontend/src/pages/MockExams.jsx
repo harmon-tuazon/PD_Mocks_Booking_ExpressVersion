@@ -125,18 +125,18 @@ function MockExams() {
 
         {/* Success/Error Messages */}
         {successMessage && (
-          <div className="mb-4 bg-green-50 border border-green-200 rounded-md p-4">
+          <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="h-5 w-5 text-green-400 dark:text-green-500" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium text-green-800">{successMessage}</p>
+                <p className="text-sm font-medium text-green-800 dark:text-green-200">{successMessage}</p>
               </div>
               <div className="ml-auto pl-3">
-                <button onClick={() => setSuccessMessage('')} className="text-green-500 hover:text-green-700">
+                <button onClick={() => setSuccessMessage('')} className="text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300">
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
@@ -147,18 +147,18 @@ function MockExams() {
         )}
 
         {errorMessage && (
-          <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="h-5 w-5 text-red-400 dark:text-red-500" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium text-red-800">{errorMessage}</p>
+                <p className="text-sm font-medium text-red-800 dark:text-red-200">{errorMessage}</p>
               </div>
               <div className="ml-auto pl-3">
-                <button onClick={() => setErrorMessage('')} className="text-red-500 hover:text-red-700">
+                <button onClick={() => setErrorMessage('')} className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
@@ -168,20 +168,20 @@ function MockExams() {
           </div>
         )}
 
-        <div className="bg-white shadow-sm rounded-lg">
+        <div className="bg-white dark:bg-dark-card shadow-sm dark:shadow-gray-900/50 rounded-lg">
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6">
             <div className="space-y-6">
               {/* Common Properties */}
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Mock Type <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.mock_type}
                     onChange={(e) => setFormData({ ...formData, mock_type: e.target.value })}
-                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    className="block w-full px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                     required
                   >
                     {MOCK_TYPES.map((type) => (
@@ -193,20 +193,20 @@ function MockExams() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Exam Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
                     value={formData.exam_date}
                     onChange={(e) => setFormData({ ...formData, exam_date: e.target.value })}
-                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    className="block w-full px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Capacity <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -215,19 +215,19 @@ function MockExams() {
                     max="100"
                     value={formData.capacity}
                     onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    className="block w-full px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Location <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    className="block w-full px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                     required
                   >
                     {LOCATIONS.map((loc) => (
@@ -246,9 +246,9 @@ function MockExams() {
                   id="is_active"
                   checked={formData.is_active}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded checked:bg-primary-600 checked:border-primary-600"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded checked:bg-primary-600 checked:border-primary-600"
                 />
-                <label htmlFor="is_active" className="ml-2 block text-sm text-gray-700">
+                <label htmlFor="is_active" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                   Active (available for booking)
                 </label>
               </div>
@@ -258,7 +258,7 @@ function MockExams() {
 
               {/* Preview Section */}
               {showPreview && isFormValid() && (
-                <div className="border-t border-gray-200 pt-6">
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
                   <MockExamPreview
                     mockExamData={formData}
                     timeSlots={timeSlots}
@@ -268,12 +268,12 @@ function MockExams() {
               )}
 
               {/* Action Buttons */}
-              <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+              <div className="flex justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700">
                 <button
                   type="button"
                   onClick={() => setShowPreview(!showPreview)}
                   disabled={!isFormValid() || isLoading}
-                  className="inline-flex items-center px-5 py-2.5 border border-gray-300 text-sm font-medium rounded-md text-gray-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {showPreview ? 'Hide Preview' : 'Show Preview'}
                 </button>
@@ -283,7 +283,7 @@ function MockExams() {
                     type="button"
                     onClick={resetForm}
                     disabled={isLoading}
-                    className="inline-flex items-center px-5 py-2.5 border border-gray-300 text-sm font-medium rounded-md text-gray-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="inline-flex items-center px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Reset
                   </button>
