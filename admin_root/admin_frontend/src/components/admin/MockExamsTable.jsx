@@ -64,12 +64,12 @@ const MockExamsTable = ({
 
   if (isLoading) {
     return (
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div className="bg-white dark:bg-dark-card shadow overflow-hidden sm:rounded-lg">
         <div className="animate-pulse p-6">
-          <div className="h-4 bg-gray-200 rounded w-full mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-full mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-full mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
         </div>
       </div>
     );
@@ -78,10 +78,10 @@ const MockExamsTable = ({
   // Ensure data is an array before rendering
   if (!data || !Array.isArray(data) || data.length === 0) {
     return (
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div className="bg-white dark:bg-dark-card shadow overflow-hidden sm:rounded-lg">
         <div className="text-center py-12">
           <svg
-            className="mx-auto h-12 w-12 text-gray-400"
+            className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -93,8 +93,8 @@ const MockExamsTable = ({
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
             />
           </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No mock exams found</h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No mock exams found</h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Try adjusting your filters or create a new mock exam session.
           </p>
         </div>
@@ -215,27 +215,27 @@ const MockExamsTable = ({
 
   // Render regular list view
   return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+    <div className="bg-white dark:bg-dark-card shadow overflow-hidden sm:rounded-lg">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               <SortableHeader column="mock_type">Type</SortableHeader>
               <SortableHeader column="exam_date">Date</SortableHeader>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Time
               </th>
               <SortableHeader column="location">Location</SortableHeader>
               <SortableHeader column="capacity">Capacity</SortableHeader>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Utilization
               </th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
             {data.map((exam) => (
               <SessionRow
                 key={exam.id}
