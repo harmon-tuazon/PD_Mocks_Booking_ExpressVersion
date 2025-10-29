@@ -748,23 +748,13 @@
     }
   }
 
-  /* Autofill background color fix */
+  /* Autofill background color fix - Force white backgrounds always */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 30px white inset !important;
     -webkit-text-fill-color: rgb(17, 24, 39) !important;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    input:-webkit-autofill,
-    input:-webkit-autofill:hover,
-    input:-webkit-autofill:focus,
-    input:-webkit-autofill:active {
-      -webkit-box-shadow: 0 0 0 30px rgb(55, 65, 81) inset !important;
-      -webkit-text-fill-color: rgb(243, 244, 246) !important;
-    }
   }
 
   .text-balance {
