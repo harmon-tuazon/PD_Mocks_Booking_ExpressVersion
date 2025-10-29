@@ -539,7 +539,7 @@
     }
   }
 
-  /* Clean up browser defaults without forcing colors */
+  /* Clean up browser defaults and force white backgrounds */
   input[type="text"],
   input[type="email"],
   input[type="password"],
@@ -553,10 +553,33 @@
   input[type="week"],
   input[type="month"],
   textarea {
-    /* Remove browser styling but let Tailwind classes handle colors */
+    /* Remove browser styling */
     -webkit-appearance: none !important;
     -moz-appearance: none !important;
     appearance: none !important;
+    /* Force white backgrounds in light mode */
+    background-color: white !important;
+    color: rgb(17, 24, 39) !important; /* gray-900 */
+  }
+
+  /* Dark mode - Force dark backgrounds for inputs */
+  @media (prefers-color-scheme: dark) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="search"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    input[type="week"],
+    input[type="month"],
+    textarea {
+      background-color: rgb(31, 41, 55) !important; /* gray-800 */
+      color: rgb(243, 244, 246) !important; /* gray-100 */
+    }
   }
 
   /* Focus states for ALL form elements */
