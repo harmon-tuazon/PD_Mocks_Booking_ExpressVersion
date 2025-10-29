@@ -18,6 +18,7 @@ import useMarkAttendanceMutation from '../hooks/useMarkAttendanceMutation';
 import ExamDetailsForm from '../components/admin/ExamDetailsForm';
 import BookingsTable from '../components/admin/BookingsTable';
 import EditControls from '../components/admin/EditControls';
+import DeleteControls from '../components/admin/DeleteControls';
 import { useState } from 'react';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
@@ -115,6 +116,12 @@ function MockExamDetail() {
     navigate('/mock-exams');
   };
 
+  // Handle successful deletion
+  const handleDeleteSuccess = () => {
+    // Navigate back to dashboard
+    navigate('/mock-exams');
+  };
+
   // Loading state
   if (isLoadingExam) {
     return (
@@ -190,15 +197,29 @@ function MockExamDetail() {
             <h1 className="font-headline text-3xl font-bold text-navy-900 dark:text-gray-100">
               {examEdit.isEditing ? 'Editing Mock Exam' : 'Mock Exam Details'}
             </h1>
-            {/* Edit Controls */}
-            <EditControls
-              isEditing={examEdit.isEditing}
-              isSaving={examEdit.isSaving}
-              isDirty={examEdit.isDirty}
-              onEdit={examEdit.toggleEdit}
-              onSave={examEdit.saveChanges}
-              onCancel={examEdit.forceCancelEdit}
-            />
+            <div className="flex items-center gap-2">
+              {/* Edit Controls */}
+              <EditControls
+                isEditing={examEdit.isEditing}
+                isSaving={examEdit.isSaving}
+                isDirty={examEdit.isDirty}
+                onEdit={examEdit.toggleEdit}
+                onSave={examEdit.saveChanges}
+                onCancel={examEdit.forceCancelEdit}
+              />
+              {/* Delete Controls */}
+              <DeleteControls
+                examId={exam?.id}
+                examDetails={{
+                  mock_type: exam?.mock_type,
+                  exam_date: exam?.exam_date,
+                  location: exam?.location,
+                  total_bookings: exam?.total_bookings || 0
+                }}
+                onDeleteSuccess={handleDeleteSuccess}
+                disabled={examEdit.isEditing}
+              />
+            </div>
           </div>
           <p className="font-body text-base text-gray-600 dark:text-gray-300">
             {examEdit.isEditing
