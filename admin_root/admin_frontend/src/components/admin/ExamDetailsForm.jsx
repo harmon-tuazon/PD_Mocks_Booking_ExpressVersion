@@ -19,6 +19,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { TimePickerSelect } from '@/components/ui/time-picker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 const ExamDetailsForm = ({
   exam,
@@ -68,251 +69,218 @@ const ExamDetailsForm = ({
 
   return (
     <div className="space-y-4">
-      {/* Basic Information Section */}
-      <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg space-y-4">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-          Basic Information
-        </h3>
+      {/* Exam Information Card */}
+      <div className="bg-white dark:bg-dark-card shadow-sm dark:shadow-gray-900/50 rounded-lg">
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
+            Exam Information
+          </h3>
 
-        {/* Mock Type */}
-        <div>
-          <Label>Mock Type</Label>
-          {isEditing ? (
+          {/* 2-Column Grid Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Mock Type */}
             <div>
-              <Select
-                name="mock_type"
-                value={displayData.mock_type || ''}
-                onValueChange={(value) => onFieldChange('mock_type', value)}
-                disabled={isSaving}
-              >
-                <SelectTrigger className={getErrorClass('mock_type')}>
-                  <SelectValue placeholder="Select mock type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Situational Judgment">Situational Judgment</SelectItem>
-                  <SelectItem value="Clinical Skills">Clinical Skills</SelectItem>
-                  <SelectItem value="Mini-mock">Mini-mock</SelectItem>
-                  <SelectItem value="Mock Discussion">Mock Discussion</SelectItem>
-                </SelectContent>
-              </Select>
-              {getFieldError('mock_type') && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
-                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
-                  {getFieldError('mock_type')}
-                </p>
+              <Label>Mock Type</Label>
+              {isEditing ? (
+                <div>
+                  <Select
+                    name="mock_type"
+                    value={displayData.mock_type || ''}
+                    onValueChange={(value) => onFieldChange('mock_type', value)}
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger className={getErrorClass('mock_type')}>
+                      <SelectValue placeholder="Select mock type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Situational Judgment">Situational Judgment</SelectItem>
+                      <SelectItem value="Clinical Skills">Clinical Skills</SelectItem>
+                      <SelectItem value="Mini-mock">Mini-mock</SelectItem>
+                      <SelectItem value="Mock Discussion">Mock Discussion</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {getFieldError('mock_type') && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                      {getFieldError('mock_type')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMockTypeBadgeColor(displayData.mock_type)}`}>
+                    {displayData.mock_type || 'N/A'}
+                  </span>
+                </div>
               )}
             </div>
-          ) : (
-            <div>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMockTypeBadgeColor(displayData.mock_type)}`}>
-                {displayData.mock_type || 'N/A'}
-              </span>
-            </div>
-          )}
-        </div>
 
-        {/* Status */}
-        <div>
-          <Label>Status</Label>
-          {isEditing ? (
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="is_active"
-                name="is_active"
-                checked={displayData.is_active || false}
-                onCheckedChange={(checked) => {
-                  onFieldChange('is_active', checked);
-                  onFieldBlur('is_active');
-                }}
-                disabled={isSaving}
-              />
-              <label htmlFor="is_active" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                <span className={displayData.is_active ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'}>
-                  {displayData.is_active ? 'Active' : 'Inactive'}
-                </span>
-              </label>
-            </div>
-          ) : (
+            {/* Status */}
             <div>
-              <StatusBadge status={displayData.status || (displayData.is_active ? 'active' : 'inactive')} />
-            </div>
-          )}
-        </div>
-
-        {/* Exam Date */}
-        <div>
-          <Label>Exam Date</Label>
-          {isEditing ? (
-            <div>
-              <DatePicker
-                id="exam_date"
-                name="exam_date"
-                value={displayData.exam_date || ''}
-                onChange={(value) => {
-                  onFieldChange('exam_date', value);
-                  onFieldBlur('exam_date');
-                }}
-                placeholder="Select exam date"
-                disabled={isSaving}
-                className={getFieldError('exam_date') ? 'border-red-500' : ''}
-              />
-              {getFieldError('exam_date') && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
-                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
-                  {getFieldError('exam_date')}
-                </p>
+              <Label>Status</Label>
+              {isEditing ? (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="is_active"
+                    name="is_active"
+                    checked={displayData.is_active || false}
+                    onCheckedChange={(checked) => {
+                      onFieldChange('is_active', checked);
+                      onFieldBlur('is_active');
+                    }}
+                    disabled={isSaving}
+                  />
+                  <label htmlFor="is_active" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    <span className={displayData.is_active ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'}>
+                      {displayData.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </label>
+                </div>
+              ) : (
+                <div>
+                  <StatusBadge status={displayData.status || (displayData.is_active ? 'active' : 'inactive')} />
+                </div>
               )}
             </div>
-          ) : (
-            <div className="text-gray-900 dark:text-gray-100 font-medium">
-              {formatDateLong(displayData.exam_date)}
-            </div>
-          )}
-        </div>
 
-        {/* Location */}
-        <div>
-          <Label>Location</Label>
-          {isEditing ? (
+            {/* Exam Date */}
             <div>
-              <Select
-                name="location"
-                value={displayData.location || ''}
-                onValueChange={(value) => onFieldChange('location', value)}
-                disabled={isSaving}
-              >
-                <SelectTrigger className={getErrorClass('location')}>
-                  <SelectValue placeholder="Select a location" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Mississauga">Mississauga</SelectItem>
-                  <SelectItem value="Mississauga - B9">Mississauga - B9</SelectItem>
-                  <SelectItem value="Mississauga - Lab D">Mississauga - Lab D</SelectItem>
-                  <SelectItem value="Vancouver">Vancouver</SelectItem>
-                  <SelectItem value="Montreal">Montreal</SelectItem>
-                  <SelectItem value="Calgary">Calgary</SelectItem>
-                  <SelectItem value="Richmond Hill">Richmond Hill</SelectItem>
-                  <SelectItem value="Online">Online</SelectItem>
-                </SelectContent>
-              </Select>
-              {getFieldError('location') && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
-                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
-                  {getFieldError('location')}
-                </p>
+              <Label>Exam Date</Label>
+              {isEditing ? (
+                <div>
+                  <DatePicker
+                    id="exam_date"
+                    name="exam_date"
+                    value={displayData.exam_date || ''}
+                    onChange={(value) => {
+                      onFieldChange('exam_date', value);
+                      onFieldBlur('exam_date');
+                    }}
+                    placeholder="Select exam date"
+                    disabled={isSaving}
+                    className={getFieldError('exam_date') ? 'border-red-500' : ''}
+                  />
+                  {getFieldError('exam_date') && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                      {getFieldError('exam_date')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-900 dark:text-gray-100 font-medium">
+                  {formatDateLong(displayData.exam_date)}
+                </div>
               )}
             </div>
-          ) : (
-            <div className="text-gray-900 dark:text-gray-100 font-medium">
-              {displayData.location || 'N/A'}
-            </div>
-          )}
-        </div>
 
-        {/* Start Time */}
-        <div>
-          <Label>Start Time</Label>
-          {isEditing ? (
+            {/* Location */}
             <div>
-              <TimePickerSelect
-                id="start_time"
-                name="start_time"
-                value={displayData.start_time || ''}
-                onChange={(value) => {
-                  onFieldChange('start_time', value);
-                  onFieldBlur('start_time');
-                }}
-                placeholder="Select start time"
-                disabled={isSaving}
-                minuteStep={15}
-                startHour={6}
-                endHour={23}
-                className={getFieldError('start_time') ? 'border-red-500' : ''}
-              />
-              {getFieldError('start_time') && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
-                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
-                  {getFieldError('start_time')}
-                </p>
+              <Label>Location</Label>
+              {isEditing ? (
+                <div>
+                  <Select
+                    name="location"
+                    value={displayData.location || ''}
+                    onValueChange={(value) => onFieldChange('location', value)}
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger className={getErrorClass('location')}>
+                      <SelectValue placeholder="Select a location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Mississauga">Mississauga</SelectItem>
+                      <SelectItem value="Mississauga - B9">Mississauga - B9</SelectItem>
+                      <SelectItem value="Mississauga - Lab D">Mississauga - Lab D</SelectItem>
+                      <SelectItem value="Vancouver">Vancouver</SelectItem>
+                      <SelectItem value="Montreal">Montreal</SelectItem>
+                      <SelectItem value="Calgary">Calgary</SelectItem>
+                      <SelectItem value="Richmond Hill">Richmond Hill</SelectItem>
+                      <SelectItem value="Online">Online</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {getFieldError('location') && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                      {getFieldError('location')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-900 dark:text-gray-100 font-medium">
+                  {displayData.location || 'N/A'}
+                </div>
               )}
             </div>
-          ) : (
-            <div className="text-gray-900 dark:text-gray-100 font-medium">
-              {formatTimeDisplay(displayData.start_time)}
-            </div>
-          )}
-        </div>
 
-        {/* End Time */}
-        <div>
-          <Label>End Time</Label>
-          {isEditing ? (
+            {/* Start Time */}
             <div>
-              <TimePickerSelect
-                id="end_time"
-                name="end_time"
-                value={displayData.end_time || ''}
-                onChange={(value) => {
-                  onFieldChange('end_time', value);
-                  onFieldBlur('end_time');
-                }}
-                placeholder="Select end time"
-                disabled={isSaving}
-                minuteStep={15}
-                startHour={6}
-                endHour={23}
-                className={getFieldError('end_time') ? 'border-red-500' : ''}
-              />
-              {getFieldError('end_time') && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
-                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
-                  {getFieldError('end_time')}
-                </p>
+              <Label>Start Time</Label>
+              {isEditing ? (
+                <div>
+                  <TimePickerSelect
+                    id="start_time"
+                    name="start_time"
+                    value={displayData.start_time || ''}
+                    onChange={(value) => {
+                      onFieldChange('start_time', value);
+                      onFieldBlur('start_time');
+                    }}
+                    placeholder="Select start time"
+                    disabled={isSaving}
+                    minuteStep={15}
+                    startHour={6}
+                    endHour={23}
+                    className={getFieldError('start_time') ? 'border-red-500' : ''}
+                  />
+                  {getFieldError('start_time') && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                      {getFieldError('start_time')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-900 dark:text-gray-100 font-medium">
+                  {formatTimeDisplay(displayData.start_time)}
+                </div>
               )}
             </div>
-          ) : (
-            <div className="text-gray-900 dark:text-gray-100 font-medium">
-              {formatTimeDisplay(displayData.end_time)}
-            </div>
-          )}
-        </div>
 
-        {/* Lab Stations */}
-        <div>
-          <Label>
-            Lab Stations
-            {fieldInfoMessages.lab_stations && (
-              <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 inline-flex items-center">
-                <InformationCircleIcon className="h-3 w-3 mr-1" />
-                {fieldInfoMessages.lab_stations}
-              </span>
-            )}
-          </Label>
-          {isEditing ? (
+            {/* End Time */}
             <div>
-              <input
-                type="number"
-                name="lab_stations"
-                value={displayData.lab_stations || ''}
-                onChange={(e) => onFieldChange('lab_stations', e.target.value)}
-                onBlur={() => onFieldBlur('lab_stations')}
-                disabled={isSaving}
-                placeholder="Number of stations"
-                min="0"
-                className={getInputClasses('lab_stations')}
-              />
-              {getFieldError('lab_stations') && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
-                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
-                  {getFieldError('lab_stations')}
-                </p>
+              <Label>End Time</Label>
+              {isEditing ? (
+                <div>
+                  <TimePickerSelect
+                    id="end_time"
+                    name="end_time"
+                    value={displayData.end_time || ''}
+                    onChange={(value) => {
+                      onFieldChange('end_time', value);
+                      onFieldBlur('end_time');
+                    }}
+                    placeholder="Select end time"
+                    disabled={isSaving}
+                    minuteStep={15}
+                    startHour={6}
+                    endHour={23}
+                    className={getFieldError('end_time') ? 'border-red-500' : ''}
+                  />
+                  {getFieldError('end_time') && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                      {getFieldError('end_time')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-900 dark:text-gray-100 font-medium">
+                  {formatTimeDisplay(displayData.end_time)}
+                </div>
               )}
             </div>
-          ) : (
-            <div className="text-gray-900 dark:text-gray-100 font-medium">
-              {displayData.lab_stations || 'N/A'}
-            </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -327,7 +295,7 @@ const ExamDetailsForm = ({
           <Label>Total Capacity</Label>
           {isEditing ? (
             <div>
-              <input
+              <Input
                 type="number"
                 name="capacity"
                 value={displayData.capacity || ''}
@@ -336,7 +304,7 @@ const ExamDetailsForm = ({
                 disabled={isSaving}
                 placeholder="Maximum number of participants"
                 min="0"
-                className={getInputClasses('capacity')}
+                className={getErrorClass('capacity')}
               />
               {getFieldError('capacity') && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
