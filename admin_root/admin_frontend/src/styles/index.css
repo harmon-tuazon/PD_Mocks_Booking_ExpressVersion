@@ -527,35 +527,63 @@
     accent-color: #0660B2 !important;
   }
 
-  /* Date/Time picker icon styling */
+  /* Date/Time picker icon styling - VISIBLE and CLICKABLE */
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="time"]::-webkit-calendar-picker-indicator,
   input[type="datetime-local"]::-webkit-calendar-picker-indicator,
   input[type="week"]::-webkit-calendar-picker-indicator,
   input[type="month"]::-webkit-calendar-picker-indicator {
     cursor: pointer !important;
-    opacity: 0.7 !important;
-    transition: opacity 0.2s ease !important;
-    filter: invert(0) !important;
+    opacity: 1 !important;  /* Full opacity for better visibility */
+    width: 1.25rem !important;  /* Make it bigger */
+    height: 1.25rem !important;
+    padding: 0.25rem !important;
+    background-color: transparent !important;
+    position: relative !important;
+    z-index: 1 !important;
+    transition: all 0.2s ease !important;
+    filter: none !important;  /* Remove any default filtering */
   }
 
-  /* Dark mode calendar icons */
+  /* Dark mode calendar icons - ensure visibility */
   @media (prefers-color-scheme: dark) {
     input[type="date"]::-webkit-calendar-picker-indicator,
     input[type="time"]::-webkit-calendar-picker-indicator,
     input[type="datetime-local"]::-webkit-calendar-picker-indicator,
     input[type="week"]::-webkit-calendar-picker-indicator,
     input[type="month"]::-webkit-calendar-picker-indicator {
-      filter: invert(1) !important;
+      filter: invert(1) !important;  /* Invert for dark mode visibility */
+      opacity: 0.9 !important;  /* Slightly reduced opacity for dark mode */
     }
   }
 
+  /* Hover state for better UX */
   input[type="date"]:hover::-webkit-calendar-picker-indicator,
   input[type="time"]:hover::-webkit-calendar-picker-indicator,
   input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator,
   input[type="week"]:hover::-webkit-calendar-picker-indicator,
   input[type="month"]:hover::-webkit-calendar-picker-indicator {
+    opacity: 0.8 !important;
+    transform: scale(1.1) !important;  /* Slight scale on hover */
+  }
+
+  /* Firefox specific date picker styling */
+  input[type="date"]::-moz-calendar-picker-indicator,
+  input[type="time"]::-moz-calendar-picker-indicator,
+  input[type="datetime-local"]::-moz-calendar-picker-indicator {
+    cursor: pointer !important;
     opacity: 1 !important;
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+  }
+
+  /* Ensure date inputs have enough padding for the icon */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="week"],
+  input[type="month"] {
+    padding-right: 2.5rem !important;  /* Extra padding for the calendar icon */
   }
 
   /* Remove Safari/WebKit specific styling */

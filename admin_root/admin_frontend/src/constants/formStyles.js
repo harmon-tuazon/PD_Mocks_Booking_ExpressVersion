@@ -5,7 +5,7 @@ export const modernInputClasses = "block w-full px-3 py-2 bg-white dark:bg-gray-
 
 export const modernSelectClasses = "block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-150 text-sm appearance-none";
 
-export const modernDateTimeClasses = "block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-150 text-sm";
+export const modernDateTimeClasses = "block w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-150 text-sm";
 
 export const modernCheckboxClasses = "h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded transition-colors duration-150";
 
