@@ -13,7 +13,6 @@ export const useFetchAggregateSessions = (aggregateKey, options = {}) => {
         throw new Error('Aggregate key is required');
       }
 
-      console.log(`📊 Fetching sessions for aggregate: ${aggregateKey}`);
       const response = await adminApi.get(`/admin/mock-exams/aggregates/${aggregateKey}/sessions`);
       // Defensive: Extract and validate the sessions array from the response object
       return {

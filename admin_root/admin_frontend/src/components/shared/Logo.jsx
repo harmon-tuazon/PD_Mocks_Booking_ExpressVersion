@@ -63,7 +63,6 @@ const Logo = ({
       loading={loadingStrategy}
       onClick={onClick}
       onError={(e) => {
-        console.warn('Failed to load logo', e);
         // Fallback to text if image fails
         e.target.style.display = 'none';
         e.target.parentNode.innerHTML = `

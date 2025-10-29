@@ -37,6 +37,16 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Log errors that aren't handled by AuthContext (non-401 errors)
+    if (error.response?.status !== 401 && !error.config?._retry) {
+      console.error('❌ API Error:', {
+        url: error.config?.url,
+        method: error.config?.method?.toUpperCase(),
+        status: error.response?.status,
+        message: error.response?.data?.message || error.message
+      });
+    }
+
     if (error.response) {
       // Server responded with error status
       const errorData = error.response.data;
@@ -129,10 +139,7 @@ export const mockExamsApi = {
    * @returns {Promise<Object>} Updated mock exam
    */
   update: async (id, updateData) => {
-    console.log('📡 [API-UPDATE] Calling update endpoint with ID:', id);
-    console.log('📡 [API-UPDATE] Update data:', updateData);
     const response = await api.patch('/admin/mock-exams/update', updateData, { params: { id } });
-    console.log('📡 [API-UPDATE] Response:', response.data);
     return response.data;
   },
 

@@ -41,7 +41,7 @@ export function DatePicker({
         return new Date(year, month - 1, day);
       }
     } catch (error) {
-      console.error('Error parsing date:', error);
+      // Error is handled gracefully by returning undefined
     }
     return undefined;
   }, [value]);

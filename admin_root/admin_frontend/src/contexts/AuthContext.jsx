@@ -157,7 +157,6 @@ export const AuthProvider = ({ children }) => {
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
 
         if (mounted && currentSession) {
-          console.log('✅ Session found on init:', currentSession.user?.email);
           const { user: currentUser } = currentSession;
 
           setSession(currentSession);
@@ -168,8 +167,6 @@ export const AuthProvider = ({ children }) => {
           if (userDetails && mounted) {
             setUser({ ...currentUser, ...userDetails });
           }
-        } else if (mounted) {
-          console.log('ℹ️ No session found on init');
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
@@ -183,12 +180,9 @@ export const AuthProvider = ({ children }) => {
     // Set up auth state listener FIRST (before initAuth)
     // This ensures we catch all auth events including INITIAL_SESSION
     const { data: { subscription } } = authHelpers.onAuthStateChange(async (event, newSession) => {
-      console.log('🔔 Auth event:', event);
-
       if (event === 'INITIAL_SESSION') {
         // Handle initial session on page load (whether present or not)
         if (newSession) {
-          console.log('✅ Initial session restored:', newSession.user?.email);
           if (mounted) {
             setSession(newSession);
             setUser(newSession.user);
@@ -198,15 +192,12 @@ export const AuthProvider = ({ children }) => {
               setUser({ ...newSession.user, ...userDetails });
             }
           }
-        } else {
-          console.log('ℹ️ No initial session found');
         }
         // Always set loading to false after INITIAL_SESSION event
         if (mounted) {
           setLoading(false);
         }
       } else if (event === 'SIGNED_IN' && newSession) {
-        console.log('✅ User signed in:', newSession.user?.email);
         if (mounted) {
           const { user: newUser } = newSession;
 
@@ -226,7 +217,6 @@ export const AuthProvider = ({ children }) => {
           }
         }
       } else if (event === 'SIGNED_OUT') {
-        console.log('👋 User signed out');
         if (mounted) {
           setSession(null);
           setUser(null);
@@ -236,7 +226,6 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('refresh_token');
         }
       } else if (event === 'TOKEN_REFRESHED' && newSession) {
-        console.log('🔄 Token refreshed');
         if (mounted) {
           setSession(newSession);
 

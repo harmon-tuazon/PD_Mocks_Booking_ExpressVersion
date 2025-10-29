@@ -19,7 +19,6 @@ import {
  */
 const notify = {
   success: (message) => {
-    console.log('✅ Success:', message);
     toast.success(message);
   },
   error: (message) => {
@@ -27,7 +26,6 @@ const notify = {
     toast.error(message);
   },
   info: (message) => {
-    console.log('ℹ️ Info:', message);
     toast(message);
   }
 };
@@ -59,12 +57,6 @@ export function useExamEdit(examData) {
         return '';
       }
 
-      console.log('🕐 [convertToTimeInput] Converting timestamp to EST time:', {
-        input: timeValue,
-        inputType: typeof timeValue,
-        dateUTC: date.toISOString()
-      });
-
       // Extract hours and minutes in EST timezone (America/Toronto handles EST/EDT automatically)
       // This ensures the displayed time matches what was stored, regardless of user's timezone
       const estTimeString = date.toLocaleTimeString('en-US', {
@@ -74,7 +66,6 @@ export function useExamEdit(examData) {
         hour12: false
       });
 
-      console.log('🕐 [convertToTimeInput] Extracted EST time:', estTimeString);
 
       // Return HH:MM format
       return estTimeString;
@@ -87,13 +78,6 @@ export function useExamEdit(examData) {
   // Initialize form data when exam data changes
   useEffect(() => {
     if (examData) {
-      console.log('🔍 [useExamEdit] Initializing formData from examData:', {
-        start_time: examData.start_time,
-        start_time_type: typeof examData.start_time,
-        end_time: examData.end_time,
-        end_time_type: typeof examData.end_time
-      });
-
       const initialData = {
         mock_type: examData.mock_type || '',
         exam_date: examData.exam_date || '',
@@ -108,7 +92,6 @@ export function useExamEdit(examData) {
         total_bookings: examData.total_bookings || examData.booked_count || 0
       };
 
-      console.log('🔍 [useExamEdit] Final formData:', initialData);
       setFormData(initialData);
       originalDataRef.current = { ...initialData };
     }
@@ -123,11 +106,9 @@ export function useExamEdit(examData) {
       return await mockExamsApi.update(examData.id, updates);
     },
     onSuccess: (response) => {
-      console.log('✅ [SAVE-SUCCESS] Update response:', response);
 
       // Extract updated properties from response
       const updatedProperties = response.mockExam?.properties || {};
-      console.log('✅ [SAVE-SUCCESS] Updated properties:', updatedProperties);
 
       // Invalidate queries to refetch fresh data
       // This is simpler and more reliable than manually updating cache
@@ -138,7 +119,6 @@ export function useExamEdit(examData) {
 
       // Update local form state with the updated properties
       const updatedFormData = { ...formData, ...updatedProperties };
-      console.log('✅ [SAVE-SUCCESS] Updated formData:', updatedFormData);
       setFormData(updatedFormData);
       originalDataRef.current = { ...updatedFormData };
 
@@ -261,17 +241,12 @@ export function useExamEdit(examData) {
    * Save changes
    */
   const saveChanges = useCallback(async () => {
-    console.log('🔧 [SAVE-CHANGES] Starting save operation');
-    console.log('🔧 [SAVE-CHANGES] Current formData:', formData);
-    console.log('🔧 [SAVE-CHANGES] Original data:', originalDataRef.current);
 
     // Touch all fields to show validation errors
     validation.touchAllFields();
 
     // Validate entire form
     const isValid = validation.validateAllFields(formData);
-    console.log('🔧 [SAVE-CHANGES] Validation result:', isValid);
-    console.log('🔧 [SAVE-CHANGES] Validation errors:', validation.errors);
 
     if (!isValid) {
       // Find first error field and focus it
@@ -290,11 +265,8 @@ export function useExamEdit(examData) {
 
     // Get only changed fields
     const changes = getChangedFields(originalDataRef.current, formData);
-    console.log('🔧 [SAVE-CHANGES] Changed fields:', changes);
-    console.log('🔧 [SAVE-CHANGES] Number of changes:', Object.keys(changes).length);
 
     if (Object.keys(changes).length === 0) {
-      console.log('ℹ️ [SAVE-CHANGES] No changes detected');
       notify.info('No changes to save');
       setIsEditing(false);
       return true;
@@ -302,21 +274,15 @@ export function useExamEdit(examData) {
 
     // If updating time fields, include exam_date for timezone conversion (even if date didn't change)
     if ((changes.start_time || changes.end_time) && !changes.exam_date && formData.exam_date) {
-      console.log('🕐 [SAVE-CHANGES] Time fields updated, appending exam_date from formData:', formData.exam_date);
       changes.exam_date = formData.exam_date;
     }
 
     // Format data for API
     const apiData = formatFormDataForApi(changes);
-    console.log('🔧 [SAVE-CHANGES] Formatted API data:', apiData);
-    console.log('🔧 [SAVE-CHANGES] API data keys:', Object.keys(apiData));
-    console.log('🔧 [SAVE-CHANGES] API data types:', Object.keys(apiData).map(k => `${k}: ${typeof apiData[k]}`));
 
     // Execute save mutation
-    console.log('🔧 [SAVE-CHANGES] Calling API update...');
     try {
       await saveMutation.mutateAsync(apiData);
-      console.log('✅ [SAVE-CHANGES] Save successful');
       return true;
     } catch (error) {
       console.error('❌ [SAVE-CHANGES] Save failed:', error);
