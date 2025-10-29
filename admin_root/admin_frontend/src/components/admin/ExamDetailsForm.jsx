@@ -281,13 +281,9 @@ const ExamDetailsForm = ({
               )}
             </div>
 
-            {/* Divider - Full Width */}
-            <div className="col-span-1 md:col-span-2 border-t border-gray-200 dark:border-gray-700 my-2"></div>
-
-            {/* Capacity Information - Integrated */}
             {/* Total Capacity */}
             <div>
-              <Label className="text-xs text-gray-600 dark:text-gray-400">Total Capacity</Label>
+              <Label>Total Capacity</Label>
               {isEditing ? (
                 <div>
                   <Input
@@ -314,58 +310,6 @@ const ExamDetailsForm = ({
                 </div>
               )}
             </div>
-
-            {/* Confirmed Participants - Read Only */}
-            <div>
-              <Label className="text-xs text-gray-600 dark:text-gray-400">Confirmed Participants</Label>
-              <div className="text-gray-900 dark:text-gray-100 font-medium">
-                {displayData.confirmed_count || 0}
-              </div>
-            </div>
-
-            {/* Available Spots - Calculated - Read Only */}
-            <div>
-              <Label className="text-xs text-gray-600 dark:text-gray-400">Available Spots</Label>
-              <div className="text-gray-900 dark:text-gray-100 font-medium">
-                {(displayData.capacity || 0) - (displayData.confirmed_count || 0)}
-              </div>
-            </div>
-
-            {/* System Information - Only in view mode */}
-            {!isEditing && displayData.id && (
-              <>
-                {/* Divider */}
-                <div className="col-span-1 md:col-span-2 border-t border-gray-200 dark:border-gray-700 my-2"></div>
-
-                {/* ID */}
-                <div>
-                  <Label className="text-xs text-gray-500 dark:text-gray-400">ID</Label>
-                  <div className="text-gray-700 dark:text-gray-300 font-mono text-sm">
-                    {displayData.id}
-                  </div>
-                </div>
-
-                {/* Created */}
-                {displayData.created_at && (
-                  <div>
-                    <Label className="text-xs text-gray-500 dark:text-gray-400">Created</Label>
-                    <div className="text-gray-700 dark:text-gray-300 text-sm">
-                      {formatDateLong(displayData.created_at)}
-                    </div>
-                  </div>
-                )}
-
-                {/* Updated */}
-                {displayData.updated_at && (
-                  <div>
-                    <Label className="text-xs text-gray-500 dark:text-gray-400">Updated</Label>
-                    <div className="text-gray-700 dark:text-gray-300 text-sm">
-                      {formatDateLong(displayData.updated_at)}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
           </div>
         </div>
       </div>
