@@ -27,9 +27,19 @@
       "Bash(node tests/test-requireAdmin-fix.js:*)",
       "Bash(node -c:*)",
       "Bash(node tests/verify-mock-exam-endpoint.js:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "mcp__shadcn__search_items_in_registries",
+      "mcp__shadcn__view_items_in_registries",
+      "Bash(npx shadcn init:*)",
+      "Bash(npx shadcn:*)",
+      "mcp__serena__initial_instructions",
+      "Bash(npx shadcn@latest add calendar popover button --yes)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "shadcn"
+  ]
 }
