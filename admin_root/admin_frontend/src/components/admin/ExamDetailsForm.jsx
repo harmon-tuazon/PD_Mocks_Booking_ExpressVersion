@@ -68,16 +68,16 @@ const ExamDetailsForm = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Exam Information Card */}
+    <div>
+      {/* Exam Information Card - Compact All-in-One */}
       <div className="bg-white dark:bg-dark-card shadow-sm dark:shadow-gray-900/50 rounded-lg">
-        <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
+        <div className="p-5">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Exam Information
           </h3>
 
-          {/* 2-Column Grid Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* 2-Column Grid Layout - Compact */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
             {/* Mock Type */}
             <div>
               <Label>Mock Type</Label>
@@ -280,119 +280,105 @@ const ExamDetailsForm = ({
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Capacity Information Section */}
-      <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg space-y-4">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-          Capacity Information
-        </h3>
+            {/* Divider - Full Width */}
+            <div className="col-span-1 md:col-span-2 border-t border-gray-200 dark:border-gray-700 my-2"></div>
 
-        {/* Capacity */}
-        <div>
-          <Label>Total Capacity</Label>
-          {isEditing ? (
+            {/* Capacity Information - Integrated */}
+            {/* Total Capacity */}
             <div>
-              <Input
-                type="number"
-                name="capacity"
-                value={displayData.capacity || ''}
-                onChange={(e) => onFieldChange('capacity', e.target.value)}
-                onBlur={() => onFieldBlur('capacity')}
-                disabled={isSaving}
-                placeholder="Maximum number of participants"
-                min="0"
-                className={getErrorClass('capacity')}
-              />
-              {getFieldError('capacity') && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
-                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
-                  {getFieldError('capacity')}
-                </p>
+              <Label className="text-xs text-gray-600 dark:text-gray-400">Total Capacity</Label>
+              {isEditing ? (
+                <div>
+                  <Input
+                    type="number"
+                    name="capacity"
+                    value={displayData.capacity || ''}
+                    onChange={(e) => onFieldChange('capacity', e.target.value)}
+                    onBlur={() => onFieldBlur('capacity')}
+                    disabled={isSaving}
+                    placeholder="Maximum number of participants"
+                    min="0"
+                    className={getErrorClass('capacity')}
+                  />
+                  {getFieldError('capacity') && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                      {getFieldError('capacity')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-900 dark:text-gray-100 font-medium">
+                  {displayData.capacity || 'N/A'}
+                </div>
               )}
             </div>
-          ) : (
-            <div className="text-gray-900 dark:text-gray-100 font-medium">
-              {displayData.capacity || 'N/A'}
+
+            {/* Confirmed Participants - Read Only */}
+            <div>
+              <Label className="text-xs text-gray-600 dark:text-gray-400">Confirmed Participants</Label>
+              <div className="text-gray-900 dark:text-gray-100 font-medium">
+                {displayData.confirmed_count || 0}
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Confirmed Count - Read Only */}
-        <div>
-          <Label>Confirmed Participants</Label>
-          <div className="text-gray-900 dark:text-gray-100 font-medium">
-            {displayData.confirmed_count || 0}
-          </div>
-        </div>
+            {/* Available Spots - Calculated - Read Only */}
+            <div>
+              <Label className="text-xs text-gray-600 dark:text-gray-400">Available Spots</Label>
+              <div className="text-gray-900 dark:text-gray-100 font-medium">
+                {(displayData.capacity || 0) - (displayData.confirmed_count || 0)}
+              </div>
+            </div>
 
-        {/* Available Spots - Calculated */}
-        <div>
-          <Label>Available Spots</Label>
-          <div className="text-gray-900 dark:text-gray-100 font-medium">
-            {(displayData.capacity || 0) - (displayData.confirmed_count || 0)}
+            {/* System Information - Only in view mode */}
+            {!isEditing && displayData.id && (
+              <>
+                {/* Divider */}
+                <div className="col-span-1 md:col-span-2 border-t border-gray-200 dark:border-gray-700 my-2"></div>
+
+                {/* ID */}
+                <div>
+                  <Label className="text-xs text-gray-500 dark:text-gray-400">ID</Label>
+                  <div className="text-gray-700 dark:text-gray-300 font-mono text-sm">
+                    {displayData.id}
+                  </div>
+                </div>
+
+                {/* Created */}
+                {displayData.created_at && (
+                  <div>
+                    <Label className="text-xs text-gray-500 dark:text-gray-400">Created</Label>
+                    <div className="text-gray-700 dark:text-gray-300 text-sm">
+                      {formatDateLong(displayData.created_at)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Updated */}
+                {displayData.updated_at && (
+                  <div>
+                    <Label className="text-xs text-gray-500 dark:text-gray-400">Updated</Label>
+                    <div className="text-gray-700 dark:text-gray-300 text-sm">
+                      {formatDateLong(displayData.updated_at)}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Additional Information Section */}
+      {/* Additional Information Section - Notes (if present) */}
       {!isEditing && displayData.notes && (
-        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+        <div className="mt-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
             Notes
           </h3>
           <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
             {displayData.notes}
           </p>
-        </div>
-      )}
-
-      {/* Metadata - Read Only */}
-      {!isEditing && (
-        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg space-y-2">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-            System Information
-          </h3>
-
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            {displayData.id && (
-              <div>
-                <span className="text-gray-500 dark:text-gray-400">ID:</span>
-                <span className="ml-2 text-gray-900 dark:text-gray-100 font-mono">
-                  {displayData.id}
-                </span>
-              </div>
-            )}
-
-            {displayData.created_at && (
-              <div>
-                <span className="text-gray-500 dark:text-gray-400">Created:</span>
-                <span className="ml-2 text-gray-900 dark:text-gray-100">
-                  {formatDateLong(displayData.created_at)}
-                </span>
-              </div>
-            )}
-
-            {displayData.updated_at && (
-              <div>
-                <span className="text-gray-500 dark:text-gray-400">Updated:</span>
-                <span className="ml-2 text-gray-900 dark:text-gray-100">
-                  {formatDateLong(displayData.updated_at)}
-                </span>
-              </div>
-            )}
-
-            {displayData.created_by && (
-              <div>
-                <span className="text-gray-500 dark:text-gray-400">Created By:</span>
-                <span className="ml-2 text-gray-900 dark:text-gray-100">
-                  {displayData.created_by}
-                </span>
-              </div>
-            )}
-          </div>
         </div>
       )}
     </div>
