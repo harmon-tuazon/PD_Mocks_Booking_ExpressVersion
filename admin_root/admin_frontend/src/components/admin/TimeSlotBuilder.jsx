@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { TimePicker } from '@/components/ui/time-picker';
+import { TimePickerSelect } from '@/components/ui/time-picker';
 import { Label } from '@/components/ui/label';
 
 const TimeSlotBuilder = ({ timeSlots, onChange }) => {
@@ -152,10 +152,13 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
                 <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
                   Start Time
                 </label>
-                <TimePicker
+                <TimePickerSelect
                   value={slot.start_time}
                   onChange={(value) => updateTimeSlot(index, 'start_time', value)}
                   placeholder="Select start time"
+                  minuteStep={15}
+                  startHour={6}
+                  endHour={23}
                   required
                 />
               </div>
@@ -164,10 +167,13 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
                 <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
                   End Time
                 </label>
-                <TimePicker
+                <TimePickerSelect
                   value={slot.end_time}
                   onChange={(value) => updateTimeSlot(index, 'end_time', value)}
                   placeholder="Select end time"
+                  minuteStep={15}
+                  startHour={6}
+                  endHour={23}
                   required
                 />
               </div>
