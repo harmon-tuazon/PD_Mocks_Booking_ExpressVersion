@@ -146,7 +146,7 @@ export function TimePickerSelect({
     <Popover open={open} onOpenChange={setOpen}>
       <div className="relative">
         <Input
-          type="time"
+          type="text"
           id={id}
           name={name}
           value={inputValue}
