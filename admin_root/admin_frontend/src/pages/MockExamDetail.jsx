@@ -178,15 +178,18 @@ function MockExamDetail() {
       <div className="container-app py-8">
         {/* Page Header with Back Button and Edit Controls */}
         <div className="mb-8">
-          <div className="flex justify-between items-start mb-4">
-            <button
-              onClick={handleBack}
-              className="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-              disabled={examEdit.isSaving}
-            >
-              <ArrowLeftIcon className="h-4 w-4 mr-1" />
-              Back to Dashboard
-            </button>
+          <button
+            onClick={handleBack}
+            className="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors mb-4"
+            disabled={examEdit.isSaving}
+          >
+            <ArrowLeftIcon className="h-4 w-4 mr-1" />
+            Back to Dashboard
+          </button>
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="font-headline text-3xl font-bold text-navy-900 dark:text-gray-100">
+              {examEdit.isEditing ? 'Editing Mock Exam' : 'Mock Exam Details'}
+            </h1>
             {/* Edit Controls */}
             <EditControls
               isEditing={examEdit.isEditing}
@@ -197,10 +200,7 @@ function MockExamDetail() {
               onCancel={examEdit.forceCancelEdit}
             />
           </div>
-          <h1 className="font-headline text-3xl font-bold text-navy-900 dark:text-gray-100">
-            {examEdit.isEditing ? 'Editing Mock Exam' : 'Mock Exam Details'}
-          </h1>
-          <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">
+          <p className="font-body text-base text-gray-600 dark:text-gray-300">
             {examEdit.isEditing
               ? 'Make changes to the exam details and save when ready'
               : 'View exam information and manage bookings'}
