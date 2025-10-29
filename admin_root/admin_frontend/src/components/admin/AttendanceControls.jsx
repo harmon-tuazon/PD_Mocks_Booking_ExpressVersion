@@ -176,13 +176,13 @@ const AttendanceControls = ({
                   <SelectItem value="mark_yes">
                     <div className="flex items-center gap-2">
                       <CheckCircleIcon className="h-4 w-4 text-green-600" />
-                      <span>Mark as Attended (Yes)</span>
+                      <span>Mark as Attended</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="mark_no">
                     <div className="flex items-center gap-2">
                       <XCircleIcon className="h-4 w-4 text-red-600" />
-                      <span>Mark as No Show (No)</span>
+                      <span>Mark as Did Not Attend</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="unmark">
