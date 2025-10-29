@@ -102,8 +102,52 @@ module.exports = async (req, res) => {
       properties.capacity = updateData.capacity.toString();
     }
 
+    // Get current mock exam data BEFORE updating (for change tracking)
+    console.log('📊 [UPDATE] Fetching current mock exam data for change tracking');
+    const currentMockExam = await hubspot.getMockExam(mockExamId);
+    const currentProps = currentMockExam.properties;
+
+    // Track changes between old and new values
+    const changes = {};
+    const fieldsToTrack = ['mock_type', 'exam_date', 'start_time', 'end_time', 'location', 'capacity', 'is_active'];
+
+    fieldsToTrack.forEach(field => {
+      if (properties[field] !== undefined) {
+        const oldValue = currentProps[field];
+        const newValue = properties[field];
+
+        // Only track if value actually changed
+        if (oldValue !== newValue) {
+          changes[field] = {
+            from: oldValue,
+            to: newValue
+          };
+        }
+      }
+    });
+
+    console.log('📝 [UPDATE] Changes detected:', Object.keys(changes).length > 0 ? changes : 'No changes');
+
     // Update mock exam in HubSpot
     const updatedMockExam = await hubspot.updateMockExam(mockExamId, properties);
+
+    // Create audit trail note if there were changes (non-blocking)
+    if (Object.keys(changes).length > 0) {
+      console.log('📝 [UPDATE] Creating audit trail note for changes');
+      hubspot.createMockExamEditNote(mockExamId, changes, user)
+        .then(noteResult => {
+          if (noteResult) {
+            console.log(`✅ Audit trail note created successfully for mock exam ${mockExamId}`);
+          } else {
+            console.log(`⚠️ Audit trail note creation failed for mock exam ${mockExamId}, but update was successful`);
+          }
+        })
+        .catch(err => {
+          console.error(`❌ Error creating audit trail note for ${mockExamId}:`, err.message);
+        });
+    } else {
+      console.log('ℹ️ [UPDATE] No changes detected, skipping audit trail note');
+    }
 
     // Invalidate caches after successful update
     const cache = getCache();

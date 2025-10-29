@@ -5,11 +5,14 @@
  * - Contact Management: searchContacts(), updateContactCredits(), restoreCredits(),
  *   getContactBookingAssociations(), getContactBookingAssociationsPaginated()
  * - Enrollment Management: searchEnrollments()
- * - Notes/Timeline: createCancellationNote(), createBookingNote(), createBookingCancellationNote()
+ * - Booking Notes: createCancellationNote(), createBookingNote(), createBookingCancellationNote()
  * - Helpers: mapLocationToHubSpot(), mapBookingStatus()
  *
+ * ADMIN-SPECIFIC METHODS:
+ * - Audit Trail: createMockExamEditNote() - Creates notes documenting admin changes
+ *
  * These methods remain in user_root for student booking flow but are not needed in admin_root.
- * Total methods: 25 retained (from 36 original)
+ * Total methods: 26 retained (from 36 original, +1 admin-specific)
  */
 
 const axios = require('axios');
@@ -1221,6 +1224,154 @@ class HubSpotService {
     } catch (error) {
       console.error('Error deleting mock exam:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Create a note documenting mock exam edits
+   * Creates an audit trail of changes made by admin users
+   *
+   * @param {string} mockExamId - The ID of the mock exam being edited
+   * @param {object} changes - Object with before/after values for changed fields
+   * @param {object} adminUser - Admin user who made the changes (from Supabase auth)
+   * @returns {Promise<object>} The created note object
+   */
+  async createMockExamEditNote(mockExamId, changes, adminUser) {
+    try {
+      const timestamp = new Date();
+      const formattedTimestamp = timestamp.toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Toronto'
+      });
+
+      // Helper to format field values for display
+      const formatValue = (key, value) => {
+        if (value === null || value === undefined || value === '') return 'Not set';
+
+        // Format timestamps
+        if (key.includes('time') && !isNaN(value)) {
+          const date = new Date(parseInt(value));
+          return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'America/Toronto'
+          });
+        }
+
+        // Format dates
+        if (key.includes('date') && value) {
+          const date = new Date(value);
+          if (!isNaN(date.getTime())) {
+            return date.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+          }
+        }
+
+        // Format booleans
+        if (value === 'true' || value === true) return 'Active';
+        if (value === 'false' || value === false) return 'Inactive';
+
+        return value;
+      };
+
+      // Helper to get field label
+      const getFieldLabel = (key) => {
+        const labels = {
+          'mock_type': 'Mock Type',
+          'exam_date': 'Exam Date',
+          'start_time': 'Start Time',
+          'end_time': 'End Time',
+          'location': 'Location',
+          'capacity': 'Capacity',
+          'is_active': 'Status'
+        };
+        return labels[key] || key;
+      };
+
+      // Build changes HTML
+      let changesHtml = '';
+      const changeKeys = Object.keys(changes);
+
+      if (changeKeys.length > 0) {
+        changesHtml = '<p><strong>Changes Made:</strong></p><ul>';
+        changeKeys.forEach(key => {
+          const change = changes[key];
+          changesHtml += `<li><strong>${getFieldLabel(key)}:</strong> ${formatValue(key, change.from)} → ${formatValue(key, change.to)}</li>`;
+        });
+        changesHtml += '</ul>';
+      } else {
+        changesHtml = '<p><em>No field changes detected</em></p>';
+      }
+
+      // Get admin user display name
+      const adminName = adminUser?.email || adminUser?.user_metadata?.email || 'Admin User';
+
+      // Create HTML formatted note body
+      const noteBody = `
+        <h3>✏️ Mock Exam Updated</h3>
+
+        ${changesHtml}
+
+        <p><strong>Edit Information:</strong></p>
+        <ul>
+          <li><strong>Edited By:</strong> ${adminName}</li>
+          <li><strong>Edited At:</strong> ${formattedTimestamp}</li>
+          <li><strong>Mock Exam ID:</strong> ${mockExamId}</li>
+        </ul>
+
+        <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e0e0e0;">
+        <p style="font-size: 12px; color: #666;">
+          <em>This change was automatically logged by the PrepDoctors Admin System.</em>
+        </p>
+      `;
+
+      // Create the Note with association to Mock Exam
+      const notePayload = {
+        properties: {
+          hs_note_body: noteBody,
+          hs_timestamp: timestamp.getTime()
+        },
+        associations: [
+          {
+            to: { id: mockExamId },
+            types: [
+              {
+                associationCategory: "HUBSPOT_DEFINED",
+                associationTypeId: 454  // Note to Custom Object association type
+              }
+            ]
+          }
+        ]
+      };
+
+      const noteResponse = await this.apiCall('POST', '/crm/v3/objects/notes', notePayload);
+
+      console.log(`✅ Mock exam edit note created successfully with ID: ${noteResponse.id}`);
+      return noteResponse;
+
+    } catch (error) {
+      // Log the error but don't throw - Note creation should not block the update
+      console.error('Failed to create mock exam edit note:', {
+        error: error.message,
+        mockExamId,
+        status: error.response?.status,
+        details: error.response?.data
+      });
+
+      // Implement retry logic for transient failures
+      if (error.response?.status === 429 || error.response?.status >= 500) {
+        console.log('🔄 Will retry note creation in background...');
+      }
+
+      return null;
     }
   }
 

@@ -44,7 +44,7 @@
     @apply text-xs font-body text-gray-600;
   }
 
-  /* Force white backgrounds for all inputs - CRITICAL FIX */
+  /* Force white backgrounds for all inputs in light mode - CRITICAL FIX */
   input[type="text"],
   input[type="email"],
   input[type="password"],
@@ -52,9 +52,28 @@
   input[type="tel"],
   input[type="url"],
   input[type="search"],
-  textarea {
+  input[type="time"],
+  input[type="date"],
+  textarea,
+  select {
     background-color: white !important;
     color: rgb(17, 24, 39) !important;
+  }
+
+  /* Force consistent backgrounds for all inputs in dark mode */
+  .dark input[type="text"],
+  .dark input[type="email"],
+  .dark input[type="password"],
+  .dark input[type="number"],
+  .dark input[type="tel"],
+  .dark input[type="url"],
+  .dark input[type="search"],
+  .dark input[type="time"],
+  .dark input[type="date"],
+  .dark textarea,
+  .dark select {
+    background-color: #1a4166 !important;
+    color: white !important;
   }
 
   :root {
@@ -504,10 +523,8 @@
   }
 
   /* Dark mode - Update arrow color only */
-  @media (prefers-color-scheme: dark) {
-    select {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") !important;
-    }
+  .dark select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") !important;
   }
 
   /* FORCE Option Styling - Light Mode */
@@ -533,24 +550,22 @@
   }
 
   /* FORCE Option Styling - Dark Mode */
-  @media (prefers-color-scheme: dark) {
-    select option,
-    select optgroup,
-    select option:not(:checked),
-    select option:not(:selected) {
-      background-color: rgb(55, 65, 81) !important; /* gray-700 */
-      color: white !important;
-    }
+  .dark select option,
+  .dark select optgroup,
+  .dark select option:not(:checked),
+  .dark select option:not(:selected) {
+    background-color: #1a4166 !important;
+    color: white !important;
+  }
 
-    select option:checked,
-    select option:selected,
-    select option:hover,
-    select option:focus,
-    select option:active {
-      background: #0660B2 !important;
-      background-color: #0660B2 !important;
-      color: white !important;
-    }
+  .dark select option:checked,
+  .dark select option:selected,
+  .dark select option:hover,
+  .dark select option:focus,
+  .dark select option:active {
+    background: #0660B2 !important;
+    background-color: #0660B2 !important;
+    color: white !important;
   }
 
   /* Clean up browser defaults */
@@ -613,15 +628,13 @@
   }
 
   /* Dark mode calendar icons - ensure visibility */
-  @media (prefers-color-scheme: dark) {
-    input[type="date"]::-webkit-calendar-picker-indicator,
-    input[type="time"]::-webkit-calendar-picker-indicator,
-    input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-    input[type="week"]::-webkit-calendar-picker-indicator,
-    input[type="month"]::-webkit-calendar-picker-indicator {
-      filter: invert(1) !important;  /* Invert for dark mode visibility */
-      opacity: 0.9 !important;  /* Slightly reduced opacity for dark mode */
-    }
+  .dark input[type="date"]::-webkit-calendar-picker-indicator,
+  .dark input[type="time"]::-webkit-calendar-picker-indicator,
+  .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  .dark input[type="week"]::-webkit-calendar-picker-indicator,
+  .dark input[type="month"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) !important;  /* Invert for dark mode visibility */
+    opacity: 0.9 !important;  /* Slightly reduced opacity for dark mode */
   }
 
   /* Hover state for better UX */
@@ -702,18 +715,16 @@
   }
 
   /* Dark mode scrollbar */
-  @media (prefers-color-scheme: dark) {
-    select::-webkit-scrollbar-track {
-      background: rgb(31, 41, 55) !important;
-    }
+  .dark select::-webkit-scrollbar-track {
+    background: #1a4166 !important;
+  }
 
-    select::-webkit-scrollbar-thumb {
-      background: rgb(107, 114, 128) !important;
-    }
+  .dark select::-webkit-scrollbar-thumb {
+    background: rgb(107, 114, 128) !important;
+  }
 
-    select::-webkit-scrollbar-thumb:hover {
-      background: rgb(156, 163, 175) !important;
-    }
+  .dark select::-webkit-scrollbar-thumb:hover {
+    background: rgb(156, 163, 175) !important;
   }
 
   /* Disabled state styling */
@@ -725,13 +736,11 @@
     background-color: rgb(243, 244, 246) !important;
   }
 
-  @media (prefers-color-scheme: dark) {
-    select:disabled,
-    input:disabled,
-    textarea:disabled {
-      background-color: rgb(31, 41, 55) !important;
-      opacity: 0.4 !important;
-    }
+  .dark select:disabled,
+  .dark input:disabled,
+  .dark textarea:disabled {
+    background-color: #1a4166 !important;
+    opacity: 0.5 !important;
   }
 
   /* Placeholder text colors */
@@ -741,20 +750,27 @@
     opacity: 1 !important;
   }
 
-  @media (prefers-color-scheme: dark) {
-    input::placeholder,
-    textarea::placeholder {
-      color: rgb(107, 114, 128) !important; /* gray-500 */
-    }
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: rgb(156, 163, 175) !important; /* gray-400 for better readability */
   }
 
-  /* Autofill background color fix - Force white backgrounds always */
+  /* Autofill background color fix - Force white backgrounds in light mode */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 30px white inset !important;
     -webkit-text-fill-color: rgb(17, 24, 39) !important;
+  }
+
+  /* Autofill background color fix - Force dark blue backgrounds in dark mode */
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #1a4166 inset !important;
+    -webkit-text-fill-color: white !important;
   }
 
   .text-balance {
