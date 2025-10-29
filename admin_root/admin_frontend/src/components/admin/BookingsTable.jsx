@@ -14,7 +14,8 @@ import { useState, useEffect } from 'react';
 import BookingRow from './BookingRow';
 import AttendanceControls from './AttendanceControls';
 import { MagnifyingGlassIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
-import { modernInputClasses, modernCheckboxClasses } from '../../constants/formStyles';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const BookingsTable = ({
   bookings,
@@ -159,16 +160,16 @@ const BookingsTable = ({
       {/* Search Bar (hidden in attendance mode) */}
       {!isAttendanceMode && (
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="relative">
+          <div className="relative md:w-80">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
             </div>
-            <input
+            <Input
               type="text"
               value={localSearchTerm}
               onChange={(e) => setLocalSearchTerm(e.target.value)}
               placeholder="Search by name, email, or student ID..."
-              className={`${modernInputClasses} pl-10 md:w-80`}
+              className="pl-10"
             />
           </div>
         </div>
@@ -205,7 +206,7 @@ const BookingsTable = ({
                   {/* Checkbox column (attendance mode only) */}
                   {isAttendanceMode && (
                     <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">
-                      <input type="checkbox" disabled className={`${modernCheckboxClasses} opacity-0`} />
+                      <Checkbox disabled className="opacity-0" />
                     </th>
                   )}
 

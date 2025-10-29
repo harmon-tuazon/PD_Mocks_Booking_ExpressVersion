@@ -6,9 +6,13 @@
 
 import { ListBulletIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 import {
-  modernSelectClasses,
-  modernDateTimeClasses
-} from '../../constants/formStyles';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
 
 const LOCATIONS = [
   'Mississauga',
@@ -43,130 +47,124 @@ const FilterBar = ({
 
         {/* Date Filters - Compact */}
         <div className="flex items-center gap-2">
-          <input
-            type="date"
+          <DatePicker
             value={filters.filter_date_from || ''}
-            onChange={(e) => onFilterChange('filter_date_from', e.target.value)}
-            className={modernDateTimeClasses}
-            title="From Date"
+            onChange={(value) => onFilterChange('filter_date_from', value)}
+            placeholder="From Date"
+            className="min-w-[140px]"
           />
           <span className="text-gray-500 dark:text-gray-400 text-sm">to</span>
-          <input
-            type="date"
+          <DatePicker
             value={filters.filter_date_to || ''}
-            onChange={(e) => onFilterChange('filter_date_to', e.target.value)}
-            className={modernDateTimeClasses}
-            title="To Date"
+            onChange={(value) => onFilterChange('filter_date_to', value)}
+            placeholder="To Date"
+            className="min-w-[140px]"
           />
         </div>
 
         {/* Location Filter - Compact */}
         <div className="min-w-[140px]">
-          <select
-            value={filters.filter_location || ''}
-            onChange={(e) => onFilterChange('filter_location', e.target.value)}
-            className={modernSelectClasses}
-            title="Location"
+          <Select
+            value={filters.filter_location || 'all'}
+            onValueChange={(value) => onFilterChange('filter_location', value === 'all' ? '' : value)}
           >
-            <option value="">All Locations</option>
-            {LOCATIONS.map((location) => (
-              <option key={location} value={location}>
-                {location}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger title="Location">
+              <SelectValue placeholder="All Locations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Locations</SelectItem>
+              {LOCATIONS.map((location) => (
+                <SelectItem key={location} value={location}>
+                  {location}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Mock Type Filter - Compact */}
         <div className="min-w-[160px]">
-          <select
-            value={filters.filter_mock_type || ''}
-            onChange={(e) => onFilterChange('filter_mock_type', e.target.value)}
-            className={modernSelectClasses}
-            title="Mock Type"
+          <Select
+            value={filters.filter_mock_type || 'all'}
+            onValueChange={(value) => onFilterChange('filter_mock_type', value === 'all' ? '' : value)}
           >
-            <option value="">All Types</option>
-            {MOCK_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger title="Mock Type">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {MOCK_TYPES.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Status Filter - Compact */}
         <div className="min-w-[120px]">
-          <select
+          <Select
             value={filters.filter_status || 'all'}
-            onChange={(e) => onFilterChange('filter_status', e.target.value)}
-            className={modernSelectClasses}
-            title="Status"
+            onValueChange={(value) => onFilterChange('filter_status', value)}
           >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+            <SelectTrigger title="Status">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* Reset Button - Compact */}
+        {/* Reset Button - Compact with Badge */}
         <button
-          type="button"
           onClick={onReset}
-          disabled={activeFilterCount === 0}
-          className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-dark-bg hover:bg-gray-50 dark:hover:bg-dark-hover focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex-shrink-0"
+          className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300
+                   bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200
+                   dark:hover:bg-gray-700 rounded-lg flex items-center
+                   transition-colors duration-200"
+          title="Reset all filters"
         >
-          <svg className="h-4 w-4 mr-1.5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Reset Filters
+          Reset
           {activeFilterCount > 0 && (
-            <span className="ml-1.5 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
+            <span className="ml-1.5 px-1.5 py-0.5 bg-blue-500 text-white text-xs
+                           rounded-full min-w-[20px] text-center">
               {activeFilterCount}
             </span>
           )}
         </button>
 
-        {/* Spacer to push view toggles to the right */}
-        <div className="flex-grow"></div>
+        {/* Spacer */}
+        <div className="flex-grow" />
 
-        {/* Divider */}
-        <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 hidden lg:block"></div>
-
-        {/* View Mode Toggle - Compact buttons at the end */}
-        <div className="inline-flex rounded-lg shadow-sm flex-shrink-0" role="group">
+        {/* View Mode Toggle - Compact */}
+        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700/50
+                      p-1 rounded-lg">
           <button
-            type="button"
             onClick={() => onViewModeChange('list')}
-            className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-l-lg border transition-all ${
+            className={`p-1.5 rounded transition-all duration-200 ${
               viewMode === 'list'
-                ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
-                : 'bg-white dark:bg-dark-bg text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-dark-hover'
+                ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
             title="List View"
           >
-            <ListBulletIcon className="h-4 w-4 mr-1.5" />
-            <span>List View</span>
+            <ListBulletIcon className="h-4 w-4" />
           </button>
           <button
-            type="button"
-            onClick={() => onViewModeChange('aggregate')}
-            className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-r-lg border border-l-0 transition-all ${
-              viewMode === 'aggregate'
-                ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
-                : 'bg-white dark:bg-dark-bg text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-dark-hover'
+            onClick={() => onViewModeChange('grid')}
+            className={`p-1.5 rounded transition-all duration-200 ${
+              viewMode === 'grid'
+                ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
-            title="Group View"
+            title="Grid View"
           >
-            <Squares2X2Icon className="h-4 w-4 mr-1.5" />
-            <span>Group View</span>
+            <Squares2X2Icon className="h-4 w-4" />
           </button>
-        </div>
-      </div>
-
-      {/* Mobile/Tablet Responsive Layout - Shows on smaller screens */}
-      <div className="mt-3 lg:hidden">
-        <div className="text-xs text-gray-500 dark:text-gray-400">
-          <p>For best experience, use desktop view to see all filters in one line.</p>
         </div>
       </div>
     </div>

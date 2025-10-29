@@ -4,10 +4,8 @@
  */
 
 import { useState } from 'react';
-import {
-  modernDateTimeClasses,
-  modernLabelClasses
-} from '../../constants/formStyles';
+import { TimePicker } from '@/components/ui/time-picker';
+import { Label } from '@/components/ui/label';
 
 const TimeSlotBuilder = ({ timeSlots, onChange }) => {
   const [errors, setErrors] = useState({});
@@ -112,9 +110,9 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <label className={modernLabelClasses}>
+        <Label>
           Time Slots <span className="text-red-500">*</span>
-        </label>
+        </Label>
         <button
           type="button"
           onClick={addTimeSlot}
@@ -154,11 +152,10 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
                 <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
                   Start Time
                 </label>
-                <input
-                  type="time"
+                <TimePicker
                   value={slot.start_time}
-                  onChange={(e) => updateTimeSlot(index, 'start_time', e.target.value)}
-                  className={modernDateTimeClasses}
+                  onChange={(value) => updateTimeSlot(index, 'start_time', value)}
+                  placeholder="Select start time"
                   required
                 />
               </div>
@@ -167,11 +164,10 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
                 <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
                   End Time
                 </label>
-                <input
-                  type="time"
+                <TimePicker
                   value={slot.end_time}
-                  onChange={(e) => updateTimeSlot(index, 'end_time', e.target.value)}
-                  className={modernDateTimeClasses}
+                  onChange={(value) => updateTimeSlot(index, 'end_time', value)}
+                  placeholder="Select end time"
                   required
                 />
               </div>

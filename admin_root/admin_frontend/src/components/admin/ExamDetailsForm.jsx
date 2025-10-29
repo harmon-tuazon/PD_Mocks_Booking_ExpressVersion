@@ -9,11 +9,16 @@ import { fieldInfoMessages } from '../../utils/examValidation';
 import { formatTime } from '../../utils/timeFormatters';
 import { formatDateLong } from '../../utils/dateUtils';
 import {
-  modernSelectClasses,
-  modernDateTimeClasses,
-  modernCheckboxClasses,
-  modernLabelClasses
-} from '../../constants/formStyles';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
+import { TimePicker } from '@/components/ui/time-picker';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 const ExamDetailsForm = ({
   exam,
@@ -42,74 +47,54 @@ const ExamDetailsForm = ({
     return typeColors[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
   };
 
-
-  // Format time for display - uses production formatter from timeFormatters.js
-  // Accepts Unix timestamps (milliseconds) or ISO strings
-  const formatTimeDisplay = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    return formatTime(timestamp);
+  // Format time display (12-hour format with AM/PM)
+  const formatTimeDisplay = (timeValue) => {
+    if (!timeValue) return 'N/A';
+    return formatTime(timeValue);
   };
 
-  // Helper to get field error
+  // Get field error helper
   const getFieldError = (fieldName) => {
-    return touched[fieldName] ? errors[fieldName] : null;
+    if (touched[fieldName] && errors[fieldName]) {
+      return errors[fieldName];
+    }
+    return null;
   };
 
-  // Helper for input field classes
-  const getInputClasses = (fieldName, inputType = 'text') => {
-    const hasError = getFieldError(fieldName);
-
-    // Choose base classes based on input type
-    let baseClasses;
-    if (inputType === 'select') {
-      baseClasses = modernSelectClasses;
-    } else if (inputType === 'date' || inputType === 'time') {
-      baseClasses = modernDateTimeClasses;
-    } else if (inputType === 'checkbox') {
-      baseClasses = modernCheckboxClasses;
-    } else {
-      baseClasses = modernSelectClasses; // Default to select classes since most are selects
-    }
-
-    if (!isEditing) {
-      return `${baseClasses} opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800`;
-    }
-
-    if (hasError) {
-      return `${baseClasses} border-red-500 dark:border-red-400 focus:ring-red-500 focus:border-red-500 bg-red-50 dark:bg-red-900/20`;
-    }
-
-    return baseClasses;
+  // Get error class helper for components
+  const getErrorClass = (fieldName) => {
+    return getFieldError(fieldName) ? 'border-red-500' : '';
   };
 
   return (
-    <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm p-3">
-      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-        Exam Information
-      </h2>
+    <div className="space-y-4">
+      {/* Basic Information Section */}
+      <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg space-y-4">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          Basic Information
+        </h3>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {/* Mock Type */}
         <div>
-          <label className={modernLabelClasses}>
-            Mock Type
-          </label>
+          <Label>Mock Type</Label>
           {isEditing ? (
             <div>
-              <select
+              <Select
                 name="mock_type"
                 value={displayData.mock_type || ''}
-                onChange={(e) => onFieldChange('mock_type', e.target.value)}
-                onBlur={() => onFieldBlur('mock_type')}
+                onValueChange={(value) => onFieldChange('mock_type', value)}
                 disabled={isSaving}
-                className={getInputClasses('mock_type', 'select')}
               >
-                <option value="">Select a type</option>
-                <option value="Situational Judgment">Situational Judgment</option>
-                <option value="Clinical Skills">Clinical Skills</option>
-                <option value="Mini-mock">Mini-mock</option>
-                <option value="Mock Discussion">Mock Discussion</option>
-              </select>
+                <SelectTrigger className={getErrorClass('mock_type')}>
+                  <SelectValue placeholder="Select mock type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Situational Judgment">Situational Judgment</SelectItem>
+                  <SelectItem value="Clinical Skills">Clinical Skills</SelectItem>
+                  <SelectItem value="Mini-mock">Mini-mock</SelectItem>
+                  <SelectItem value="Mock Discussion">Mock Discussion</SelectItem>
+                </SelectContent>
+              </Select>
               {getFieldError('mock_type') && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
                   <ExclamationCircleIcon className="h-4 w-4 mr-1" />
@@ -119,8 +104,8 @@ const ExamDetailsForm = ({
             </div>
           ) : (
             <div>
-              <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getMockTypeBadgeColor(displayData.mock_type)}`}>
-                {displayData.mock_type}
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMockTypeBadgeColor(displayData.mock_type)}`}>
+                {displayData.mock_type || 'N/A'}
               </span>
             </div>
           )}
@@ -128,21 +113,21 @@ const ExamDetailsForm = ({
 
         {/* Status */}
         <div>
-          <label className={modernLabelClasses}>
-            Status
-          </label>
+          <Label>Status</Label>
           {isEditing ? (
-            <div>
-              <label className="inline-flex items-center">
-                <input
-                  type="checkbox"
-                  name="is_active"
-                  checked={displayData.is_active !== undefined ? displayData.is_active : true}
-                  onChange={(e) => onFieldChange('is_active', e.target.checked)}
-                  disabled={isSaving}
-                  className={modernCheckboxClasses}
-                />
-                <span className="ml-2 text-gray-900 dark:text-gray-100">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="is_active"
+                name="is_active"
+                checked={displayData.is_active || false}
+                onCheckedChange={(checked) => {
+                  onFieldChange('is_active', checked);
+                  onFieldBlur('is_active');
+                }}
+                disabled={isSaving}
+              />
+              <label htmlFor="is_active" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                <span className={displayData.is_active ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'}>
                   {displayData.is_active ? 'Active' : 'Inactive'}
                 </span>
               </label>
@@ -156,19 +141,20 @@ const ExamDetailsForm = ({
 
         {/* Exam Date */}
         <div>
-          <label className={modernLabelClasses}>
-            Exam Date
-          </label>
+          <Label>Exam Date</Label>
           {isEditing ? (
             <div>
-              <input
-                type="date"
+              <DatePicker
+                id="exam_date"
                 name="exam_date"
                 value={displayData.exam_date || ''}
-                onChange={(e) => onFieldChange('exam_date', e.target.value)}
-                onBlur={() => onFieldBlur('exam_date')}
+                onChange={(value) => {
+                  onFieldChange('exam_date', value);
+                  onFieldBlur('exam_date');
+                }}
+                placeholder="Select exam date"
                 disabled={isSaving}
-                className={getInputClasses('exam_date', 'date')}
+                className={getFieldError('exam_date') ? 'border-red-500' : ''}
               />
               {getFieldError('exam_date') && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
@@ -186,29 +172,29 @@ const ExamDetailsForm = ({
 
         {/* Location */}
         <div>
-          <label className={modernLabelClasses}>
-            Location
-          </label>
+          <Label>Location</Label>
           {isEditing ? (
             <div>
-              <select
+              <Select
                 name="location"
                 value={displayData.location || ''}
-                onChange={(e) => onFieldChange('location', e.target.value)}
-                onBlur={() => onFieldBlur('location')}
+                onValueChange={(value) => onFieldChange('location', value)}
                 disabled={isSaving}
-                className={getInputClasses('location', 'select')}
               >
-                <option value="">Select a location</option>
-                <option value="Mississauga">Mississauga</option>
-                <option value="Mississauga - B9">Mississauga - B9</option>
-                <option value="Mississauga - Lab D">Mississauga - Lab D</option>
-                <option value="Vancouver">Vancouver</option>
-                <option value="Montreal">Montreal</option>
-                <option value="Calgary">Calgary</option>
-                <option value="Richmond Hill">Richmond Hill</option>
-                <option value="Online">Online</option>
-              </select>
+                <SelectTrigger className={getErrorClass('location')}>
+                  <SelectValue placeholder="Select a location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Mississauga">Mississauga</SelectItem>
+                  <SelectItem value="Mississauga - B9">Mississauga - B9</SelectItem>
+                  <SelectItem value="Mississauga - Lab D">Mississauga - Lab D</SelectItem>
+                  <SelectItem value="Vancouver">Vancouver</SelectItem>
+                  <SelectItem value="Montreal">Montreal</SelectItem>
+                  <SelectItem value="Calgary">Calgary</SelectItem>
+                  <SelectItem value="Richmond Hill">Richmond Hill</SelectItem>
+                  <SelectItem value="Online">Online</SelectItem>
+                </SelectContent>
+              </Select>
               {getFieldError('location') && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
                   <ExclamationCircleIcon className="h-4 w-4 mr-1" />
@@ -225,19 +211,20 @@ const ExamDetailsForm = ({
 
         {/* Start Time */}
         <div>
-          <label className={modernLabelClasses}>
-            Start Time
-          </label>
+          <Label>Start Time</Label>
           {isEditing ? (
             <div>
-              <input
-                type="time"
+              <TimePicker
+                id="start_time"
                 name="start_time"
                 value={displayData.start_time || ''}
-                onChange={(e) => onFieldChange('start_time', e.target.value)}
-                onBlur={() => onFieldBlur('start_time')}
+                onChange={(value) => {
+                  onFieldChange('start_time', value);
+                  onFieldBlur('start_time');
+                }}
+                placeholder="Select start time"
                 disabled={isSaving}
-                className={getInputClasses('start_time', 'time')}
+                className={getFieldError('start_time') ? 'border-red-500' : ''}
               />
               {getFieldError('start_time') && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
@@ -255,19 +242,20 @@ const ExamDetailsForm = ({
 
         {/* End Time */}
         <div>
-          <label className={modernLabelClasses}>
-            End Time
-          </label>
+          <Label>End Time</Label>
           {isEditing ? (
             <div>
-              <input
-                type="time"
+              <TimePicker
+                id="end_time"
                 name="end_time"
                 value={displayData.end_time || ''}
-                onChange={(e) => onFieldChange('end_time', e.target.value)}
-                onBlur={() => onFieldBlur('end_time')}
+                onChange={(value) => {
+                  onFieldChange('end_time', value);
+                  onFieldBlur('end_time');
+                }}
+                placeholder="Select end time"
                 disabled={isSaving}
-                className={getInputClasses('end_time', 'time')}
+                className={getFieldError('end_time') ? 'border-red-500' : ''}
               />
               {getFieldError('end_time') && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
@@ -283,7 +271,156 @@ const ExamDetailsForm = ({
           )}
         </div>
 
+        {/* Lab Stations */}
+        <div>
+          <Label>
+            Lab Stations
+            {fieldInfoMessages.lab_stations && (
+              <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 inline-flex items-center">
+                <InformationCircleIcon className="h-3 w-3 mr-1" />
+                {fieldInfoMessages.lab_stations}
+              </span>
+            )}
+          </Label>
+          {isEditing ? (
+            <div>
+              <input
+                type="number"
+                name="lab_stations"
+                value={displayData.lab_stations || ''}
+                onChange={(e) => onFieldChange('lab_stations', e.target.value)}
+                onBlur={() => onFieldBlur('lab_stations')}
+                disabled={isSaving}
+                placeholder="Number of stations"
+                min="0"
+                className={getInputClasses('lab_stations')}
+              />
+              {getFieldError('lab_stations') && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                  {getFieldError('lab_stations')}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="text-gray-900 dark:text-gray-100 font-medium">
+              {displayData.lab_stations || 'N/A'}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Capacity Information Section */}
+      <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg space-y-4">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          Capacity Information
+        </h3>
+
+        {/* Capacity */}
+        <div>
+          <Label>Total Capacity</Label>
+          {isEditing ? (
+            <div>
+              <input
+                type="number"
+                name="capacity"
+                value={displayData.capacity || ''}
+                onChange={(e) => onFieldChange('capacity', e.target.value)}
+                onBlur={() => onFieldBlur('capacity')}
+                disabled={isSaving}
+                placeholder="Maximum number of participants"
+                min="0"
+                className={getInputClasses('capacity')}
+              />
+              {getFieldError('capacity') && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                  {getFieldError('capacity')}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="text-gray-900 dark:text-gray-100 font-medium">
+              {displayData.capacity || 'N/A'}
+            </div>
+          )}
+        </div>
+
+        {/* Confirmed Count - Read Only */}
+        <div>
+          <Label>Confirmed Participants</Label>
+          <div className="text-gray-900 dark:text-gray-100 font-medium">
+            {displayData.confirmed_count || 0}
+          </div>
+        </div>
+
+        {/* Available Spots - Calculated */}
+        <div>
+          <Label>Available Spots</Label>
+          <div className="text-gray-900 dark:text-gray-100 font-medium">
+            {(displayData.capacity || 0) - (displayData.confirmed_count || 0)}
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Information Section */}
+      {!isEditing && displayData.notes && (
+        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
+            Notes
+          </h3>
+          <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
+            {displayData.notes}
+          </p>
+        </div>
+      )}
+
+      {/* Metadata - Read Only */}
+      {!isEditing && (
+        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg space-y-2">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+            System Information
+          </h3>
+
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            {displayData.id && (
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">ID:</span>
+                <span className="ml-2 text-gray-900 dark:text-gray-100 font-mono">
+                  {displayData.id}
+                </span>
+              </div>
+            )}
+
+            {displayData.created_at && (
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Created:</span>
+                <span className="ml-2 text-gray-900 dark:text-gray-100">
+                  {formatDateLong(displayData.created_at)}
+                </span>
+              </div>
+            )}
+
+            {displayData.updated_at && (
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Updated:</span>
+                <span className="ml-2 text-gray-900 dark:text-gray-100">
+                  {formatDateLong(displayData.updated_at)}
+                </span>
+              </div>
+            )}
+
+            {displayData.created_by && (
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Created By:</span>
+                <span className="ml-2 text-gray-900 dark:text-gray-100">
+                  {displayData.created_by}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

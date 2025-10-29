@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { ResponsiveLogo } from '../components/shared/Logo'
-import {
-  modernInputClasses,
-  modernCheckboxClasses,
-  modernLabelClasses
-} from '../constants/formStyles'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Button } from '@/components/ui/button'
 
 function Login() {
   const [email, setEmail] = useState('')
@@ -74,11 +73,11 @@ function Login() {
             )}
 
             <div>
-              <label htmlFor="email" className={modernLabelClasses}>
+              <Label htmlFor="email">
                 Email address
-              </label>
+              </Label>
               <div className="mt-1">
-                <input
+                <Input
                   id="email"
                   name="email"
                   type="email"
@@ -86,17 +85,16 @@ function Login() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className={modernInputClasses}
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className={modernLabelClasses}>
+              <Label htmlFor="password">
                 Password
-              </label>
+              </Label>
               <div className="mt-1">
-                <input
+                <Input
                   id="password"
                   name="password"
                   type="password"
@@ -104,35 +102,32 @@ function Login() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={modernInputClasses}
                 />
               </div>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <input
+                <Checkbox
                   id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
                   checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className={modernCheckboxClasses}
+                  onCheckedChange={(checked) => setRememberMe(checked)}
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900 cursor-pointer">
                   Remember me for 7 days
                 </label>
               </div>
             </div>
 
             <div>
-              <button
+              <Button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full"
+                size="default"
               >
                 {loading ? 'Signing in...' : 'Sign in'}
-              </button>
+              </Button>
             </div>
           </form>
         </div>

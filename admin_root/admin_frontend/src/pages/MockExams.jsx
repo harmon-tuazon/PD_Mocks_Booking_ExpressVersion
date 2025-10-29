@@ -6,12 +6,16 @@ import TimeSlotBuilder from '../components/admin/TimeSlotBuilder';
 import MockExamPreview from '../components/admin/MockExamPreview';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import {
-  modernSelectClasses,
-  modernDateTimeClasses,
-  modernInputClasses,
-  modernCheckboxClasses,
-  modernLabelClasses
-} from '../constants/formStyles';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 const MOCK_TYPES = [
   'Situational Judgment',
@@ -197,80 +201,84 @@ function MockExams() {
               {/* Common Properties */}
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label className={modernLabelClasses}>
+                  <Label>
                     Mock Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
+                  </Label>
+                  <Select
                     value={formData.mock_type}
-                    onChange={(e) => setFormData({ ...formData, mock_type: e.target.value })}
-                    className={modernSelectClasses}
+                    onValueChange={(value) => setFormData({ ...formData, mock_type: value })}
                     required
                   >
-                    {MOCK_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a mock type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MOCK_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
-                  <label className={modernLabelClasses}>
+                  <Label>
                     Exam Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
+                  </Label>
+                  <DatePicker
                     value={formData.exam_date}
-                    onChange={(e) => setFormData({ ...formData, exam_date: e.target.value })}
-                    className={modernDateTimeClasses}
+                    onChange={(value) => setFormData({ ...formData, exam_date: value })}
+                    placeholder="Select exam date"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className={modernLabelClasses}>
+                  <Label>
                     Capacity <span className="text-red-500">*</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="number"
                     min="1"
                     max="100"
                     value={formData.capacity}
                     onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-                    className={modernInputClasses}
                     required
                   />
                 </div>
 
                 <div>
-                  <label className={modernLabelClasses}>
+                  <Label>
                     Location <span className="text-red-500">*</span>
-                  </label>
-                  <select
+                  </Label>
+                  <Select
                     value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className={modernSelectClasses}
+                    onValueChange={(value) => setFormData({ ...formData, location: value })}
                     required
                   >
-                    {LOCATIONS.map((loc) => (
-                      <option key={loc} value={loc}>
-                        {loc}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LOCATIONS.map((loc) => (
+                        <SelectItem key={loc} value={loc}>
+                          {loc}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               {/* Active Status */}
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
+              <div className="flex items-center space-x-2">
+                <Checkbox
                   id="is_active"
                   checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className={modernCheckboxClasses}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                 />
-                <label htmlFor="is_active" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                <label htmlFor="is_active" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                   Active (available for booking)
                 </label>
               </div>
