@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
-import { TimePickerSelect } from '@/components/ui/time-picker';
+import { TimePicker } from '@/components/ui/time-picker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -218,7 +218,7 @@ const ExamDetailsForm = ({
               <Label>Start Time</Label>
               {isEditing ? (
                 <div>
-                  <TimePickerSelect
+                  <TimePicker
                     id="start_time"
                     name="start_time"
                     value={displayData.start_time || ''}
@@ -228,9 +228,6 @@ const ExamDetailsForm = ({
                     }}
                     placeholder="Select start time"
                     disabled={isSaving}
-                    minuteStep={15}
-                    startHour={6}
-                    endHour={23}
                     className={getFieldError('start_time') ? 'border-red-500' : ''}
                   />
                   {getFieldError('start_time') && (
@@ -252,7 +249,7 @@ const ExamDetailsForm = ({
               <Label>End Time</Label>
               {isEditing ? (
                 <div>
-                  <TimePickerSelect
+                  <TimePicker
                     id="end_time"
                     name="end_time"
                     value={displayData.end_time || ''}
@@ -262,9 +259,6 @@ const ExamDetailsForm = ({
                     }}
                     placeholder="Select end time"
                     disabled={isSaving}
-                    minuteStep={15}
-                    startHour={6}
-                    endHour={23}
                     className={getFieldError('end_time') ? 'border-red-500' : ''}
                   />
                   {getFieldError('end_time') && (
