@@ -65,16 +65,19 @@ function MockExamDetail() {
   // Initialize attendance mutation
   const markAttendanceMutation = useMarkAttendanceMutation(id);
 
-  // Handle mark attended action
-  const handleMarkAttended = () => {
+  // Handle apply action (mark_yes, mark_no, or unmark)
+  const handleApplyAction = () => {
     if (attendance.selectedCount === 0) return;
 
     // Set to submitting state
     attendance.startSubmitting();
 
-    // Call mutation
+    // Call mutation with current action
     markAttendanceMutation.mutate(
-      { bookingIds: attendance.selectedIds },
+      {
+        bookingIds: attendance.selectedIds,
+        action: attendance.action
+      },
       {
         onSuccess: () => {
           // Exit attendance mode and clear selections
@@ -268,11 +271,15 @@ function MockExamDetail() {
               selectedCount: attendance.selectedCount,
               selectableCount: attendance.selectableCount,
               attendedCount: attendance.attendedCount,
+              noShowCount: attendance.noShowCount,
+              unmarkedCount: attendance.unmarkedCount,
               totalCount: attendance.totalCount,
+              action: attendance.action,
               onToggleMode: attendance.toggleMode,
               onSelectAll: attendance.selectAll,
               onClearAll: attendance.clearAll,
-              onMarkAttended: handleMarkAttended,
+              onSetAction: attendance.setAction,
+              onApplyAction: handleApplyAction,
               isSelected: attendance.isSelected,
               onToggleSelection: attendance.toggleSelection
             }}

@@ -156,8 +156,15 @@ module.exports = async (req, res) => {
         continue;
       }
 
-      // Determine the new attendance value (simplified)
-      const newAttendance = requestedUpdate.attended ? ATTENDANCE_VALUES.YES : ATTENDANCE_VALUES.NO;
+      // Determine the new attendance value (handles true, false, and null)
+      let newAttendance;
+      if (requestedUpdate.attended === null || requestedUpdate.attended === undefined) {
+        newAttendance = ATTENDANCE_VALUES.EMPTY;
+      } else if (requestedUpdate.attended === true) {
+        newAttendance = ATTENDANCE_VALUES.YES;
+      } else {
+        newAttendance = ATTENDANCE_VALUES.NO;
+      }
       const currentAttendance = existingBooking.properties.attendance || ATTENDANCE_VALUES.EMPTY;
 
       // Check if update is needed (idempotency)

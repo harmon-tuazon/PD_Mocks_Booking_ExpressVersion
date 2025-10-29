@@ -5,7 +5,8 @@
  * Features:
  * - State machine: VIEW → SELECTING → SUBMITTING → SUCCESS/ERROR
  * - Multi-selection with Set for O(1) lookups
- * - Cannot select already-attended bookings
+ * - Multi-action support: Mark Yes, Mark No, Unmark
+ * - Can select bookings with any attendance status
  * - Keyboard shortcuts (Escape, Ctrl+A)
  */
 
@@ -18,14 +19,23 @@ const useAttendanceMarking = (bookings = []) => {
   // Selected booking IDs (using Set for O(1) lookups)
   const [selectedIds, setSelectedIds] = useState(new Set());
 
-  // Get bookings that can be selected (only those with empty attendance)
-  const selectableBookings = bookings.filter(
-    booking => !booking.attendance || booking.attendance === ''
-  );
+  // Action to perform on selected bookings: 'mark_yes' | 'mark_no' | 'unmark'
+  const [action, setAction] = useState('mark_yes');
 
-  // Count attended bookings (those with non-empty attendance value)
+  // All bookings are selectable regardless of attendance status
+  const selectableBookings = bookings;
+
+  // Count bookings by attendance status
   const attendedCount = bookings.filter(
-    booking => booking.attendance && booking.attendance !== ''
+    booking => booking.attendance === 'Yes'
+  ).length;
+
+  const noShowCount = bookings.filter(
+    booking => booking.attendance === 'No'
+  ).length;
+
+  const unmarkedCount = bookings.filter(
+    booking => !booking.attendance || booking.attendance === ''
   ).length;
 
   /**
@@ -44,10 +54,11 @@ const useAttendanceMarking = (bookings = []) => {
 
   /**
    * Toggle selection of a single booking
+   * Now allows selecting bookings with any attendance status
    */
   const toggleSelection = useCallback((bookingId, booking) => {
-    // Cannot select bookings with attendance already marked (non-empty attendance)
-    if (booking?.attendance && booking.attendance !== '') {
+    // Cannot select cancelled bookings
+    if (booking?.booking_status === 'cancelled') {
       return false;
     }
 
@@ -138,7 +149,10 @@ const useAttendanceMarking = (bookings = []) => {
     selectedCount: selectedIds.size,
     selectableCount: selectableBookings.length,
     attendedCount,
+    noShowCount,
+    unmarkedCount,
     totalCount: bookings.length,
+    action,
 
     // Actions
     toggleMode,
@@ -146,6 +160,7 @@ const useAttendanceMarking = (bookings = []) => {
     selectAll,
     clearAll,
     isSelected,
+    setAction,
     startSubmitting,
     exitToView,
     returnToSelecting

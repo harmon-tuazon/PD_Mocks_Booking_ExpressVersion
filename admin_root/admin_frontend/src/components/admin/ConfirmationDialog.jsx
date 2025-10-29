@@ -5,6 +5,7 @@
  * Features:
  * - Warning icon
  * - Selected count display
+ * - Dynamic messaging based on action type
  * - Confirm/Cancel buttons
  * - Escape key to close
  * - Click outside to close
@@ -14,7 +15,42 @@ import { Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
-const ConfirmationDialog = ({ isOpen, onClose, onConfirm, selectedCount }) => {
+const ConfirmationDialog = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  selectedCount,
+  action = 'mark_yes',
+  actionLabel = 'Mark as Attended'
+}) => {
+  // Get action-specific messaging
+  const getActionMessage = () => {
+    switch (action) {
+      case 'mark_yes':
+        return {
+          primary: `You are about to mark ${selectedCount} student${selectedCount > 1 ? 's' : ''} as attended.`,
+          secondary: 'Their attendance status will be set to "Yes" in HubSpot.'
+        };
+      case 'mark_no':
+        return {
+          primary: `You are about to mark ${selectedCount} student${selectedCount > 1 ? 's' : ''} as no show.`,
+          secondary: 'Their attendance status will be set to "No" in HubSpot.'
+        };
+      case 'unmark':
+        return {
+          primary: `You are about to clear attendance for ${selectedCount} student${selectedCount > 1 ? 's' : ''}.`,
+          secondary: 'Their attendance status will be removed in HubSpot, making them unmarked.'
+        };
+      default:
+        return {
+          primary: `You are about to update attendance for ${selectedCount} student${selectedCount > 1 ? 's' : ''}.`,
+          secondary: 'This action will update their attendance status in HubSpot.'
+        };
+    }
+  };
+
+  const { primary, secondary } = getActionMessage();
+
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -54,16 +90,16 @@ const ConfirmationDialog = ({ isOpen, onClose, onConfirm, selectedCount }) => {
                   as="h3"
                   className="mt-4 text-center text-lg font-medium leading-6 text-gray-900 dark:text-gray-100"
                 >
-                  Confirm Attendance
+                  Confirm {actionLabel}
                 </Dialog.Title>
 
                 {/* Description */}
                 <div className="mt-3">
                   <p className="text-sm text-center text-gray-500 dark:text-gray-400">
-                    You are about to mark <span className="font-semibold text-gray-900 dark:text-gray-100">{selectedCount} student{selectedCount > 1 ? 's' : ''}</span> as attended.
+                    {primary}
                   </p>
                   <p className="mt-2 text-sm text-center text-gray-500 dark:text-gray-400">
-                    This action will update their attendance status in HubSpot. This action cannot be undone from this interface.
+                    {secondary}
                   </p>
                 </div>
 
@@ -78,7 +114,7 @@ const ConfirmationDialog = ({ isOpen, onClose, onConfirm, selectedCount }) => {
                   </button>
                   <button
                     type="button"
-                    className="flex-1 inline-flex justify-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors shadow-sm"
+                    className="flex-1 inline-flex justify-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors shadow-sm"
                     onClick={onConfirm}
                   >
                     Confirm

@@ -4,6 +4,7 @@
  *
  * Features:
  * - React Query mutation for attendance updates
+ * - Multi-action support (mark_yes, mark_no, unmark)
  * - Optimistic UI updates
  * - Automatic cache invalidation
  * - Toast notifications
@@ -18,12 +19,28 @@ const useMarkAttendanceMutation = (mockExamId) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ bookingIds, notes }) => {
+    mutationFn: async ({ bookingIds, action, notes }) => {
+      // Map action to attended value
+      let attended;
+      switch (action) {
+        case 'mark_yes':
+          attended = true;
+          break;
+        case 'mark_no':
+          attended = false;
+          break;
+        case 'unmark':
+          attended = null;
+          break;
+        default:
+          attended = true; // Default to mark as attended for backward compatibility
+      }
+
       // Transform data to match backend expected format
       const requestBody = {
         bookings: bookingIds.map(id => ({
           bookingId: id,
-          attended: true, // We're marking as attended
+          attended: attended,
           notes: notes || ''
         }))
       };
@@ -36,24 +53,38 @@ const useMarkAttendanceMutation = (mockExamId) => {
       return response.data;
     },
 
-    onMutate: async ({ bookingIds }) => {
+    onMutate: async ({ bookingIds, action }) => {
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
       await queryClient.cancelQueries(['bookings', mockExamId]);
 
       // Snapshot the previous value
       const previousBookings = queryClient.getQueryData(['bookings', mockExamId]);
 
-      // Optimistically update to the new value (simplified - only update attendance)
-      // Update the cache with the correct key structure used by useBookingsByExam
+      // Map action to attendance value for optimistic update
+      let newAttendanceValue;
+      switch (action) {
+        case 'mark_yes':
+          newAttendanceValue = 'Yes';
+          break;
+        case 'mark_no':
+          newAttendanceValue = 'No';
+          break;
+        case 'unmark':
+          newAttendanceValue = '';
+          break;
+        default:
+          newAttendanceValue = 'Yes';
+      }
+
+      // Optimistically update to the new value
       queryClient.setQueryData(['bookings', mockExamId], (old) => {
         if (!Array.isArray(old)) return old;
 
-        // Update the array directly as that's what useBookingsByExam returns
         return old.map(booking => {
           if (bookingIds.includes(booking.id)) {
             return {
               ...booking,
-              attendance: 'Yes'
+              attendance: newAttendanceValue
             };
           }
           return booking;
@@ -64,13 +95,42 @@ const useMarkAttendanceMutation = (mockExamId) => {
       return { previousBookings };
     },
 
-    onSuccess: async (data) => {
+    onSuccess: async (data, variables) => {
       const { summary, results } = data;
+      const { action } = variables;
+
+      // Get action-specific messaging
+      const getActionMessage = () => {
+        switch (action) {
+          case 'mark_yes':
+            return {
+              success: 'marked as attended',
+              skipped: 'already marked as attended'
+            };
+          case 'mark_no':
+            return {
+              success: 'marked as no show',
+              skipped: 'already marked as no show'
+            };
+          case 'unmark':
+            return {
+              success: 'unmarked',
+              skipped: 'already unmarked'
+            };
+          default:
+            return {
+              success: 'updated',
+              skipped: 'already updated'
+            };
+        }
+      };
+
+      const messages = getActionMessage();
 
       // Show success message
       if (summary.updated > 0) {
         toast.success(
-          `✓ Successfully marked ${summary.updated} student${summary.updated > 1 ? 's' : ''} as attended`
+          `✓ Successfully ${messages.success} ${summary.updated} student${summary.updated > 1 ? 's' : ''}`
         );
       }
 
@@ -86,13 +146,12 @@ const useMarkAttendanceMutation = (mockExamId) => {
       // Show info if some were skipped
       if (summary.skipped > 0) {
         toast(
-          `ℹ ${summary.skipped} booking${summary.skipped > 1 ? 's were' : ' was'} already marked as attended`,
+          `ℹ ${summary.skipped} booking${summary.skipped > 1 ? 's were' : ' was'} ${messages.skipped}`,
           { duration: 4000 }
         );
       }
 
       // Immediately refetch bookings to show updated attendance status
-      // Using the correct query key that matches useBookingsByExam hook
       await queryClient.refetchQueries(['bookings', mockExamId], { exact: true });
 
       // Also invalidate related queries for consistency

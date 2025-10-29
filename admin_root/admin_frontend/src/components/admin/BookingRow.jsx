@@ -45,12 +45,12 @@ const BookingRow = ({
     return id;
   };
 
-  // Check if this booking is already attended (attendance property is "Yes" or has any value)
-  const isAttended = booking.attendance && booking.attendance !== '';
+  // Check if booking is cancelled (cannot be selected)
+  const isCancelled = booking.booking_status === 'cancelled';
 
   // Handle row click in attendance mode
   const handleRowClick = () => {
-    if (isAttendanceMode && onToggleSelection && !isAttended) {
+    if (isAttendanceMode && onToggleSelection && !isCancelled) {
       onToggleSelection(booking.id, booking);
     }
   };
@@ -58,7 +58,7 @@ const BookingRow = ({
   // Handle checkbox click (prevent row click event)
   const handleCheckboxClick = (e) => {
     e.stopPropagation();
-    if (onToggleSelection && !isAttended) {
+    if (onToggleSelection && !isCancelled) {
       onToggleSelection(booking.id, booking);
     }
   };
@@ -68,7 +68,7 @@ const BookingRow = ({
       className={`transition-colors ${
         isSelected
           ? 'bg-primary-50 dark:bg-primary-900/20'
-          : isAttendanceMode && !isAttended
+          : isAttendanceMode && !isCancelled
           ? 'hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer'
           : 'hover:bg-gray-50 dark:hover:bg-gray-800'
       }`}
@@ -77,9 +77,9 @@ const BookingRow = ({
       {/* Checkbox (only in attendance mode) */}
       {isAttendanceMode && (
         <td className="px-4 py-3 whitespace-nowrap text-center w-12">
-          {isAttended ? (
+          {isCancelled ? (
             <div className="flex items-center justify-center">
-              <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <span className="text-xs text-gray-400 dark:text-gray-600">-</span>
             </div>
           ) : (
             <Checkbox

@@ -542,10 +542,14 @@ const schemas = {
               'string.pattern.base': 'Booking ID must be numeric',
               'any.required': 'Booking ID is required'
             }),
-          attended: Joi.boolean()
+          attended: Joi.alternatives()
+            .try(
+              Joi.boolean(),
+              Joi.valid(null)
+            )
             .required()
             .messages({
-              'boolean.base': 'Attended must be a boolean value',
+              'alternatives.match': 'Attended must be true, false, or null',
               'any.required': 'Attended status is required'
             }),
           notes: Joi.string()
