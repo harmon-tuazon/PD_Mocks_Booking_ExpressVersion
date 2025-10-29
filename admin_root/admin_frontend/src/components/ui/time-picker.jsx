@@ -169,7 +169,7 @@ export function TimePickerSelect({
           </Button>
         </PopoverTrigger>
       </div>
-      <PopoverContent className="w-[200px] p-0" align="center" side="bottom">
+      <PopoverContent className="w-[200px] p-0" align="start" side="bottom">
         <ScrollArea className="h-[250px]">
           <div className="p-1">
             {timeOptions.map((option) => (
