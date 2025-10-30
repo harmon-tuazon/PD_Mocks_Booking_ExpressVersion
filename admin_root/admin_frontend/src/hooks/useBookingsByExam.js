@@ -30,9 +30,13 @@ export const useBookingsByExam = (examId, params = {}) => {
 
       const result = response.data;
       const bookingsData = result?.data?.bookings;
+      const attendanceSummary = result?.data?.attendance_summary;
 
-      // Return raw bookings array
-      return Array.isArray(bookingsData) ? bookingsData : [];
+      // Return raw bookings array and attendance summary
+      return {
+        bookings: Array.isArray(bookingsData) ? bookingsData : [],
+        attendance_summary: attendanceSummary || { attended: 0, no_show: 0, unmarked: 0 }
+      };
     },
     enabled: !!examId,
     staleTime: 5 * 60 * 1000, // 5 minutes (longer since we fetch once)
@@ -57,15 +61,16 @@ export const useBookingsByExam = (examId, params = {}) => {
           totalPages: 0,
           hasNextPage: false,
           hasPrevPage: false
-        }
+        },
+        attendance_summary: { attended: 0, no_show: 0, unmarked: 0 }
       };
     }
 
     // Step 1: Filter by search term
-    let filteredBookings = apiData;
+    let filteredBookings = apiData.bookings;
     if (search) {
       const searchLower = search.toLowerCase();
-      filteredBookings = apiData.filter(booking => {
+      filteredBookings = apiData.bookings.filter(booking => {
         const name = (booking.name || '').toLowerCase();
         const email = (booking.email || '').toLowerCase();
         const studentId = (booking.student_id || '').toLowerCase();
@@ -124,7 +129,8 @@ export const useBookingsByExam = (examId, params = {}) => {
         totalPages,
         hasNextPage: page < totalPages,
         hasPrevPage: page > 1
-      }
+      },
+      attendance_summary: apiData.attendance_summary
     };
   }, [apiData, search, sort_by, sort_order, page, limit]);
 

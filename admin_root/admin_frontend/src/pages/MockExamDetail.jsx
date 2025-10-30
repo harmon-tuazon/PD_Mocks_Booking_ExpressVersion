@@ -62,6 +62,13 @@ function MockExamDetail() {
   const bookings = bookingsData?.data || [];
   const attendance = useAttendanceMarking(bookings);
 
+  // Get attendance counts from API response (counts all bookings, not just current page)
+  const attendanceSummary = bookingsData?.attendance_summary || {
+    attended: 0,
+    no_show: 0,
+    unmarked: 0
+  };
+
   // Initialize attendance mutation
   const markAttendanceMutation = useMarkAttendanceMutation(id);
 
@@ -270,10 +277,10 @@ function MockExamDetail() {
               isSubmitting: attendance.isSubmitting,
               selectedCount: attendance.selectedCount,
               selectableCount: attendance.selectableCount,
-              attendedCount: attendance.attendedCount,
-              noShowCount: attendance.noShowCount,
-              unmarkedCount: attendance.unmarkedCount,
-              totalCount: attendance.totalCount,
+              attendedCount: attendanceSummary.attended,
+              noShowCount: attendanceSummary.no_show,
+              unmarkedCount: attendanceSummary.unmarked,
+              totalCount: bookingsData?.pagination?.total || 0,
               action: attendance.action,
               onToggleMode: attendance.toggleMode,
               onSelectAll: attendance.selectAll,

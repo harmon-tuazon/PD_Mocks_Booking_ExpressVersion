@@ -269,6 +269,13 @@ module.exports = async (req, res) => {
       };
     });
 
+    // Calculate attendance counts from ALL bookings (before pagination)
+    const attendanceCounts = {
+      attended: sortedBookings.filter(b => b.properties.attendance === 'Yes').length,
+      no_show: sortedBookings.filter(b => b.properties.attendance === 'No').length,
+      unmarked: sortedBookings.filter(b => !b.properties.attendance || b.properties.attendance === '').length
+    };
+
     // Build response
     const response = {
       success: true,
@@ -281,7 +288,8 @@ module.exports = async (req, res) => {
           total_pages: totalPages,
           has_next: page < totalPages,
           has_prev: page > 1
-        }
+        },
+        attendance_summary: attendanceCounts
       },
       meta: {
         timestamp: new Date().toISOString(),
