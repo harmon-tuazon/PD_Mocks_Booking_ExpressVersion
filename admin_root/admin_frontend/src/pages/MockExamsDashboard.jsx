@@ -20,7 +20,7 @@ function MockExamsDashboard() {
 
   // State for pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 50; // Match BookingsTable
+  const itemsPerPage = 20; // Match BookingsTable
 
   // Initialize filter management
   const {
