@@ -231,6 +231,9 @@ const BookingsTable = ({
                   {/* Token Used column */}
                   <SortableHeader column="token_used" align="center">Token Used</SortableHeader>
 
+                  {/* NDECC Exam Date column */}
+                  <SortableHeader column="ndecc_exam_date" align="center">NDECC Exam Date</SortableHeader>
+
                   <SortableHeader column="created_at" align="center">Booking Date</SortableHeader>
                 </tr>
               </thead>

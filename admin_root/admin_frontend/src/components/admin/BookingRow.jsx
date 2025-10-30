@@ -149,6 +149,18 @@ const BookingRow = ({
         </div>
       </td>
 
+      {/* NDECC Exam Date */}
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        <div className="text-xs text-gray-900 dark:text-gray-100">
+          {booking.ndecc_exam_date ?
+            new Date(booking.ndecc_exam_date).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            }) : '-'}
+        </div>
+      </td>
+
       {/* Booking Date */}
       <td className="px-4 py-3 whitespace-nowrap text-center">
         <div className="text-xs text-gray-500 dark:text-gray-400">

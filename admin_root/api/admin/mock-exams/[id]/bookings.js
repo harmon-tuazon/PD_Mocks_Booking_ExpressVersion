@@ -181,6 +181,7 @@ module.exports = async (req, res) => {
               'attendance',
               'attending_location',
               'token_used',
+              'ndecc_exam_date',
               'hs_createdate',
               'hs_lastmodifieddate'
             ],
