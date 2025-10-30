@@ -148,11 +148,15 @@ const BookingsTable = ({
             selectedCount={attendanceState.selectedCount}
             selectableCount={attendanceState.selectableCount}
             attendedCount={attendanceState.attendedCount}
+            noShowCount={attendanceState.noShowCount}
+            unmarkedCount={attendanceState.unmarkedCount}
             totalCount={attendanceState.totalCount}
+            action={attendanceState.action}
             onToggleMode={attendanceState.onToggleMode}
             onSelectAll={attendanceState.onSelectAll}
             onClearAll={attendanceState.onClearAll}
-            onMarkAttended={attendanceState.onMarkAttended}
+            onSetAction={attendanceState.onSetAction}
+            onApplyAction={attendanceState.onApplyAction}
           />
         </div>
       )}
