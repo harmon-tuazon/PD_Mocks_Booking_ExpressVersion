@@ -1333,28 +1333,23 @@ class HubSpotService {
         </p>
       `;
 
-      // Create the Note with association to Mock Exam
+      // Create the Note WITHOUT associations (following working pattern from create-booking.js)
       const notePayload = {
         properties: {
           hs_note_body: noteBody,
           hs_timestamp: timestamp.getTime()
-        },
-        associations: [
-          {
-            to: { id: mockExamId },
-            types: [
-              {
-                associationCategory: "HUBSPOT_DEFINED",
-                associationTypeId: 454  // Note to Custom Object association type
-              }
-            ]
-          }
-        ]
+        }
       };
 
+      console.log('📝 Creating mock exam edit note...');
       const noteResponse = await this.apiCall('POST', '/crm/v3/objects/notes', notePayload);
+      console.log(`✅ Note created with ID: ${noteResponse.id}`);
 
-      console.log(`✅ Mock exam edit note created successfully with ID: ${noteResponse.id}`);
+      // Now associate the note with the mock exam using the v4 associations API
+      console.log(`🔗 Associating note ${noteResponse.id} with mock exam ${mockExamId}...`);
+      await this.createAssociation('notes', noteResponse.id, '2-50158913', mockExamId);
+      console.log(`✅ Mock exam edit note associated successfully`);
+
       return noteResponse;
 
     } catch (error) {

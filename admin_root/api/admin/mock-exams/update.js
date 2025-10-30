@@ -66,12 +66,17 @@ module.exports = async (req, res) => {
     // Transform time fields if provided
     const properties = { ...updateData };
 
+    // Initialize HubSpot service (used for timestamp conversion)
+    const { HubSpotService } = require('../../_shared/hubspot');
+    const hubspotService = new HubSpotService();
+
+    // Get current mock exam data BEFORE updating (needed for timestamp recalculation and change tracking)
+    console.log('📊 [UPDATE] Fetching current mock exam data');
+    const currentMockExam = await hubspot.getMockExam(mockExamId);
+    const currentProps = currentMockExam.properties;
+
     if (updateData.start_time || updateData.end_time) {
       console.log('🕐 [UPDATE] Converting timestamps with timezone fix');
-
-      // Initialize HubSpot service to access convertToTimestamp method
-      const { HubSpotService } = require('../../_shared/hubspot');
-      const hubspotService = new HubSpotService();
 
       // exam_date should be provided by frontend when updating times
       const examDate = updateData.exam_date;
@@ -94,6 +99,45 @@ module.exports = async (req, res) => {
       }
     }
 
+    // CRITICAL FIX: If exam_date changed but times weren't provided, recalculate timestamps with new date
+    // HubSpot timestamps include both date AND time, so changing the date requires updating the timestamps
+    if (updateData.exam_date && !updateData.start_time && !updateData.end_time) {
+      console.log('📅 [UPDATE] Exam date changed - need to recalculate start_time and end_time timestamps');
+
+      const currentStartTimestamp = currentProps.start_time;
+      const currentEndTimestamp = currentProps.end_time;
+
+      if (currentStartTimestamp && currentEndTimestamp) {
+        // Extract time components from current timestamps (in America/Toronto timezone)
+        const extractTime = (timestamp) => {
+          const date = new Date(parseInt(timestamp));
+          return date.toLocaleTimeString('en-US', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZone: 'America/Toronto'
+          });
+        };
+
+        const startTime = extractTime(currentStartTimestamp);
+        const endTime = extractTime(currentEndTimestamp);
+
+        console.log('🕐 [UPDATE] Extracted times from current timestamps:', { startTime, endTime });
+
+        // Recalculate timestamps with new date and existing times
+        properties.start_time = hubspotService.convertToTimestamp(updateData.exam_date, startTime).toString();
+        properties.end_time = hubspotService.convertToTimestamp(updateData.exam_date, endTime).toString();
+
+        console.log('✅ [UPDATE] Recalculated timestamps with new date:', {
+          start_time: properties.start_time,
+          end_time: properties.end_time
+        });
+      } else {
+        console.warn('⚠️ [UPDATE] Current timestamps not found - cannot recalculate');
+      }
+    }
+
     // Convert boolean and number fields to strings for HubSpot
     if (updateData.is_active !== undefined) {
       properties.is_active = updateData.is_active.toString();
@@ -101,11 +145,6 @@ module.exports = async (req, res) => {
     if (updateData.capacity !== undefined) {
       properties.capacity = updateData.capacity.toString();
     }
-
-    // Get current mock exam data BEFORE updating (for change tracking)
-    console.log('📊 [UPDATE] Fetching current mock exam data for change tracking');
-    const currentMockExam = await hubspot.getMockExam(mockExamId);
-    const currentProps = currentMockExam.properties;
 
     // Track changes between old and new values
     const changes = {};
