@@ -128,6 +128,24 @@ function MockExamsDashboard() {
     return sorted;
   }, [aggregatesData, filters.sort_by, filters.sort_order]);
 
+  // Client-side paginated aggregates
+  const paginatedAggregates = useMemo(() => {
+    if (!sortedAggregates || sortedAggregates.length === 0) return [];
+
+    // Calculate pagination
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+
+    // Return paginated slice
+    return sortedAggregates.slice(startIndex, endIndex);
+  }, [sortedAggregates, currentPage, itemsPerPage]);
+
+  // Calculate total pages for aggregates
+  const aggregatesTotalPages = useMemo(() => {
+    if (!sortedAggregates || sortedAggregates.length === 0) return 1;
+    return Math.ceil(sortedAggregates.length / itemsPerPage);
+  }, [sortedAggregates, itemsPerPage]);
+
   // Fetch metrics data (only pass non-empty date filters)
   const metricsFilters = useMemo(() => {
     const params = {};
@@ -265,7 +283,7 @@ function MockExamsDashboard() {
         {/* Mock Exams Table */}
         <MockExamsTable
           key={JSON.stringify(filterParamsOnly) + viewMode}
-          data={viewMode === 'aggregate' ? sortedAggregates : mockExamsData}
+          data={viewMode === 'aggregate' ? paginatedAggregates : mockExamsData}
           isLoading={viewMode === 'aggregate' ? isLoadingAggregates : isLoadingExams}
           onSort={viewMode === 'aggregate' ? handleAggregateSort : handleSort}
           currentSort={viewMode === 'aggregate' ? getCurrentSortForAggregate() : {
@@ -275,8 +293,8 @@ function MockExamsDashboard() {
           viewMode={viewMode}
           onView={handleView}
           // Pagination props
-          currentPage={viewMode === 'aggregate' ? 1 : currentPage}
-          totalPages={viewMode === 'aggregate' ? 1 : paginationInfo.total_pages}
+          currentPage={currentPage}
+          totalPages={viewMode === 'aggregate' ? aggregatesTotalPages : paginationInfo.total_pages}
           totalItems={viewMode === 'aggregate' ? sortedAggregates.length : paginationInfo.total_records}
           onPageChange={handlePageChange}
         />
