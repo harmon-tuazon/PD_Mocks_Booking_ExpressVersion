@@ -196,6 +196,7 @@ class HubSpotService {
         'total_bookings',
         'mock_type',
         'location',
+        'is_active',
         'hs_object_id'
       ],
       sorts: [{

@@ -238,7 +238,7 @@ module.exports = async (req, res) => {
         total_bookings: totalBookings,
         available_slots: availableSlots,
         location: exam.properties.location || 'TBD',
-        is_active: true,
+        is_active: exam.properties.is_active === 'true' || exam.properties.is_active === true,
         status: availableSlots === 0 ? 'full' :
                  availableSlots <= 3 ? 'limited' : 'available'
       };
