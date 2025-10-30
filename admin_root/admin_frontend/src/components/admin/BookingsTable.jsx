@@ -269,8 +269,7 @@ const BookingsTable = ({
                 <div>
                   <p className="text-xs text-gray-700 dark:text-gray-300">
                     Showing <span className="font-medium">{startItem}</span> to{' '}
-                    <span className="font-medium">{endItem}</span> of{' '}
-                    <span className="font-medium">{totalItems}</span> results
+                    <span className="font-medium">{endItem}</span>
                   </p>
                 </div>
                 <div>
