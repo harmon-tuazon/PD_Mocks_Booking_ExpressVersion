@@ -118,7 +118,8 @@ class HubSpotService {
       'firstname',
       'lastname',
       'email',
-      'hs_object_id'
+      'hs_object_id',
+      'ndecc_exam_date'
     ];
     
     let creditProperties = [];

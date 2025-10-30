@@ -27,7 +27,8 @@ const LoginForm = () => {
           email: email.toLowerCase(),
           contactId: response.data.contact_id,
           studentName: response.data.student_name,
-          enrollmentId: response.data.enrollment_id
+          enrollmentId: response.data.enrollment_id,
+          ndeccExamDate: response.data.ndecc_exam_date
         };
 
         setUserSession(userData);

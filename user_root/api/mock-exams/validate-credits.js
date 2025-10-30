@@ -144,7 +144,8 @@ module.exports = async (req, res) => {
       credit_breakdown: creditInfo.credit_breakdown,
       contact_id: contact.id,
       enrollment_id: enrollmentId,
-      student_name: `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim() || 'Student'
+      student_name: `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim() || 'Student',
+      ndecc_exam_date: contact.properties.ndecc_exam_date || null
     };
 
     // Add error message if not eligible
