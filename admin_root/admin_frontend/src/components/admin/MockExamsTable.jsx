@@ -24,8 +24,8 @@ const MockExamsTable = ({
 }) => {
   const navigate = useNavigate();
 
-  // Calculate pagination display values
-  const itemsPerPage = 50; // Assuming 50 items per page to match BookingsTable
+  // Calculate pagination display values (20 items per page to match pagination standard)
+  const itemsPerPage = 20;
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 

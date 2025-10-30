@@ -85,9 +85,10 @@ const BookingsTable = ({
     </th>
   );
 
-  // Calculate pagination info
-  const startItem = totalItems > 0 ? (currentPage - 1) * 50 + 1 : 0;
-  const endItem = Math.min(currentPage * 50, totalItems);
+  // Calculate pagination info (20 items per page to match pagination)
+  const itemsPerPage = 20;
+  const startItem = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   // Loading state
   if (isLoading) {
