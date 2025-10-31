@@ -63,8 +63,16 @@ const useCancelBookingsMutation = (mockExamId) => {
       return { previousBookings };
     },
 
-    onSuccess: async (data) => {
-      const { summary, results } = data;
+    onSuccess: async (responseData) => {
+      // Extract data from response structure: { success: true, data: { summary, results }, meta: {...} }
+      const { summary, results } = responseData.data || responseData;
+
+      // Safety check - ensure summary exists
+      if (!summary) {
+        console.error('Invalid response structure:', responseData);
+        toast.error('Unexpected response format');
+        return;
+      }
 
       // Show success message
       if (summary.cancelled > 0) {
