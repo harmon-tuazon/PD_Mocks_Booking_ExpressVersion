@@ -177,12 +177,23 @@ module.exports = async (req, res) => {
         continue;
       }
 
-      // Prepare update (simplified - only update attendance property)
+      // Prepare update - attendance and is_active
+      const properties = {
+        attendance: newAttendance
+      };
+
+      // Set is_active based on attendance status
+      // - When attendance is marked (Yes or No), set is_active to "Completed"
+      // - When attendance is cleared (empty), set is_active back to "Active"
+      if (newAttendance === ATTENDANCE_VALUES.YES || newAttendance === ATTENDANCE_VALUES.NO) {
+        properties.is_active = 'Completed';
+      } else if (newAttendance === ATTENDANCE_VALUES.EMPTY) {
+        properties.is_active = 'Active';
+      }
+
       updates.push({
         id: booking.bookingId,
-        properties: {
-          attendance: newAttendance
-        }
+        properties
       });
     }
 
@@ -313,7 +324,8 @@ async function fetchBookingsBatch(bookingIds) {
         properties: [
           'booking_status',
           'contact_id',
-          'attendance'
+          'attendance',
+          'is_active'
         ],
         inputs: chunk.map(id => ({ id }))
       });
