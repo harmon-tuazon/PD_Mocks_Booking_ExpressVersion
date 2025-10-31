@@ -162,9 +162,6 @@ const CancelBookingsModal = ({
 
                   {/* Confirmation Input */}
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 text-center">
-                      Type <span className="font-mono font-bold text-red-600 dark:text-red-400">{selectedBookings.length}</span> to confirm cancellation
-                    </label>
                     <input
                       ref={inputRef}
                       type="text"
