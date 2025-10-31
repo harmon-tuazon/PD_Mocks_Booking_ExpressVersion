@@ -194,15 +194,13 @@ module.exports = async (req, res) => {
       skipped: results.skipped.length
     };
 
-    // Log audit trail
+    // Create audit trail
     if (results.successful.length > 0) {
-      console.log(`✅ [CANCEL] Successfully cancelled ${results.successful.length} bookings`);
-
-      // Create audit log asynchronously (non-blocking)
       const successfulBookingDetails = bookingDetailsForAudit.filter(b =>
         results.successful.some(s => s.bookingId === b.id)
       );
 
+      // Create audit log asynchronously (non-blocking)
       createAuditLog(mockExamId, summary, adminEmail, successfulBookingDetails).catch(error => {
         console.error('Failed to create audit log:', error);
       });
@@ -422,8 +420,6 @@ async function createAuditLog(mockExamId, summary, adminEmail, bookingDetails) {
       <strong>Timestamp:</strong> ${new Date().toISOString()}<br/>
     `;
 
-    console.log('📝 Creating audit note for mock exam:', mockExamId);
-
     // Create the note
     const noteResponse = await hubspot.apiCall('POST', `/crm/v3/objects/notes`, {
       properties: {
@@ -432,22 +428,12 @@ async function createAuditLog(mockExamId, summary, adminEmail, bookingDetails) {
       }
     });
 
-    console.log('✅ Note created with ID:', noteResponse?.id);
-
-    // Associate the note with the mock exam using v4 associations API
+    // Associate the note with the mock exam
     if (noteResponse?.id) {
-      await hubspot.apiCall('PUT', 
-        `/crm/v4/objects/notes/${noteResponse.id}/associations/2-50158913/${mockExamId}`,
-        [{
-          associationCategory: 'HUBSPOT_DEFINED',
-          associationTypeId: 214
-        }]
-      );
-      console.log('✅ Note associated with mock exam:', mockExamId);
+      await hubspot.createAssociation('0-46', noteResponse.id, '2-50158913', mockExamId);
     }
   } catch (error) {
-    console.error('❌ Failed to create audit log:', error);
-    console.error('Error details:', error.response?.data || error.message);
+    console.error('Failed to create audit log:', error);
     // Don't throw - this is non-critical
   }
 }

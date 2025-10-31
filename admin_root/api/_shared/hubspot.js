@@ -423,24 +423,37 @@ class HubSpotService {
    */
   async createAssociation(fromObjectType, fromObjectId, toObjectType, toObjectId) {
     try {
-      const associationTypeId = this.getDefaultAssociationTypeId(fromObjectType, toObjectType);
+      // Determine the correct association parameters
+      let associationCategory = 'HUBSPOT_DEFINED';
+      let associationTypeId = 1; // Default fallback
+      
+      // Notes in this portal use object type 0-46 and require USER_DEFINED associations
+      if (fromObjectType === 'notes' || fromObjectType === '0-46') {
+        // Notes associating to other objects use USER_DEFINED category with type 1250
+        associationCategory = 'USER_DEFINED';
+        associationTypeId = 1250;
+      } else if (toObjectType === 'notes' || toObjectType === '0-46') {
+        // Other objects associating to notes also use USER_DEFINED with type 1249
+        associationCategory = 'USER_DEFINED';
+        associationTypeId = 1249;
+      }
 
       await this.apiCall('PUT', `/crm/v4/objects/${fromObjectType}/${fromObjectId}/associations/${toObjectType}/${toObjectId}`, [
         {
-          associationCategory: "HUBSPOT_DEFINED",
-          associationTypeId: 1 // Default association type
+          associationCategory: associationCategory,
+          associationTypeId: associationTypeId
         }
       ]);
 
-      console.log(`Associated ${fromObjectType}:${fromObjectId} with ${toObjectType}:${toObjectId}`);
+      console.log(`✅ Associated ${fromObjectType}:${fromObjectId} with ${toObjectType}:${toObjectId} (category: ${associationCategory}, typeId: ${associationTypeId})`);
       return true;
     } catch (error) {
       // Check if association already exists (not an error)
       if (error.message.includes('already exists')) {
-        console.log(`Association already exists between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}`);
+        console.log(`ℹ️ Association already exists between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}`);
         return true;
       }
-      console.error('Error creating association:', error);
+      console.error('❌ Error creating association:', error);
       throw error;
     }
   }
@@ -1132,7 +1145,7 @@ class HubSpotService {
       // Calculate offset for pagination
       const after = page > 1 ? ((page - 1) * limit) : 0;
 
-      // Build search request
+      // Build search request - now includes associations to fetch bookings
       const searchRequest = {
         properties: [
           'mock_type',
@@ -1146,6 +1159,7 @@ class HubSpotService {
           'hs_createdate',
           'hs_lastmodifieddate'
         ],
+        associations: [HUBSPOT_OBJECTS.bookings], // Fetch booking associations
         limit,
         sorts: [{
           propertyName: sortBy === 'date' ? 'exam_date' : sortBy,
@@ -1185,9 +1199,67 @@ class HubSpotService {
         console.log(`Date filtering applied: ${response.results?.length || 0} -> ${results.length} exams`);
       }
 
+      // Now fetch actual bookings and count only Active ones
+      // Process each mock exam to get accurate active booking count
+      const enrichedResults = await Promise.all(results.map(async (exam) => {
+        try {
+          // Extract booking IDs from associations
+          const bookingIds = [];
+          if (exam.associations && exam.associations[HUBSPOT_OBJECTS.bookings]) {
+            const bookingAssociations = exam.associations[HUBSPOT_OBJECTS.bookings].results || [];
+            bookingAssociations.forEach(assoc => {
+              bookingIds.push(assoc.id);
+            });
+          }
+
+          // If no bookings, set count to 0
+          if (bookingIds.length === 0) {
+            return {
+              ...exam,
+              properties: {
+                ...exam.properties,
+                total_bookings: '0' // HubSpot stores as string
+              }
+            };
+          }
+
+          // Batch fetch booking details to check is_active status
+          // Process in chunks of 100 (HubSpot batch limit)
+          let activeBookingsCount = 0;
+          for (let i = 0; i < bookingIds.length; i += 100) {
+            const chunk = bookingIds.slice(i, i + 100);
+            const batchResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
+              properties: ['is_active'],
+              inputs: chunk.map(id => ({ id }))
+            });
+
+            if (batchResponse.results) {
+              // Count only Active bookings
+              const activeInChunk = batchResponse.results.filter(booking =>
+                booking.properties.is_active === 'Active'
+              ).length;
+              activeBookingsCount += activeInChunk;
+            }
+          }
+
+          // Override total_bookings with accurate Active-only count
+          return {
+            ...exam,
+            properties: {
+              ...exam.properties,
+              total_bookings: String(activeBookingsCount) // Convert to string for consistency
+            }
+          };
+        } catch (error) {
+          console.error(`Error fetching bookings for mock exam ${exam.id}:`, error);
+          // On error, keep the stored value
+          return exam;
+        }
+      }));
+
       // Format response with pagination info
       return {
-        results: results,
+        results: enrichedResults,
         pagination: {
           page,
           limit,
@@ -1356,7 +1428,7 @@ class HubSpotService {
 
       // Now associate the note with the mock exam using the v4 associations API
       console.log(`🔗 Associating note ${noteResponse.id} with mock exam ${mockExamId}...`);
-      await this.createAssociation('notes', noteResponse.id, '2-50158913', mockExamId);
+      await this.createAssociation('0-46', noteResponse.id, '2-50158913', mockExamId);
       console.log(`✅ Mock exam edit note associated successfully`);
 
       return noteResponse;
@@ -1666,12 +1738,13 @@ class HubSpotService {
         });
       }
       
-      // Build search request
+      // Build search request - now includes associations to fetch bookings
       const searchRequest = {
         properties: [
           'mock_type', 'exam_date', 'start_time', 'end_time',
           'capacity', 'total_bookings', 'location', 'is_active'
         ],
+        associations: [HUBSPOT_OBJECTS.bookings], // Fetch booking associations
         limit: 200,  // HubSpot max limit per request
         sorts: [{
           propertyName: 'exam_date',
@@ -1737,11 +1810,69 @@ class HubSpotService {
 
         console.log(`Date filtering: ${allExams.length} exams -> ${filteredExams.length} exams after date filter`);
       }
+
+      // Now enrich each exam with accurate Active booking count
+      console.log(`⏳ Enriching ${filteredExams.length} exams with accurate Active booking counts...`);
+      const enrichedExams = await Promise.all(filteredExams.map(async (exam) => {
+        try {
+          // Extract booking IDs from associations
+          const bookingIds = [];
+          if (exam.associations && exam.associations[HUBSPOT_OBJECTS.bookings]) {
+            const bookingAssociations = exam.associations[HUBSPOT_OBJECTS.bookings].results || [];
+            bookingAssociations.forEach(assoc => {
+              bookingIds.push(assoc.id);
+            });
+          }
+
+          // If no bookings, set count to 0
+          if (bookingIds.length === 0) {
+            return {
+              ...exam,
+              properties: {
+                ...exam.properties,
+                total_bookings: '0'
+              }
+            };
+          }
+
+          // Batch fetch booking details to check is_active status
+          let activeBookingsCount = 0;
+          for (let i = 0; i < bookingIds.length; i += 100) {
+            const chunk = bookingIds.slice(i, i + 100);
+            const batchResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
+              properties: ['is_active'],
+              inputs: chunk.map(id => ({ id }))
+            });
+
+            if (batchResponse.results) {
+              const activeInChunk = batchResponse.results.filter(booking =>
+                booking.properties.is_active === 'Active'
+              ).length;
+              activeBookingsCount += activeInChunk;
+            }
+          }
+
+          // Override total_bookings with accurate Active-only count
+          return {
+            ...exam,
+            properties: {
+              ...exam.properties,
+              total_bookings: String(activeBookingsCount)
+            }
+          };
+        } catch (error) {
+          console.error(`Error fetching bookings for mock exam ${exam.id}:`, error);
+          // On error, keep the stored value
+          return exam;
+        }
+      }));
+
+      console.log(`✅ Enrichment complete for ${enrichedExams.length} exams`);
       
-      // Group by (mock_type + date + location)
+      // Group by (mock_type + date + location) - now using enriched data with accurate counts
       const aggregates = {};
 
-      filteredExams.forEach(exam => {
+      enrichedExams.forEach(exam => {
         const properties = exam.properties;
         const key = `${properties.mock_type}_${properties.location}_${properties.exam_date}`
           .toLowerCase()
@@ -1763,7 +1894,7 @@ class HubSpotService {
         aggregates[key].session_ids.push(exam.id);
         aggregates[key].session_count++;
         aggregates[key].total_capacity += parseInt(properties.capacity || 0);
-        aggregates[key].total_bookings += parseInt(properties.total_bookings || 0);
+        aggregates[key].total_bookings += parseInt(properties.total_bookings || 0); // Now uses accurate Active-only count
       });
       
       // Convert to array and sort by date
