@@ -846,6 +846,369 @@ Both patterns use:
 - Non-blocking async execution
 - Graceful error handling
 
+### 5.6 Code Reuse Audit & Optimization Strategy
+
+#### Overview
+This section identifies existing methods, patterns, and data sources that can be reused to avoid code duplication and unnecessary API calls.
+
+#### Existing Methods to Reuse
+
+##### 1. HubSpot Batch Operations (✅ REUSE)
+**Location**: `admin_root/api/_shared/hubspot.js`
+
+**Available Methods**:
+```javascript
+// Individual booking update (lines 578-587)
+async updateBooking(bookingId, properties) {
+  return await this.apiCall('PATCH', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/${bookingId}`, {
+    properties
+  });
+}
+
+// Soft delete helper (lines 593-597) - NOT BATCH, DON'T USE FOR BULK
+async softDeleteBooking(bookingId) {
+  return this.updateBooking(bookingId, {
+    booking_status: 'cancelled'
+  });
+}
+```
+
+**Recommendation**:
+- ✅ **DO**: Use HubSpot batch update pattern from attendance.js (lines 338-377)
+- ❌ **DON'T**: Use `softDeleteBooking` in a loop - it's for single bookings only
+- ✅ **DO**: Reuse batch chunking logic (process 100 bookings at a time)
+
+##### 2. Batch Read Pattern (✅ REUSE)
+**Location**: Multiple endpoints use this pattern
+
+**Pattern**:
+```javascript
+// Split into chunks of 100 (HubSpot limit)
+for (let i = 0; i < bookingIds.length; i += HUBSPOT_BATCH_SIZE) {
+  const chunk = bookingIds.slice(i, i + HUBSPOT_BATCH_SIZE);
+
+  const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
+    properties: ['is_active', 'booking_status', 'name', 'email'],
+    inputs: chunk.map(id => ({ id }))
+  });
+
+  if (response.results) {
+    allBookings = allBookings.concat(response.results);
+  }
+}
+```
+
+**Recommendation**:
+- ✅ **DO**: Reuse this exact pattern for `fetchBookingsBatch`
+- ✅ **DO**: Use same properties list structure
+- ✅ **DO**: Use same error handling
+
+##### 3. Batch Update Pattern (✅ REUSE)
+**Location**: `admin_root/api/admin/mock-exams/[id]/attendance.js` (lines 338-377)
+
+**Pattern**:
+```javascript
+async function processAttendanceUpdates(updates) {
+  const results = { successful: [], failed: [] };
+
+  for (let i = 0; i < updates.length; i += HUBSPOT_BATCH_SIZE) {
+    const chunk = updates.slice(i, i + HUBSPOT_BATCH_SIZE);
+
+    try {
+      const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/update`, {
+        inputs: chunk
+      });
+
+      if (response.results) {
+        results.successful.push(...response.results);
+      }
+
+      if (response.errors) {
+        for (const error of response.errors) {
+          results.failed.push({
+            id: error.context?.id || 'unknown',
+            message: error.message
+          });
+        }
+      }
+    } catch (error) {
+      for (const update of chunk) {
+        results.failed.push({
+          id: update.id,
+          message: error.message || 'Batch update failed'
+        });
+      }
+    }
+  }
+
+  return results;
+}
+```
+
+**Recommendation**:
+- ✅ **DO**: Copy this exact function and rename to `processCancellations`
+- ✅ **DO**: Keep the same error handling structure
+- ✅ **DO**: Keep the same result tracking pattern
+
+##### 4. Cache Invalidation Pattern (✅ REUSE)
+**Location**: `admin_root/api/admin/mock-exams/[id]/attendance.js` (lines 385-407)
+
+**Pattern**:
+```javascript
+async function invalidateAttendanceCaches(mockExamId) {
+  const cache = getCache();
+
+  try {
+    await cache.delete(`admin:mock-exam:${mockExamId}`);
+    await cache.delete(`admin:mock-exam:details:${mockExamId}`);
+    await cache.deletePattern(`admin:mock-exam:${mockExamId}:bookings:*`);
+    await cache.deletePattern('admin:mock-exams:aggregates:*');
+    await cache.deletePattern('admin:aggregate:sessions:*');
+    await cache.deletePattern('admin:metrics:*');
+    await cache.deletePattern('admin:mock-exams:list:*');
+  } catch (error) {
+    console.error('Error invalidating caches:', error);
+  }
+}
+```
+
+**Recommendation**:
+- ✅ **DO**: Copy this exact function and rename to `invalidateCancellationCaches`
+- ✅ **DO**: Use identical cache key patterns (same keys are affected)
+- ✅ **DO**: Keep graceful error handling (non-blocking)
+
+##### 5. Audit Note Creation Pattern (✅ REUSE STRUCTURE)
+**Location**: `admin_root/api/_shared/hubspot.js` - `createMockExamEditNote` (lines 1247-1380)
+
+**Pattern**:
+```javascript
+async createMockExamEditNote(mockExamId, changes, adminUser) {
+  try {
+    // 1. Create HTML-formatted note body
+    const noteBody = `<h3>✏️ Mock Exam Updated</h3>...`;
+
+    // 2. Create note WITHOUT associations
+    const notePayload = {
+      properties: {
+        hs_note_body: noteBody,
+        hs_timestamp: timestamp.getTime()
+      }
+    };
+
+    const noteResponse = await this.apiCall('POST', '/crm/v3/objects/notes', notePayload);
+
+    // 3. Associate note with mock exam using v4 API
+    await this.createAssociation('notes', noteResponse.id, '2-50158913', mockExamId);
+
+    return noteResponse;
+  } catch (error) {
+    // Non-blocking: log but don't throw
+    console.error('Failed to create audit log:', error);
+    return null;
+  }
+}
+```
+
+**Recommendation**:
+- ✅ **DO**: Follow this exact structure for `createAuditLog`
+- ✅ **DO**: Use same two-step process (create note, then associate)
+- ✅ **DO**: Use same non-blocking error handling
+- ✅ **DO**: Use same HTML formatting patterns
+- ✅ **DO**: Use emoji indicator (🗑️ instead of ✏️)
+
+##### 6. Validation Schema Pattern (✅ REUSE)
+**Location**: `admin_root/api/_shared/validation.js` - `batchAttendanceUpdate` (lines 534-569)
+
+**Pattern**:
+```javascript
+batchAttendanceUpdate: Joi.object({
+  bookings: Joi.array()
+    .items(
+      Joi.object({
+        bookingId: Joi.string().pattern(/^\d+$/).required(),
+        attended: Joi.alternatives().try(Joi.boolean(), Joi.valid(null)).required(),
+        notes: Joi.string().max(500).optional().allow('')
+      })
+    )
+    .min(1)
+    .max(100)
+    .required()
+})
+```
+
+**Recommendation**:
+- ✅ **DO**: Copy this structure for `batchBookingCancellation` schema
+- ✅ **DO**: Keep same min/max validation (1-100 bookings)
+- ✅ **DO**: Use same booking ID pattern validation
+- ✅ **DO**: Replace `attended` field with optional `reason` field
+
+#### Data Already in Memory/Cache
+
+##### Scenario: User Selects Bookings from Mock Exam Details Page
+
+**Current Data Flow**:
+1. User loads Mock Exam Details page
+2. Frontend fetches: `GET /api/admin/mock-exams/[id]/bookings`
+3. **This endpoint ALREADY fetches**:
+   - `is_active` property (✅ since commit 7fc1b55)
+   - `name` property
+   - `email` property
+   - `booking_status` property
+   - All other booking details
+
+**Optimization Opportunity**:
+- ✅ **Frontend already has all the data needed**
+- ✅ **No need to re-fetch booking details in cancel endpoint**
+- ✅ **Backend only needs bookingIds to proceed with cancellation**
+
+**However, Backend Must Still Validate**:
+- ❌ **DON'T trust frontend data for business logic**
+- ✅ **DO re-fetch booking data in cancel endpoint for validation**:
+  - Verify booking exists
+  - Check current is_active status (idempotency)
+  - Verify booking isn't already cancelled
+  - Get name/email for audit log
+
+**Reasoning**:
+- Security: Frontend data can be tampered with
+- Consistency: Booking status might change between page load and cancel action
+- Audit trail: Need authoritative data from HubSpot
+
+##### Required Properties for Cancel Endpoint
+
+**Minimal fetch for validation** (4 properties):
+```javascript
+properties: ['is_active', 'booking_status', 'name', 'email']
+```
+
+**vs bookings list endpoint** (13+ properties):
+```javascript
+properties: [
+  'booking_id', 'name', 'email', 'student_id', 'dominant_hand',
+  'contact_id', 'booking_status', 'attendance', 'attending_location',
+  'token_used', 'is_active', 'hs_createdate', 'hs_lastmodifieddate'
+]
+```
+
+**Optimization**: ✅ Cancel endpoint fetches 70% fewer properties
+
+#### Avoiding Unnecessary API Calls
+
+##### 1. Don't Re-fetch Mock Exam Details
+**❌ BAD**:
+```javascript
+const mockExam = await hubspot.getMockExam(mockExamId); // Unnecessary
+```
+
+**✅ GOOD**:
+```javascript
+// Mock exam ID is already in the URL path - no need to verify it exists
+// If it doesn't exist, the bookings association fetch will fail anyway
+```
+
+##### 2. Don't Fetch Individual Booking Details
+**❌ BAD** (N+1 query problem):
+```javascript
+for (const bookingId of bookingIds) {
+  const booking = await hubspot.getBooking(bookingId); // N API calls!
+}
+```
+
+**✅ GOOD** (Batch operation):
+```javascript
+// Fetch all bookings in 1-2 API calls (100 per batch)
+const batches = chunk(bookingIds, 100);
+for (const batch of batches) {
+  const response = await hubspot.apiCall('POST', '/crm/v3/objects/bookings/batch/read', {
+    properties: ['is_active', 'booking_status', 'name', 'email'],
+    inputs: batch.map(id => ({ id }))
+  });
+}
+```
+
+##### 3. Reuse existingBookings Map
+**✅ OPTIMIZATION**:
+```javascript
+// Fetch once at the beginning
+const existingBookings = await fetchBookingsBatch(bookingIds);
+
+// Reuse for validation
+for (const booking of bookings) {
+  const existing = existingBookings.get(booking.bookingId); // O(1) lookup
+  // ... validate ...
+}
+
+// Reuse for audit log
+const cancelledBookingDetails = results.successful.map(r => {
+  const booking = existingBookings.get(r.bookingId); // O(1) lookup
+  return {
+    name: booking?.properties?.name || 'Unknown',
+    email: booking?.properties?.email || 'No email'
+  };
+});
+```
+
+**Benefit**: Single batch fetch serves both validation AND audit log creation
+
+#### API Call Optimization Summary
+
+##### Traditional Approach (Inefficient):
+```
+1. Verify mock exam exists: 1 API call
+2. Fetch each booking individually: N API calls
+3. Update each booking individually: N API calls
+4. Create note: 1 API call
+5. Associate note: 1 API call
+Total: 2N + 3 API calls for N bookings
+```
+
+**Example**: 50 bookings = 103 API calls 🐢
+
+##### Optimized Approach (PRD Implementation):
+```
+1. Batch read bookings: 1 API call (up to 100 bookings)
+2. Batch update bookings: 1 API call (up to 100 bookings)
+3. Create note: 1 API call
+4. Associate note: 1 API call
+Total: 4 API calls for up to 100 bookings
+```
+
+**Example**: 50 bookings = 4 API calls ⚡ (96% reduction!)
+
+#### Implementation Guidelines
+
+##### Code Reuse Checklist
+- [ ] Copy `processAttendanceUpdates` → rename to `processCancellations`
+- [ ] Copy `invalidateAttendanceCaches` → rename to `invalidateCancellationCaches`
+- [ ] Follow `createMockExamEditNote` structure for audit log
+- [ ] Copy validation schema from `batchAttendanceUpdate`
+- [ ] Use same batch read pattern (100 items per chunk)
+- [ ] Use same error handling structure (successful/failed/skipped)
+
+##### Optimization Checklist
+- [ ] Fetch bookings ONCE in batch at start
+- [ ] Store in Map for O(1) lookups
+- [ ] Reuse for validation AND audit log
+- [ ] Don't fetch mock exam details (not needed)
+- [ ] Use batch update (not individual updates)
+- [ ] Process in chunks of 100 (HubSpot limit)
+- [ ] Invalidate same cache keys as attendance endpoint
+
+##### API Call Budget
+- Target: ≤ 4 API calls for batches up to 100 bookings
+- Breakdown:
+  - 1-2 calls: Batch read bookings (1 call per 100 bookings)
+  - 1-2 calls: Batch update bookings (1 call per 100 bookings)
+  - 1 call: Create note
+  - 1 call: Associate note
+
+##### Testing Verification
+- [ ] Test with 1 booking: Should use 4 API calls
+- [ ] Test with 50 bookings: Should use 4 API calls
+- [ ] Test with 100 bookings: Should use 4 API calls
+- [ ] Test with 150 bookings: Should use 6 API calls (2 batches)
+- [ ] Verify existingBookings map is reused for audit log
+
 ---
 
 ## 6. UI/UX Specifications
