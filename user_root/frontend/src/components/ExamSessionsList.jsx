@@ -8,6 +8,7 @@ import Logo from './shared/Logo';
 import { getUserSession } from '../utils/auth';
 import useCachedCredits from '../hooks/useCachedCredits';
 import LocationFilter from './shared/LocationFilter';
+import BookingTimeWarningModal from './shared/BookingTimeWarningModal';
 
 const ExamSessionsList = () => {
   const [searchParams] = useSearchParams();
@@ -267,75 +268,6 @@ const ExamSessionsList = () => {
     );
   }
 
-  // Display warning if user tries to book an exam too close to the date
-  if (tooCloseBookingWarning) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
-        <div className="container-app py-12">
-          <div className="card-brand dark:bg-dark-card dark:border-dark-border animate-fade-in text-center max-w-2xl mx-auto">
-            {/* Warning Icon */}
-            <div className="mb-6">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
-                <svg className="w-10 h-10 text-yellow-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-            </div>
-
-            {/* Main Message */}
-            <h2 className="font-headline text-h2 font-bold text-yellow-800 dark:text-yellow-400 mb-4">
-              Booking Too Close to Exam Date
-            </h2>
-            <p className="font-body text-lg text-yellow-700 dark:text-yellow-300 mb-8 leading-relaxed max-w-xl mx-auto">
-              {tooCloseBookingWarning.daysUntilExam === 0
-                ? 'This exam is today. '
-                : 'This exam is tomorrow. '}
-              To ensure adequate preparation time, the latest date you can book is <strong>2 days before</strong> the exam date.
-            </p>
-
-            {/* Additional Info */}
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 mb-6 max-w-xl mx-auto">
-              <div className="flex items-start">
-                <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-                <div className="text-left">
-                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-1">
-                    Why this restriction?
-                  </p>
-                  <p className="text-sm text-yellow-700 dark:text-yellow-400">
-                    This policy ensures you have sufficient time to prepare for your mock exam and get the most value from the experience.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="space-y-3 max-w-md mx-auto">
-              <button
-                onClick={() => setTooCloseBookingWarning(null)}
-                className="btn-brand-primary w-full text-white"
-                aria-label="Go back to exam selection"
-              >
-                <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Back to Exam Sessions
-              </button>
-
-              <button
-                onClick={() => navigate('/book/exam-types')}
-                className="btn-brand-secondary dark:bg-dark-hover dark:border-dark-border dark:text-gray-200 dark:hover:bg-dark-card w-full"
-                aria-label="Go back to exam types"
-              >
-                View All Exam Types
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
@@ -681,6 +613,15 @@ const ExamSessionsList = () => {
           />
         )}
       </div>
+
+      {/* Booking Time Warning Modal */}
+      <BookingTimeWarningModal
+        isOpen={!!tooCloseBookingWarning}
+        examDate={tooCloseBookingWarning?.examDate}
+        daysUntilExam={tooCloseBookingWarning?.daysUntilExam}
+        onClose={() => setTooCloseBookingWarning(null)}
+        onViewExamTypes={() => navigate('/book/exam-types')}
+      />
     </div>
   );
 };
