@@ -4,6 +4,7 @@
  *
  * Features:
  * - Toggle attendance mode button
+ * - Cancel bookings button
  * - Selection counter with attendance breakdown
  * - Select All / Clear buttons
  * - Action dropdown (Mark Yes, Mark No, Unmark)
@@ -11,7 +12,7 @@
  * - Confirmation dialog integration
  */
 
-import { CheckCircleIcon, XMarkIcon, XCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XMarkIcon, XCircleIcon, ArrowPathIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useState } from 'react';
 import ConfirmationDialog from './ConfirmationDialog';
 import {
@@ -36,7 +37,10 @@ const AttendanceControls = ({
   onSelectAll,
   onClearAll,
   onSetAction,
-  onApplyAction
+  onApplyAction,
+  // Cancellation props
+  onCancelBookings = null,
+  isCancellationMode = false
 }) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -110,15 +114,30 @@ const AttendanceControls = ({
           </div>
         </div>
 
-        {/* Toggle Button - Moved to Right */}
-        <button
-          onClick={onToggleMode}
-          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors shadow-sm"
-          disabled={totalCount === 0}
-        >
-          <CheckCircleIcon className="h-5 w-5 mr-2" />
-          Mark Attendance
-        </button>
+        {/* Action Buttons - Moved to Right */}
+        <div className="flex items-center gap-2">
+          {/* Cancel Bookings Button */}
+          {onCancelBookings && (
+            <button
+              onClick={onCancelBookings}
+              className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-red-700 dark:text-red-300 bg-white dark:bg-gray-800 border border-red-300 dark:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors shadow-sm"
+              disabled={totalCount === 0 || isCancellationMode}
+            >
+              <TrashIcon className="h-5 w-5 mr-2" />
+              Cancel Bookings
+            </button>
+          )}
+
+          {/* Mark Attendance Button */}
+          <button
+            onClick={onToggleMode}
+            className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors shadow-sm"
+            disabled={totalCount === 0}
+          >
+            <CheckCircleIcon className="h-5 w-5 mr-2" />
+            Mark Attendance
+          </button>
+        </div>
       </div>
     );
   }

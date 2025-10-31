@@ -2,22 +2,25 @@
  * BookingRow Component
  * Individual row in the bookings table
  *
- * Enhanced with attendance marking:
- * - Checkbox for selection (attendance mode only)
+ * Enhanced with attendance marking and cancellation:
+ * - Checkbox for selection (attendance/cancellation mode)
  * - Attendance status badge
+ * - Cancellation status display
  * - Selection highlighting
  * - Click to toggle selection
  */
 
 import { formatDistanceToNow } from 'date-fns';
-import { CheckCircleIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const BookingRow = ({
   booking,
   isAttendanceMode = false,
+  isCancellationMode = false,
   isSelected = false,
-  onToggleSelection
+  onToggleSelection,
+  isDisabled = false
 }) => {
   // Format dominant hand display
   const formatDominantHand = (hand) => {
@@ -45,12 +48,18 @@ const BookingRow = ({
     return id;
   };
 
-  // Check if booking is cancelled (cannot be selected)
-  const isCancelled = booking.booking_status === 'cancelled';
+  // Check if booking is cancelled (cannot be selected in cancellation mode)
+  const isCancelled = booking.booking_status === 'cancelled' || booking.is_active === 'Cancelled';
 
-  // Handle row click in attendance mode
+  // Determine if selection mode is active
+  const isSelectionMode = isAttendanceMode || isCancellationMode;
+
+  // Determine if this row can be selected
+  const canBeSelected = isSelectionMode && onToggleSelection && !isDisabled;
+
+  // Handle row click in selection modes
   const handleRowClick = () => {
-    if (isAttendanceMode && onToggleSelection && !isCancelled) {
+    if (canBeSelected) {
       onToggleSelection(booking.id, booking);
     }
   };
@@ -58,7 +67,7 @@ const BookingRow = ({
   // Handle checkbox click (prevent row click event)
   const handleCheckboxClick = (e) => {
     e.stopPropagation();
-    if (onToggleSelection && !isCancelled) {
+    if (canBeSelected) {
       onToggleSelection(booking.id, booking);
     }
   };
@@ -66,27 +75,32 @@ const BookingRow = ({
   return (
     <tr
       className={`transition-colors ${
-        isSelected
-          ? 'bg-primary-50 dark:bg-primary-900/20'
-          : isAttendanceMode && !isCancelled
+        isDisabled
+          ? 'opacity-50 bg-gray-50 dark:bg-gray-900'
+          : isSelected
+          ? isCancellationMode
+            ? 'bg-red-50 dark:bg-red-900/20'
+            : 'bg-primary-50 dark:bg-primary-900/20'
+          : canBeSelected
           ? 'hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer'
           : 'hover:bg-gray-50 dark:hover:bg-gray-800'
       }`}
       onClick={handleRowClick}
     >
-      {/* Checkbox (only in attendance mode) */}
-      {isAttendanceMode && (
+      {/* Checkbox (only in selection modes) */}
+      {isSelectionMode && (
         <td className="px-4 py-3 whitespace-nowrap text-center w-12">
-          {isCancelled ? (
+          {isDisabled ? (
             <div className="flex items-center justify-center">
               <span className="text-xs text-gray-400 dark:text-gray-600">-</span>
             </div>
           ) : (
             <Checkbox
               checked={isSelected}
-              onCheckedChange={() => onToggleSelection(booking.id, booking)}
+              onCheckedChange={handleCheckboxClick}
               onClick={(e) => e.stopPropagation()}
               className="cursor-pointer"
+              disabled={isDisabled}
             />
           )}
         </td>
@@ -122,11 +136,34 @@ const BookingRow = ({
         </div>
       </td>
 
-      {/* Attendance Status - Moved before booking date */}
+      {/* Attendance/Cancellation Status */}
       <td className="px-4 py-3 whitespace-nowrap text-center">
-        {booking.attendance && booking.attendance !== '' ? (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
-            {booking.attendance}
+        {isCancelled ? (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200">
+            <XCircleIcon className="h-3 w-3 mr-1" />
+            Cancelled
+          </span>
+        ) : booking.attendance && booking.attendance !== '' ? (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            booking.attendance === 'Yes' || booking.attendance === 'true'
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+              : booking.attendance === 'No' || booking.attendance === 'false'
+              ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+          }`}>
+            {booking.attendance === 'Yes' || booking.attendance === 'true' ? (
+              <>
+                <CheckCircleIcon className="h-3 w-3 mr-1" />
+                Attended
+              </>
+            ) : booking.attendance === 'No' || booking.attendance === 'false' ? (
+              <>
+                <XCircleIcon className="h-3 w-3 mr-1" />
+                No Show
+              </>
+            ) : (
+              booking.attendance
+            )}
           </span>
         ) : (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">

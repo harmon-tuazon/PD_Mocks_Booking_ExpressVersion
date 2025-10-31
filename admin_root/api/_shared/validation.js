@@ -569,6 +569,26 @@ const schemas = {
         'array.max': 'Maximum 100 bookings can be updated per request',
         'any.required': 'Bookings array is required'
       })
+  }),
+
+  // Schema for batch booking cancellation (Admin)
+  batchBookingCancellation: Joi.object({
+    bookingIds: Joi.array()
+      .items(
+        Joi.string()
+          .pattern(/^\d+$/)
+          .messages({
+            'string.pattern.base': 'Booking ID must be numeric'
+          })
+      )
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one booking ID must be provided',
+        'array.max': 'Maximum 100 bookings can be cancelled per request',
+        'any.required': 'Booking IDs array is required'
+      })
   })
 
 };

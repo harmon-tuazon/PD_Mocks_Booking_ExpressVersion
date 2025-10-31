@@ -171,6 +171,19 @@ export const mockExamsApi = {
   getAggregateSessions: async (aggregateKey) => {
     const response = await api.get(`/admin/mock-exams/aggregates/${aggregateKey}/sessions`);
     return response.data;
+  },
+
+  /**
+   * Cancel multiple bookings for a mock exam
+   * @param {string} id - Mock exam ID
+   * @param {Array<string>} bookingIds - Array of booking IDs to cancel
+   * @returns {Promise<Object>} Cancellation results
+   */
+  cancelBookings: async (id, bookingIds) => {
+    const response = await api.patch(`/admin/mock-exams/${id}/cancel-bookings`, {
+      bookingIds
+    });
+    return response.data;
   }
 };
 

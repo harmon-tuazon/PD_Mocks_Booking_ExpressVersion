@@ -15,10 +15,13 @@ import { useBookingsByExam } from '../hooks/useBookingsByExam';
 import { useExamEdit } from '../hooks/useExamEdit';
 import useAttendanceMarking from '../hooks/useAttendanceMarking';
 import useMarkAttendanceMutation from '../hooks/useMarkAttendanceMutation';
+import useBatchCancellation from '../hooks/useBatchCancellation';
+import useCancelBookingsMutation from '../hooks/useCancelBookingsMutation';
 import ExamDetailsForm from '../components/admin/ExamDetailsForm';
 import BookingsTable from '../components/admin/BookingsTable';
 import EditControls from '../components/admin/EditControls';
 import DeleteControls from '../components/admin/DeleteControls';
+import CancelBookingsModal from '../components/shared/CancelBookingsModal';
 import { useState } from 'react';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
@@ -72,6 +75,12 @@ function MockExamDetail() {
   // Initialize attendance mutation
   const markAttendanceMutation = useMarkAttendanceMutation(id);
 
+  // Initialize cancellation state
+  const cancellation = useBatchCancellation(bookings);
+
+  // Initialize cancellation mutation
+  const cancelBookingsMutation = useCancelBookingsMutation(id);
+
   // Handle apply action (mark_yes, mark_no, or unmark)
   const handleApplyAction = () => {
     if (attendance.selectedCount === 0) return;
@@ -93,6 +102,41 @@ function MockExamDetail() {
         onError: () => {
           // Return to selecting mode (keep selections for retry)
           attendance.returnToSelecting();
+        }
+      }
+    );
+  };
+
+  // Handle opening cancellation modal
+  const handleOpenCancellation = () => {
+    // If not in cancellation mode, enter it first
+    if (!cancellation.isCancellationMode) {
+      cancellation.toggleMode();
+    }
+    // Open the modal
+    cancellation.openModal();
+  };
+
+  // Handle cancellation confirmation
+  const handleConfirmCancellation = () => {
+    if (cancellation.selectedCount === 0) return;
+
+    // Set to submitting state
+    cancellation.startSubmitting();
+
+    // Call mutation
+    cancelBookingsMutation.mutate(
+      {
+        bookingIds: cancellation.selectedIds
+      },
+      {
+        onSuccess: () => {
+          // Exit cancellation mode and clear selections
+          cancellation.exitToView();
+        },
+        onError: () => {
+          // Return to selecting mode (keep selections for retry)
+          cancellation.returnToSelecting();
         }
       }
     );
@@ -288,10 +332,38 @@ function MockExamDetail() {
               onSetAction: attendance.setAction,
               onApplyAction: handleApplyAction,
               isSelected: attendance.isSelected,
-              onToggleSelection: attendance.toggleSelection
+              onToggleSelection: attendance.toggleSelection,
+              // Add cancellation handler
+              onCancelBookings: handleOpenCancellation,
+              isCancellationMode: cancellation.isCancellationMode
+            }}
+            // Add cancellation props
+            cancellationProps={{
+              isCancellationMode: cancellation.isCancellationMode,
+              isSubmitting: cancellation.isSubmitting,
+              selectedCount: cancellation.selectedCount,
+              cancellableCount: cancellation.cancellableCount,
+              totalCount: bookingsData?.pagination?.total || 0,
+              onToggleMode: cancellation.toggleMode,
+              onSelectAll: cancellation.selectAll,
+              onClearAll: cancellation.clearAll,
+              onOpenModal: cancellation.openModal,
+              isSelected: cancellation.isSelected,
+              onToggleSelection: cancellation.toggleSelection,
+              canCancel: cancellation.canCancel
             }}
           />
         </div>
+
+        {/* Cancellation Modal */}
+        <CancelBookingsModal
+          isOpen={cancellation.isModalOpen}
+          onClose={cancellation.closeModal}
+          onConfirm={handleConfirmCancellation}
+          selectedBookings={cancellation.selectedBookings}
+          isLoading={cancelBookingsMutation.isLoading}
+          error={cancelBookingsMutation.error?.message}
+        />
       </div>
     </div>
   );

@@ -13,6 +13,7 @@
 import { useState, useEffect } from 'react';
 import BookingRow from './BookingRow';
 import AttendanceControls from './AttendanceControls';
+import CancellationControls from './CancellationControls';
 import { MagnifyingGlassIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -30,7 +31,9 @@ const BookingsTable = ({
   totalItems,
   onPageChange,
   // Attendance marking props
-  attendanceProps = null
+  attendanceProps = null,
+  // Cancellation props
+  cancellationProps = null
 }) => {
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm || '');
 
@@ -138,6 +141,13 @@ const BookingsTable = ({
   const isAttendanceMode = attendanceProps?.isAttendanceMode || false;
   const attendanceState = attendanceProps || {};
 
+  // Extract cancellation props if provided
+  const isCancellationMode = cancellationProps?.isCancellationMode || false;
+  const cancellationState = cancellationProps || {};
+
+  // Determine which mode is active (they're mutually exclusive)
+  const isSelectionMode = isAttendanceMode || isCancellationMode;
+
   return (
     <div>
       {/* Attendance Controls (shown when attendance functionality is available) */}
@@ -158,12 +168,31 @@ const BookingsTable = ({
             onClearAll={attendanceState.onClearAll}
             onSetAction={attendanceState.onSetAction}
             onApplyAction={attendanceState.onApplyAction}
+            onCancelBookings={attendanceState.onCancelBookings}
+            isCancellationMode={isCancellationMode}
           />
         </div>
       )}
 
-      {/* Search Bar (hidden in attendance mode) */}
-      {!isAttendanceMode && (
+      {/* Cancellation Controls (shown when in cancellation mode) */}
+      {cancellationProps && isCancellationMode && (
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <CancellationControls
+            isCancellationMode={cancellationState.isCancellationMode}
+            isSubmitting={cancellationState.isSubmitting}
+            selectedCount={cancellationState.selectedCount}
+            cancellableCount={cancellationState.cancellableCount}
+            totalCount={cancellationState.totalCount}
+            onToggleMode={cancellationState.onToggleMode}
+            onSelectAll={cancellationState.onSelectAll}
+            onClearAll={cancellationState.onClearAll}
+            onOpenModal={cancellationState.onOpenModal}
+          />
+        </div>
+      )}
+
+      {/* Search Bar (hidden in selection modes) */}
+      {!isSelectionMode && (
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="relative md:w-80">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -208,8 +237,8 @@ const BookingsTable = ({
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  {/* Checkbox column (attendance mode only) */}
-                  {isAttendanceMode && (
+                  {/* Checkbox column (selection modes) */}
+                  {isSelectionMode && (
                     <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">
                       <Checkbox disabled className="opacity-0" />
                     </th>
@@ -238,15 +267,34 @@ const BookingsTable = ({
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
-                {safeBookings.map((booking) => (
-                  <BookingRow
-                    key={booking.id}
-                    booking={booking}
-                    isAttendanceMode={isAttendanceMode}
-                    isSelected={attendanceState.isSelected?.(booking.id)}
-                    onToggleSelection={attendanceState.onToggleSelection}
-                  />
-                ))}
+                {safeBookings.map((booking) => {
+                  // Determine selection state and handler based on active mode
+                  let isSelected = false;
+                  let onToggleSelection = null;
+                  let isDisabled = false;
+
+                  if (isAttendanceMode) {
+                    isSelected = attendanceState.isSelected?.(booking.id) || false;
+                    onToggleSelection = attendanceState.onToggleSelection;
+                  } else if (isCancellationMode) {
+                    isSelected = cancellationState.isSelected?.(booking.id) || false;
+                    onToggleSelection = cancellationState.onToggleSelection;
+                    // Disable if booking is already cancelled
+                    isDisabled = !cancellationState.canCancel?.(booking.id);
+                  }
+
+                  return (
+                    <BookingRow
+                      key={booking.id}
+                      booking={booking}
+                      isAttendanceMode={isAttendanceMode}
+                      isCancellationMode={isCancellationMode}
+                      isSelected={isSelected}
+                      onToggleSelection={onToggleSelection}
+                      isDisabled={isDisabled}
+                    />
+                  );
+                })}
               </tbody>
             </table>
 

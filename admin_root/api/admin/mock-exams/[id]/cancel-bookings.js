@@ -1,0 +1,441 @@
+/**
+ * PATCH /api/admin/mock-exams/[id]/cancel-bookings
+ * Batch cancel bookings for a mock exam (soft delete)
+ *
+ * Features:
+ * - Batch cancel multiple bookings (up to 100 per request)
+ * - Idempotent operations - safe to retry
+ * - Soft delete: sets is_active = "Cancelled"
+ * - Partial failure handling with detailed error reporting
+ * - HubSpot batch API optimization with automatic chunking
+ * - Cache invalidation for affected resources
+ * - Audit logging with booking names (not IDs)
+ *
+ * Request Body:
+ * {
+ *   "bookingIds": ["string", ...]
+ * }
+ *
+ * Path Parameters:
+ * - id: Mock exam ID
+ *
+ * Returns:
+ * - Detailed results for each booking cancellation
+ * - Summary statistics (total, cancelled, failed, skipped)
+ * - Error details for failed cancellations
+ */
+
+const { requireAdmin } = require('../../middleware/requireAdmin');
+const { validationMiddleware } = require('../../../_shared/validation');
+const { getCache } = require('../../../_shared/cache');
+const hubspot = require('../../../_shared/hubspot');
+
+// HubSpot Object Type IDs
+const HUBSPOT_OBJECTS = {
+  'bookings': '2-50158943',
+  'mock_exams': '2-50158913',
+  'notes': '0-4'
+};
+
+// Maximum bookings per request (HubSpot batch limit is 100)
+const MAX_BOOKINGS_PER_REQUEST = 100;
+const HUBSPOT_BATCH_SIZE = 100;
+
+module.exports = async (req, res) => {
+  const startTime = Date.now();
+
+  try {
+    // Verify admin authentication
+    const user = await requireAdmin(req);
+    const adminEmail = user?.email || 'admin@prepdoctors.com';
+
+    // Extract mock exam ID from path parameter
+    const mockExamId = req.query.id;
+
+    // Validate mock exam ID
+    if (!mockExamId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'MISSING_MOCK_EXAM_ID',
+          message: 'Mock exam ID is required'
+        }
+      });
+    }
+
+    if (!/^\d+$/.test(mockExamId)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_MOCK_EXAM_ID',
+          message: 'Invalid mock exam ID format'
+        }
+      });
+    }
+
+    // Validate request body
+    const validator = validationMiddleware('batchBookingCancellation');
+    await new Promise((resolve, reject) => {
+      validator(req, res, (error) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    const { bookingIds } = req.validatedData;
+
+    // Check if bookingIds array is within limits
+    if (bookingIds.length > MAX_BOOKINGS_PER_REQUEST) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'BATCH_SIZE_EXCEEDED',
+          message: `Maximum ${MAX_BOOKINGS_PER_REQUEST} bookings can be cancelled per request`,
+          details: { provided: bookingIds.length, maximum: MAX_BOOKINGS_PER_REQUEST }
+        }
+      });
+    }
+
+    console.log(`🗑️ [CANCEL] Processing batch cancellation for mock exam ${mockExamId}`);
+    console.log(`🗑️ [CANCEL] Total bookings to process: ${bookingIds.length}`);
+
+    // Fetch all bookings in batches to verify they exist and get current status
+    console.log(`🔍 [CANCEL] Fetching booking details from HubSpot...`);
+    const existingBookings = await fetchBookingsBatch(bookingIds);
+
+    // Initialize result tracking
+    const results = {
+      successful: [],
+      failed: [],
+      skipped: []
+    };
+
+    // Validate and prepare updates
+    const updates = [];
+    const bookingDetailsForAudit = [];
+
+    for (const bookingId of bookingIds) {
+      const existingBooking = existingBookings.get(bookingId);
+
+      // Check if booking exists
+      if (!existingBooking) {
+        results.failed.push({
+          bookingId,
+          error: 'Booking not found',
+          code: 'BOOKING_NOT_FOUND'
+        });
+        continue;
+      }
+
+      // Check if already cancelled (idempotency)
+      if (existingBooking.properties.is_active === 'Cancelled') {
+        results.skipped.push({
+          bookingId,
+          reason: 'Already cancelled',
+          currentStatus: 'Cancelled'
+        });
+        continue;
+      }
+
+      // Prepare update
+      updates.push({
+        id: bookingId,
+        properties: {
+          is_active: 'Cancelled'
+        }
+      });
+
+      // Store booking details for audit log
+      bookingDetailsForAudit.push({
+        id: bookingId,
+        name: existingBooking.properties.name || 'Unknown',
+        email: existingBooking.properties.email || 'No email'
+      });
+    }
+
+    // Process updates in batches
+    if (updates.length > 0) {
+      console.log(`⚡ [CANCEL] Processing ${updates.length} cancellations...`);
+
+      const updateResults = await processCancellations(updates);
+
+      // Process results
+      for (const result of updateResults.successful) {
+        results.successful.push({
+          bookingId: result.id,
+          status: 'cancelled',
+          message: 'Successfully cancelled'
+        });
+      }
+
+      for (const error of updateResults.failed) {
+        results.failed.push({
+          bookingId: error.id,
+          error: error.message || 'Failed to cancel booking',
+          code: 'UPDATE_FAILED'
+        });
+      }
+    }
+
+    // Invalidate relevant caches
+    if (results.successful.length > 0) {
+      await invalidateCancellationCaches(mockExamId);
+      console.log(`🗑️ [CANCEL] Caches invalidated for mock exam ${mockExamId}`);
+    }
+
+    // Calculate summary
+    const summary = {
+      total: bookingIds.length,
+      cancelled: results.successful.length,
+      failed: results.failed.length,
+      skipped: results.skipped.length
+    };
+
+    // Log audit trail
+    if (results.successful.length > 0) {
+      console.log(`✅ [CANCEL] Successfully cancelled ${results.successful.length} bookings`);
+
+      // Create audit log asynchronously (non-blocking)
+      const successfulBookingDetails = bookingDetailsForAudit.filter(b =>
+        results.successful.some(s => s.bookingId === b.id)
+      );
+
+      createAuditLog(mockExamId, summary, adminEmail, successfulBookingDetails).catch(error => {
+        console.error('Failed to create audit log:', error);
+      });
+    }
+
+    // Return response
+    const executionTime = Date.now() - startTime;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        summary,
+        results
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        processedBy: adminEmail,
+        mockExamId,
+        executionTime
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [CANCEL] Error in batch booking cancellation:', error);
+
+    // Handle validation errors
+    if (error.validationErrors) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid request data',
+          details: error.validationErrors
+        }
+      });
+    }
+
+    // Handle auth errors
+    if (error.message?.includes('authorization') || error.message?.includes('token')) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Authentication required'
+        }
+      });
+    }
+
+    // Handle timeout errors (Vercel 60s limit)
+    if (Date.now() - startTime > 55000) {
+      return res.status(504).json({
+        success: false,
+        error: {
+          code: 'TIMEOUT',
+          message: 'Request timeout. Please try with fewer bookings.'
+        }
+      });
+    }
+
+    // Generic error
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: 'An error occurred while cancelling bookings'
+      }
+    });
+  }
+};
+
+/**
+ * Fetch bookings in batches from HubSpot
+ * Reusing pattern from attendance.js lines 313-345
+ */
+async function fetchBookingsBatch(bookingIds) {
+  const bookingsMap = new Map();
+
+  // Split into chunks of 100 (HubSpot batch limit)
+  for (let i = 0; i < bookingIds.length; i += HUBSPOT_BATCH_SIZE) {
+    const chunk = bookingIds.slice(i, i + HUBSPOT_BATCH_SIZE);
+
+    try {
+      const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
+        properties: [
+          'is_active',
+          'booking_status',
+          'name',
+          'email'
+        ],
+        inputs: chunk.map(id => ({ id }))
+      });
+
+      if (response.results) {
+        for (const booking of response.results) {
+          bookingsMap.set(booking.id, booking);
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching booking batch:`, error);
+      // Continue processing other batches
+    }
+  }
+
+  return bookingsMap;
+}
+
+/**
+ * Process cancellations in batches
+ * Reusing pattern from attendance.js lines 350-391
+ */
+async function processCancellations(updates) {
+  const results = {
+    successful: [],
+    failed: []
+  };
+
+  // Split into chunks of 100 (HubSpot batch limit)
+  for (let i = 0; i < updates.length; i += HUBSPOT_BATCH_SIZE) {
+    const chunk = updates.slice(i, i + HUBSPOT_BATCH_SIZE);
+
+    try {
+      const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/update`, {
+        inputs: chunk
+      });
+
+      if (response.results) {
+        results.successful.push(...response.results);
+      }
+
+      // Handle partial failures
+      if (response.errors) {
+        for (const error of response.errors) {
+          results.failed.push({
+            id: error.context?.id || 'unknown',
+            message: error.message
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`Error processing cancellation batch:`, error);
+
+      // Mark all items in this chunk as failed
+      for (const update of chunk) {
+        results.failed.push({
+          id: update.id,
+          message: error.message || 'Batch update failed'
+        });
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Invalidate caches affected by booking cancellations
+ * Reusing pattern from attendance.js lines 397-419
+ */
+async function invalidateCancellationCaches(mockExamId) {
+  const cache = getCache();
+
+  try {
+    // Invalidate mock exam details cache
+    await cache.delete(`admin:mock-exam:${mockExamId}`);
+    await cache.delete(`admin:mock-exam:details:${mockExamId}`);
+
+    // Invalidate bookings list cache for this mock exam
+    await cache.deletePattern(`admin:mock-exam:${mockExamId}:bookings:*`);
+
+    // Invalidate aggregate caches
+    await cache.deletePattern('admin:mock-exams:aggregates:*');
+    await cache.deletePattern('admin:aggregate:sessions:*');
+    await cache.deletePattern('admin:metrics:*');
+
+    // Invalidate mock exams list cache (as cancellations affect statistics)
+    await cache.deletePattern('admin:mock-exams:list:*');
+  } catch (error) {
+    console.error('Error invalidating caches:', error);
+    // Don't fail the request if cache invalidation fails
+  }
+}
+
+/**
+ * Create audit log for booking cancellations
+ * Following Section 5.5 of PRD for audit trail with booking names
+ */
+async function createAuditLog(mockExamId, summary, adminEmail, bookingDetails) {
+  try {
+    // Format booking details for display (max 5 shown, rest as count)
+    let bookingsList = '';
+    if (bookingDetails.length <= 5) {
+      bookingsList = bookingDetails
+        .map(b => `• ${b.name} (${b.email})`)
+        .join('<br/>');
+    } else {
+      const firstFive = bookingDetails.slice(0, 5);
+      bookingsList = firstFive
+        .map(b => `• ${b.name} (${b.email})`)
+        .join('<br/>');
+      bookingsList += `<br/>• ... and ${bookingDetails.length - 5} more`;
+    }
+
+    // Create a note in the mock exam's timeline
+    const noteContent = `
+      <strong>🗑️ Batch Booking Cancellation</strong><br/>
+      <hr/>
+      <strong>Summary:</strong><br/>
+      • Total Processed: ${summary.total}<br/>
+      • Successfully Cancelled: ${summary.cancelled}<br/>
+      • Failed: ${summary.failed}<br/>
+      • Skipped (already cancelled): ${summary.skipped}<br/>
+      <br/>
+      <strong>Cancelled Bookings:</strong><br/>
+      ${bookingsList}<br/>
+      <br/>
+      <strong>Cancelled By:</strong> ${adminEmail}<br/>
+      <strong>Timestamp:</strong> ${new Date().toISOString()}<br/>
+    `;
+
+    // Create the note
+    const noteResponse = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.notes}`, {
+      properties: {
+        hs_note_body: noteContent,
+        hs_timestamp: Date.now()
+      }
+    });
+
+    // Associate the note with the mock exam
+    if (noteResponse?.id) {
+      await hubspot.apiCall('PUT', `/crm/v3/objects/${HUBSPOT_OBJECTS.notes}/${noteResponse.id}/associations/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}/note_to_mock_exam`);
+    }
+  } catch (error) {
+    console.error('Failed to create audit log:', error);
+    // Don't throw - this is non-critical
+  }
+}
