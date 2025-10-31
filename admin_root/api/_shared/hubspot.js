@@ -1430,8 +1430,21 @@ class HubSpotService {
 
       // Now associate the note with the mock exam using the v4 associations API
       console.log(`🔗 Associating note ${noteResponse.id} with mock exam ${mockExamId}...`);
-      await this.createAssociation('0-46', noteResponse.id, '2-50158913', mockExamId);
-      console.log(`✅ Mock exam edit note associated successfully`);
+
+      try {
+        await this.createAssociation('0-46', noteResponse.id, '2-50158913', mockExamId);
+        console.log(`✅ Mock exam edit note associated successfully`);
+      } catch (assocError) {
+        console.error(`❌ CRITICAL: Failed to associate edit note with mock exam:`, {
+          noteId: noteResponse.id,
+          mockExamId,
+          error: assocError.message,
+          statusCode: assocError.statusCode,
+          body: assocError.response?.body,
+          data: assocError.response?.data
+        });
+        // Note was created but association failed - log for investigation
+      }
 
       return noteResponse;
 

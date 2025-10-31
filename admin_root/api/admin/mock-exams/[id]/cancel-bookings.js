@@ -430,7 +430,20 @@ async function createAuditLog(mockExamId, summary, adminEmail, bookingDetails) {
 
     // Associate the note with the mock exam
     if (noteResponse?.id) {
-      await hubspot.createAssociation('0-46', noteResponse.id, '2-50158913', mockExamId);
+      console.log(`🔗 [AUDIT] Associating note ${noteResponse.id} with mock exam ${mockExamId}`);
+      try {
+        await hubspot.createAssociation('0-46', noteResponse.id, '2-50158913', mockExamId);
+        console.log(`✅ [AUDIT] Note successfully associated with mock exam ${mockExamId}`);
+      } catch (assocError) {
+        console.error(`❌ [AUDIT] CRITICAL: Failed to associate note with mock exam:`, {
+          noteId: noteResponse.id,
+          mockExamId,
+          error: assocError.message,
+          statusCode: assocError.statusCode,
+          response: assocError.response?.data
+        });
+        // Log but continue - note was created even if association failed
+      }
     }
   } catch (error) {
     console.error('Failed to create audit log:', error);
