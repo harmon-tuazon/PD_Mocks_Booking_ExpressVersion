@@ -632,15 +632,15 @@ async function createAuditNote(mockExamId, originalValues, updatedValues, change
       }
     };
 
-    // Create the note using correct object type 0-46
-    const noteResponse = await hubspot.apiCall('POST', '/crm/v3/objects/0-46', notePayload);
+    // Create the note
+    const noteResponse = await hubspot.apiCall('POST', '/crm/v3/objects/notes', notePayload);
 
-    // Associate the note with the mock exam using correct association type
+    // Associate the mock exam with the note (reversed direction - Mock Exam → Note, type 1249)
     await hubspot.apiCall('PUT',
-      `/crm/v4/objects/0-46/${noteResponse.id}/associations/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}`,
+      `/crm/v4/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}/associations/0-46/${noteResponse.id}`,
       [{
         associationCategory: 'USER_DEFINED',
-        associationTypeId: 1250 // Correct type for Notes → Mock Exams
+        associationTypeId: 1249 // Correct type for Mock Exams → Notes
       }]
     );
 

@@ -420,19 +420,19 @@ async function createAuditLog(mockExamId, summary, adminEmail, bookingDetails) {
       <strong>Timestamp:</strong> ${new Date().toISOString()}<br/>
     `;
 
-    // Create the note using correct object type 0-46
-    const noteResponse = await hubspot.apiCall('POST', `/crm/v3/objects/0-46`, {
+    // Create the note
+    const noteResponse = await hubspot.apiCall('POST', `/crm/v3/objects/notes`, {
       properties: {
         hs_note_body: noteContent,
         hs_timestamp: Date.now()
       }
     });
 
-    // Associate the note with the mock exam
+    // Associate the mock exam with the note (reversed direction - Mock Exam → Note)
     if (noteResponse?.id) {
-      console.log(`🔗 [AUDIT] Associating note ${noteResponse.id} with mock exam ${mockExamId}`);
+      console.log(`🔗 [AUDIT] Associating mock exam ${mockExamId} with note ${noteResponse.id}`);
       try {
-        await hubspot.createAssociation('0-46', noteResponse.id, '2-50158913', mockExamId);
+        await hubspot.createAssociation('2-50158913', mockExamId, '0-46', noteResponse.id);
         console.log(`✅ [AUDIT] Note successfully associated with mock exam ${mockExamId}`);
       } catch (assocError) {
         console.error(`❌ [AUDIT] CRITICAL: Failed to associate note with mock exam:`, {

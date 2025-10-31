@@ -1425,14 +1425,14 @@ class HubSpotService {
       };
 
       console.log('📝 Creating mock exam edit note...');
-      const noteResponse = await this.apiCall('POST', '/crm/v3/objects/0-46', notePayload);
+      const noteResponse = await this.apiCall('POST', '/crm/v3/objects/notes', notePayload);
       console.log(`✅ Note created with ID: ${noteResponse.id}`);
 
-      // Now associate the note with the mock exam using the v4 associations API
-      console.log(`🔗 Associating note ${noteResponse.id} with mock exam ${mockExamId}...`);
+      // Now associate the mock exam with the note (reversed direction - Mock Exam → Note)
+      console.log(`🔗 Associating mock exam ${mockExamId} with note ${noteResponse.id}...`);
 
       try {
-        await this.createAssociation('0-46', noteResponse.id, '2-50158913', mockExamId);
+        await this.createAssociation('2-50158913', mockExamId, '0-46', noteResponse.id);
         console.log(`✅ Mock exam edit note associated successfully`);
       } catch (assocError) {
         console.error(`❌ CRITICAL: Failed to associate edit note with mock exam:`, {
