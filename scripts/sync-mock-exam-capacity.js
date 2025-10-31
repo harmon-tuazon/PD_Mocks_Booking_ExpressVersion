@@ -14,7 +14,7 @@
  */
 
 require('dotenv').config();
-const { HubSpotService, HUBSPOT_OBJECTS } = require('../api/_shared/hubspot');
+const { HubSpotService, HUBSPOT_OBJECTS } = require('../admin_root/api/_shared/hubspot');
 
 // Parse command line arguments
 const args = process.argv.slice(2);

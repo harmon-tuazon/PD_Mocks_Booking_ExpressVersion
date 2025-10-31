@@ -529,7 +529,7 @@ class HubSpotService {
         return 0;
       }
 
-      // Batch fetch booking details to check status (HubSpot batch read supports up to 100 objects)
+      // Batch fetch booking details to check is_active status (HubSpot batch read supports up to 100 objects)
       let activeCount = 0;
       const batchChunks = [];
       for (let i = 0; i < bookingIds.length; i += 100) {
@@ -539,15 +539,15 @@ class HubSpotService {
       for (const chunk of batchChunks) {
         try {
           const batchResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
-            properties: ['booking_status'],
+            properties: ['is_active'],
             inputs: chunk.map(id => ({ id }))
           });
 
           if (batchResponse.results) {
-            // Count active bookings (confirmed or pending)
+            // Count active bookings (Active or active status only)
             batchResponse.results.forEach(booking => {
-              const status = booking.properties.booking_status;
-              if (status === 'confirmed' || status === 'pending') {
+              const status = booking.properties.is_active;
+              if (status === 'Active' || status === 'active') {
                 activeCount++;
               }
             });

@@ -555,59 +555,58 @@ class HubSpotService {
    */
   async getActiveBookingsCount(mockExamId) {
     try {
-      // Get all associated bookings for this mock exam
-      const associations = await this.apiCall(
-        'GET',
-        `/crm/v4/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}/associations/${HUBSPOT_OBJECTS.bookings}`
+      // Get mock exam with associations to get all booking IDs
+      const mockExamResponse = await this.apiCall('GET',
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}`
       );
 
-      if (!associations?.results || associations.results.length === 0) {
-        console.log(`No bookings found for mock exam ${mockExamId}`);
+      // Extract booking IDs from associations (using flexible key matching)
+      const bookingIds = [];
+      const bookingsKey = this.findAssociationKey(mockExamResponse.associations, HUBSPOT_OBJECTS.bookings, 'bookings');
+
+      if (bookingsKey && mockExamResponse.associations[bookingsKey]?.results?.length > 0) {
+        mockExamResponse.associations[bookingsKey].results.forEach(association => {
+          bookingIds.push(association.id);
+        });
+      }
+
+      // If no bookings, return 0
+      if (bookingIds.length === 0) {
         return 0;
       }
 
-      // Extract booking IDs from associations
-      const bookingIds = associations.results.map(assoc => assoc.toObjectId);
-
-      // Batch retrieve booking objects to check their status
-      // HubSpot will automatically exclude archived/deleted objects
-      // We also need to fetch is_active property to filter out cancelled bookings
-      const batchReadPayload = {
-        inputs: bookingIds.map(id => ({ id })),
-        properties: ['booking_id', 'hs_object_id', 'is_active']
-      };
-
-      const bookingsResponse = await this.apiCall(
-        'POST',
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`,
-        batchReadPayload
-      );
-
-      if (!bookingsResponse?.results || bookingsResponse.results.length === 0) {
-        console.log(`No active bookings retrieved for mock exam ${mockExamId}`);
-        return 0;
+      // Batch fetch booking details to check is_active status (HubSpot batch read supports up to 100 objects)
+      let activeCount = 0;
+      const batchChunks = [];
+      for (let i = 0; i < bookingIds.length; i += 100) {
+        batchChunks.push(bookingIds.slice(i, i + 100));
       }
 
-      // ALIGNED LOGIC: Count bookings that are NOT cancelled
-      // This matches the logic in api/mock-exams/available.js
-      const activeBookings = bookingsResponse.results.filter(booking => {
-        const isActive = booking.properties.is_active;
-        // Exclude only Cancelled bookings (Completed bookings ARE counted)
-        const isCancelled = isActive === 'Cancelled' || isActive === 'cancelled';
-        const isFalse = isActive === false || isActive === 'false';
+      for (const chunk of batchChunks) {
+        try {
+          const batchResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
+            properties: ['is_active'],
+            inputs: chunk.map(id => ({ id }))
+          });
 
-        return !isCancelled && !isFalse;
-      });
+          if (batchResponse.results) {
+            // Count active bookings (Active or active status only)
+            batchResponse.results.forEach(booking => {
+              const status = booking.properties.is_active;
+              if (status === 'Active' || status === 'active') {
+                activeCount++;
+              }
+            });
+          }
+        } catch (batchError) {
+          console.error(`Error fetching booking batch for count:`, batchError);
+        }
+      }
 
-      const activeBookingsCount = activeBookings.length;
-
-      console.log(`Mock exam ${mockExamId}: ${activeBookingsCount} active bookings out of ${bookingIds.length} total associations (${bookingsResponse.results.length - activeBookingsCount} cancelled)`);
-
-      return activeBookingsCount;
+      return activeCount;
     } catch (error) {
-      console.error(`Error getting active bookings count for mock exam ${mockExamId}:`, error);
-      // Return 0 on error to avoid blocking operations
-      return 0;
+      console.error('Error getting active bookings count:', error);
+      throw error;
     }
   }
 
