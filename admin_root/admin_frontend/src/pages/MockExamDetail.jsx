@@ -107,14 +107,34 @@ function MockExamDetail() {
     );
   };
 
-  // Handle opening cancellation modal
+  // Handle opening cancellation modal with mode toggle check
   const handleOpenCancellation = () => {
+    // If attendance mode is active, prevent cancellation mode
+    if (attendance.isAttendanceMode) {
+      // Could show a toast or alert here if needed
+      console.warn('Cannot enter cancellation mode while attendance mode is active');
+      return;
+    }
+
     // If not in cancellation mode, enter it first
     if (!cancellation.isCancellationMode) {
       cancellation.toggleMode();
     }
-    // Open the modal
-    cancellation.openModal();
+    // Open the modal if desired (optional - could just enter mode without opening modal)
+    // cancellation.openModal();
+  };
+
+  // Handle toggling attendance mode with cancellation check
+  const handleToggleAttendance = () => {
+    // If cancellation mode is active, prevent attendance mode
+    if (cancellation.isCancellationMode) {
+      // Could show a toast or alert here if needed
+      console.warn('Cannot enter attendance mode while cancellation mode is active');
+      return;
+    }
+
+    // Toggle attendance mode
+    attendance.toggleMode();
   };
 
   // Handle cancellation confirmation
@@ -326,7 +346,7 @@ function MockExamDetail() {
               unmarkedCount: attendanceSummary.unmarked,
               totalCount: bookingsData?.pagination?.total || 0,
               action: attendance.action,
-              onToggleMode: attendance.toggleMode,
+              onToggleMode: handleToggleAttendance,  // Use new toggle handler
               onSelectAll: attendance.selectAll,
               onClearAll: attendance.clearAll,
               onSetAction: attendance.setAction,

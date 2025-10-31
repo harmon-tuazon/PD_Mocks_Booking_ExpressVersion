@@ -150,7 +150,7 @@ const BookingsTable = ({
 
   return (
     <div>
-      {/* Attendance Controls (shown when attendance functionality is available) */}
+      {/* Attendance Controls (badges and buttons always shown, control panel when in mode) */}
       {attendanceProps && (
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <AttendanceControls
@@ -171,23 +171,23 @@ const BookingsTable = ({
             onCancelBookings={attendanceState.onCancelBookings}
             isCancellationMode={isCancellationMode}
           />
-        </div>
-      )}
 
-      {/* Cancellation Controls (shown when in cancellation mode) */}
-      {cancellationProps && isCancellationMode && (
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <CancellationControls
-            isCancellationMode={cancellationState.isCancellationMode}
-            isSubmitting={cancellationState.isSubmitting}
-            selectedCount={cancellationState.selectedCount}
-            cancellableCount={cancellationState.cancellableCount}
-            totalCount={cancellationState.totalCount}
-            onToggleMode={cancellationState.onToggleMode}
-            onSelectAll={cancellationState.onSelectAll}
-            onClearAll={cancellationState.onClearAll}
-            onOpenModal={cancellationState.onOpenModal}
-          />
+          {/* Cancellation Controls (shown only when in cancellation mode, below the badges) */}
+          {cancellationProps && isCancellationMode && (
+            <div className="mt-4">
+              <CancellationControls
+                isCancellationMode={cancellationState.isCancellationMode}
+                isSubmitting={cancellationState.isSubmitting}
+                selectedCount={cancellationState.selectedCount}
+                cancellableCount={cancellationState.cancellableCount}
+                totalCount={cancellationState.totalCount}
+                onToggleMode={cancellationState.onToggleMode}
+                onSelectAll={cancellationState.onSelectAll}
+                onClearAll={cancellationState.onClearAll}
+                onOpenModal={cancellationState.onOpenModal}
+              />
+            </div>
+          )}
         </div>
       )}
 
