@@ -422,20 +422,32 @@ async function createAuditLog(mockExamId, summary, adminEmail, bookingDetails) {
       <strong>Timestamp:</strong> ${new Date().toISOString()}<br/>
     `;
 
+    console.log('📝 Creating audit note for mock exam:', mockExamId);
+
     // Create the note
-    const noteResponse = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.notes}`, {
+    const noteResponse = await hubspot.apiCall('POST', `/crm/v3/objects/notes`, {
       properties: {
         hs_note_body: noteContent,
         hs_timestamp: Date.now()
       }
     });
 
-    // Associate the note with the mock exam
+    console.log('✅ Note created with ID:', noteResponse?.id);
+
+    // Associate the note with the mock exam using v4 associations API
     if (noteResponse?.id) {
-      await hubspot.apiCall('PUT', `/crm/v3/objects/${HUBSPOT_OBJECTS.notes}/${noteResponse.id}/associations/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}/note_to_mock_exam`);
+      await hubspot.apiCall('PUT', 
+        `/crm/v4/objects/notes/${noteResponse.id}/associations/2-50158913/${mockExamId}`,
+        [{
+          associationCategory: 'HUBSPOT_DEFINED',
+          associationTypeId: 214
+        }]
+      );
+      console.log('✅ Note associated with mock exam:', mockExamId);
     }
   } catch (error) {
-    console.error('Failed to create audit log:', error);
+    console.error('❌ Failed to create audit log:', error);
+    console.error('Error details:', error.response?.data || error.message);
     // Don't throw - this is non-critical
   }
 }
