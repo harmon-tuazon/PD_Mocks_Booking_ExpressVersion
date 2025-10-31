@@ -590,10 +590,12 @@ class HubSpotService {
           });
 
           if (batchResponse.results) {
-            // Count active bookings (Active or active status only)
+            // Count active bookings (Active or Completed status)
+            // This preserves capacity count for past sessions while excluding cancelled bookings
             batchResponse.results.forEach(booking => {
               const status = booking.properties.is_active;
-              if (status === 'Active' || status === 'active') {
+              if (status === 'Active' || status === 'active' || 
+                  status === 'Completed' || status === 'completed') {
                 activeCount++;
               }
             });
