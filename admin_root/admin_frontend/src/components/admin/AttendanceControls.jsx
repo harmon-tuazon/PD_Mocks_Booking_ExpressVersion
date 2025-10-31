@@ -148,7 +148,7 @@ const AttendanceControls = ({
             title={isCancellationMode ? 'Exit cancellation mode to mark attendance' : ''}
           >
             <CheckCircleIcon className="h-5 w-5 mr-2" />
-            {isAttendanceMode ? 'Exit Attendance Mode' : 'Mark Attendance'}
+            Mark Attendance
           </button>
         </div>
       </div>
