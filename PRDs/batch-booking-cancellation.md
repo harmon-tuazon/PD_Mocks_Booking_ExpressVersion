@@ -409,10 +409,16 @@ module.exports = async (req, res) => {
     if (results.successful.length > 0) {
       console.log(`✅ [CANCEL] Successfully cancelled ${results.successful.length} bookings`);
 
-      // Extract successfully cancelled booking IDs for audit log
-      const cancelledBookingIds = results.successful.map(r => r.bookingId);
+      // Extract booking details for audit log (name and email)
+      const cancelledBookingDetails = results.successful.map(r => {
+        const booking = existingBookings.get(r.bookingId);
+        return {
+          name: booking?.properties?.name || 'Unknown',
+          email: booking?.properties?.email || 'No email'
+        };
+      });
 
-      createAuditLog(mockExamId, summary, adminEmail, cancelledBookingIds).catch(error => {
+      createAuditLog(mockExamId, summary, adminEmail, cancelledBookingDetails).catch(error => {
         console.error('Failed to create audit log:', error);
       });
     }
@@ -474,7 +480,7 @@ async function fetchBookingsBatch(bookingIds) {
 
     try {
       const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
-        properties: ['is_active', 'booking_status'],
+        properties: ['is_active', 'booking_status', 'name', 'email'],
         inputs: chunk.map(id => ({ id }))
       });
 
@@ -544,7 +550,7 @@ async function invalidateCancellationCaches(mockExamId) {
   }
 }
 
-async function createAuditLog(mockExamId, summary, adminEmail, cancelledBookingIds) {
+async function createAuditLog(mockExamId, summary, adminEmail, cancelledBookings) {
   try {
     const timestamp = new Date();
     const formattedTimestamp = timestamp.toLocaleString('en-US', {
@@ -557,15 +563,17 @@ async function createAuditLog(mockExamId, summary, adminEmail, cancelledBookingI
       timeZone: 'America/Toronto'
     });
 
-    // Build list of cancelled booking IDs (show first 10, then "+X more")
+    // Build list of cancelled bookings with names and emails (show first 10, then "+X more")
     let bookingsListHtml = '<ul>';
-    const displayedBookings = cancelledBookingIds.slice(0, 10);
-    displayedBookings.forEach(id => {
-      bookingsListHtml += `<li>Booking ID: ${id}</li>`;
+    const displayedBookings = cancelledBookings.slice(0, 10);
+    displayedBookings.forEach(booking => {
+      const name = booking.name || 'Unknown';
+      const email = booking.email || 'No email';
+      bookingsListHtml += `<li>${name} (${email})</li>`;
     });
 
-    if (cancelledBookingIds.length > 10) {
-      const remaining = cancelledBookingIds.length - 10;
+    if (cancelledBookings.length > 10) {
+      const remaining = cancelledBookings.length - 10;
       bookingsListHtml += `<li><em>+ ${remaining} more booking(s)</em></li>`;
     }
     bookingsListHtml += '</ul>';
@@ -710,8 +718,8 @@ The note body must be HTML-formatted and include:
    - Failed
    - Skipped (already cancelled)
 3. **Cancelled Bookings List**:
-   - Display first 10 booking IDs
-   - Show "+X more" for remaining bookings
+   - Display first 10 booking names with emails (format: "Name (email)")
+   - Show "+X more booking(s)" for remaining bookings
 4. **Cancellation Information**:
    - Cancelled By (admin email)
    - Cancelled At (formatted timestamp in America/Toronto timezone)
@@ -732,10 +740,10 @@ The note body must be HTML-formatted and include:
 
 <p><strong>Cancelled Bookings:</strong></p>
 <ul>
-  <li>Booking ID: 12345678</li>
-  <li>Booking ID: 23456789</li>
-  <li>Booking ID: 34567890</li>
-  <li>Booking ID: 45678901</li>
+  <li>John Doe (john.doe@example.com)</li>
+  <li>Jane Smith (jane.smith@example.com)</li>
+  <li>Bob Johnson (bob.johnson@example.com)</li>
+  <li>Alice Williams (alice.williams@example.com)</li>
 </ul>
 
 <p><strong>Cancellation Information:</strong></p>
@@ -804,7 +812,9 @@ console.error('Failed to create cancellation audit log:', {
 
 - [ ] Create `createAuditLog` function in cancel-bookings.js
 - [ ] Format note body with HTML and cancellation summary
-- [ ] Include list of cancelled booking IDs (max 10 displayed)
+- [ ] Include list of cancelled booking names and emails (max 10 displayed)
+- [ ] Fetch name and email properties in fetchBookingsBatch function
+- [ ] Pass booking details (not just IDs) to createAuditLog
 - [ ] Use America/Toronto timezone for timestamps
 - [ ] Create note without associations first
 - [ ] Associate note with mock exam using v4 API
