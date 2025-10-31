@@ -1425,7 +1425,7 @@ class HubSpotService {
       };
 
       console.log('📝 Creating mock exam edit note...');
-      const noteResponse = await this.apiCall('POST', '/crm/v3/objects/notes', notePayload);
+      const noteResponse = await this.apiCall('POST', '/crm/v3/objects/0-46', notePayload);
       console.log(`✅ Note created with ID: ${noteResponse.id}`);
 
       // Now associate the note with the mock exam using the v4 associations API

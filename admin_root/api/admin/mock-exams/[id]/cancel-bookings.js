@@ -34,7 +34,7 @@ const hubspot = require('../../../_shared/hubspot');
 const HUBSPOT_OBJECTS = {
   'bookings': '2-50158943',
   'mock_exams': '2-50158913',
-  'notes': '0-4'
+  'notes': '0-46'
 };
 
 // Maximum bookings per request (HubSpot batch limit is 100)
@@ -420,8 +420,8 @@ async function createAuditLog(mockExamId, summary, adminEmail, bookingDetails) {
       <strong>Timestamp:</strong> ${new Date().toISOString()}<br/>
     `;
 
-    // Create the note
-    const noteResponse = await hubspot.apiCall('POST', `/crm/v3/objects/notes`, {
+    // Create the note using correct object type 0-46
+    const noteResponse = await hubspot.apiCall('POST', `/crm/v3/objects/0-46`, {
       properties: {
         hs_note_body: noteContent,
         hs_timestamp: Date.now()
