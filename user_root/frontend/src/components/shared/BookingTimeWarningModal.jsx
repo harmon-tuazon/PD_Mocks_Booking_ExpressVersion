@@ -16,7 +16,11 @@ const BookingTimeWarningModal = ({
   const formatDate = (dateString) => {
     if (!dateString) return 'Date TBD';
     try {
-      const date = new Date(dateString);
+      // Parse date as local time to avoid timezone conversion issues
+      // exam_date is in YYYY-MM-DD format
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day); // month is 0-indexed
+
       return date.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
