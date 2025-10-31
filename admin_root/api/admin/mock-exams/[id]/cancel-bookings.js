@@ -106,6 +106,12 @@ module.exports = async (req, res) => {
     console.log(`🔍 [CANCEL] Fetching booking details from HubSpot...`);
     const existingBookings = await fetchBookingsBatch(bookingIds);
 
+    // DEBUG: Log fetched booking data to trace caching issues
+    console.log(`🐛 [DEBUG] Fetched ${existingBookings.size} bookings from HubSpot`);
+    for (const [id, booking] of existingBookings) {
+      console.log(`🐛 [DEBUG] Booking ${id}: name="${booking.properties.name}", email="${booking.properties.email}"`);
+    }
+
     // Initialize result tracking
     const results = {
       successful: [],
@@ -199,6 +205,12 @@ module.exports = async (req, res) => {
       const successfulBookingDetails = bookingDetailsForAudit.filter(b =>
         results.successful.some(s => s.bookingId === b.id)
       );
+
+      // DEBUG: Log what's being passed to createAuditLog
+      console.log(`🐛 [DEBUG] Creating audit log with ${successfulBookingDetails.length} successful bookings:`);
+      successfulBookingDetails.forEach(detail => {
+        console.log(`🐛 [DEBUG] - Booking ${detail.id}: "${detail.name}" (${detail.email})`);
+      });
 
       // Create audit log asynchronously (non-blocking)
       createAuditLog(mockExamId, summary, adminEmail, successfulBookingDetails).catch(error => {
@@ -389,6 +401,16 @@ async function invalidateCancellationCaches(mockExamId) {
  */
 async function createAuditLog(mockExamId, summary, adminEmail, bookingDetails) {
   try {
+    // DEBUG: Log what createAuditLog receives
+    const timestamp = new Date().toISOString();
+    console.log(`🐛 [DEBUG] createAuditLog called at ${timestamp} with:`);
+    console.log(`🐛 [DEBUG] - mockExamId: ${mockExamId}`);
+    console.log(`🐛 [DEBUG] - adminEmail: ${adminEmail}`);
+    console.log(`🐛 [DEBUG] - bookingDetails (${bookingDetails.length} items):`);
+    bookingDetails.forEach(detail => {
+      console.log(`🐛 [DEBUG]   - ID: ${detail.id}, Name: "${detail.name}", Email: ${detail.email}`);
+    });
+
     // Format booking details for display (max 5 shown, rest as count)
     let bookingsList = '';
     if (bookingDetails.length <= 5) {
