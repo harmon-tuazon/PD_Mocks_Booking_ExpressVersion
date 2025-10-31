@@ -7,6 +7,7 @@ import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute'
 import MockExams from './pages/MockExams'
 import MockExamsDashboard from './pages/MockExamsDashboard'
 import MockExamDetail from './pages/MockExamDetail'
+import TraineeDashboard from './pages/TraineeDashboard'
 import Login from './pages/Login'
 import MainLayout from './components/layout/MainLayout'
 
@@ -87,6 +88,9 @@ function App() {
 
                 {/* Mock Exam Detail View */}
                 <Route path="mock-exams/:id" element={<MockExamDetail />} />
+
+                {/* Trainee Dashboard */}
+                <Route path="trainees" element={<TraineeDashboard />} />
               </Route>
             </Routes>
           </AuthProvider>

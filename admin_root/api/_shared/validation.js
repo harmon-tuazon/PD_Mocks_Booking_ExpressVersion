@@ -589,6 +589,48 @@ const schemas = {
         'array.max': 'Maximum 100 bookings can be cancelled per request',
         'any.required': 'Booking IDs array is required'
       })
+  }),
+
+  // Schema for trainee search (Admin)
+  traineeSearch: Joi.object({
+    query: Joi.string()
+      .min(2)
+      .max(100)
+      .required()
+      .messages({
+        'string.min': 'Search query must be at least 2 characters',
+        'string.max': 'Search query cannot exceed 100 characters',
+        'any.required': 'Search query is required'
+      }),
+    debug: Joi.boolean()
+      .optional()
+      .default(false)
+      .messages({
+        'boolean.base': 'Debug parameter must be a boolean value'
+      })
+  }),
+
+  // Schema for trainee bookings (Admin)
+  traineeBookings: Joi.object({
+    contactId: Joi.string()
+      .pattern(/^\d+$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Contact ID must be numeric',
+        'any.required': 'Contact ID is required'
+      }),
+    debug: Joi.boolean()
+      .optional()
+      .default(false)
+      .messages({
+        'boolean.base': 'Debug parameter must be a boolean value'
+      }),
+    include_inactive: Joi.boolean()
+      .optional()
+      .default(false)
+      .messages({
+        'boolean.base': 'Include inactive parameter must be a boolean value'
+      })
   })
 
 };

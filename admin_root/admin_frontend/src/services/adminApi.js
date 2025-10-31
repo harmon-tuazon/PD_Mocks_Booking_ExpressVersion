@@ -186,6 +186,39 @@ export const mockExamsApi = {
     return response.data;
   }
 };
+/**
+ * Trainee API endpoints
+ * For searching trainees and fetching their booking history
+ */
+export const traineeApi = {
+  /**
+   * Search for trainees by name, email, or student ID
+   * @param {string} query - Search query string
+   * @returns {Promise<Object>} Search results with trainee data
+   */
+  search: async (query) => {
+    if (!query || query.trim().length === 0) {
+      return { success: true, data: null };
+    }
+    const response = await api.get('/admin/trainees/search', {
+      params: { query }
+    });
+    return response.data;
+  },
+
+  /**
+   * Get bookings for a specific trainee
+   * @param {string} contactId - HubSpot contact ID
+   * @returns {Promise<Object>} Bookings data with summary
+   */
+  getBookings: async (contactId) => {
+    if (!contactId) {
+      throw new Error('Contact ID is required');
+    }
+    const response = await api.get(`/admin/trainees/${contactId}/bookings`);
+    return response.data;
+  }
+};
 
 /**
  * Auth API endpoints (for validation, etc.)
