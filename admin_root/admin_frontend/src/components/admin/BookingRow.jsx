@@ -64,9 +64,8 @@ const BookingRow = ({
     }
   };
 
-  // Handle checkbox click (prevent row click event)
-  const handleCheckboxClick = (e) => {
-    e.stopPropagation();
+  // Handle checkbox change (receives boolean from onCheckedChange, not event)
+  const handleCheckboxChange = () => {
     if (canBeSelected) {
       onToggleSelection(booking.id, booking);
     }
@@ -97,7 +96,7 @@ const BookingRow = ({
           ) : (
             <Checkbox
               checked={isSelected}
-              onCheckedChange={handleCheckboxClick}
+              onCheckedChange={handleCheckboxChange}
               onClick={(e) => e.stopPropagation()}
               className="cursor-pointer"
               disabled={isDisabled}
