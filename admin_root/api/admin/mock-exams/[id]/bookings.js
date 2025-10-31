@@ -182,6 +182,7 @@ module.exports = async (req, res) => {
               'attending_location',
               'token_used',
               'ndecc_exam_date',
+              'is_active',
               'hs_createdate',
               'hs_lastmodifieddate'
             ],
@@ -195,6 +196,13 @@ module.exports = async (req, res) => {
           console.error(`Error fetching booking batch:`, batchError);
         }
       }
+
+      // Filter to only include active bookings
+      const totalBookingsFetched = allBookings.length;
+      allBookings = allBookings.filter(booking =>
+        booking.properties.is_active === 'Active'
+      );
+      console.log(`🔍 Filtered bookings: ${totalBookingsFetched} total → ${allBookings.length} active`);
     }
 
     // Step 3: Apply search filter if provided
@@ -265,6 +273,7 @@ module.exports = async (req, res) => {
         attendance: props.attendance || '',
         attending_location: props.attending_location || '',
         token_used: props.token_used || '',
+        is_active: props.is_active || '',
         created_at: props.hs_createdate || '',
         updated_at: props.hs_lastmodifieddate || props.hs_createdate || ''
       };
