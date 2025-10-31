@@ -138,6 +138,20 @@ module.exports = async (req, res) => {
       }
     }
 
+    // Regenerate mock_exam_name if any of its components changed
+    // Format: {mock_type}-{location}-{exam_date}
+    if (updateData.mock_type || updateData.location || updateData.exam_date) {
+      console.log('📝 [UPDATE] Regenerating mock_exam_name due to change in mock_type, location, or exam_date');
+
+      // Use updated values if provided, otherwise fall back to current values
+      const mockType = updateData.mock_type || currentProps.mock_type;
+      const location = updateData.location || currentProps.location;
+      const examDate = updateData.exam_date || currentProps.exam_date;
+
+      properties.mock_exam_name = `${mockType}-${location}-${examDate}`;
+      console.log('✅ [UPDATE] New mock_exam_name:', properties.mock_exam_name);
+    }
+
     // Convert boolean and number fields to strings for HubSpot
     if (updateData.is_active !== undefined) {
       properties.is_active = updateData.is_active.toString();
@@ -148,7 +162,7 @@ module.exports = async (req, res) => {
 
     // Track changes between old and new values
     const changes = {};
-    const fieldsToTrack = ['mock_type', 'exam_date', 'start_time', 'end_time', 'location', 'capacity', 'is_active'];
+    const fieldsToTrack = ['mock_type', 'exam_date', 'start_time', 'end_time', 'location', 'capacity', 'is_active', 'mock_exam_name'];
 
     fieldsToTrack.forEach(field => {
       if (properties[field] !== undefined) {

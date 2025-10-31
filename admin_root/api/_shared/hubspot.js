@@ -928,6 +928,9 @@ class HubSpotService {
       const startTimestamp = this.convertToTimestamp(mockExamData.exam_date, mockExamData.start_time);
       const endTimestamp = this.convertToTimestamp(mockExamData.exam_date, mockExamData.end_time);
 
+      // Generate mock_exam_name in format: {mock_type}-{location}-{exam_date}
+      const mockExamName = `${mockExamData.mock_type}-${mockExamData.location}-${mockExamData.exam_date}`;
+
       // Set exam data with correct HubSpot property names and timestamp format
       const examData = {
         mock_type: mockExamData.mock_type,
@@ -938,7 +941,8 @@ class HubSpotService {
         capacity: mockExamData.capacity,
         total_bookings: mockExamData.total_bookings || 0,
         is_active: mockExamData.is_active !== undefined ? mockExamData.is_active : 'true',
-        mock_exam_id: newIndex  // Using internal HubSpot property name
+        mock_exam_id: newIndex,  // Using internal HubSpot property name
+        mock_exam_name: mockExamName  // Format: {mock_type}-{location}-{exam_date}
       };
 
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}`, {
@@ -1008,6 +1012,9 @@ class HubSpotService {
         // Assign sequential mock_exam_index starting from maxIndex + 1
         const mockExamIndex = maxIndex + index + 1;
 
+        // Generate mock_exam_name in format: {mock_type}-{location}-{exam_date}
+        const mockExamName = `${commonProperties.mock_type}-${commonProperties.location}-${examDate}`;
+
         const properties = {
           mock_type: commonProperties.mock_type,
           exam_date: examDate,
@@ -1017,7 +1024,8 @@ class HubSpotService {
           capacity: commonProperties.capacity || 20,
           total_bookings: 0,
           is_active: 'true',
-          mock_exam_id: mockExamIndex  // Using internal HubSpot property name
+          mock_exam_id: mockExamIndex,  // Using internal HubSpot property name
+          mock_exam_name: mockExamName  // Format: {mock_type}-{location}-{exam_date}
         };
 
         console.log(`📋 [BATCH-CREATE] Slot ${index + 1} final properties:`, properties);
@@ -1291,7 +1299,8 @@ class HubSpotService {
           'end_time': 'End Time',
           'location': 'Location',
           'capacity': 'Capacity',
-          'is_active': 'Status'
+          'is_active': 'Status',
+          'mock_exam_name': 'Mock Exam Name'
         };
         return labels[key] || key;
       };
