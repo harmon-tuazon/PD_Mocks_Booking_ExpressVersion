@@ -408,7 +408,11 @@ module.exports = async (req, res) => {
     // Log audit trail
     if (results.successful.length > 0) {
       console.log(`✅ [CANCEL] Successfully cancelled ${results.successful.length} bookings`);
-      createAuditLog(mockExamId, summary, adminEmail).catch(error => {
+
+      // Extract successfully cancelled booking IDs for audit log
+      const cancelledBookingIds = results.successful.map(r => r.bookingId);
+
+      createAuditLog(mockExamId, summary, adminEmail, cancelledBookingIds).catch(error => {
         console.error('Failed to create audit log:', error);
       });
     }
@@ -540,9 +544,96 @@ async function invalidateCancellationCaches(mockExamId) {
   }
 }
 
-async function createAuditLog(mockExamId, summary, adminEmail) {
-  // Implementation for audit log creation
-  // Similar to attendance audit log
+async function createAuditLog(mockExamId, summary, adminEmail, cancelledBookingIds) {
+  try {
+    const timestamp = new Date();
+    const formattedTimestamp = timestamp.toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Toronto'
+    });
+
+    // Build list of cancelled booking IDs (show first 10, then "+X more")
+    let bookingsListHtml = '<ul>';
+    const displayedBookings = cancelledBookingIds.slice(0, 10);
+    displayedBookings.forEach(id => {
+      bookingsListHtml += `<li>Booking ID: ${id}</li>`;
+    });
+
+    if (cancelledBookingIds.length > 10) {
+      const remaining = cancelledBookingIds.length - 10;
+      bookingsListHtml += `<li><em>+ ${remaining} more booking(s)</em></li>`;
+    }
+    bookingsListHtml += '</ul>';
+
+    // Create HTML formatted note body
+    const noteBody = `
+      <h3>🗑️ Batch Booking Cancellation</h3>
+
+      <p><strong>Cancellation Summary:</strong></p>
+      <ul>
+        <li><strong>Total Processed:</strong> ${summary.total}</li>
+        <li><strong>Successfully Cancelled:</strong> ${summary.cancelled}</li>
+        <li><strong>Failed:</strong> ${summary.failed}</li>
+        <li><strong>Skipped:</strong> ${summary.skipped} (already cancelled)</li>
+      </ul>
+
+      <p><strong>Cancelled Bookings:</strong></p>
+      ${bookingsListHtml}
+
+      <p><strong>Cancellation Information:</strong></p>
+      <ul>
+        <li><strong>Cancelled By:</strong> ${adminEmail}</li>
+        <li><strong>Cancelled At:</strong> ${formattedTimestamp}</li>
+        <li><strong>Mock Exam ID:</strong> ${mockExamId}</li>
+      </ul>
+
+      <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e0e0e0;">
+      <p style="font-size: 12px; color: #666;">
+        <em>This cancellation was automatically logged by the PrepDoctors Admin System.</em>
+      </p>
+    `;
+
+    // Create the Note WITHOUT associations (following working pattern)
+    const notePayload = {
+      properties: {
+        hs_note_body: noteBody,
+        hs_timestamp: timestamp.getTime()
+      }
+    };
+
+    console.log('📝 Creating booking cancellation audit note...');
+    const noteResponse = await hubspot.apiCall('POST', '/crm/v3/objects/notes', notePayload);
+    console.log(`✅ Note created with ID: ${noteResponse.id}`);
+
+    // Associate the note with the mock exam using v4 associations API
+    console.log(`🔗 Associating note ${noteResponse.id} with mock exam ${mockExamId}...`);
+
+    // Note object type ID: 0-5, Mock Exam object type ID: 2-50158913
+    await hubspot.apiCall('PUT',
+      `/crm/v4/objects/notes/${noteResponse.id}/associations/2-50158913/${mockExamId}`,
+      [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 214 }] // 214 = note to custom object
+    );
+
+    console.log(`✅ Cancellation audit note associated successfully`);
+
+    return noteResponse;
+
+  } catch (error) {
+    // Log the error but don't throw - Note creation should not block the cancellation
+    console.error('Failed to create cancellation audit log:', {
+      error: error.message,
+      mockExamId,
+      status: error.response?.status,
+      details: error.response?.data
+    });
+
+    return null;
+  }
 }
 ```
 
@@ -585,6 +676,165 @@ batchBookingCancellation: Joi.object({
   'object.unknown': 'Unknown field in request body'
 })
 ```
+
+### 5.5 Audit Trail: HubSpot Note Creation
+
+#### Overview
+Every batch cancellation operation must create a detailed Note object in HubSpot and associate it with the affected Mock Exam. This provides a comprehensive audit trail visible in the Mock Exam's timeline.
+
+#### Note Creation Requirements
+
+##### When to Create
+- **Trigger**: After successful cancellation of at least one booking
+- **Timing**: Asynchronous, non-blocking (should not fail the main operation)
+- **Frequency**: One note per batch cancellation request
+
+##### Note Properties
+
+**Required Properties:**
+```javascript
+{
+  hs_note_body: string,  // HTML-formatted note content (see below)
+  hs_timestamp: number   // Unix timestamp in milliseconds
+}
+```
+
+##### Note Content Format
+
+The note body must be HTML-formatted and include:
+
+1. **Header**: 🗑️ emoji + "Batch Booking Cancellation" title
+2. **Cancellation Summary**:
+   - Total Processed
+   - Successfully Cancelled
+   - Failed
+   - Skipped (already cancelled)
+3. **Cancelled Bookings List**:
+   - Display first 10 booking IDs
+   - Show "+X more" for remaining bookings
+4. **Cancellation Information**:
+   - Cancelled By (admin email)
+   - Cancelled At (formatted timestamp in America/Toronto timezone)
+   - Mock Exam ID
+5. **Footer**: System attribution message
+
+**Example Note Body**:
+```html
+<h3>🗑️ Batch Booking Cancellation</h3>
+
+<p><strong>Cancellation Summary:</strong></p>
+<ul>
+  <li><strong>Total Processed:</strong> 5</li>
+  <li><strong>Successfully Cancelled:</strong> 4</li>
+  <li><strong>Failed:</strong> 1</li>
+  <li><strong>Skipped:</strong> 0 (already cancelled)</li>
+</ul>
+
+<p><strong>Cancelled Bookings:</strong></p>
+<ul>
+  <li>Booking ID: 12345678</li>
+  <li>Booking ID: 23456789</li>
+  <li>Booking ID: 34567890</li>
+  <li>Booking ID: 45678901</li>
+</ul>
+
+<p><strong>Cancellation Information:</strong></p>
+<ul>
+  <li><strong>Cancelled By:</strong> admin@prepdoctors.com</li>
+  <li><strong>Cancelled At:</strong> Friday, October 31, 2025, 10:30 AM</li>
+  <li><strong>Mock Exam ID:</strong> 98765432</li>
+</ul>
+
+<hr style="margin: 15px 0; border: 0; border-top: 1px solid #e0e0e0;">
+<p style="font-size: 12px; color: #666;">
+  <em>This cancellation was automatically logged by the PrepDoctors Admin System.</em>
+</p>
+```
+
+#### Association Requirements
+
+##### HubSpot Object IDs
+- **Note Object Type**: `0-5` (standard HubSpot notes)
+- **Mock Exam Object Type**: `2-50158913` (custom object)
+
+##### Association Method
+Use HubSpot v4 Associations API:
+
+```javascript
+PUT /crm/v4/objects/notes/{noteId}/associations/2-50158913/{mockExamId}
+
+Body:
+[
+  {
+    "associationCategory": "HUBSPOT_DEFINED",
+    "associationTypeId": 214  // Note to Custom Object
+  }
+]
+```
+
+##### Two-Step Process
+1. **Create Note**: POST to `/crm/v3/objects/notes` without associations
+2. **Create Association**: PUT to v4 associations endpoint to link note with mock exam
+
+This follows the working pattern from other endpoints and prevents association errors.
+
+#### Error Handling
+
+##### Non-Blocking Operation
+- Note creation must be **asynchronous** and **non-blocking**
+- If note creation fails, log the error but **do not fail** the main cancellation request
+- Return `null` from `createAuditLog` on failure
+
+##### Retry Logic
+- Implement retry for transient failures (429 rate limit, 5xx server errors)
+- Log retry attempts for monitoring
+- Do not retry for 4xx client errors (except 429)
+
+##### Error Logging
+```javascript
+console.error('Failed to create cancellation audit log:', {
+  error: error.message,
+  mockExamId,
+  status: error.response?.status,
+  details: error.response?.data
+});
+```
+
+#### Implementation Checklist
+
+- [ ] Create `createAuditLog` function in cancel-bookings.js
+- [ ] Format note body with HTML and cancellation summary
+- [ ] Include list of cancelled booking IDs (max 10 displayed)
+- [ ] Use America/Toronto timezone for timestamps
+- [ ] Create note without associations first
+- [ ] Associate note with mock exam using v4 API
+- [ ] Implement non-blocking async execution
+- [ ] Add error handling that doesn't fail main operation
+- [ ] Log all note creation attempts (success and failure)
+- [ ] Test note creation with various batch sizes
+- [ ] Verify note appears in Mock Exam timeline in HubSpot UI
+
+#### Benefits
+
+1. **Complete Audit Trail**: Every cancellation is permanently logged
+2. **Traceability**: Know who cancelled bookings and when
+3. **Transparency**: Visible in HubSpot UI for all team members
+4. **Debugging**: Helps diagnose issues with bulk cancellations
+5. **Reporting**: Can be used for analytics and reporting
+6. **Compliance**: Meets audit requirements for data changes
+
+#### Related Patterns
+
+This implementation follows the same pattern used in:
+- `createMockExamEditNote` in hubspot.js (for mock exam edits)
+- `createAuditLog` in attendance.js (for attendance updates)
+
+Both patterns use:
+- HTML-formatted note bodies
+- Emoji indicators (✏️ for edits, 🗑️ for cancellations)
+- Timezone-aware timestamps
+- Non-blocking async execution
+- Graceful error handling
 
 ---
 
