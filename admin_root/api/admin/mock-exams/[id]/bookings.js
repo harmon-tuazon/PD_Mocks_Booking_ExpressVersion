@@ -197,12 +197,14 @@ module.exports = async (req, res) => {
         }
       }
 
-      // Filter to only include active bookings
+      // Filter to include active and completed bookings (exclude cancelled/failed)
       const totalBookingsFetched = allBookings.length;
-      allBookings = allBookings.filter(booking =>
-        booking.properties.is_active === 'Active'
-      );
-      console.log(`🔍 Filtered bookings: ${totalBookingsFetched} total → ${allBookings.length} active`);
+      allBookings = allBookings.filter(booking => {
+        const status = booking.properties.is_active;
+        return status === 'Active' || status === 'active' ||
+               status === 'Completed' || status === 'completed';
+      });
+      console.log(`🔍 Filtered bookings: ${totalBookingsFetched} total → ${allBookings.length} active/completed`);
     }
 
     // Step 3: Apply search filter if provided
