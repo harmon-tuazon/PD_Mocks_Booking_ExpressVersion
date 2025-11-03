@@ -37,6 +37,9 @@ const BookingsTable = ({
 }) => {
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm || '');
 
+  // Safeguard: ensure totalPages is a valid positive number
+  const safeTotalPages = Math.max(1, Math.floor(totalPages) || 1);
+
   // Sync local search term with parent
   useEffect(() => {
     setLocalSearchTerm(searchTerm || '');
@@ -310,7 +313,7 @@ const BookingsTable = ({
                 </button>
                 <button
                   onClick={() => onPageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === safeTotalPages}
                   className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
@@ -335,14 +338,14 @@ const BookingsTable = ({
                     </button>
 
                     {/* Page numbers */}
-                    {[...Array(Math.min(5, totalPages))].map((_, index) => {
+                    {[...Array(Math.min(5, safeTotalPages))].map((_, index) => {
                       let pageNumber;
-                      if (totalPages <= 5) {
+                      if (safeTotalPages <= 5) {
                         pageNumber = index + 1;
                       } else if (currentPage <= 3) {
                         pageNumber = index + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNumber = totalPages - 4 + index;
+                      } else if (currentPage >= safeTotalPages - 2) {
+                        pageNumber = safeTotalPages - 4 + index;
                       } else {
                         pageNumber = currentPage - 2 + index;
                       }
@@ -364,7 +367,7 @@ const BookingsTable = ({
 
                     <button
                       onClick={() => onPageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
+                      disabled={currentPage === safeTotalPages}
                       className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <span className="sr-only">Next</span>

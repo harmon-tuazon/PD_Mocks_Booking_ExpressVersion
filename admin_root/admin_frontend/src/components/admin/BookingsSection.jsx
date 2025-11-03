@@ -58,6 +58,10 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
   // Calculate total bookings from summary or bookings array
   const totalBookings = summary?.total_bookings || bookings?.length || 0;
 
+  // Calculate pagination values (20 items per page)
+  const itemsPerPage = 20;
+  const totalPages = Math.max(1, Math.ceil(totalBookings / itemsPerPage));
+
   return (
     <div className="bg-white dark:bg-dark-card shadow-sm dark:shadow-gray-900/50 rounded-lg p-6">
       {/* Header with title and badges */}
@@ -91,6 +95,8 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
         <div className="overflow-x-auto">
           <BookingsTable
             bookings={bookings}
+            totalPages={totalPages}
+            totalItems={totalBookings}
             // Pass empty attendance and cancellation states since we're in read-only mode
             attendanceState={{
               isAttendanceMode: false,
@@ -111,6 +117,7 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
             searchTerm=""
             onSearch={() => {}} // No search in this context
             currentPage={1}
+            onPageChange={() => {}} // No pagination in this context (showing all bookings)
           />
         </div>
       )}
