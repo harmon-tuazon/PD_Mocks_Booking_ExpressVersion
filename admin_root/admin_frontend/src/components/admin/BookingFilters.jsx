@@ -290,14 +290,14 @@ const BookingFilters = ({ bookings = [], filters, onFiltersChange, className = '
           </label>
           <div className="flex gap-2">
             <DatePicker
-              date={localFilters.dateFrom}
-              onDateChange={(date) => handleFilterChange('dateFrom', date)}
+              value={localFilters.dateFrom}
+              onChange={(date) => handleFilterChange('dateFrom', date)}
               placeholder="From"
               className="flex-1"
             />
             <DatePicker
-              date={localFilters.dateTo}
-              onDateChange={(date) => handleFilterChange('dateTo', date)}
+              value={localFilters.dateTo}
+              onChange={(date) => handleFilterChange('dateTo', date)}
               placeholder="To"
               className="flex-1"
             />
