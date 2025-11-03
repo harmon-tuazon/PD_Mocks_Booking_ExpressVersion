@@ -1205,11 +1205,28 @@ class HubSpotService {
       // Process each mock exam to get accurate active booking count
       const enrichedResults = await Promise.all(results.map(async (exam) => {
         try {
-          // Extract booking IDs from associations
+          // HubSpot search API doesn't return associations, so we need to fetch them separately
+          // Make a GET call to fetch the exam with associations
+          let examWithAssociations = exam;
+          if (!exam.associations) {
+            try {
+              examWithAssociations = await this.apiCall('GET',
+                `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${exam.id}?associations=${HUBSPOT_OBJECTS.bookings}`
+              );
+              // Merge properties from search result with associations from GET
+              examWithAssociations.properties = exam.properties;
+            } catch (assocError) {
+              console.error(`Error fetching associations for exam ${exam.id}:`, assocError.message);
+              examWithAssociations = exam; // Fall back to original exam without associations
+            }
+          }
+
+          // Extract booking IDs from associations (using flexible key matching)
           const bookingIds = [];
-          if (exam.associations && exam.associations[HUBSPOT_OBJECTS.bookings]) {
-            const bookingAssociations = exam.associations[HUBSPOT_OBJECTS.bookings].results || [];
-            bookingAssociations.forEach(assoc => {
+          const bookingsKey = this.findAssociationKey(examWithAssociations.associations, HUBSPOT_OBJECTS.bookings, 'bookings');
+
+          if (bookingsKey && examWithAssociations.associations[bookingsKey]?.results?.length > 0) {
+            examWithAssociations.associations[bookingsKey].results.forEach(assoc => {
               bookingIds.push(assoc.id);
             });
           }
@@ -1730,11 +1747,28 @@ class HubSpotService {
     console.log(`🔢 Recalculating booking counts for ${allResults.length} sessions...`);
     const enrichedResults = await Promise.all(allResults.map(async (exam) => {
       try {
-        // Extract booking IDs from associations
+        // HubSpot batch read API doesn't return associations, so we need to fetch them separately
+        // Make a GET call to fetch the exam with associations
+        let examWithAssociations = exam;
+        if (!exam.associations) {
+          try {
+            examWithAssociations = await this.apiCall('GET',
+              `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${exam.id}?associations=${HUBSPOT_OBJECTS.bookings}`
+            );
+            // Merge properties from batch result with associations from GET
+            examWithAssociations.properties = exam.properties;
+          } catch (assocError) {
+            console.error(`Error fetching associations for exam ${exam.id}:`, assocError.message);
+            examWithAssociations = exam; // Fall back to original exam without associations
+          }
+        }
+
+        // Extract booking IDs from associations (using flexible key matching)
         const bookingIds = [];
-        if (exam.associations && exam.associations[HUBSPOT_OBJECTS.bookings]) {
-          const bookingAssociations = exam.associations[HUBSPOT_OBJECTS.bookings].results || [];
-          bookingAssociations.forEach(assoc => {
+        const bookingsKey = this.findAssociationKey(examWithAssociations.associations, HUBSPOT_OBJECTS.bookings, 'bookings');
+
+        if (bookingsKey && examWithAssociations.associations[bookingsKey]?.results?.length > 0) {
+          examWithAssociations.associations[bookingsKey].results.forEach(assoc => {
             bookingIds.push(assoc.id);
           });
         }
@@ -1908,11 +1942,12 @@ class HubSpotService {
       console.log(`⏳ Enriching ${filteredExams.length} exams with accurate Active booking counts...`);
       const enrichedExams = await Promise.all(filteredExams.map(async (exam) => {
         try {
-          // Extract booking IDs from associations
+          // Extract booking IDs from associations (using flexible key matching)
           const bookingIds = [];
-          if (exam.associations && exam.associations[HUBSPOT_OBJECTS.bookings]) {
-            const bookingAssociations = exam.associations[HUBSPOT_OBJECTS.bookings].results || [];
-            bookingAssociations.forEach(assoc => {
+          const bookingsKey = this.findAssociationKey(exam.associations, HUBSPOT_OBJECTS.bookings, 'bookings');
+
+          if (bookingsKey && exam.associations[bookingsKey]?.results?.length > 0) {
+            exam.associations[bookingsKey].results.forEach(assoc => {
               bookingIds.push(assoc.id);
             });
           }
