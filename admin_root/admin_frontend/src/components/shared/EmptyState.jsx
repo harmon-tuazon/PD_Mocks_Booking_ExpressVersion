@@ -19,7 +19,7 @@ const EmptyState = ({
         </div>
       )}
       {heading && (
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2 text-center">
           {heading}
         </h3>
       )}
