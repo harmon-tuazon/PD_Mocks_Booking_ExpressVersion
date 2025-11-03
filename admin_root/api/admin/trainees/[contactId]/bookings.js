@@ -135,7 +135,6 @@ module.exports = async (req, res) => {
 
     // If there are no bookings, return empty result
     let allBookings = [];
-    let mockExamDetails = {};
 
     if (bookingIds.length > 0) {
       // Batch fetch booking details (HubSpot batch read supports up to 100 objects)
@@ -163,7 +162,13 @@ module.exports = async (req, res) => {
               'is_active',
               'booking_date',
               'hs_createdate',
-              'hs_lastmodifieddate'
+              'hs_lastmodifieddate',
+              // Mock exam details (read-only calculated properties from associated mock exam)
+              'mock_type',
+              'exam_date',
+              'location',
+              'start_time',
+              'end_time'
             ],
             inputs: chunk.map(id => ({ id }))
           });
@@ -187,51 +192,23 @@ module.exports = async (req, res) => {
         console.log(`🔍 Filtered bookings: ${totalBookingsFetched} total → ${allBookings.length} active/completed`);
       }
 
-      // Get unique mock exam IDs
-      const mockExamIds = [...new Set(allBookings.map(b => b.properties.mock_exam_id).filter(Boolean))];
-      console.log(`🔍 [DEBUG] Found ${mockExamIds.length} unique mock exam IDs:`, mockExamIds);
-
-      // Batch fetch mock exam details
-      if (mockExamIds.length > 0) {
-        for (let i = 0; i < mockExamIds.length; i += 100) {
-          const chunk = mockExamIds.slice(i, i + 100);
-          console.log(`📥 [BATCH FETCH] Fetching mock exam details for chunk:`, chunk);
-          try {
-            const mockExamResponse = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/read`, {
-              properties: ['mock_type', 'exam_date', 'location', 'start_time', 'end_time'],
-              inputs: chunk.map(id => ({ id }))
-            });
-
-            console.log(`✅ [BATCH RESPONSE] Received ${mockExamResponse.results?.length || 0} mock exam results`);
-
-            if (mockExamResponse.results) {
-              mockExamResponse.results.forEach(exam => {
-                console.log(`💾 [STORING] Mock exam ID: ${exam.id}, Properties:`, exam.properties);
-                mockExamDetails[exam.id] = exam.properties;
-              });
-            } else {
-              console.log(`⚠️ [WARNING] No results in mock exam batch response`);
-            }
-          } catch (error) {
-            console.error('❌ [ERROR] Error fetching mock exam batch:', error);
-          }
-        }
-        console.log(`📊 [MOCK EXAM DETAILS] Total stored:`, Object.keys(mockExamDetails).length, 'IDs:', Object.keys(mockExamDetails));
-      }
+      console.log(`✅ [BOOKINGS FETCHED] Total: ${allBookings.length} bookings with mock exam details`);
     }
 
-    // Transform bookings with mock exam details
+    // Transform bookings - mock exam details are already on booking as read-only calculated properties
     const transformedBookings = allBookings.map((booking, index) => {
       const props = booking.properties;
-      const mockExam = mockExamDetails[props.mock_exam_id] || {};
 
-      // Debug logging for first 3 bookings to verify data structure
+      // Debug logging for first 3 bookings to verify mock exam properties are present
       if (index < 3) {
-        console.log(`🔍 [BOOKING ${index + 1}] mock_exam_id: "${props.mock_exam_id}"`);
-        console.log(`🔍 [BOOKING ${index + 1}] mockExam found:`, mockExam);
-        console.log(`🔍 [BOOKING ${index + 1}] mockExam.mock_type:`, mockExam.mock_type);
-        console.log(`🔍 [BOOKING ${index + 1}] mockExam.exam_date:`, mockExam.exam_date);
-        console.log(`🔍 [BOOKING ${index + 1}] mockExam.location:`, mockExam.location);
+        console.log(`🔍 [BOOKING ${index + 1}] Properties:`, {
+          mock_type: props.mock_type,
+          exam_date: props.exam_date,
+          location: props.location,
+          start_time: props.start_time,
+          end_time: props.end_time,
+          attending_location: props.attending_location
+        });
       }
 
       // Determine dominant hand value (convert from string to readable format)
@@ -247,17 +224,20 @@ module.exports = async (req, res) => {
       return {
         id: booking.id,
         mock_exam_id: props.mock_exam_id || '',
-        mock_exam_type: mockExam.mock_type || '',
-        exam_date: mockExam.exam_date || '',
-        start_time: mockExam.start_time || '',
-        end_time: mockExam.end_time || '',
+        // Mock exam details (read-only calculated properties from associated mock exam)
+        mock_exam_type: props.mock_type || '',
+        exam_date: props.exam_date || '',
+        start_time: props.start_time || '',
+        end_time: props.end_time || '',
+        // Booking-specific properties
         booking_date: props.hs_createdate || props.booking_date || '',
         attendance: props.attendance || '',
-        attending_location: props.attending_location || mockExam.location || '',
+        // Location: prefer attending_location (SJ/Mini-mock specific), fallback to exam location (all exams)
+        attending_location: props.attending_location || props.location || '',
         token_used: props.token_used || '',
         is_active: props.is_active || '',
         is_cancelled: props.is_active === 'Cancelled' || props.is_active === 'cancelled',
-        // Use properties from booking object (stored at booking time)
+        // Trainee information (from booking or contact fallback)
         name: props.name || `${traineeInfo.firstname} ${traineeInfo.lastname}`,
         first_name: props.name ? props.name.split(' ')[0] : traineeInfo.firstname,
         last_name: props.name ? props.name.split(' ').slice(1).join(' ') : traineeInfo.lastname,
