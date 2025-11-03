@@ -33,7 +33,11 @@ const BookingsTable = ({
   // Attendance marking props
   attendanceProps = null,
   // Cancellation props
-  cancellationProps = null
+  cancellationProps = null,
+  // Hide search bar prop
+  hideSearch = false,
+  // Hide trainee info columns (name, email, student_id, dominant_hand)
+  hideTraineeInfo = false
 }) => {
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm || '');
 
@@ -194,8 +198,8 @@ const BookingsTable = ({
         </div>
       )}
 
-      {/* Search Bar (hidden in selection modes) */}
-      {!isSelectionMode && (
+      {/* Search Bar (hidden in selection modes OR when hideSearch is true) */}
+      {!isSelectionMode && !hideSearch && (
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="relative md:w-80">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -247,10 +251,11 @@ const BookingsTable = ({
                     </th>
                   )}
 
-                  <SortableHeader column="name" align="center">Name</SortableHeader>
-                  <SortableHeader column="email" align="center">Email</SortableHeader>
-                  <SortableHeader column="student_id" align="center">Student ID</SortableHeader>
-                  <SortableHeader column="dominant_hand" align="center">Dominant Hand</SortableHeader>
+                  {/* Only show trainee info columns when not in trainee view */}
+                  {!hideTraineeInfo && <SortableHeader column="name" align="center">Name</SortableHeader>}
+                  {!hideTraineeInfo && <SortableHeader column="email" align="center">Email</SortableHeader>}
+                  {!hideTraineeInfo && <SortableHeader column="student_id" align="center">Student ID</SortableHeader>}
+                  {!hideTraineeInfo && <SortableHeader column="dominant_hand" align="center">Dominant Hand</SortableHeader>}
 
                   {/* Attendance status column - Always visible, moved before booking date */}
                   <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -295,6 +300,7 @@ const BookingsTable = ({
                       isSelected={isSelected}
                       onToggleSelection={onToggleSelection}
                       isDisabled={isDisabled}
+                      hideTraineeInfo={hideTraineeInfo}
                     />
                   );
                 })}

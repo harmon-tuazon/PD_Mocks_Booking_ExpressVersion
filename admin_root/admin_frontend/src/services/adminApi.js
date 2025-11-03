@@ -215,7 +215,9 @@ export const traineeApi = {
     if (!contactId) {
       throw new Error('Contact ID is required');
     }
-    const response = await api.get(`/admin/trainees/${contactId}/bookings`);
+    const response = await api.get(`/admin/trainees/${contactId}/bookings`, {
+      params: { include_inactive: true }
+    });
     return response.data;
   }
 };

@@ -20,7 +20,8 @@ const BookingRow = ({
   isCancellationMode = false,
   isSelected = false,
   onToggleSelection,
-  isDisabled = false
+  isDisabled = false,
+  hideTraineeInfo = false
 }) => {
   // Format dominant hand display
   const formatDominantHand = (hand) => {
@@ -105,35 +106,43 @@ const BookingRow = ({
         </td>
       )}
 
-      {/* Name */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
-          {booking.first_name && booking.last_name
-            ? `${booking.first_name} ${booking.last_name}`
-            : booking.name || 'N/A'}
-        </div>
-      </td>
+      {/* Name - Only show when not in trainee view */}
+      {!hideTraineeInfo && (
+        <td className="px-4 py-3 whitespace-nowrap text-center">
+          <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
+            {booking.first_name && booking.last_name
+              ? `${booking.first_name} ${booking.last_name}`
+              : booking.name || 'N/A'}
+          </div>
+        </td>
+      )}
 
-      {/* Email */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs text-gray-900 dark:text-gray-100">
-          {booking.email || 'N/A'}
-        </div>
-      </td>
+      {/* Email - Only show when not in trainee view */}
+      {!hideTraineeInfo && (
+        <td className="px-4 py-3 whitespace-nowrap text-center">
+          <div className="text-xs text-gray-900 dark:text-gray-100">
+            {booking.email || 'N/A'}
+          </div>
+        </td>
+      )}
 
-      {/* Student ID */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs text-gray-900 dark:text-gray-100">
-          {formatStudentId(booking.student_id)}
-        </div>
-      </td>
+      {/* Student ID - Only show when not in trainee view */}
+      {!hideTraineeInfo && (
+        <td className="px-4 py-3 whitespace-nowrap text-center">
+          <div className="text-xs text-gray-900 dark:text-gray-100">
+            {formatStudentId(booking.student_id)}
+          </div>
+        </td>
+      )}
 
-      {/* Dominant Hand */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs text-gray-900 dark:text-gray-100">
-          {formatDominantHand(booking.dominant_hand)}
-        </div>
-      </td>
+      {/* Dominant Hand - Only show when not in trainee view */}
+      {!hideTraineeInfo && (
+        <td className="px-4 py-3 whitespace-nowrap text-center">
+          <div className="text-xs text-gray-900 dark:text-gray-100">
+            {formatDominantHand(booking.dominant_hand)}
+          </div>
+        </td>
+      )}
 
       {/* Attendance/Cancellation Status */}
       <td className="px-4 py-3 whitespace-nowrap text-center">
