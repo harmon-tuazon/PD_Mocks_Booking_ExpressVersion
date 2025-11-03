@@ -211,16 +211,33 @@ module.exports = async (req, res) => {
       const props = booking.properties;
       const mockExam = mockExamDetails[props.mock_exam_id] || {};
 
+      // Debug logging for first booking to verify data structure
+      if (booking === allBookings[0]) {
+        console.log('🔍 [DEBUG] First booking properties:', {
+          raw_props: props,
+          mock_exam_id: props.mock_exam_id,
+          mock_exam_details: mockExam,
+          attending_location: props.attending_location,
+          booking_date: props.booking_date,
+          hs_createdate: props.hs_createdate
+        });
+      }
+
       return {
         id: booking.id,
         mock_exam_id: props.mock_exam_id || '',
         mock_exam_type: mockExam.mock_type || '',
         exam_date: mockExam.exam_date || '',
-        booking_date: props.booking_date || props.hs_createdate || '',
+        booking_date: props.hs_createdate || props.booking_date || '',
         attendance: props.attendance || '',
         attending_location: props.attending_location || mockExam.location || '',
         token_used: props.token_used || '',
-        is_active: props.is_active || ''
+        is_active: props.is_active || '',
+        // Add trainee info to bookings for display
+        name: `${traineeInfo.firstname} ${traineeInfo.lastname}`,
+        email: traineeInfo.email,
+        student_id: traineeInfo.student_id,
+        ndecc_exam_date: traineeInfo.ndecc_exam_date
       };
     });
 

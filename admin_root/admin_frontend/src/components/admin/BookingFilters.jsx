@@ -15,25 +15,27 @@ import { Calendar, MapPin, Users, BookOpen, CheckCircle, XCircle, Filter, X } fr
  * 5. Booking Status (single select)
  */
 const BookingFilters = ({ bookings = [], filters, onFiltersChange, className = '' }) => {
-  // Extract unique values from bookings
+  // Hardcoded location and mock type options (aligned with mock exam dashboard)
   const uniqueValues = useMemo(() => {
-    const locations = new Set();
-    const mockTypes = new Set();
-
-    bookings.forEach(booking => {
-      if (booking.attending_location) {
-        locations.add(booking.attending_location);
-      }
-      if (booking.mock_exam_type) {
-        mockTypes.add(booking.mock_exam_type);
-      }
-    });
-
     return {
-      locations: Array.from(locations).sort(),
-      mockTypes: Array.from(mockTypes).sort()
+      locations: [
+        'Mississauga',
+        'Mississauga - B9',
+        'Mississauga - Lab D',
+        'Calgary',
+        'Vancouver',
+        'Montreal',
+        'Richmond Hill',
+        'Online'
+      ],
+      mockTypes: [
+        'Situational Judgment',
+        'Clinical Skills',
+        'Mini-mock',
+        'Mock Discussion'
+      ]
     };
-  }, [bookings]);
+  }, []);
 
   // Initialize filters if not provided
   const [localFilters, setLocalFilters] = useState({
@@ -187,29 +189,58 @@ const BookingFilters = ({ bookings = [], filters, onFiltersChange, className = '
             <Users className="h-3 w-3" />
             Attendance
           </label>
-          <div className="space-y-2 p-2 border border-gray-200 dark:border-gray-700 rounded-md">
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <Checkbox
-                checked={localFilters.attendance.includes('Yes')}
-                onCheckedChange={() => toggleAttendance('Yes')}
-              />
-              <span className="text-sm text-green-600 dark:text-green-400">Attended</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <Checkbox
-                checked={localFilters.attendance.includes('No')}
-                onCheckedChange={() => toggleAttendance('No')}
-              />
-              <span className="text-sm text-red-600 dark:text-red-400">No Show</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <Checkbox
-                checked={localFilters.attendance.includes('Unmarked')}
-                onCheckedChange={() => toggleAttendance('Unmarked')}
-              />
-              <span className="text-sm text-gray-600 dark:text-gray-400">Unmarked</span>
-            </label>
-          </div>
+          <Select>
+            <SelectTrigger className="w-full">
+              <SelectValue
+                placeholder="Select attendance"
+              >
+                {localFilters.attendance.length > 0
+                  ? `${localFilters.attendance.length} selected`
+                  : "All attendance"
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="max-h-64">
+              <SelectGroup>
+                <div
+                  className="flex items-center space-x-2 px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                  onClick={() => toggleAttendance('Yes')}
+                >
+                  <Checkbox
+                    checked={localFilters.attendance.includes('Yes')}
+                    className="pointer-events-none"
+                  />
+                  <label className="text-sm cursor-pointer flex-1 text-green-600 dark:text-green-400">
+                    Attended
+                  </label>
+                </div>
+                <div
+                  className="flex items-center space-x-2 px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                  onClick={() => toggleAttendance('No')}
+                >
+                  <Checkbox
+                    checked={localFilters.attendance.includes('No')}
+                    className="pointer-events-none"
+                  />
+                  <label className="text-sm cursor-pointer flex-1 text-red-600 dark:text-red-400">
+                    No Show
+                  </label>
+                </div>
+                <div
+                  className="flex items-center space-x-2 px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                  onClick={() => toggleAttendance('Unmarked')}
+                >
+                  <Checkbox
+                    checked={localFilters.attendance.includes('Unmarked')}
+                    className="pointer-events-none"
+                  />
+                  <label className="text-sm cursor-pointer flex-1 text-gray-600 dark:text-gray-400">
+                    Unmarked
+                  </label>
+                </div>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Filter 3: Mock Type */}

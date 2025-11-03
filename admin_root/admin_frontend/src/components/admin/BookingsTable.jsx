@@ -198,8 +198,8 @@ const BookingsTable = ({
         </div>
       )}
 
-      {/* Search Bar (hidden in selection modes OR when hideSearch is true) */}
-      {!isSelectionMode && !hideSearch && (
+      {/* Search Bar (hidden when hideSearch is true OR in selection modes) */}
+      {!hideSearch && !isSelectionMode && (
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="relative md:w-80">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
