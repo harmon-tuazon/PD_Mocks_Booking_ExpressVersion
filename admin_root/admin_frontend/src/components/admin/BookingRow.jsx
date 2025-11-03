@@ -167,7 +167,7 @@ const BookingRow = ({
             ) : booking.attendance === 'No' || booking.attendance === 'false' ? (
               <>
                 <XCircleIcon className="h-3 w-3 mr-1" />
-                No Show
+                Did Not Attend
               </>
             ) : (
               booking.attendance
@@ -178,6 +178,34 @@ const BookingRow = ({
             -
           </span>
         )}
+      </td>
+
+      {/* Status - Active/Cancelled/Completed */}
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        {(() => {
+          // Determine status based on is_active and exam_date
+          let status = 'Active';
+          let badgeClass = 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200';
+
+          if (booking.is_active === 'Cancelled' || booking.is_active === 'cancelled' || isCancelled) {
+            status = 'Cancelled';
+            badgeClass = 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200';
+          } else if (booking.exam_date) {
+            const examDate = new Date(booking.exam_date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (examDate < today) {
+              status = 'Completed';
+              badgeClass = 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200';
+            }
+          }
+
+          return (
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
+              {status}
+            </span>
+          );
+        })()}
       </td>
 
       {/* Location (Attending Location) */}

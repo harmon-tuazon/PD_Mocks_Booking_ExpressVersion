@@ -262,6 +262,11 @@ const BookingsTable = ({
                     Attendance
                   </th>
 
+                  {/* Status column */}
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Status
+                  </th>
+
                   {/* Location column */}
                   <SortableHeader column="attending_location" align="center">Location</SortableHeader>
 
