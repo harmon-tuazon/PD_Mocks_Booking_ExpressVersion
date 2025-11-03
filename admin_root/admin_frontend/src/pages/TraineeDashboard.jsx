@@ -4,13 +4,27 @@ import { Search } from 'lucide-react';
 import TraineeInfoCard from '../components/admin/TraineeInfoCard';
 import BookingsSection from '../components/admin/BookingsSection';
 import EmptyState from '../components/shared/EmptyState';
-import SearchBar from '../components/shared/SearchBar';
-import { useDebounce } from '../hooks/useDebounce';
 import { traineeApi } from '../services/adminApi';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 
 function TraineeDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearch = useDebounce(searchTerm, 500);
+  const [submittedSearch, setSubmittedSearch] = useState('');
+
+  // Handle search form submission
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchTerm.trim().length >= 2) {
+      setSubmittedSearch(searchTerm.trim());
+    }
+  };
+
+  // Handle clear search
+  const handleClear = () => {
+    setSearchTerm('');
+    setSubmittedSearch('');
+  };
 
   // React Query for trainee search
   const {
@@ -19,9 +33,9 @@ function TraineeDashboard() {
     error: searchError,
     isSuccess
   } = useQuery({
-    queryKey: ['trainee-search', debouncedSearch],
-    queryFn: () => traineeApi.search(debouncedSearch),
-    enabled: debouncedSearch.length > 0,
+    queryKey: ['trainee-search', submittedSearch],
+    queryFn: () => traineeApi.search(submittedSearch),
+    enabled: submittedSearch.length > 0,
     staleTime: 30000, // 30 seconds
     cacheTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -43,7 +57,7 @@ function TraineeDashboard() {
     cacheTime: 5 * 60 * 1000,
   });
 
-  const hasSearched = debouncedSearch.length > 0;
+  const hasSearched = submittedSearch.length > 0;
   // Search returns array of contacts, we take the first one
   const trainee = contacts.length > 0 ? { ...contacts[0], contactId: contacts[0].id } : null;
   const bookings = bookingsData?.data?.bookings || [];
@@ -61,12 +75,29 @@ function TraineeDashboard() {
         </p>
       </div>
 
-      {/* Search Bar */}
-      <SearchBar
-        value={searchTerm}
-        onChange={setSearchTerm}
-        placeholder="Search by student ID or email..."
-      />
+      {/* Search Form */}
+      <form onSubmit={handleSearch} className="max-w-xl mb-6">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by student ID or email..."
+              className="pl-10"
+            />
+          </div>
+          <Button type="submit" disabled={searchTerm.trim().length < 2}>
+            Search
+          </Button>
+          {submittedSearch && (
+            <Button type="button" variant="outline" onClick={handleClear}>
+              Clear
+            </Button>
+          )}
+        </div>
+      </form>
 
       {/* Content Area */}
       <div className="space-y-6">
@@ -109,7 +140,7 @@ function TraineeDashboard() {
           <EmptyState
             icon={<Search className="h-12 w-12" />}
             heading="No Trainee Found"
-            description={`No results found for "${searchTerm}". Try adjusting your search criteria.`}
+            description={`No results found for "${submittedSearch}". Try adjusting your search criteria.`}
           />
         )}
 
