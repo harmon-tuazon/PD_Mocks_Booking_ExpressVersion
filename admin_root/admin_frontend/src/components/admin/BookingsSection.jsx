@@ -186,6 +186,7 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
             totalPages={totalPages}
             totalItems={filteredCount}
             hideTraineeInfo={true}  // Hide trainee columns in trainee dashboard view
+            hideSearch={true}  // Hide search bar in trainee dashboard view
             // Pass empty attendance and cancellation states since we're in read-only mode
             attendanceState={{
               isAttendanceMode: false,
@@ -202,7 +203,7 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
               selectedCount: 0
             }}
             onSort={() => {}} // No sorting in trainee dashboard view
-            sortConfig={{ column: 'created_at', direction: 'desc' }}
+            sortConfig={{ column: 'booking_date', direction: 'desc' }}
             currentPage={1}
             onPageChange={() => {}} // No pagination in this context (showing all bookings)
           />

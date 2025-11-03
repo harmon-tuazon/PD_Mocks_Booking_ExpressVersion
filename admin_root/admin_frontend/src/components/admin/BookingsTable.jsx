@@ -262,16 +262,19 @@ const BookingsTable = ({
                     Attendance
                   </th>
 
-                  {/* Attending Location column */}
-                  <SortableHeader column="attending_location" align="center">Attending Location</SortableHeader>
+                  {/* Location column */}
+                  <SortableHeader column="attending_location" align="center">Location</SortableHeader>
+
+                  {/* Mock Type column */}
+                  <SortableHeader column="mock_exam_type" align="center">Mock Type</SortableHeader>
+
+                  {/* Exam Date column */}
+                  <SortableHeader column="exam_date" align="center">Exam Date</SortableHeader>
 
                   {/* Token Used column */}
                   <SortableHeader column="token_used" align="center">Token Used</SortableHeader>
 
-                  {/* NDECC Exam Date column */}
-                  <SortableHeader column="ndecc_exam_date" align="center">NDECC Exam Date</SortableHeader>
-
-                  <SortableHeader column="created_at" align="center">Booking Date</SortableHeader>
+                  <SortableHeader column="booking_date" align="center">Booking Date</SortableHeader>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
