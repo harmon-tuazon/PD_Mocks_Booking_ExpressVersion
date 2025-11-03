@@ -151,7 +151,7 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
       )}
 
       {!loading && !error && bookings && bookings.length === 0 && (
-        <div className="text-center py-8">
+        <div className="flex items-center justify-center py-16 min-h-[300px]">
           <p className="text-gray-500 dark:text-gray-400">
             No bookings found for this trainee
           </p>
@@ -159,7 +159,7 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
       )}
 
       {!loading && !error && bookings && bookings.length > 0 && filteredBookings.length === 0 && hasActiveFilters && (
-        <div className="text-center py-8">
+        <div className="flex flex-col items-center justify-center py-16 min-h-[300px]">
           <p className="text-gray-500 dark:text-gray-400">
             No bookings match the selected filters
           </p>
