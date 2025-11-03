@@ -65,7 +65,6 @@ function TraineeDashboard() {
       <SearchBar
         value={searchTerm}
         onChange={setSearchTerm}
-        loading={isSearching}
         placeholder="Search by student ID or email..."
       />
 

@@ -39,9 +39,15 @@ module.exports = async (req, res) => {
 
     const { query, debug } = req.validatedData;
 
+    // Trim whitespace from search query
+    const trimmedQuery = query.trim();
+
+    // Log search attempt for debugging
+    console.log(`🔍 [SEARCH] Query: "${trimmedQuery}" (original: "${query}")`);
+
     // Initialize cache service
     const cacheService = getCache();
-    const cacheKey = `admin:trainee:search:${query.toLowerCase()}`;
+    const cacheKey = `admin:trainee:search:${trimmedQuery.toLowerCase()}`;
 
     // Check cache (unless debug mode)
     if (!debug) {
@@ -60,7 +66,7 @@ module.exports = async (req, res) => {
       console.log('🔍 [DEBUG MODE] Cache bypassed for trainee search');
     }
 
-    console.log(`📋 [Cache MISS] Searching HubSpot for trainees: ${query}`);
+    console.log(`📋 [Cache MISS] Searching HubSpot for trainees: ${trimmedQuery}`);
 
     // Search HubSpot contacts
     let allContacts = [];
@@ -72,7 +78,7 @@ module.exports = async (req, res) => {
           {
             propertyName: 'student_id',
             operator: 'EQ',
-            value: query
+            value: trimmedQuery
           }
         ]
       };
@@ -87,15 +93,18 @@ module.exports = async (req, res) => {
       );
 
       if (exactMatchResponse.results && exactMatchResponse.results.length > 0) {
+        console.log(`✅ [FOUND] ${exactMatchResponse.results.length} contact(s) by student_id`);
         allContacts = exactMatchResponse.results;
       } else {
+        console.log(`⚠️ [NOT FOUND] No contacts found by student_id, trying email...`);
+
         // If no exact match on student_id, try exact match on email
         const emailFilter = {
           filters: [
             {
               propertyName: 'email',
               operator: 'EQ',
-              value: query
+              value: trimmedQuery
             }
           ]
         };
@@ -110,8 +119,11 @@ module.exports = async (req, res) => {
           }
         );
 
-        if (searchResponse.results) {
+        if (searchResponse.results && searchResponse.results.length > 0) {
+          console.log(`✅ [FOUND] ${searchResponse.results.length} contact(s) by email`);
           allContacts = searchResponse.results;
+        } else {
+          console.log(`❌ [NOT FOUND] No contacts found by email either`);
         }
       }
 
@@ -141,7 +153,7 @@ module.exports = async (req, res) => {
 
       // Cache the response for 5 minutes (300 seconds)
       await cacheService.set(cacheKey, response, 300);
-      console.log(`💾 [Cached] ${transformedContacts.length} trainees for search "${query}" (5 min TTL)`);
+      console.log(`💾 [Cached] ${transformedContacts.length} trainees for search "${trimmedQuery}" (5 min TTL)`);
 
       res.status(200).json(response);
 
