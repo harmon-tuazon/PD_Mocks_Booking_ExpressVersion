@@ -187,14 +187,9 @@ const BookingRow = ({
         </div>
       </td>
 
-      {/* Attendance/Cancellation Status */}
+      {/* Attendance Status */}
       <td className="px-4 py-3 whitespace-nowrap text-center">
-        {isCancelled ? (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200">
-            <XCircleIcon className="h-3 w-3 mr-1" />
-            Cancelled
-          </span>
-        ) : booking.attendance && booking.attendance !== '' ? (
+        {booking.attendance && booking.attendance !== '' ? (
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
             booking.attendance === 'Yes' || booking.attendance === 'true'
               ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
