@@ -1240,9 +1240,12 @@ class HubSpotService {
               const isActiveValues = batchResponse.results.map(b => b.properties.is_active);
               console.log(`🔍 [EXAM ${exam.id}] is_active values:`, isActiveValues);
 
-              // Count only Active bookings
+              // Count only Active/Completed bookings (exclude Cancelled)
+              // Handle multiple case variations: Active, active, Completed, completed
               const activeInChunk = batchResponse.results.filter(booking => {
-                const isActive = booking.properties.is_active === 'Active';
+                const status = booking.properties.is_active;
+                const isActive = status === 'Active' || status === 'active' ||
+                                status === 'Completed' || status === 'completed';
                 if (!isActive) {
                   console.log(`  ❌ Excluding booking ${booking.id}: is_active = "${booking.properties.is_active}"`);
                 }
@@ -1757,10 +1760,13 @@ class HubSpotService {
           });
 
           if (batchResponse.results) {
-            // Count only Active bookings
-            const activeInChunk = batchResponse.results.filter(booking =>
-              booking.properties.is_active === 'Active'
-            ).length;
+            // Count only Active/Completed bookings (exclude Cancelled)
+            // Handle multiple case variations: Active, active, Completed, completed
+            const activeInChunk = batchResponse.results.filter(booking => {
+              const status = booking.properties.is_active;
+              return status === 'Active' || status === 'active' ||
+                     status === 'Completed' || status === 'completed';
+            }).length;
             activeBookingsCount += activeInChunk;
           }
         }
