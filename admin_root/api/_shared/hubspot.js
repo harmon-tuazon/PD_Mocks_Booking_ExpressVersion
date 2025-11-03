@@ -1700,7 +1700,8 @@ class HubSpotService {
               'capacity', 'total_bookings', 'location', 'is_active',
               'hs_createdate', 'hs_lastmodifieddate'
             ],
-            inputs: batchIds.map(id => ({ id }))
+            inputs: batchIds.map(id => ({ id })),
+            associations: [HUBSPOT_OBJECTS.bookings] // Fetch booking associations
           }
         );
 
@@ -1715,14 +1716,73 @@ class HubSpotService {
 
     // Wait for all batches to complete in parallel
     const allBatchResults = await Promise.all(batchPromises);
-    
+
     // Flatten results from all batches
     const allResults = allBatchResults.flat();
 
     const duration = Date.now() - startTime;
     console.log(`⚡ Parallel batch fetch completed: ${allResults.length} sessions in ${duration}ms`);
 
-    return allResults;
+    // Recalculate booking counts by fetching actual bookings and counting only Active ones
+    console.log(`🔢 Recalculating booking counts for ${allResults.length} sessions...`);
+    const enrichedResults = await Promise.all(allResults.map(async (exam) => {
+      try {
+        // Extract booking IDs from associations
+        const bookingIds = [];
+        if (exam.associations && exam.associations[HUBSPOT_OBJECTS.bookings]) {
+          const bookingAssociations = exam.associations[HUBSPOT_OBJECTS.bookings].results || [];
+          bookingAssociations.forEach(assoc => {
+            bookingIds.push(assoc.id);
+          });
+        }
+
+        // If no bookings, set count to 0
+        if (bookingIds.length === 0) {
+          return {
+            ...exam,
+            properties: {
+              ...exam.properties,
+              total_bookings: '0'
+            }
+          };
+        }
+
+        // Batch fetch booking details to check is_active status
+        let activeBookingsCount = 0;
+        for (let i = 0; i < bookingIds.length; i += 100) {
+          const chunk = bookingIds.slice(i, i + 100);
+          const batchResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
+            properties: ['is_active'],
+            inputs: chunk.map(id => ({ id }))
+          });
+
+          if (batchResponse.results) {
+            // Count only Active bookings
+            const activeInChunk = batchResponse.results.filter(booking =>
+              booking.properties.is_active === 'Active'
+            ).length;
+            activeBookingsCount += activeInChunk;
+          }
+        }
+
+        // Override total_bookings with accurate Active-only count
+        return {
+          ...exam,
+          properties: {
+            ...exam.properties,
+            total_bookings: String(activeBookingsCount)
+          }
+        };
+      } catch (error) {
+        console.error(`Error recalculating bookings for exam ${exam.id}:`, error);
+        // On error, keep the stored value
+        return exam;
+      }
+    }));
+
+    console.log(`✅ Booking count recalculation complete`);
+
+    return enrichedResults;
   }
 
   /**

@@ -23,8 +23,12 @@ module.exports = async (req, res) => {
       filter_date_from,
       filter_date_to,
       sort_by = 'date',
-      sort_order = 'asc'
+      sort_order = 'asc',
+      debug
     } = req.query;
+
+    // Check for debug mode to bypass cache
+    const debugMode = debug === 'true';
 
     const cacheService = getCache();
     const filters = {
@@ -40,11 +44,15 @@ module.exports = async (req, res) => {
       page, limit, sort_by, sort_order, ...filters
     })}`;
 
-    // Check cache first
-    const cachedAggregates = await cacheService.get(cacheKey);
-    if (cachedAggregates) {
-      console.log(`🎯 [Cache HIT] Aggregates: ${cacheKey.substring(0, 80)}...`);
-      return res.status(200).json(cachedAggregates);
+    // Check cache first (unless debug mode)
+    if (!debugMode) {
+      const cachedAggregates = await cacheService.get(cacheKey);
+      if (cachedAggregates) {
+        console.log(`🎯 [Cache HIT] Aggregates: ${cacheKey.substring(0, 80)}...`);
+        return res.status(200).json(cachedAggregates);
+      }
+    } else {
+      console.log(`🔍 [DEBUG MODE] Cache bypassed for mock exam aggregates`);
     }
 
     console.log(`📋 [Cache MISS] Fetching aggregates from HubSpot...`);
