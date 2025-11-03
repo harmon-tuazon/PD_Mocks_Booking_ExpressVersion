@@ -1236,15 +1236,27 @@ class HubSpotService {
             });
 
             if (batchResponse.results) {
+              // Debug: Log is_active values for this exam
+              const isActiveValues = batchResponse.results.map(b => b.properties.is_active);
+              console.log(`🔍 [EXAM ${exam.id}] is_active values:`, isActiveValues);
+
               // Count only Active bookings
-              const activeInChunk = batchResponse.results.filter(booking =>
-                booking.properties.is_active === 'Active'
-              ).length;
+              const activeInChunk = batchResponse.results.filter(booking => {
+                const isActive = booking.properties.is_active === 'Active';
+                if (!isActive) {
+                  console.log(`  ❌ Excluding booking ${booking.id}: is_active = "${booking.properties.is_active}"`);
+                }
+                return isActive;
+              }).length;
+
+              console.log(`  ✅ Active bookings in chunk: ${activeInChunk} of ${batchResponse.results.length}`);
               activeBookingsCount += activeInChunk;
             }
           }
 
           // Override total_bookings with accurate Active-only count
+          console.log(`📊 [EXAM ${exam.id}] Setting total_bookings: ${activeBookingsCount} (was: ${exam.properties.total_bookings || '0'})`);
+
           return {
             ...exam,
             properties: {
