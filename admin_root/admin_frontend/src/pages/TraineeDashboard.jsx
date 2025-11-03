@@ -66,7 +66,7 @@ function TraineeDashboard() {
         value={searchTerm}
         onChange={setSearchTerm}
         loading={isSearching}
-        placeholder="Search by name, email, or student ID..."
+        placeholder="Search by student ID or email..."
       />
 
       {/* Content Area */}
@@ -76,7 +76,7 @@ function TraineeDashboard() {
           <EmptyState
             icon={<Search className="h-12 w-12" />}
             heading="Start Searching for a Training Doctor"
-            description="Search by name, email or trainee ID to see the training doctor's exam history."
+            description="Search by student ID or email to view the training doctor's booking history."
           />
         )}
 

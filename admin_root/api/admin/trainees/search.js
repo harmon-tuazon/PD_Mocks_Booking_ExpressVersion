@@ -89,27 +89,7 @@ module.exports = async (req, res) => {
       if (exactMatchResponse.results && exactMatchResponse.results.length > 0) {
         allContacts = exactMatchResponse.results;
       } else {
-        // If no exact match on student_id, search by name and email
-        const searchFilters = {
-          filters: [
-            {
-              propertyName: 'firstname',
-              operator: 'CONTAINS_TOKEN',
-              value: query
-            }
-          ]
-        };
-
-        const lastnameFilter = {
-          filters: [
-            {
-              propertyName: 'lastname',
-              operator: 'CONTAINS_TOKEN',
-              value: query
-            }
-          ]
-        };
-
+        // If no exact match on student_id, search by email only
         const emailFilter = {
           filters: [
             {
@@ -120,11 +100,11 @@ module.exports = async (req, res) => {
           ]
         };
 
-        // Search with multiple filter groups (OR condition between groups)
+        // Search with email filter only
         const searchResponse = await hubspot.apiCall('POST',
           `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/search`,
           {
-            filterGroups: [searchFilters, lastnameFilter, emailFilter],
+            filterGroups: [emailFilter],
             properties: ['firstname', 'lastname', 'email', 'phone', 'student_id', 'ndecc_exam_date'],
             limit: 10
           }

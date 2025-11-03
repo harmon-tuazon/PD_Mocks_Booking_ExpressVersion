@@ -11,7 +11,7 @@ All endpoints require admin authentication via the `requireAdmin` middleware. In
 ### 1. Search Trainees
 **Endpoint:** `GET /api/admin/trainees/search`
 
-**Description:** Search for trainees in HubSpot CRM by student ID, name, or email.
+**Description:** Search for trainees in HubSpot CRM by student ID or email.
 
 **Query Parameters:**
 | Parameter | Type | Required | Description |
@@ -21,7 +21,7 @@ All endpoints require admin authentication via the `requireAdmin` middleware. In
 
 **Features:**
 - Exact match on student ID
-- Partial match on firstname, lastname, or email
+- Partial match on email
 - Returns maximum 10 results
 - Redis caching with 5-minute TTL
 
@@ -151,7 +151,7 @@ The endpoints use the shared HubSpot service (`admin_root/api/_shared/hubspot.js
 ### Performance Considerations
 1. **Search Optimization:**
    - First attempts exact match on student_id
-   - Falls back to partial matching on name/email if no exact match
+   - Falls back to partial matching on email if no exact match
 
 2. **Batch Processing:**
    - Uses HubSpot batch read API for efficient data fetching
@@ -185,7 +185,7 @@ curl -X GET "http://localhost:3000/api/admin/trainees/12345/bookings" \
 
 **Debug mode (bypass cache):**
 ```bash
-curl -X GET "http://localhost:3000/api/admin/trainees/search?query=John&debug=true" \
+curl -X GET "http://localhost:3000/api/admin/trainees/search?query=john@example.com&debug=true" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
