@@ -21,7 +21,7 @@ All endpoints require admin authentication via the `requireAdmin` middleware. In
 
 **Features:**
 - Exact match on student ID
-- Partial match on email
+- Exact match on email
 - Returns maximum 10 results
 - Redis caching with 5-minute TTL
 
@@ -151,7 +151,7 @@ The endpoints use the shared HubSpot service (`admin_root/api/_shared/hubspot.js
 ### Performance Considerations
 1. **Search Optimization:**
    - First attempts exact match on student_id
-   - Falls back to partial matching on email if no exact match
+   - Falls back to exact match on email if no student_id match
 
 2. **Batch Processing:**
    - Uses HubSpot batch read API for efficient data fetching

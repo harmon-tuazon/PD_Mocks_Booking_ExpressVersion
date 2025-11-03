@@ -89,18 +89,18 @@ module.exports = async (req, res) => {
       if (exactMatchResponse.results && exactMatchResponse.results.length > 0) {
         allContacts = exactMatchResponse.results;
       } else {
-        // If no exact match on student_id, search by email only
+        // If no exact match on student_id, try exact match on email
         const emailFilter = {
           filters: [
             {
               propertyName: 'email',
-              operator: 'CONTAINS_TOKEN',
+              operator: 'EQ',
               value: query
             }
           ]
         };
 
-        // Search with email filter only
+        // Search with exact email match only
         const searchResponse = await hubspot.apiCall('POST',
           `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/search`,
           {
