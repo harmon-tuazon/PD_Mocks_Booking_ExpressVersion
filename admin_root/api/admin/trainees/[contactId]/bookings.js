@@ -189,44 +189,49 @@ module.exports = async (req, res) => {
 
       // Get unique mock exam IDs
       const mockExamIds = [...new Set(allBookings.map(b => b.properties.mock_exam_id).filter(Boolean))];
+      console.log(`🔍 [DEBUG] Found ${mockExamIds.length} unique mock exam IDs:`, mockExamIds);
 
       // Batch fetch mock exam details
       if (mockExamIds.length > 0) {
         for (let i = 0; i < mockExamIds.length; i += 100) {
           const chunk = mockExamIds.slice(i, i + 100);
+          console.log(`📥 [BATCH FETCH] Fetching mock exam details for chunk:`, chunk);
           try {
             const mockExamResponse = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/read`, {
               properties: ['mock_type', 'exam_date', 'location', 'start_time', 'end_time'],
               inputs: chunk.map(id => ({ id }))
             });
 
+            console.log(`✅ [BATCH RESPONSE] Received ${mockExamResponse.results?.length || 0} mock exam results`);
+
             if (mockExamResponse.results) {
               mockExamResponse.results.forEach(exam => {
+                console.log(`💾 [STORING] Mock exam ID: ${exam.id}, Properties:`, exam.properties);
                 mockExamDetails[exam.id] = exam.properties;
               });
+            } else {
+              console.log(`⚠️ [WARNING] No results in mock exam batch response`);
             }
           } catch (error) {
-            console.error('Error fetching mock exam batch:', error);
+            console.error('❌ [ERROR] Error fetching mock exam batch:', error);
           }
         }
+        console.log(`📊 [MOCK EXAM DETAILS] Total stored:`, Object.keys(mockExamDetails).length, 'IDs:', Object.keys(mockExamDetails));
       }
     }
 
     // Transform bookings with mock exam details
-    const transformedBookings = allBookings.map(booking => {
+    const transformedBookings = allBookings.map((booking, index) => {
       const props = booking.properties;
       const mockExam = mockExamDetails[props.mock_exam_id] || {};
 
-      // Debug logging for first booking to verify data structure
-      if (booking === allBookings[0]) {
-        console.log('🔍 [DEBUG] First booking properties:', {
-          raw_props: props,
-          mock_exam_id: props.mock_exam_id,
-          mock_exam_details: mockExam,
-          attending_location: props.attending_location,
-          booking_date: props.booking_date,
-          hs_createdate: props.hs_createdate
-        });
+      // Debug logging for first 3 bookings to verify data structure
+      if (index < 3) {
+        console.log(`🔍 [BOOKING ${index + 1}] mock_exam_id: "${props.mock_exam_id}"`);
+        console.log(`🔍 [BOOKING ${index + 1}] mockExam found:`, mockExam);
+        console.log(`🔍 [BOOKING ${index + 1}] mockExam.mock_type:`, mockExam.mock_type);
+        console.log(`🔍 [BOOKING ${index + 1}] mockExam.exam_date:`, mockExam.exam_date);
+        console.log(`🔍 [BOOKING ${index + 1}] mockExam.location:`, mockExam.location);
       }
 
       // Determine dominant hand value (convert from string to readable format)
