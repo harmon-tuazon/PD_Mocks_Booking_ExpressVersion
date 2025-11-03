@@ -33,8 +33,25 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
     status: 'All'
   });
 
-  // Client-side filtering logic
-  const filteredBookings = useMemo(() => {
+  // State for sorting
+  const [sortConfig, setSortConfig] = useState({
+    column: 'booking_date',
+    direction: 'desc'
+  });
+
+  // Sort handler
+  const handleSort = (column) => {
+    setSortConfig(prevConfig => ({
+      column,
+      direction:
+        prevConfig.column === column && prevConfig.direction === 'asc'
+          ? 'desc'
+          : 'asc'
+    }));
+  };
+
+  // Client-side filtering and sorting logic
+  const processedBookings = useMemo(() => {
     if (!bookings || bookings.length === 0) return [];
     
     return bookings.filter(booking => {
@@ -101,14 +118,53 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
           return false;
         }
       }
-      
+
       return true;
     });
-  }, [bookings, filters]);
+
+    // Step 2: Sort filtered bookings
+    const sortedBookings = [...filteredBookings].sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sortConfig.column) {
+        case 'mock_exam_type':
+          aValue = (a.mock_exam_type || '').toLowerCase();
+          bValue = (b.mock_exam_type || '').toLowerCase();
+          break;
+        case 'exam_date':
+          aValue = new Date(a.exam_date || 0);
+          bValue = new Date(b.exam_date || 0);
+          break;
+        case 'attending_location':
+          aValue = (a.attending_location || '').toLowerCase();
+          bValue = (b.attending_location || '').toLowerCase();
+          break;
+        case 'dominant_hand':
+          aValue = (a.dominant_hand || '').toLowerCase();
+          bValue = (b.dominant_hand || '').toLowerCase();
+          break;
+        case 'token_used':
+          aValue = (a.token_used || '').toLowerCase();
+          bValue = (b.token_used || '').toLowerCase();
+          break;
+        case 'booking_date':
+        default:
+          aValue = new Date(a.booking_date || 0);
+          bValue = new Date(b.booking_date || 0);
+          break;
+      }
+
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sortedBookings;
+  }, [bookings, filters, sortConfig]);
 
   // Calculate counts
   const totalBookings = bookings?.length || 0;
-  const filteredCount = filteredBookings.length;
+  const filteredCount = processedBookings.length;
   const hasActiveFilters = filters.locations.length > 0 || 
                           filters.attendance.length > 0 || 
                           filters.mockTypes.length > 0 || 
@@ -158,7 +214,7 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
         </div>
       )}
 
-      {!loading && !error && bookings && bookings.length > 0 && filteredBookings.length === 0 && hasActiveFilters && (
+      {!loading && !error && bookings && bookings.length > 0 && processedBookings.length === 0 && hasActiveFilters && (
         <div className="flex flex-col items-center justify-center py-16 min-h-[300px]">
           <p className="text-gray-500 dark:text-gray-400">
             No bookings match the selected filters
@@ -179,10 +235,10 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
         </div>
       )}
 
-      {!loading && !error && filteredBookings.length > 0 && (
+      {!loading && !error && processedBookings.length > 0 && (
         <div className="overflow-x-auto">
           <BookingsTable
-            bookings={filteredBookings}
+            bookings={processedBookings}
             totalPages={totalPages}
             totalItems={filteredCount}
             hideTraineeInfo={true}  // Hide trainee columns in trainee dashboard view
@@ -202,8 +258,8 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
               selectedIds: [],
               selectedCount: 0
             }}
-            onSort={() => {}} // No sorting in trainee dashboard view
-            sortConfig={{ column: 'booking_date', direction: 'desc' }}
+            onSort={handleSort}  // Enable sorting in trainee dashboard view
+            sortConfig={sortConfig}
             currentPage={1}
             onPageChange={() => {}} // No pagination in this context (showing all bookings)
           />
