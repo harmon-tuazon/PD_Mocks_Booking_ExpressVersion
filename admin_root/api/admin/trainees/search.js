@@ -68,37 +68,18 @@ module.exports = async (req, res) => {
 
     console.log(`📋 [Cache MISS] Searching HubSpot for trainees: ${trimmedQuery}`);
 
+    // Detect if query is an email (contains @)
+    const isEmail = trimmedQuery.includes('@');
+    console.log(`🔍 [SEARCH TYPE] ${isEmail ? 'Email detected' : 'Student ID'}`);
+
     // Search HubSpot contacts
     let allContacts = [];
 
     try {
-      // First, try exact match on student_id
-      const exactMatchFilter = {
-        filters: [
-          {
-            propertyName: 'student_id',
-            operator: 'EQ',
-            value: trimmedQuery
-          }
-        ]
-      };
+      // If query looks like an email, skip student_id search and go directly to email
+      if (isEmail) {
+        console.log(`📧 [EMAIL SEARCH] Searching by email: ${trimmedQuery}`);
 
-      const exactMatchResponse = await hubspot.apiCall('POST',
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/search`,
-        {
-          filterGroups: [exactMatchFilter],
-          properties: ['firstname', 'lastname', 'email', 'phone', 'student_id', 'ndecc_exam_date'],
-          limit: 10
-        }
-      );
-
-      if (exactMatchResponse.results && exactMatchResponse.results.length > 0) {
-        console.log(`✅ [FOUND] ${exactMatchResponse.results.length} contact(s) by student_id`);
-        allContacts = exactMatchResponse.results;
-      } else {
-        console.log(`⚠️ [NOT FOUND] No contacts found by student_id, trying email...`);
-
-        // If no exact match on student_id, try exact match on email
         const emailFilter = {
           filters: [
             {
@@ -109,8 +90,8 @@ module.exports = async (req, res) => {
           ]
         };
 
-        // Search with exact email match only
-        const searchResponse = await hubspot.apiCall('POST',
+        // Search with exact email match
+        const emailResponse = await hubspot.apiCall('POST',
           `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/search`,
           {
             filterGroups: [emailFilter],
@@ -119,11 +100,40 @@ module.exports = async (req, res) => {
           }
         );
 
-        if (searchResponse.results && searchResponse.results.length > 0) {
-          console.log(`✅ [FOUND] ${searchResponse.results.length} contact(s) by email`);
-          allContacts = searchResponse.results;
+        if (emailResponse.results && emailResponse.results.length > 0) {
+          console.log(`✅ [FOUND] ${emailResponse.results.length} contact(s) by email`);
+          allContacts = emailResponse.results;
         } else {
-          console.log(`❌ [NOT FOUND] No contacts found by email either`);
+          console.log(`❌ [NOT FOUND] No contacts found by email`);
+        }
+      } else {
+        // Search by student_id
+        console.log(`🔢 [STUDENT ID SEARCH] Searching by student_id: ${trimmedQuery}`);
+
+        const studentIdFilter = {
+          filters: [
+            {
+              propertyName: 'student_id',
+              operator: 'EQ',
+              value: trimmedQuery
+            }
+          ]
+        };
+
+        const studentIdResponse = await hubspot.apiCall('POST',
+          `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/search`,
+          {
+            filterGroups: [studentIdFilter],
+            properties: ['firstname', 'lastname', 'email', 'phone', 'student_id', 'ndecc_exam_date'],
+            limit: 10
+          }
+        );
+
+        if (studentIdResponse.results && studentIdResponse.results.length > 0) {
+          console.log(`✅ [FOUND] ${studentIdResponse.results.length} contact(s) by student_id`);
+          allContacts = studentIdResponse.results;
+        } else {
+          console.log(`❌ [NOT FOUND] No contacts found by student_id`);
         }
       }
 
