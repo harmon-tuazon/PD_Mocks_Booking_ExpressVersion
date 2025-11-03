@@ -150,10 +150,16 @@ module.exports = async (req, res) => {
             properties: [
               'booking_id',
               'mock_exam_id',
+              'name',
+              'email',
+              'student_id',
+              'dominant_hand',
+              'contact_id',
               'booking_status',
               'attendance',
               'attending_location',
               'token_used',
+              'ndecc_exam_date',
               'is_active',
               'booking_date',
               'hs_createdate',
@@ -223,6 +229,16 @@ module.exports = async (req, res) => {
         });
       }
 
+      // Determine dominant hand value (convert from string to readable format)
+      let dominantHand = props.dominant_hand;
+      if (dominantHand === 'true' || dominantHand === true || dominantHand === 'right' || dominantHand === 'Right') {
+        dominantHand = 'Right';
+      } else if (dominantHand === 'false' || dominantHand === false || dominantHand === 'left' || dominantHand === 'Left') {
+        dominantHand = 'Left';
+      } else if (!dominantHand) {
+        dominantHand = 'N/A';
+      }
+
       return {
         id: booking.id,
         mock_exam_id: props.mock_exam_id || '',
@@ -235,11 +251,15 @@ module.exports = async (req, res) => {
         attending_location: props.attending_location || mockExam.location || '',
         token_used: props.token_used || '',
         is_active: props.is_active || '',
-        // Add trainee info to bookings for display
-        name: `${traineeInfo.firstname} ${traineeInfo.lastname}`,
-        email: traineeInfo.email,
-        student_id: traineeInfo.student_id,
-        ndecc_exam_date: traineeInfo.ndecc_exam_date
+        is_cancelled: props.is_active === 'Cancelled' || props.is_active === 'cancelled',
+        // Use properties from booking object (stored at booking time)
+        name: props.name || `${traineeInfo.firstname} ${traineeInfo.lastname}`,
+        first_name: props.name ? props.name.split(' ')[0] : traineeInfo.firstname,
+        last_name: props.name ? props.name.split(' ').slice(1).join(' ') : traineeInfo.lastname,
+        email: props.email || traineeInfo.email,
+        student_id: props.student_id || traineeInfo.student_id,
+        dominant_hand: dominantHand,
+        ndecc_exam_date: props.ndecc_exam_date || traineeInfo.ndecc_exam_date
       };
     });
 
