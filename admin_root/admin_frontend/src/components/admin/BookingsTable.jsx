@@ -257,7 +257,25 @@ const BookingsTable = ({
                   {!hideTraineeInfo && <SortableHeader column="student_id" align="center">Student ID</SortableHeader>}
                   {!hideTraineeInfo && <SortableHeader column="dominant_hand" align="center">Dominant Hand</SortableHeader>}
 
-                  {/* Attendance status column - Always visible, moved before booking date */}
+                  {/* New column order for trainee dashboard when hideTraineeInfo=true */}
+                  {/* Mock Type column */}
+                  <SortableHeader column="mock_exam_type" align="center">Mock Type</SortableHeader>
+
+                  {/* Exam Date column */}
+                  <SortableHeader column="exam_date" align="center">Exam Date</SortableHeader>
+
+                  {/* Time column - non-sortable */}
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Time
+                  </th>
+
+                  {/* Location column */}
+                  <SortableHeader column="attending_location" align="center">Location</SortableHeader>
+
+                  {/* Dominant Hand column - Always show now */}
+                  <SortableHeader column="dominant_hand" align="center">Dominant Hand</SortableHeader>
+
+                  {/* Attendance status column */}
                   <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Attendance
                   </th>
@@ -267,18 +285,10 @@ const BookingsTable = ({
                     Status
                   </th>
 
-                  {/* Location column */}
-                  <SortableHeader column="attending_location" align="center">Location</SortableHeader>
-
-                  {/* Mock Type column */}
-                  <SortableHeader column="mock_exam_type" align="center">Mock Type</SortableHeader>
-
-                  {/* Exam Date column */}
-                  <SortableHeader column="exam_date" align="center">Exam Date</SortableHeader>
-
                   {/* Token Used column */}
                   <SortableHeader column="token_used" align="center">Token Used</SortableHeader>
 
+                  {/* Booking Date column */}
                   <SortableHeader column="booking_date" align="center">Booking Date</SortableHeader>
                 </tr>
               </thead>

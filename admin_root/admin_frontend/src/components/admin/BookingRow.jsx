@@ -13,6 +13,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import { Checkbox } from '@/components/ui/checkbox';
+import { formatTime } from '../../utils/timeFormatters';
 
 const BookingRow = ({
   booking,
@@ -144,6 +145,48 @@ const BookingRow = ({
         </td>
       )}
 
+      {/* Mock Type */}
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        <div className="text-xs text-gray-900 dark:text-gray-100">
+          {booking.mock_exam_type || '-'}
+        </div>
+      </td>
+
+      {/* Exam Date */}
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        <div className="text-xs text-gray-900 dark:text-gray-100">
+          {booking.exam_date ?
+            new Date(booking.exam_date).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            }) : '-'}
+        </div>
+      </td>
+
+      {/* Time (Start - End) */}
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        <div className="text-xs text-gray-900 dark:text-gray-100">
+          {booking.start_time && booking.end_time
+            ? `${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}`
+            : '-'}
+        </div>
+      </td>
+
+      {/* Location */}
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        <div className="text-xs text-gray-900 dark:text-gray-100">
+          {booking.attending_location || '-'}
+        </div>
+      </td>
+
+      {/* Dominant Hand - Always show now */}
+      <td className="px-4 py-3 whitespace-nowrap text-center">
+        <div className="text-xs text-gray-900 dark:text-gray-100">
+          {formatDominantHand(booking.dominant_hand)}
+        </div>
+      </td>
+
       {/* Attendance/Cancellation Status */}
       <td className="px-4 py-3 whitespace-nowrap text-center">
         {isCancelled ? (
@@ -183,7 +226,6 @@ const BookingRow = ({
       {/* Status - Active/Cancelled/Completed */}
       <td className="px-4 py-3 whitespace-nowrap text-center">
         {(() => {
-          // Determine status based on is_active and exam_date
           let status = 'Active';
           let badgeClass = 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200';
 
@@ -206,32 +248,6 @@ const BookingRow = ({
             </span>
           );
         })()}
-      </td>
-
-      {/* Location (Attending Location) */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs text-gray-900 dark:text-gray-100">
-          {booking.attending_location || '-'}
-        </div>
-      </td>
-
-      {/* Mock Type */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs text-gray-900 dark:text-gray-100">
-          {booking.mock_exam_type || '-'}
-        </div>
-      </td>
-
-      {/* Exam Date */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs text-gray-900 dark:text-gray-100">
-          {booking.exam_date ?
-            new Date(booking.exam_date).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            }) : '-'}
-        </div>
       </td>
 
       {/* Token Used */}

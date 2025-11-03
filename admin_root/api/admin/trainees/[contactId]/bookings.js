@@ -190,7 +190,7 @@ module.exports = async (req, res) => {
           const chunk = mockExamIds.slice(i, i + 100);
           try {
             const mockExamResponse = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/read`, {
-              properties: ['mock_type', 'exam_date', 'location'],
+              properties: ['mock_type', 'exam_date', 'location', 'start_time', 'end_time'],
               inputs: chunk.map(id => ({ id }))
             });
 
@@ -228,6 +228,8 @@ module.exports = async (req, res) => {
         mock_exam_id: props.mock_exam_id || '',
         mock_exam_type: mockExam.mock_type || '',
         exam_date: mockExam.exam_date || '',
+        start_time: mockExam.start_time || '',
+        end_time: mockExam.end_time || '',
         booking_date: props.hs_createdate || props.booking_date || '',
         attendance: props.attendance || '',
         attending_location: props.attending_location || mockExam.location || '',
