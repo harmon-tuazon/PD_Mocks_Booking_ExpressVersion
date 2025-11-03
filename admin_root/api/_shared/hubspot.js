@@ -178,8 +178,6 @@ class HubSpotService {
       throw new Error('Both examDate and timeString are required for timestamp conversion');
     }
 
-    console.log('🕐 [CONVERT-TIMESTAMP] Input:', { examDate, timeString });
-
     // Parse time string (HH:MM or HH:MM:SS)
     const timeParts = timeString.split(':');
     const hours = parseInt(timeParts[0]);
@@ -188,14 +186,14 @@ class HubSpotService {
 
     // Create a date object for the given date at the specified time in America/Toronto timezone
     // We need to determine if DST is in effect on this date to use the correct offset
-    
+
     // Parse the exam date
     const [year, month, day] = examDate.split('-').map(Number);
-    
+
     // Create a date string in ISO format at noon UTC to check DST
     // Using noon avoids edge cases around midnight
     const testDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-    
+
     // Format the date in America/Toronto timezone to check the offset
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/Toronto',
@@ -208,37 +206,29 @@ class HubSpotService {
       hour12: false,
       timeZoneName: 'short'
     });
-    
+
     const formatted = formatter.format(testDate);
     const isDST = formatted.includes('EDT'); // EDT = Daylight Time (UTC-4), EST = Standard Time (UTC-5)
-    
+
     // Use the appropriate offset
     const offset = isDST ? '-04:00' : '-05:00';
-    const offsetName = isDST ? 'EDT' : 'EST';
-    
+
     // Create ISO string with the correct timezone offset for America/Toronto
     const hoursStr = String(hours).padStart(2, '0');
     const minutesStr = String(minutes).padStart(2, '0');
     const secondsStr = String(seconds).padStart(2, '0');
     const isoString = `${examDate}T${hoursStr}:${minutesStr}:${secondsStr}${offset}`;
-    
-    console.log(`🕐 [CONVERT-TIMESTAMP] Detected timezone: ${offsetName} (${offset})`);
-    console.log('🕐 [CONVERT-TIMESTAMP] ISO String:', isoString);
-    
+
     // Parse ISO string to Date object
     const date = new Date(isoString);
-    
+
     if (isNaN(date.getTime())) {
-      console.error('❌ [CONVERT-TIMESTAMP] Invalid date created:', { isoString, examDate, timeString });
+      console.error('Invalid date created from:', { isoString, examDate, timeString });
       throw new Error('Invalid date or time format');
     }
-    
-    const timestamp = date.getTime();
-    console.log('🕐 [CONVERT-TIMESTAMP] Output timestamp:', timestamp);
-    console.log('🕐 [CONVERT-TIMESTAMP] Represents:', new Date(timestamp).toISOString());
-    
+
     // Return Unix timestamp in milliseconds
-    return timestamp;
+    return date.getTime();
   }
 
   /**
@@ -445,12 +435,10 @@ class HubSpotService {
         }
       ]);
 
-      console.log(`✅ Associated ${fromObjectType}:${fromObjectId} with ${toObjectType}:${toObjectId} (category: ${associationCategory}, typeId: ${associationTypeId})`);
       return true;
     } catch (error) {
       // Check if association already exists (not an error)
       if (error.message.includes('already exists')) {
-        console.log(`ℹ️ Association already exists between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}`);
         return true;
       }
       console.error('❌ Error creating association:', error);
@@ -847,14 +835,6 @@ class HubSpotService {
    */
   async getMaxMockExamIndex() {
     try {
-      console.log('🚀 [GET-MAX-INDEX] Starting to get max mock_exam_index');
-      console.log('📋 [GET-MAX-INDEX] Attempting with internal property name: mock_exam_id');
-      
-      // Try using "mock_exam_id" as the internal HubSpot property name
-      // HubSpot often has different internal names vs display names
-      console.log('🔍 [GET-MAX-INDEX] Calling HubSpot Search API with filter and sort...');
-      console.log(`📡 [GET-MAX-INDEX] API endpoint: POST /crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`);
-
       const searchRequest = {
         // Filter OUT exams with null/empty mock_exam_id (internal property name)
         filterGroups: [{
@@ -871,55 +851,27 @@ class HubSpotService {
         limit: 1  // Only need the top result
       };
 
-      console.log('📤 [GET-MAX-INDEX] Search request:', JSON.stringify(searchRequest, null, 2));
-
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, searchRequest);
-
-      console.log('📥 [GET-MAX-INDEX] Received response:', {
-        resultsCount: response.results?.length,
-        hasResults: !!(response.results && response.results.length > 0),
-        firstResult: response.results?.[0],
-        fullResponse: JSON.stringify(response, null, 2)
-      });
 
       // If no exams with mock_exam_id exist, start from 0
       if (!response.results || response.results.length === 0) {
-        console.log('⚠️ [GET-MAX-INDEX] No mock exams with mock_exam_id found, starting from 1');
         return 0;
       }
 
       // Get the mock_exam_id from the first (highest) result
       const indexValue = response.results[0].properties.mock_exam_id;
-      console.log('📊 [GET-MAX-INDEX] Highest mock_exam_id value:', {
-        value: indexValue,
-        type: typeof indexValue,
-        examId: response.results[0].id
-      });
-
       const maxIndex = parseInt(indexValue);
-      
+
       // Validate the parsed value
       if (isNaN(maxIndex)) {
-        console.error('❌ [GET-MAX-INDEX] Invalid mock_exam_id value:', indexValue);
-        console.log('⚠️ [GET-MAX-INDEX] Defaulting to 0 due to invalid value');
+        console.error('Invalid mock_exam_id value:', indexValue);
         return 0;
       }
 
-      console.log(`✅ [GET-MAX-INDEX] Current max mock_exam_id: ${maxIndex}`);
-      console.log(`📊 [GET-MAX-INDEX] Retrieved in SINGLE API call (optimized with internal property name)`);
       return maxIndex;
-      
+
     } catch (error) {
-      console.error('❌ [GET-MAX-INDEX] ERROR getting max with mock_exam_id:', {
-        errorMessage: error.message,
-        errorStack: error.stack,
-        errorName: error.name,
-        errorResponse: error.response?.data,
-        fullError: error
-      });
-      
-      // If there's an error (e.g., property doesn't exist), start from 0
-      console.log('⚠️ [GET-MAX-INDEX] Defaulting to mock_exam_index = 0 due to error');
+      console.error('Error getting max mock_exam_id:', error.message);
       return 0;
     }
   }
@@ -978,51 +930,23 @@ class HubSpotService {
    */
   async batchCreateMockExams(commonProperties, timeSlots) {
     try {
-      console.log('🚀 [BATCH-CREATE] Starting batch creation');
-      console.log('📥 [BATCH-CREATE] Input received:', {
-        commonProperties,
-        timeSlotsCount: timeSlots?.length,
-        timeSlots
-      });
-
       // Validate inputs
-      console.log('🔍 [BATCH-CREATE] Step 1: Validating inputs...');
       if (!timeSlots || !Array.isArray(timeSlots) || timeSlots.length === 0) {
-        console.error('❌ [BATCH-CREATE] Invalid timeSlots:', { timeSlots });
         throw new Error('Time slots array is required');
       }
-      console.log('✅ [BATCH-CREATE] Input validation passed');
 
       // Get the current max mock_exam_index ONCE for the entire batch
-      console.log('🔍 [BATCH-CREATE] Step 2: Getting max mock_exam_index...');
       const maxIndex = await this.getMaxMockExamIndex();
-      console.log(`✅ [BATCH-CREATE] Max index retrieved: ${maxIndex}`);
-      console.log(`📊 [BATCH-CREATE] Starting batch with mock_exam_index from: ${maxIndex + 1}`);
 
       // Prepare batch inputs using correct HubSpot property names and timestamp format
-      console.log('🔍 [BATCH-CREATE] Step 3: Preparing batch inputs...');
-      console.log(`📅 [BATCH-CREATE] Using exam_date from commonProperties: ${commonProperties.exam_date}`);
-      
       const inputs = timeSlots.map((slot, index) => {
-        console.log(`🔧 [BATCH-CREATE] Processing slot ${index + 1}/${timeSlots.length}:`, slot);
-        
         // IMPORTANT: exam_date is in commonProperties, NOT in individual time slots
         // Time slots only contain start_time and end_time
         const examDate = commonProperties.exam_date;
-        console.log(`📅 [BATCH-CREATE] Slot ${index + 1} using exam_date:`, examDate);
-        
+
         // Convert time strings to Unix timestamps
-        console.log(`🕐 [BATCH-CREATE] Slot ${index + 1} converting times...`);
-        console.log(`🕐 [BATCH-CREATE] Slot ${index + 1} inputs: examDate=${examDate}, start_time=${slot.start_time}, end_time=${slot.end_time}`);
-        
         const startTimestamp = this.convertToTimestamp(examDate, slot.start_time);
         const endTimestamp = this.convertToTimestamp(examDate, slot.end_time);
-        console.log(`✅ [BATCH-CREATE] Slot ${index + 1} timestamps:`, {
-          start_time: slot.start_time,
-          startTimestamp,
-          end_time: slot.end_time,
-          endTimestamp
-        });
 
         // Assign sequential mock_exam_index starting from maxIndex + 1
         const mockExamIndex = maxIndex + index + 1;
@@ -1043,49 +967,22 @@ class HubSpotService {
           mock_exam_name: mockExamName  // Format: {mock_type}-{location}-{exam_date}
         };
 
-        console.log(`📋 [BATCH-CREATE] Slot ${index + 1} final properties:`, properties);
-        console.log(`✅ [BATCH-CREATE] Assigning mock_exam_index ${mockExamIndex} to time slot ${slot.start_time}-${slot.end_time}`);
         return { properties };
       });
 
-      console.log(`✅ [BATCH-CREATE] Prepared ${inputs.length} inputs for batch API`);
-      console.log('📤 [BATCH-CREATE] Full inputs array:', JSON.stringify(inputs, null, 2));
-
       // Use batch API to create all exams at once
-      console.log('🔍 [BATCH-CREATE] Step 4: Calling HubSpot batch API...');
-      console.log(`📡 [BATCH-CREATE] API endpoint: POST /crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/create`);
-      
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/create`, {
         inputs
       });
 
-      console.log('📥 [BATCH-CREATE] Received response from HubSpot:', {
-        status: response.status,
-        resultsCount: response.results?.length,
-        hasErrors: !!response.errors,
-        errorsCount: response.errors?.length,
-        fullResponse: JSON.stringify(response, null, 2)
-      });
-
       if (response.status === 'COMPLETE') {
-        console.log(`✅ [BATCH-CREATE] Successfully created ${response.results.length} mock exams with indices ${maxIndex + 1} to ${maxIndex + timeSlots.length}`);
-        console.log('📊 [BATCH-CREATE] Created exam IDs:', response.results.map(r => r.id));
         return response.results;
       } else {
-        console.error('❌ [BATCH-CREATE] Batch creation partially failed');
-        console.error('❌ [BATCH-CREATE] Response status:', response.status);
-        console.error('❌ [BATCH-CREATE] Response message:', response.message);
-        console.error('❌ [BATCH-CREATE] Errors:', response.errors);
+        console.error('Batch creation partially failed:', response.status, response.message);
         throw new Error(`Batch creation failed: ${response.message || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('❌ [BATCH-CREATE] ERROR in batchCreateMockExams:', {
-        errorMessage: error.message,
-        errorStack: error.stack,
-        errorName: error.name,
-        errorResponse: error.response?.data,
-        fullError: error
-      });
+      console.error('Error in batchCreateMockExams:', error.message);
       throw error;
     }
   }
@@ -1253,29 +1150,16 @@ class HubSpotService {
             });
 
             if (batchResponse.results) {
-              // Debug: Log is_active values for this exam
-              const isActiveValues = batchResponse.results.map(b => b.properties.is_active);
-              console.log(`🔍 [EXAM ${exam.id}] is_active values:`, isActiveValues);
-
               // Count only Active/Completed bookings (exclude Cancelled)
               // Handle multiple case variations: Active, active, Completed, completed
               const activeInChunk = batchResponse.results.filter(booking => {
                 const status = booking.properties.is_active;
-                const isActive = status === 'Active' || status === 'active' ||
-                                status === 'Completed' || status === 'completed';
-                if (!isActive) {
-                  console.log(`  ❌ Excluding booking ${booking.id}: is_active = "${booking.properties.is_active}"`);
-                }
-                return isActive;
+                return status === 'Active' || status === 'active' ||
+                       status === 'Completed' || status === 'completed';
               }).length;
-
-              console.log(`  ✅ Active bookings in chunk: ${activeInChunk} of ${batchResponse.results.length}`);
               activeBookingsCount += activeInChunk;
             }
           }
-
-          // Override total_bookings with accurate Active-only count
-          console.log(`📊 [EXAM ${exam.id}] Setting total_bookings: ${activeBookingsCount} (was: ${exam.properties.total_bookings || '0'})`);
 
           return {
             ...exam,
@@ -1456,16 +1340,11 @@ class HubSpotService {
         }
       };
 
-      console.log('📝 Creating mock exam edit note...');
       const noteResponse = await this.apiCall('POST', '/crm/v3/objects/notes', notePayload);
-      console.log(`✅ Note created with ID: ${noteResponse.id}`);
 
       // Now associate the mock exam with the note (reversed direction - Mock Exam → Note)
-      console.log(`🔗 Associating mock exam ${mockExamId} with note ${noteResponse.id}...`);
-
       try {
         await this.createAssociation('2-50158913', mockExamId, '0-46', noteResponse.id);
-        console.log(`✅ Mock exam edit note associated successfully`);
       } catch (assocError) {
         console.error(`❌ CRITICAL: Failed to associate edit note with mock exam:`, {
           noteId: noteResponse.id,
@@ -1579,8 +1458,6 @@ class HubSpotService {
         properties: booking.properties,
         contact: contacts[booking.properties.contact_id] || null
       }));
-
-      console.log(`✅ Optimized getMockExamWithBookings: Fetched mock exam ${mockExamId} with ${bookings.length} bookings in single call`);
 
       return {
         mockExam: mockExam,  // Keep properties nested under 'properties' key
@@ -1707,9 +1584,6 @@ class HubSpotService {
       batches.push(sessionIds.slice(i, i + BATCH_SIZE));
     }
 
-    console.log(`🚀 Parallel batch fetching ${sessionIds.length} sessions across ${batches.length} batches...`);
-    const startTime = Date.now();
-
     // Fetch all batches in parallel for faster performance
     const batchPromises = batches.map(async (batchIds, index) => {
       try {
@@ -1725,10 +1599,9 @@ class HubSpotService {
           }
         );
 
-        console.log(`✅ Batch ${index + 1}/${batches.length} completed: ${response.results?.length || 0} sessions`);
         return response.results || [];
       } catch (error) {
-        console.error(`❌ Error in batch ${index + 1}/${batches.length} for ${batchIds.length} mock exams:`, error);
+        console.error(`Error in batch ${index + 1}/${batches.length} for ${batchIds.length} mock exams:`, error);
         // Return empty array on error to continue with other batches
         return [];
       }
@@ -1740,11 +1613,7 @@ class HubSpotService {
     // Flatten results from all batches
     const allResults = allBatchResults.flat();
 
-    const duration = Date.now() - startTime;
-    console.log(`⚡ Parallel batch fetch completed: ${allResults.length} sessions in ${duration}ms`);
-
     // Recalculate booking counts by fetching actual bookings and counting only Active ones
-    console.log(`🔢 Recalculating booking counts for ${allResults.length} sessions...`);
     const enrichedResults = await Promise.all(allResults.map(async (exam) => {
       try {
         // HubSpot batch read API doesn't return associations, so we need to fetch them separately
@@ -1820,8 +1689,6 @@ class HubSpotService {
       }
     }));
 
-    console.log(`✅ Booking count recalculation complete`);
-
     return enrichedResults;
   }
 
@@ -1884,9 +1751,6 @@ class HubSpotService {
         searchRequest.filterGroups = [{ filters: searchFilters }];
       }
 
-      // Log the search request for debugging
-      console.log('📝 HubSpot Search Request:', JSON.stringify(searchRequest, null, 2));
-
       // Fetch all mock exams matching filters with pagination
       const allExams = [];
       let after = undefined;
@@ -1934,12 +1798,9 @@ class HubSpotService {
 
           return true;
         });
-
-        console.log(`Date filtering: ${allExams.length} exams -> ${filteredExams.length} exams after date filter`);
       }
 
       // Now enrich each exam with accurate Active booking count
-      console.log(`⏳ Enriching ${filteredExams.length} exams with accurate Active booking counts...`);
       const enrichedExams = await Promise.all(filteredExams.map(async (exam) => {
         try {
           // Extract booking IDs from associations (using flexible key matching)
@@ -1973,9 +1834,13 @@ class HubSpotService {
             });
 
             if (batchResponse.results) {
-              const activeInChunk = batchResponse.results.filter(booking =>
-                booking.properties.is_active === 'Active'
-              ).length;
+              // Count only Active/Completed bookings (exclude Cancelled)
+              // Handle multiple case variations: Active, active, Completed, completed
+              const activeInChunk = batchResponse.results.filter(booking => {
+                const status = booking.properties.is_active;
+                return status === 'Active' || status === 'active' ||
+                       status === 'Completed' || status === 'completed';
+              }).length;
               activeBookingsCount += activeInChunk;
             }
           }
@@ -1995,8 +1860,6 @@ class HubSpotService {
         }
       }));
 
-      console.log(`✅ Enrichment complete for ${enrichedExams.length} exams`);
-      
       // Group by (mock_type + date + location) - now using enriched data with accurate counts
       const aggregates = {};
 
