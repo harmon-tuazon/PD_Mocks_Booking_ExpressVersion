@@ -130,7 +130,7 @@ const BookingRow = ({
         return (
           <td key={columnId} className={baseClasses}>
             <div className="text-gray-900 dark:text-gray-100">
-              {booking.mock_type || '-'}
+              {booking.mock_exam_type || '-'}
             </div>
           </td>
         );
