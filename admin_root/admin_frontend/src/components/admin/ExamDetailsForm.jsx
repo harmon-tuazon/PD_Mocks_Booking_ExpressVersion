@@ -310,6 +310,14 @@ const ExamDetailsForm = ({
                 </div>
               )}
             </div>
+
+            {/* System Record ID */}
+            <div>
+              <Label>System Record ID</Label>
+              <div className="font-mono text-sm text-gray-600 dark:text-gray-400">
+                {displayData.id || 'N/A'}
+              </div>
+            </div>
           </div>
         </div>
       </div>
