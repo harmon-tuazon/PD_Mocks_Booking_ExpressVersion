@@ -22,7 +22,10 @@ const BookingRow = ({
   isSelected = false,
   onToggleSelection,
   isDisabled = false,
-  hideTraineeInfo = false
+  hideTraineeInfo = false,
+  visibleColumns = [],
+  columnOrder = [],
+  sizeClass = ''
 }) => {
   // Format dominant hand display
   const formatDominantHand = (hand) => {
@@ -73,6 +76,218 @@ const BookingRow = ({
     }
   };
 
+  // Get cell classes based on size
+  const getCellClasses = () => {
+    // Use provided sizeClass or default
+    return sizeClass || 'px-4 py-3 text-xs';
+  };
+
+  // Render cell based on column type
+  const renderCell = (columnId) => {
+    const cellClasses = getCellClasses();
+    const baseClasses = `${cellClasses} whitespace-nowrap text-center`;
+
+    // Check if this is a fixed column that needs sticky positioning
+    const isFixed = columnId === 'name' || columnId === 'email' || columnId === 'student_id';
+    let stickyClasses = '';
+    let leftPosition = '0';
+    
+    if (isFixed) {
+      stickyClasses = 'sticky bg-white dark:bg-dark-card z-5';
+      if (columnId === 'email') leftPosition = '150px'; // After name column
+      if (columnId === 'student_id') leftPosition = '350px'; // After name and email
+    }
+
+    switch (columnId) {
+      case 'name':
+        return (
+          <td 
+            key={columnId} 
+            className={`${baseClasses} ${stickyClasses}`}
+            style={isFixed ? { left: leftPosition } : {}}
+          >
+            <div className="font-medium text-gray-900 dark:text-gray-100">
+              {booking.first_name && booking.last_name
+                ? `${booking.first_name} ${booking.last_name}`
+                : booking.name || 'N/A'}
+            </div>
+          </td>
+        );
+
+      case 'email':
+        return (
+          <td 
+            key={columnId} 
+            className={`${baseClasses} ${stickyClasses}`}
+            style={isFixed ? { left: leftPosition } : {}}
+          >
+            <div className="text-gray-900 dark:text-gray-100">
+              {booking.email || 'N/A'}
+            </div>
+          </td>
+        );
+
+      case 'student_id':
+        return (
+          <td 
+            key={columnId} 
+            className={`${baseClasses} ${stickyClasses}`}
+            style={isFixed ? { left: leftPosition } : {}}
+          >
+            <div className="text-gray-900 dark:text-gray-100">
+              {formatStudentId(booking.student_id)}
+            </div>
+          </td>
+        );
+
+      case 'dominant_hand':
+        return (
+          <td key={columnId} className={baseClasses}>
+            <div className="text-gray-900 dark:text-gray-100">
+              {formatDominantHand(booking.dominant_hand)}
+            </div>
+          </td>
+        );
+
+      case 'mock_exam_type':
+        return (
+          <td key={columnId} className={baseClasses}>
+            <div className="text-gray-900 dark:text-gray-100">
+              {booking.mock_exam_type || '-'}
+            </div>
+          </td>
+        );
+
+      case 'exam_date':
+        return (
+          <td key={columnId} className={baseClasses}>
+            <div className="text-gray-900 dark:text-gray-100">
+              {booking.exam_date ?
+                new Date(booking.exam_date).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric'
+                }) : '-'}
+            </div>
+          </td>
+        );
+
+      case 'time':
+        return (
+          <td key={columnId} className={baseClasses}>
+            <div className="text-gray-900 dark:text-gray-100">
+              {booking.start_time && booking.end_time
+                ? `${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}`
+                : '-'}
+            </div>
+          </td>
+        );
+
+      case 'attending_location':
+        return (
+          <td key={columnId} className={baseClasses}>
+            <div className="text-gray-900 dark:text-gray-100">
+              {booking.attending_location || '-'}
+            </div>
+          </td>
+        );
+
+      case 'attendance':
+        return (
+          <td key={columnId} className={baseClasses}>
+            {booking.attendance && booking.attendance !== '' ? (
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                booking.attendance === 'Yes' || booking.attendance === 'true'
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                  : booking.attendance === 'No' || booking.attendance === 'false'
+                  ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+              }`}>
+                {booking.attendance === 'Yes' || booking.attendance === 'true' ? (
+                  <>
+                    <CheckCircleIcon className="h-3 w-3 mr-1" />
+                    Attended
+                  </>
+                ) : booking.attendance === 'No' || booking.attendance === 'false' ? (
+                  <>
+                    <XCircleIcon className="h-3 w-3 mr-1" />
+                    Did Not Attend
+                  </>
+                ) : (
+                  booking.attendance
+                )}
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                -
+              </span>
+            )}
+          </td>
+        );
+
+      case 'status':
+        return (
+          <td key={columnId} className={baseClasses}>
+            {(() => {
+              let status = 'Active';
+              let badgeClass = 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200';
+
+              if (booking.is_active === 'Cancelled' || booking.is_active === 'cancelled' || isCancelled) {
+                status = 'Cancelled';
+                badgeClass = 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200';
+              } else if (booking.exam_date) {
+                const examDate = new Date(booking.exam_date);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (examDate < today) {
+                  status = 'Completed';
+                  badgeClass = 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200';
+                }
+              }
+
+              return (
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
+                  {status}
+                </span>
+              );
+            })()}
+          </td>
+        );
+
+      case 'token_used':
+        return (
+          <td key={columnId} className={baseClasses}>
+            <div className="text-gray-900 dark:text-gray-100">
+              {booking.token_used || '-'}
+            </div>
+          </td>
+        );
+
+      case 'booking_date':
+        return (
+          <td key={columnId} className={baseClasses}>
+            <div className="text-gray-500 dark:text-gray-400">
+              {formatBookingDate(booking.booking_date)}
+            </div>
+            {booking.booking_date && (
+              <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                {new Date(booking.booking_date).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </div>
+            )}
+          </td>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <tr
       className={`transition-colors ${
@@ -90,7 +305,7 @@ const BookingRow = ({
     >
       {/* Checkbox (only in selection modes) */}
       {isSelectionMode && (
-        <td className="px-4 py-3 whitespace-nowrap text-center w-12">
+        <td className={`${getCellClasses()} whitespace-nowrap text-center w-12`}>
           {isDisabled ? (
             <div className="flex items-center justify-center">
               <span className="text-xs text-gray-400 dark:text-gray-600">-</span>
@@ -107,168 +322,18 @@ const BookingRow = ({
         </td>
       )}
 
-      {/* Name - Only show when not in trainee view */}
-      {!hideTraineeInfo && (
-        <td className="px-4 py-3 whitespace-nowrap text-center">
-          <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
-            {booking.first_name && booking.last_name
-              ? `${booking.first_name} ${booking.last_name}`
-              : booking.name || 'N/A'}
-          </div>
-        </td>
-      )}
+      {/* Render columns based on order and visibility */}
+      {!hideTraineeInfo && columnOrder.map(columnId => {
+        // Skip columns that aren't visible (for dynamic columns)
+        const isFixed = columnId === 'name' || columnId === 'email' || columnId === 'student_id';
+        if (!isFixed && !visibleColumns.includes(columnId)) {
+          return null;
+        }
+        return renderCell(columnId);
+      })}
 
-      {/* Email - Only show when not in trainee view */}
-      {!hideTraineeInfo && (
-        <td className="px-4 py-3 whitespace-nowrap text-center">
-          <div className="text-xs text-gray-900 dark:text-gray-100">
-            {booking.email || 'N/A'}
-          </div>
-        </td>
-      )}
-
-      {/* Student ID - Only show when not in trainee view */}
-      {!hideTraineeInfo && (
-        <td className="px-4 py-3 whitespace-nowrap text-center">
-          <div className="text-xs text-gray-900 dark:text-gray-100">
-            {formatStudentId(booking.student_id)}
-          </div>
-        </td>
-      )}
-
-      {/* Dominant Hand - Only show when not in trainee view */}
-      {!hideTraineeInfo && (
-        <td className="px-4 py-3 whitespace-nowrap text-center">
-          <div className="text-xs text-gray-900 dark:text-gray-100">
-            {formatDominantHand(booking.dominant_hand)}
-          </div>
-        </td>
-      )}
-
-      {/* Mock Type */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs text-gray-900 dark:text-gray-100">
-          {booking.mock_exam_type || '-'}
-        </div>
-      </td>
-
-      {/* Exam Date */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs text-gray-900 dark:text-gray-100">
-          {booking.exam_date ?
-            new Date(booking.exam_date).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            }) : '-'}
-        </div>
-      </td>
-
-      {/* Time (Start - End) */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs text-gray-900 dark:text-gray-100">
-          {booking.start_time && booking.end_time
-            ? `${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}`
-            : '-'}
-        </div>
-      </td>
-
-      {/* Location */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs text-gray-900 dark:text-gray-100">
-          {booking.attending_location || '-'}
-        </div>
-      </td>
-
-      {/* Dominant Hand - Always show now */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs text-gray-900 dark:text-gray-100">
-          {formatDominantHand(booking.dominant_hand)}
-        </div>
-      </td>
-
-      {/* Attendance Status */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        {booking.attendance && booking.attendance !== '' ? (
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            booking.attendance === 'Yes' || booking.attendance === 'true'
-              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
-              : booking.attendance === 'No' || booking.attendance === 'false'
-              ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-          }`}>
-            {booking.attendance === 'Yes' || booking.attendance === 'true' ? (
-              <>
-                <CheckCircleIcon className="h-3 w-3 mr-1" />
-                Attended
-              </>
-            ) : booking.attendance === 'No' || booking.attendance === 'false' ? (
-              <>
-                <XCircleIcon className="h-3 w-3 mr-1" />
-                Did Not Attend
-              </>
-            ) : (
-              booking.attendance
-            )}
-          </span>
-        ) : (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-            -
-          </span>
-        )}
-      </td>
-
-      {/* Status - Active/Cancelled/Completed */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        {(() => {
-          let status = 'Active';
-          let badgeClass = 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200';
-
-          if (booking.is_active === 'Cancelled' || booking.is_active === 'cancelled' || isCancelled) {
-            status = 'Cancelled';
-            badgeClass = 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200';
-          } else if (booking.exam_date) {
-            const examDate = new Date(booking.exam_date);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            if (examDate < today) {
-              status = 'Completed';
-              badgeClass = 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200';
-            }
-          }
-
-          return (
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
-              {status}
-            </span>
-          );
-        })()}
-      </td>
-
-      {/* Token Used */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs text-gray-900 dark:text-gray-100">
-          {booking.token_used || '-'}
-        </div>
-      </td>
-
-      {/* Booking Date */}
-      <td className="px-4 py-3 whitespace-nowrap text-center">
-        <div className="text-xs text-gray-500 dark:text-gray-400">
-          {formatBookingDate(booking.booking_date)}
-        </div>
-        {booking.booking_date && (
-          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            {new Date(booking.booking_date).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-          </div>
-        )}
-      </td>
+      {/* For trainee view (hideTraineeInfo=true), only render visible dynamic columns */}
+      {hideTraineeInfo && visibleColumns.map(columnId => renderCell(columnId))}
     </tr>
   );
 };

@@ -14,6 +14,8 @@ import { useState, useEffect } from 'react';
 import BookingRow from './BookingRow';
 import AttendanceControls from './AttendanceControls';
 import CancellationControls from './CancellationControls';
+import ColumnVisibilityControl from './ColumnVisibilityControl';
+import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { MagnifyingGlassIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -40,6 +42,19 @@ const BookingsTable = ({
   hideTraineeInfo = false
 }) => {
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm || '');
+
+  // Import column visibility hook
+  const {
+    visibleColumns,
+    toggleColumn,
+    resetDefaults,
+    isColumnVisible,
+    getCellClasses,
+    getHeaderClasses,
+    getColumnOrder,
+    columnDefinitions,
+    fixedColumns
+  } = useColumnVisibility();
 
   // Safeguard: ensure totalPages is a valid positive number
   const safeTotalPages = Math.max(1, Math.floor(totalPages) || 1);
@@ -81,19 +96,50 @@ const BookingsTable = ({
     );
   };
 
-  // Sortable header component
-  const SortableHeader = ({ column, children, align = 'left' }) => (
-    <th
-      scope="col"
-      className={`px-4 py-3 text-${align} text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors`}
-      onClick={() => onSort(column)}
-    >
-      <div className={`flex items-center ${align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : ''}`}>
+  // Get column definition by id
+  const getColumnDef = (columnId) => {
+    const allColumns = [...fixedColumns, ...columnDefinitions];
+    return allColumns.find(col => col.id === columnId);
+  };
+
+  // Sortable header component with dynamic sizing
+  const SortableHeader = ({ column, children, align = 'left', isFixed = false }) => {
+    const headerClasses = getHeaderClasses();
+    const baseClasses = `${headerClasses} text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors`;
+    const stickyClasses = isFixed ? 'sticky bg-gray-50 dark:bg-gray-800 z-10' : '';
+    
+    // Calculate sticky position for fixed columns
+    let leftPosition = '0';
+    if (isFixed) {
+      const columnIndex = fixedColumns.findIndex(col => col.id === column);
+      if (columnIndex === 1) leftPosition = '150px'; // After name column
+      if (columnIndex === 2) leftPosition = '350px'; // After name and email
+    }
+
+    return (
+      <th
+        scope="col"
+        className={`${baseClasses} ${stickyClasses} text-${align}`}
+        style={isFixed ? { left: leftPosition } : {}}
+        onClick={() => onSort(column)}
+      >
+        <div className={`flex items-center ${align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : ''}`}>
+          {children}
+          {getSortIcon(column)}
+        </div>
+      </th>
+    );
+  };
+
+  // Non-sortable header with dynamic sizing
+  const NonSortableHeader = ({ children, align = 'left' }) => {
+    const headerClasses = getHeaderClasses();
+    return (
+      <th scope="col" className={`${headerClasses} text-${align} text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
         {children}
-        {getSortIcon(column)}
-      </div>
-    </th>
-  );
+      </th>
+    );
+  };
 
   // Calculate pagination info (20 items per page to match pagination)
   const itemsPerPage = 20;
@@ -198,23 +244,36 @@ const BookingsTable = ({
         </div>
       )}
 
-      {/* Search Bar (hidden when hideSearch is true OR in selection modes) */}
-      {!hideSearch && !isSelectionMode && (
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="relative md:w-80">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+      {/* Search Bar and Column Visibility Control */}
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          {/* Search Bar (hidden when hideSearch is true OR in selection modes) */}
+          {!hideSearch && !isSelectionMode ? (
+            <div className="relative md:w-80">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <Input
+                type="text"
+                value={localSearchTerm}
+                onChange={(e) => setLocalSearchTerm(e.target.value)}
+                placeholder="Search by name, email, or student ID..."
+                className="pl-10"
+              />
             </div>
-            <Input
-              type="text"
-              value={localSearchTerm}
-              onChange={(e) => setLocalSearchTerm(e.target.value)}
-              placeholder="Search by name, email, or student ID..."
-              className="pl-10"
-            />
-          </div>
+          ) : (
+            <div /> // Empty div to maintain flex layout
+          )}
+
+          {/* Column Visibility Control (always shown) */}
+          <ColumnVisibilityControl
+            columns={columnDefinitions}
+            visibleColumns={visibleColumns}
+            onToggleColumn={toggleColumn}
+            onResetDefaults={resetDefaults}
+          />
         </div>
-      )}
+      </div>
 
       {/* Table */}
       <div className="overflow-x-auto">
@@ -246,50 +305,81 @@ const BookingsTable = ({
                 <tr>
                   {/* Checkbox column (selection modes) */}
                   {isSelectionMode && (
-                    <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">
+                    <NonSortableHeader align="center">
                       <Checkbox disabled className="opacity-0" />
-                    </th>
+                    </NonSortableHeader>
                   )}
 
-                  {/* Only show trainee info columns when not in trainee view */}
-                  {!hideTraineeInfo && <SortableHeader column="name" align="center">Name</SortableHeader>}
-                  {!hideTraineeInfo && <SortableHeader column="email" align="center">Email</SortableHeader>}
-                  {!hideTraineeInfo && <SortableHeader column="student_id" align="center">Student ID</SortableHeader>}
-                  {!hideTraineeInfo && <SortableHeader column="dominant_hand" align="center">Dominant Hand</SortableHeader>}
+                  {/* Render columns based on visibility and order */}
+                  {!hideTraineeInfo && getColumnOrder().map(columnId => {
+                    const columnDef = getColumnDef(columnId);
+                    if (!columnDef) return null;
 
-                  {/* New column order for trainee dashboard when hideTraineeInfo=true */}
-                  {/* Mock Type column */}
-                  <SortableHeader column="mock_exam_type" align="center">Mock Type</SortableHeader>
+                    // Skip dynamic columns that aren't visible
+                    if (!columnDef.fixed && !isColumnVisible(columnId)) {
+                      return null;
+                    }
 
-                  {/* Exam Date column */}
-                  <SortableHeader column="exam_date" align="center">Exam Date</SortableHeader>
+                    // Fixed columns (always visible and sticky)
+                    if (columnDef.fixed) {
+                      return (
+                        <SortableHeader 
+                          key={columnId} 
+                          column={columnId} 
+                          align="center" 
+                          isFixed={true}
+                        >
+                          {columnDef.label}
+                        </SortableHeader>
+                      );
+                    }
 
-                  {/* Time column - non-sortable */}
-                  <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Time
-                  </th>
+                    // Dynamic columns based on ID
+                    switch (columnId) {
+                      case 'time':
+                      case 'attendance':
+                      case 'status':
+                        // Non-sortable columns
+                        return (
+                          <NonSortableHeader key={columnId} align="center">
+                            {columnDef.label}
+                          </NonSortableHeader>
+                        );
+                      default:
+                        // Sortable columns
+                        return (
+                          <SortableHeader key={columnId} column={columnId} align="center">
+                            {columnDef.label}
+                          </SortableHeader>
+                        );
+                    }
+                  })}
 
-                  {/* Location column */}
-                  <SortableHeader column="attending_location" align="center">Location</SortableHeader>
+                  {/* For trainee view (hideTraineeInfo=true), show all columns without fixed columns */}
+                  {hideTraineeInfo && columnDefinitions.map(columnDef => {
+                    // Skip columns that aren't visible
+                    if (!isColumnVisible(columnDef.id)) {
+                      return null;
+                    }
 
-                  {/* Dominant Hand column - Always show now */}
-                  <SortableHeader column="dominant_hand" align="center">Dominant Hand</SortableHeader>
-
-                  {/* Attendance status column */}
-                  <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Attendance
-                  </th>
-
-                  {/* Status column */}
-                  <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-
-                  {/* Token Used column */}
-                  <SortableHeader column="token_used" align="center">Token Used</SortableHeader>
-
-                  {/* Booking Date column */}
-                  <SortableHeader column="booking_date" align="center">Booking Date</SortableHeader>
+                    // Render based on column type
+                    switch (columnDef.id) {
+                      case 'time':
+                      case 'attendance':
+                      case 'status':
+                        return (
+                          <NonSortableHeader key={columnDef.id} align="center">
+                            {columnDef.label}
+                          </NonSortableHeader>
+                        );
+                      default:
+                        return (
+                          <SortableHeader key={columnDef.id} column={columnDef.id} align="center">
+                            {columnDef.label}
+                          </SortableHeader>
+                        );
+                    }
+                  })}
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
@@ -319,6 +409,9 @@ const BookingsTable = ({
                       onToggleSelection={onToggleSelection}
                       isDisabled={isDisabled}
                       hideTraineeInfo={hideTraineeInfo}
+                      visibleColumns={visibleColumns}
+                      columnOrder={getColumnOrder()}
+                      sizeClass={getCellClasses()}
                     />
                   );
                 })}
