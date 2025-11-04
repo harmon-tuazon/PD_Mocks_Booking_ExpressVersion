@@ -14,7 +14,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatTime } from '../../utils/timeFormatters';
-import { COLUMN_DEFINITIONS, FIXED_COLUMNS } from '../../hooks/useColumnVisibility';
+import { COLUMN_DEFINITIONS, FIXED_COLUMNS, TRAINEE_ONLY_COLUMNS } from '../../hooks/useColumnVisibility';
 
 const BookingRow = ({
   booking,
@@ -85,7 +85,7 @@ const BookingRow = ({
 
   // Get column min-width
   const getColumnMinWidth = (columnId) => {
-    const allColumns = [...FIXED_COLUMNS, ...COLUMN_DEFINITIONS];
+    const allColumns = [...FIXED_COLUMNS, ...TRAINEE_ONLY_COLUMNS, ...COLUMN_DEFINITIONS];
     const columnDef = allColumns.find(col => col.id === columnId);
     return columnDef?.minWidth || 'auto';
   };
@@ -133,6 +133,29 @@ const BookingRow = ({
             <div className="text-gray-900 dark:text-gray-100">
               {formatDominantHand(booking.dominant_hand)}
             </div>
+          </td>
+        );
+
+      case 'mock_type':
+        return (
+          <td key={columnId} className={baseClasses} style={cellStyle}>
+            {booking.mock_exam_type ? (
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                booking.mock_exam_type === 'Situational Judgment'
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200'
+                  : booking.mock_exam_type === 'Clinical Skills'
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                  : booking.mock_exam_type === 'Mini-mock'
+                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200'
+                  : booking.mock_exam_type === 'Mock Discussion'
+                  ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+              }`}>
+                {booking.mock_exam_type}
+              </span>
+            ) : (
+              <span className="text-gray-500 dark:text-gray-400">-</span>
+            )}
           </td>
         );
 

@@ -15,7 +15,7 @@ import BookingRow from './BookingRow';
 import AttendanceControls from './AttendanceControls';
 import CancellationControls from './CancellationControls';
 import ColumnVisibilityControl from './ColumnVisibilityControl';
-import { useColumnVisibility } from '@/hooks/useColumnVisibility';
+import { useColumnVisibility, TRAINEE_ONLY_COLUMNS } from '@/hooks/useColumnVisibility';
 import { MagnifyingGlassIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -219,8 +219,11 @@ const BookingsTable = ({
   // Determine which mode is active (they're mutually exclusive)
   const isSelectionMode = isAttendanceMode || isCancellationMode;
 
-  // Get all column IDs for trainee view (show all columns)
-  const traineeViewColumns = columnDefinitions.map(col => col.id);
+  // Get all column IDs for trainee view (show all columns + trainee-only columns)
+  const traineeViewColumns = [
+    ...TRAINEE_ONLY_COLUMNS.map(col => col.id),
+    ...columnDefinitions.map(col => col.id)
+  ];
 
   return (
     <div>
@@ -378,13 +381,15 @@ const BookingsTable = ({
                     }
                   })}
 
-                  {/* Trainee view: Show all columns in definition order */}
-                  {hideTraineeInfo && columnDefinitions.map(columnDef => {
+                  {/* Trainee view: Show trainee-only columns + all standard columns */}
+                  {hideTraineeInfo && [...TRAINEE_ONLY_COLUMNS, ...columnDefinitions].map(columnDef => {
                     // Render based on column type
                     switch (columnDef.id) {
                       case 'time':
                       case 'attendance':
                       case 'status':
+                      case 'mock_type':
+                        // Non-sortable columns
                         return (
                           <NonSortableHeader key={columnDef.id} column={columnDef.id} align="center">
                             {columnDef.label}

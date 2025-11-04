@@ -16,6 +16,11 @@ export const COLUMN_DEFINITIONS = [
   { id: 'system_record_id', label: 'System Record ID', defaultVisible: false, minWidth: '150px' }
 ];;;
 
+// Trainee-only columns (not available in admin column selector, only shown in trainee dashboard)
+export const TRAINEE_ONLY_COLUMNS = [
+  { id: 'mock_type', label: 'Mock Type', minWidth: '150px' }
+];
+
 // Fixed columns that are always visible and sticky
 export const FIXED_COLUMNS = [
   { id: 'name', label: 'Name', fixed: true, minWidth: '150px' },
