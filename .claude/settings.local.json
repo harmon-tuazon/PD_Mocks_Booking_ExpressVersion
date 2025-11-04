@@ -33,7 +33,8 @@
       "Bash(npx shadcn init:*)",
       "Bash(npx shadcn:*)",
       "mcp__serena__initial_instructions",
-      "Bash(npx shadcn@latest add calendar popover button --yes)"
+      "Bash(npx shadcn@latest add calendar popover button --yes)",
+      "mcp__serena__think_about_whether_you_are_done"
     ],
     "deny": [],
     "ask": []

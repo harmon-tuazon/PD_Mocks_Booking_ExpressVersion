@@ -36,6 +36,9 @@ module.exports = async (req, res) => {
       filter_date_to
     } = req.validatedData;
 
+    // Check for debug mode to bypass cache
+    const debugMode = req.query.debug === 'true';
+
     // Build filters object
     const filters = {};
     if (filter_location) filters.location = filter_location;
@@ -56,11 +59,15 @@ module.exports = async (req, res) => {
       ...filters
     })}`;
 
-    // Check cache first
-    const cachedData = await cache.get(cacheKey);
-    if (cachedData) {
-      console.log(`🎯 [Cache HIT] ${cacheKey.substring(0, 80)}...`);
-      return res.status(200).json(cachedData);
+    // Check cache first (unless debug mode)
+    if (!debugMode) {
+      const cachedData = await cache.get(cacheKey);
+      if (cachedData) {
+        console.log(`🎯 [Cache HIT] ${cacheKey.substring(0, 80)}...`);
+        return res.status(200).json(cachedData);
+      }
+    } else {
+      console.log(`🔍 [DEBUG MODE] Cache bypassed for mock exam list`);
     }
 
     console.log(`📋 [Cache MISS] Fetching from HubSpot: ${cacheKey.substring(0, 80)}...`);
