@@ -53,6 +53,7 @@ const ColumnVisibilityControl = ({
               key={column.id}
               checked={visibleColumns.includes(column.id)}
               onCheckedChange={() => onToggleColumn(column.id)}
+              onSelect={(e) => e.preventDefault()}
               className="cursor-pointer"
             >
               {column.label}

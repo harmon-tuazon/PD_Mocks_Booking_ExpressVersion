@@ -182,6 +182,12 @@ module.exports = async (req, res) => {
               'attending_location',
               'token_used',
               'ndecc_exam_date',
+              'exam_date',
+              'mock_type',
+              'mock_exam_type',
+              'location',
+              'start_time',
+              'end_time',
               'is_active',
               'hs_createdate',
               'hs_lastmodifieddate'
@@ -276,6 +282,15 @@ module.exports = async (req, res) => {
         attending_location: props.attending_location || '',
         token_used: props.token_used || '',
         is_active: props.is_active || '',
+
+        // Add the missing property mappings
+        exam_date: props.ndecc_exam_date || props.exam_date || '',
+        mock_type: props.mock_type || props.mock_exam_type || '',
+        location: props.location || '',
+        start_time: props.start_time || '',
+        end_time: props.end_time || '',
+        booking_date: props.hs_createdate || '',
+
         created_at: props.hs_createdate || '',
         updated_at: props.hs_lastmodifieddate || props.hs_createdate || ''
       };

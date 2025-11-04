@@ -87,25 +87,10 @@ const BookingRow = ({
     const cellClasses = getCellClasses();
     const baseClasses = `${cellClasses} whitespace-nowrap text-center`;
 
-    // Check if this is a fixed column that needs sticky positioning
-    const isFixed = columnId === 'name' || columnId === 'email' || columnId === 'student_id';
-    let stickyClasses = '';
-    let leftPosition = '0';
-    
-    if (isFixed) {
-      stickyClasses = 'sticky bg-white dark:bg-dark-card z-5';
-      if (columnId === 'email') leftPosition = '150px'; // After name column
-      if (columnId === 'student_id') leftPosition = '350px'; // After name and email
-    }
-
     switch (columnId) {
       case 'name':
         return (
-          <td 
-            key={columnId} 
-            className={`${baseClasses} ${stickyClasses}`}
-            style={isFixed ? { left: leftPosition } : {}}
-          >
+          <td key={columnId} className={baseClasses}>
             <div className="font-medium text-gray-900 dark:text-gray-100">
               {booking.first_name && booking.last_name
                 ? `${booking.first_name} ${booking.last_name}`
@@ -116,11 +101,7 @@ const BookingRow = ({
 
       case 'email':
         return (
-          <td 
-            key={columnId} 
-            className={`${baseClasses} ${stickyClasses}`}
-            style={isFixed ? { left: leftPosition } : {}}
-          >
+          <td key={columnId} className={baseClasses}>
             <div className="text-gray-900 dark:text-gray-100">
               {booking.email || 'N/A'}
             </div>
@@ -129,11 +110,7 @@ const BookingRow = ({
 
       case 'student_id':
         return (
-          <td 
-            key={columnId} 
-            className={`${baseClasses} ${stickyClasses}`}
-            style={isFixed ? { left: leftPosition } : {}}
-          >
+          <td key={columnId} className={baseClasses}>
             <div className="text-gray-900 dark:text-gray-100">
               {formatStudentId(booking.student_id)}
             </div>
@@ -153,7 +130,7 @@ const BookingRow = ({
         return (
           <td key={columnId} className={baseClasses}>
             <div className="text-gray-900 dark:text-gray-100">
-              {booking.mock_exam_type || '-'}
+              {booking.mock_type || '-'}
             </div>
           </td>
         );
@@ -187,7 +164,7 @@ const BookingRow = ({
         return (
           <td key={columnId} className={baseClasses}>
             <div className="text-gray-900 dark:text-gray-100">
-              {booking.attending_location || '-'}
+              {booking.location || booking.attending_location || '-'}
             </div>
           </td>
         );
