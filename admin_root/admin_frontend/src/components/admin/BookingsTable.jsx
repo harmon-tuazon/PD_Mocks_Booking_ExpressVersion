@@ -201,6 +201,9 @@ const BookingsTable = ({
   // Determine which mode is active (they're mutually exclusive)
   const isSelectionMode = isAttendanceMode || isCancellationMode;
 
+  // Get all column IDs for trainee view (show all columns)
+  const traineeViewColumns = columnDefinitions.map(col => col.id);
+
   return (
     <div>
       {/* Attendance Controls (badges and buttons always shown, control panel when in mode) */}
@@ -265,13 +268,15 @@ const BookingsTable = ({
             <div /> // Empty div to maintain flex layout
           )}
 
-          {/* Column Visibility Control (always shown) */}
-          <ColumnVisibilityControl
-            columns={columnDefinitions}
-            visibleColumns={visibleColumns}
-            onToggleColumn={toggleColumn}
-            onResetDefaults={resetDefaults}
-          />
+          {/* Column Visibility Control (only shown for admin view) */}
+          {!hideTraineeInfo && (
+            <ColumnVisibilityControl
+              columns={columnDefinitions}
+              visibleColumns={visibleColumns}
+              onToggleColumn={toggleColumn}
+              onResetDefaults={resetDefaults}
+            />
+          )}
         </div>
       </div>
 
@@ -310,7 +315,7 @@ const BookingsTable = ({
                     </NonSortableHeader>
                   )}
 
-                  {/* Render columns based on visibility and order */}
+                  {/* Admin view: Render fixed columns + visible dynamic columns */}
                   {!hideTraineeInfo && getColumnOrder().map(columnId => {
                     const columnDef = getColumnDef(columnId);
                     if (!columnDef) return null;
@@ -355,13 +360,8 @@ const BookingsTable = ({
                     }
                   })}
 
-                  {/* For trainee view (hideTraineeInfo=true), show all columns without fixed columns */}
+                  {/* Trainee view: Show all columns in definition order */}
                   {hideTraineeInfo && columnDefinitions.map(columnDef => {
-                    // Skip columns that aren't visible
-                    if (!isColumnVisible(columnDef.id)) {
-                      return null;
-                    }
-
                     // Render based on column type
                     switch (columnDef.id) {
                       case 'time':
@@ -409,8 +409,8 @@ const BookingsTable = ({
                       onToggleSelection={onToggleSelection}
                       isDisabled={isDisabled}
                       hideTraineeInfo={hideTraineeInfo}
-                      visibleColumns={visibleColumns}
-                      columnOrder={getColumnOrder()}
+                      visibleColumns={hideTraineeInfo ? traineeViewColumns : visibleColumns}
+                      columnOrder={hideTraineeInfo ? traineeViewColumns : getColumnOrder()}
                       sizeClass={getCellClasses()}
                     />
                   );
@@ -499,6 +499,6 @@ const BookingsTable = ({
       </div>
     </div>
   );
-};
+}
 
 export default BookingsTable;
