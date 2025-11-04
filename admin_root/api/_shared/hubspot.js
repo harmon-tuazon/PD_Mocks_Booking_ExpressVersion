@@ -1420,7 +1420,7 @@ class HubSpotService {
                 'booking_status', 'contact_id', 'created_at',
                 'payment_method', 'confirmation_number',
                 'student_id', 'student_name', 'student_email',
-                'exam_date', 'hs_createdate'
+                'exam_date', 'hs_createdate', 'is_active'
               ],
               inputs: chunk.map(id => ({ id }))
             });

@@ -23,15 +23,36 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Check if mock exam has bookings before deleting
+    // Check if mock exam has active or completed bookings before deleting
     const mockExamDetails = await hubspot.getMockExamWithBookings(mockExamId);
 
-    if (mockExamDetails.bookings && mockExamDetails.bookings.length > 0) {
+    // Filter for only Active or Completed bookings (exclude Cancelled)
+    const activeOrCompletedBookings = mockExamDetails.bookings.filter(booking => {
+      const status = booking.properties.is_active;
+      return status === 'Active' || status === 'Completed';
+    });
+
+    if (activeOrCompletedBookings.length > 0) {
+      const totalBookings = mockExamDetails.bookings.length;
+      const cancelledCount = totalBookings - activeOrCompletedBookings.length;
+
       return res.status(409).json({
         success: false,
-        error: `Cannot delete mock exam with existing bookings. This exam has ${mockExamDetails.bookings.length} booking(s). Please cancel all bookings first.`,
-        booking_count: mockExamDetails.bookings.length
+        error: `Cannot delete mock exam with ${activeOrCompletedBookings.length} active or completed booking(s). Please cancel all bookings first.`,
+        booking_count: activeOrCompletedBookings.length,
+        total_bookings: totalBookings,
+        cancelled_bookings: cancelledCount
       });
+    }
+
+    // Log deletion details
+    const totalBookings = mockExamDetails.bookings.length;
+    const cancelledCount = totalBookings - activeOrCompletedBookings.length;
+
+    if (totalBookings > 0) {
+      console.log(`🗑️ Deleting mock exam ${mockExamId} with ${totalBookings} total bookings (${cancelledCount} cancelled, ${activeOrCompletedBookings.length} active/completed)`);
+    } else {
+      console.log(`🗑️ Deleting mock exam ${mockExamId} with no bookings`);
     }
 
     // Delete mock exam from HubSpot
@@ -48,8 +69,15 @@ module.exports = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Mock exam deleted successfully',
-      deleted_id: mockExamId
+      message: totalBookings > 0 && cancelledCount > 0
+        ? `Mock exam deleted successfully (${cancelledCount} cancelled booking(s) removed)`
+        : 'Mock exam deleted successfully',
+      deleted_id: mockExamId,
+      bookings_info: {
+        total: totalBookings,
+        cancelled: cancelledCount,
+        active_or_completed: activeOrCompletedBookings.length
+      }
     });
 
   } catch (error) {
