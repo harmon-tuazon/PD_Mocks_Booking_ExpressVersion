@@ -5,7 +5,6 @@ const DEFAULT_COLUMNS = ['time', 'token_used', 'booking_date'];
 
 // All available dynamic columns (excludes fixed columns: name, email, student_id)
 export const COLUMN_DEFINITIONS = [
-  { id: 'mock_exam_type', label: 'Mock Type', defaultVisible: false, minWidth: '150px' },
   { id: 'exam_date', label: 'Exam Date', defaultVisible: false, minWidth: '120px' },
   { id: 'time', label: 'Time', defaultVisible: true, minWidth: '150px' },
   { id: 'attending_location', label: 'Location', defaultVisible: false, minWidth: '120px' },
@@ -13,8 +12,9 @@ export const COLUMN_DEFINITIONS = [
   { id: 'attendance', label: 'Attendance', defaultVisible: false, minWidth: '120px' },
   { id: 'status', label: 'Status', defaultVisible: false, minWidth: '100px' },
   { id: 'token_used', label: 'Token Used', defaultVisible: true, minWidth: '150px' },
-  { id: 'booking_date', label: 'Booking Date', defaultVisible: true, minWidth: '180px' }
-];;
+  { id: 'booking_date', label: 'Booking Date', defaultVisible: true, minWidth: '180px' },
+  { id: 'system_record_id', label: 'System Record ID', defaultVisible: false, minWidth: '150px' }
+];;;
 
 // Fixed columns that are always visible and sticky
 export const FIXED_COLUMNS = [

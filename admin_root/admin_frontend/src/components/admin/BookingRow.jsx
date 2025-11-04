@@ -136,15 +136,6 @@ const BookingRow = ({
           </td>
         );
 
-      case 'mock_exam_type':
-        return (
-          <td key={columnId} className={baseClasses} style={cellStyle}>
-            <div className="text-gray-900 dark:text-gray-100">
-              {booking.mock_exam_type || '-'}
-            </div>
-          </td>
-        );
-
       case 'exam_date':
         return (
           <td key={columnId} className={baseClasses} style={cellStyle}>
@@ -267,6 +258,15 @@ const BookingRow = ({
                 })}
               </div>
             )}
+          </td>
+        );
+
+      case 'system_record_id':
+        return (
+          <td key={columnId} className={baseClasses} style={cellStyle}>
+            <div className="font-mono text-xs text-gray-600 dark:text-gray-400">
+              {booking.id || '-'}
+            </div>
           </td>
         );
 
