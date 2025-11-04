@@ -14,6 +14,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatTime } from '../../utils/timeFormatters';
+import { COLUMN_DEFINITIONS, FIXED_COLUMNS } from '../../hooks/useColumnVisibility';
 
 const BookingRow = ({
   booking,
@@ -82,15 +83,24 @@ const BookingRow = ({
     return sizeClass || 'px-4 py-3 text-xs';
   };
 
+  // Get column min-width
+  const getColumnMinWidth = (columnId) => {
+    const allColumns = [...FIXED_COLUMNS, ...COLUMN_DEFINITIONS];
+    const columnDef = allColumns.find(col => col.id === columnId);
+    return columnDef?.minWidth || 'auto';
+  };
+
   // Render cell based on column type
   const renderCell = (columnId) => {
     const cellClasses = getCellClasses();
     const baseClasses = `${cellClasses} whitespace-nowrap text-center`;
+    const minWidth = getColumnMinWidth(columnId);
+    const cellStyle = { minWidth };
 
     switch (columnId) {
       case 'name':
         return (
-          <td key={columnId} className={baseClasses}>
+          <td key={columnId} className={baseClasses} style={cellStyle}>
             <div className="font-medium text-gray-900 dark:text-gray-100">
               {booking.first_name && booking.last_name
                 ? `${booking.first_name} ${booking.last_name}`
@@ -101,7 +111,7 @@ const BookingRow = ({
 
       case 'email':
         return (
-          <td key={columnId} className={baseClasses}>
+          <td key={columnId} className={baseClasses} style={cellStyle}>
             <div className="text-gray-900 dark:text-gray-100">
               {booking.email || 'N/A'}
             </div>
@@ -110,7 +120,7 @@ const BookingRow = ({
 
       case 'student_id':
         return (
-          <td key={columnId} className={baseClasses}>
+          <td key={columnId} className={baseClasses} style={cellStyle}>
             <div className="text-gray-900 dark:text-gray-100">
               {formatStudentId(booking.student_id)}
             </div>
@@ -119,7 +129,7 @@ const BookingRow = ({
 
       case 'dominant_hand':
         return (
-          <td key={columnId} className={baseClasses}>
+          <td key={columnId} className={baseClasses} style={cellStyle}>
             <div className="text-gray-900 dark:text-gray-100">
               {formatDominantHand(booking.dominant_hand)}
             </div>
@@ -128,7 +138,7 @@ const BookingRow = ({
 
       case 'mock_exam_type':
         return (
-          <td key={columnId} className={baseClasses}>
+          <td key={columnId} className={baseClasses} style={cellStyle}>
             <div className="text-gray-900 dark:text-gray-100">
               {booking.mock_exam_type || '-'}
             </div>
@@ -137,7 +147,7 @@ const BookingRow = ({
 
       case 'exam_date':
         return (
-          <td key={columnId} className={baseClasses}>
+          <td key={columnId} className={baseClasses} style={cellStyle}>
             <div className="text-gray-900 dark:text-gray-100">
               {booking.exam_date ?
                 new Date(booking.exam_date).toLocaleDateString('en-US', {
@@ -151,7 +161,7 @@ const BookingRow = ({
 
       case 'time':
         return (
-          <td key={columnId} className={baseClasses}>
+          <td key={columnId} className={baseClasses} style={cellStyle}>
             <div className="text-gray-900 dark:text-gray-100">
               {booking.start_time && booking.end_time
                 ? `${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}`
@@ -162,7 +172,7 @@ const BookingRow = ({
 
       case 'attending_location':
         return (
-          <td key={columnId} className={baseClasses}>
+          <td key={columnId} className={baseClasses} style={cellStyle}>
             <div className="text-gray-900 dark:text-gray-100">
               {booking.location || booking.attending_location || '-'}
             </div>
@@ -171,7 +181,7 @@ const BookingRow = ({
 
       case 'attendance':
         return (
-          <td key={columnId} className={baseClasses}>
+          <td key={columnId} className={baseClasses} style={cellStyle}>
             {booking.attendance && booking.attendance !== '' ? (
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                 booking.attendance === 'Yes' || booking.attendance === 'true'
@@ -204,7 +214,7 @@ const BookingRow = ({
 
       case 'status':
         return (
-          <td key={columnId} className={baseClasses}>
+          <td key={columnId} className={baseClasses} style={cellStyle}>
             {(() => {
               let status = 'Active';
               let badgeClass = 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200';
@@ -233,7 +243,7 @@ const BookingRow = ({
 
       case 'token_used':
         return (
-          <td key={columnId} className={baseClasses}>
+          <td key={columnId} className={baseClasses} style={cellStyle}>
             <div className="text-gray-900 dark:text-gray-100">
               {booking.token_used || '-'}
             </div>
@@ -242,7 +252,7 @@ const BookingRow = ({
 
       case 'booking_date':
         return (
-          <td key={columnId} className={baseClasses}>
+          <td key={columnId} className={baseClasses} style={cellStyle}>
             <div className="text-gray-500 dark:text-gray-400">
               {formatBookingDate(booking.booking_date)}
             </div>

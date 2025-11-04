@@ -105,9 +105,13 @@ const BookingsTable = ({
   // Sortable header component with dynamic sizing
   const SortableHeader = ({ column, children, align = 'left', isFixed = false }) => {
     const headerClasses = getHeaderClasses();
-    const baseClasses = `${headerClasses} text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors`;
+    const baseClasses = `${headerClasses} text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors whitespace-nowrap`;
     const stickyClasses = isFixed ? 'sticky bg-gray-50 dark:bg-gray-800 z-10' : '';
-    
+
+    // Get column definition for min-width
+    const columnDef = getColumnDef(column);
+    const minWidth = columnDef?.minWidth || 'auto';
+
     // Calculate sticky position for fixed columns
     let leftPosition = '0';
     if (isFixed) {
@@ -116,11 +120,16 @@ const BookingsTable = ({
       if (columnIndex === 2) leftPosition = '350px'; // After name and email
     }
 
+    const headerStyle = {
+      ...(isFixed ? { left: leftPosition } : {}),
+      minWidth
+    };
+
     return (
       <th
         scope="col"
         className={`${baseClasses} ${stickyClasses} text-${align}`}
-        style={isFixed ? { left: leftPosition } : {}}
+        style={headerStyle}
         onClick={() => onSort(column)}
       >
         <div className={`flex items-center ${align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : ''}`}>
@@ -132,10 +141,19 @@ const BookingsTable = ({
   };
 
   // Non-sortable header with dynamic sizing
-  const NonSortableHeader = ({ children, align = 'left' }) => {
+  const NonSortableHeader = ({ column, children, align = 'left' }) => {
     const headerClasses = getHeaderClasses();
+
+    // Get column definition for min-width
+    const columnDef = column ? getColumnDef(column) : null;
+    const minWidth = columnDef?.minWidth || 'auto';
+
     return (
-      <th scope="col" className={`${headerClasses} text-${align} text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
+      <th
+        scope="col"
+        className={`${headerClasses} text-${align} text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap`}
+        style={{ minWidth }}
+      >
         {children}
       </th>
     );
@@ -346,7 +364,7 @@ const BookingsTable = ({
                       case 'status':
                         // Non-sortable columns
                         return (
-                          <NonSortableHeader key={columnId} align="center">
+                          <NonSortableHeader key={columnId} column={columnId} align="center">
                             {columnDef.label}
                           </NonSortableHeader>
                         );
@@ -368,7 +386,7 @@ const BookingsTable = ({
                       case 'attendance':
                       case 'status':
                         return (
-                          <NonSortableHeader key={columnDef.id} align="center">
+                          <NonSortableHeader key={columnDef.id} column={columnDef.id} align="center">
                             {columnDef.label}
                           </NonSortableHeader>
                         );

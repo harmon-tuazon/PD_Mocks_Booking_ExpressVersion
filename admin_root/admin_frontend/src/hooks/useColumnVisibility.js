@@ -5,23 +5,23 @@ const DEFAULT_COLUMNS = ['time', 'token_used', 'booking_date'];
 
 // All available dynamic columns (excludes fixed columns: name, email, student_id)
 export const COLUMN_DEFINITIONS = [
-  { id: 'mock_exam_type', label: 'Mock Type', defaultVisible: false },
-  { id: 'exam_date', label: 'Exam Date', defaultVisible: false },
-  { id: 'time', label: 'Time', defaultVisible: true },
-  { id: 'attending_location', label: 'Location', defaultVisible: false },
-  { id: 'dominant_hand', label: 'Dominant Hand', defaultVisible: false },
-  { id: 'attendance', label: 'Attendance', defaultVisible: false },
-  { id: 'status', label: 'Status', defaultVisible: false },
-  { id: 'token_used', label: 'Token Used', defaultVisible: true },
-  { id: 'booking_date', label: 'Booking Date', defaultVisible: true }
-];
+  { id: 'mock_exam_type', label: 'Mock Type', defaultVisible: false, minWidth: '150px' },
+  { id: 'exam_date', label: 'Exam Date', defaultVisible: false, minWidth: '120px' },
+  { id: 'time', label: 'Time', defaultVisible: true, minWidth: '150px' },
+  { id: 'attending_location', label: 'Location', defaultVisible: false, minWidth: '120px' },
+  { id: 'dominant_hand', label: 'Dominant Hand', defaultVisible: false, minWidth: '140px' },
+  { id: 'attendance', label: 'Attendance', defaultVisible: false, minWidth: '120px' },
+  { id: 'status', label: 'Status', defaultVisible: false, minWidth: '100px' },
+  { id: 'token_used', label: 'Token Used', defaultVisible: true, minWidth: '150px' },
+  { id: 'booking_date', label: 'Booking Date', defaultVisible: true, minWidth: '180px' }
+];;
 
 // Fixed columns that are always visible and sticky
 export const FIXED_COLUMNS = [
-  { id: 'name', label: 'Name', fixed: true },
-  { id: 'email', label: 'Email', fixed: true },
-  { id: 'student_id', label: 'Student ID', fixed: true }
-];
+  { id: 'name', label: 'Name', fixed: true, minWidth: '150px' },
+  { id: 'email', label: 'Email', fixed: true, minWidth: '200px' },
+  { id: 'student_id', label: 'Student ID', fixed: true, minWidth: '100px' }
+];;
 
 /**
  * Custom hook for managing column visibility in the bookings table
