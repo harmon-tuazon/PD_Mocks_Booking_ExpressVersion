@@ -157,7 +157,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect }) => {
           {/* Week Days Header */}
           <div className="grid grid-cols-7 gap-1 mb-4">
             {weekDays.map(day => (
-              <div key={day} className="text-center text-sm font-subheading font-medium text-gray-600 dark:text-gray-400 py-2">
+              <div key={day} className="h-10 w-10 flex items-center justify-center text-sm font-subheading font-medium text-gray-600 dark:text-gray-400">
                 {day}
               </div>
             ))}
