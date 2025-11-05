@@ -114,7 +114,7 @@ export const findConflictingBookings = (existingBookings, newSession) => {
  * @param {Object} conflictingBooking - The conflicting booking
  * @returns {string} - Formatted conflict message
  */
-export const formatConflictMessage = (conflictingBooking) => {
+export const export const formatConflictMessage = (conflictingBooking) => {
   if (!conflictingBooking) {
     return 'Conflicting booking';
   }
@@ -138,11 +138,19 @@ export const formatConflictMessage = (conflictingBooking) => {
                   conflictingBooking.mock_exam?.location ||
                   'Mississauga';
 
-  // Format date
+  // Format date - FIX: Parse ISO date string as local date to avoid timezone shift
   let dateStr = 'Unknown Date';
   if (examDate) {
     try {
-      const date = new Date(examDate);
+      let date;
+      // If examDate is in ISO format (YYYY-MM-DD), parse it as local date
+      if (typeof examDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(examDate)) {
+        const [year, month, day] = examDate.split('-').map(Number);
+        date = new Date(year, month - 1, day); // month is 0-indexed
+      } else {
+        date = new Date(examDate);
+      }
+
       if (!isNaN(date.getTime())) {
         dateStr = date.toLocaleDateString('en-US', {
           weekday: 'long',
@@ -185,7 +193,7 @@ export const formatConflictMessage = (conflictingBooking) => {
 
   // Build the complete message
   return `${mockType} on ${dateStr}${timeStr} (${location})`;
-};
+};;
 
 /**
  * Get a summary message for multiple conflicts

@@ -284,7 +284,7 @@ const BookingForm = () => {
               clearError();
             }}
             onChooseDifferent={() => {
-              goBack();
+              navigate(`/book/exams?type=${encodeURIComponent(mockType)}`);
               clearError();
             }}
             onClose={clearError}
