@@ -95,7 +95,11 @@ module.exports = async (req, res) => {
           `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/search`,
           {
             filterGroups: [emailFilter],
-            properties: ['firstname', 'lastname', 'email', 'phone', 'student_id', 'ndecc_exam_date'],
+            properties: [
+              'firstname', 'lastname', 'email', 'phone', 'student_id', 'ndecc_exam_date',
+              // Token properties
+              'mock_discussion_token', 'clinical_skills_token', 'situational_judgment_token', 'mini_mock_token'
+            ],
             limit: 10
           }
         );
@@ -124,7 +128,11 @@ module.exports = async (req, res) => {
           `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/search`,
           {
             filterGroups: [studentIdFilter],
-            properties: ['firstname', 'lastname', 'email', 'phone', 'student_id', 'ndecc_exam_date'],
+            properties: [
+              'firstname', 'lastname', 'email', 'phone', 'student_id', 'ndecc_exam_date',
+              // Token properties
+              'mock_discussion_token', 'clinical_skills_token', 'situational_judgment_token', 'mini_mock_token'
+            ],
             limit: 10
           }
         );
@@ -145,7 +153,14 @@ module.exports = async (req, res) => {
         email: contact.properties.email || '',
         phone: contact.properties.phone || '',
         student_id: contact.properties.student_id || '',
-        ndecc_exam_date: contact.properties.ndecc_exam_date || ''
+        ndecc_exam_date: contact.properties.ndecc_exam_date || '',
+        // Include token properties
+        tokens: {
+          mock_discussion: parseInt(contact.properties.mock_discussion_token, 10) || 0,
+          clinical_skills: parseInt(contact.properties.clinical_skills_token, 10) || 0,
+          situational_judgment: parseInt(contact.properties.situational_judgment_token, 10) || 0,
+          mini_mock: parseInt(contact.properties.mini_mock_token, 10) || 0
+        }
       }));
 
       // Build response
