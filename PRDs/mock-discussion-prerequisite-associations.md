@@ -233,18 +233,151 @@ export function usePrerequisiteExams(mockExamId, discussionExamDate) {
 
 ```
 1. User clicks "Edit" on Mock Discussion (exam_date: 2026-01-15)
+
 2. Component fetches available exams:
    GET /api/admin/mock-exams/list?mock_type=Clinical%20Skills,Situational%20Judgment
        &is_active=true&exam_date_from=2025-11-05&exam_date_to=2026-01-15
-3. API returns filtered list (e.g., 25 exams)
+
+3. Backend returns exam objects with IDs (see data structure below)
+
 4. Component filters out:
    - Currently associated exam IDs
    - The Mock Discussion exam itself
+
 5. Remaining exams shown in multi-select (e.g., 23 options)
+
 6. User searches "Vancouver" → filtered to 5 options
-7. User selects 2 exams
+
+7. User selects 2 exams (component stores their IDs)
+
 8. On save, sends only the 2 selected exam IDs to backend
 ```
+
+**Critical: Record ID Data Structure**
+
+**Backend API Response Structure:**
+```json
+{
+  "success": true,
+  "data": {
+    "mock_exams": [
+      {
+        "id": "18440533951",  // ← THIS is the HubSpot record ID (hs_object_id)
+        "properties": {
+          "mock_type": "Clinical Skills",
+          "exam_date": "2025-12-15",
+          "start_time": "1734271200000",
+          "end_time": "1734303600000",
+          "location": "Mississauga",
+          "capacity": "15",
+          "total_bookings": "8",
+          "is_active": "true"
+        },
+        "createdAt": "2025-11-01T10:30:00.000Z",
+        "updatedAt": "2025-11-04T15:45:00.000Z"
+      },
+      {
+        "id": "18440533952",  // ← Another exam's record ID
+        "properties": {
+          "mock_type": "Situational Judgment",
+          "exam_date": "2025-12-20",
+          // ...
+        }
+      }
+    ]
+  }
+}
+```
+
+**Key Points:**
+- ✅ Each exam object has an `id` field - this is the HubSpot record ID
+- ✅ This `id` is what we use for creating associations
+- ✅ The `id` is automatically returned by HubSpot's Search API
+- ✅ No additional lookup needed - the ID is already there!
+
+**Frontend Component State:**
+
+```javascript
+// PrerequisiteExamSelector component
+const [selectedExamIds, setSelectedExamIds] = useState([]);
+
+// When user clicks checkbox
+const handleExamSelect = (examId) => {
+  setSelectedExamIds(prev => {
+    if (prev.includes(examId)) {
+      return prev.filter(id => id !== examId);  // Unselect
+    }
+    return [...prev, examId];  // Select
+  });
+};
+
+// Display each exam in the list
+{availableExams.map(exam => (
+  <div key={exam.id}>
+    <Checkbox
+      checked={selectedExamIds.includes(exam.id)}
+      onCheckedChange={() => handleExamSelect(exam.id)}  // ← Stores exam.id
+    />
+    <span>{exam.properties.mock_type} - {exam.properties.location}</span>
+  </div>
+))}
+
+// On save
+const handleSave = () => {
+  // Send array of selected IDs to backend
+  onChange(selectedExamIds);  // ["18440533951", "18440533952"]
+};
+```
+
+**Backend Association Creation:**
+
+```javascript
+// POST /api/admin/mock-exams/[id]/prerequisites
+// Request body: { prerequisite_exam_ids: ["18440533951", "18440533952"] }
+
+const batchAssociationInputs = prerequisiteExamIds.map(prereqId => ({
+  from: { id: mockDiscussionId },       // e.g., "18440533960"
+  to: { id: prereqId },                 // e.g., "18440533951"
+  types: [{
+    associationCategory: "USER_DEFINED",
+    associationTypeId: 1340
+  }]
+}));
+
+// Single batch API call to HubSpot
+await hubspot.apiCall('POST',
+  '/crm/v4/associations/mock_exams/mock_exams/batch/create',
+  { inputs: batchAssociationInputs }
+);
+```
+
+**Complete ID Flow:**
+
+```
+1. HubSpot Database
+   └─> Mock Exam Record (hs_object_id: "18440533951")
+
+2. Backend GET /api/admin/mock-exams/list
+   └─> Returns { id: "18440533951", properties: {...} }
+
+3. Frontend Component State
+   └─> selectedExamIds = ["18440533951", "18440533952"]
+
+4. Frontend POST to Backend
+   └─> { prerequisite_exam_ids: ["18440533951", "18440533952"] }
+
+5. Backend Batch Association
+   └─> HubSpot API creates associations using these IDs
+
+6. HubSpot Database
+   └─> Association created: Discussion("18440533960") → Prerequisite("18440533951")
+```
+
+**No Additional Lookups Required:**
+- ✅ The `id` field from the list API response IS the record ID
+- ✅ No need to query HubSpot again to get the ID
+- ✅ No need to parse or transform the ID
+- ✅ Just pass it directly to the association API
 
 **Edge Cases:**
 
