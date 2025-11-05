@@ -114,7 +114,7 @@ export const findConflictingBookings = (existingBookings, newSession) => {
  * @param {Object} conflictingBooking - The conflicting booking
  * @returns {string} - Formatted conflict message
  */
-export const export const formatConflictMessage = (conflictingBooking) => {
+export const formatConflictMessage = (conflictingBooking) => {
   if (!conflictingBooking) {
     return 'Conflicting booking';
   }
