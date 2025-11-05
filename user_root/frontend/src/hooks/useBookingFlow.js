@@ -195,6 +195,9 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     setLoading(true);
     setError(null);
 
+    // Merge immediate data with existing booking data (immediate data takes priority)
+    const mergedData = { ...bookingData, ...immediateData };
+
     // NEW: Check for time conflicts before submission
     if (mergedData.startTime && mergedData.endTime) {
       const conflicts = await checkTimeConflicts({
@@ -218,9 +221,6 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     }
 
     setStep('confirming');
-
-    // Merge immediate data with existing booking data (immediate data takes priority)
-    const mergedData = { ...bookingData, ...immediateData };
 
     // Debug logging to trace the issue
     console.log('🔍 submitBooking called with:', {
