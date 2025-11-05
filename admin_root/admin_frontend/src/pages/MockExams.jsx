@@ -94,6 +94,15 @@ function MockExams() {
         start_time: timeSlots[0].start_time,
         end_time: timeSlots[0].end_time
       };
+
+      // 🔍 DEBUG: Log what we're sending to API
+      console.log('🔍 [FRONTEND] Sending to API:', {
+        exam_date: singleSessionData.exam_date,
+        exam_date_type: typeof singleSessionData.exam_date,
+        exam_date_length: singleSessionData.exam_date?.length,
+        full_data: singleSessionData
+      });
+
       createSingleMutation.mutate(singleSessionData);
     } else {
       // Multiple sessions - use bulk creation
