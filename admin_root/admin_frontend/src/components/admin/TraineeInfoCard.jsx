@@ -6,7 +6,7 @@ import { formatDateShort } from '../../utils/dateUtils';
  * Displays trainee contact information and token balances in a card format
  * Uses 3-column grid layout: Column 1 (Basic Info), Column 2 (Contact Details), Column 3 (Tokens)
  */
-const TraineeInfoCard = ({ trainee }) => {
+const const TraineeInfoCard = ({ trainee }) => {
   if (!trainee) return null;
 
   // Format phone number for display
@@ -33,8 +33,8 @@ const TraineeInfoCard = ({ trainee }) => {
           Trainee Information
         </h3>
 
-        {/* 3-Column Grid Layout - Column 1: Basic Info, Column 2: Contact Details, Column 3: Tokens */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+        {/* 2-Column Grid Layout for Basic Info */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -107,52 +107,58 @@ const TraineeInfoCard = ({ trainee }) => {
               </div>
             </div>
           )}
+        </div>
 
-          {/* Token Balances - Column 3 */}
-          {trainee.tokens && (
-            <div className="md:col-span-2 lg:col-span-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Token Balances
-              </label>
-              <div className="space-y-2">
-                {/* Mock Discussion Token */}
-                <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 px-3 py-2 rounded-md">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Mock Discussion</span>
-                  <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">
-                    {trainee.tokens.mock_discussion}
-                  </span>
-                </div>
+        {/* Token Balances - Horizontal Badges (Option 1) */}
+        {trainee.tokens && (
+          <div className="mt-6 pt-5 border-t border-gray-200 dark:border-gray-700">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Token Balances
+            </label>
+            <div className="flex flex-wrap gap-3">
+              {/* Mock Discussion Badge */}
+              <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-4 py-2.5 rounded-lg border border-blue-200 dark:border-blue-800">
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                  Mock Discussion:
+                </span>
+                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-white bg-blue-600 dark:bg-blue-500 rounded-md">
+                  {trainee.tokens.mock_discussion}
+                </span>
+              </div>
 
-                {/* Clinical Skills Token */}
-                <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 px-3 py-2 rounded-md">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Clinical Skills</span>
-                  <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">
-                    {trainee.tokens.clinical_skills}
-                  </span>
-                </div>
+              {/* Clinical Skills Badge */}
+              <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 px-4 py-2.5 rounded-lg border border-green-200 dark:border-green-800">
+                <span className="text-sm font-medium text-green-900 dark:text-green-200">
+                  Clinical Skills:
+                </span>
+                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-white bg-green-600 dark:bg-green-500 rounded-md">
+                  {trainee.tokens.clinical_skills}
+                </span>
+              </div>
 
-                {/* Situational Judgment Token */}
-                <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 px-3 py-2 rounded-md">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Situational Judgment</span>
-                  <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">
-                    {trainee.tokens.situational_judgment}
-                  </span>
-                </div>
+              {/* Situational Judgment Badge */}
+              <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/20 px-4 py-2.5 rounded-lg border border-purple-200 dark:border-purple-800">
+                <span className="text-sm font-medium text-purple-900 dark:text-purple-200">
+                  Situational Judgment:
+                </span>
+                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-white bg-purple-600 dark:bg-purple-500 rounded-md">
+                  {trainee.tokens.situational_judgment}
+                </span>
+              </div>
 
-                {/* Mini-mock Token */}
-                <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 px-3 py-2 rounded-md">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Mini-mock</span>
-                  <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">
-                    {trainee.tokens.mini_mock}
-                  </span>
-                </div>
+              {/* Mini-mock Badge */}
+              <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-900/20 px-4 py-2.5 rounded-lg border border-orange-200 dark:border-orange-800">
+                <span className="text-sm font-medium text-orange-900 dark:text-orange-200">
+                  Mini-mock:
+                </span>
+                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-white bg-orange-600 dark:bg-orange-500 rounded-md">
+                  {trainee.tokens.mini_mock}
+                </span>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
-};
-
-export default TraineeInfoCard;
+}
