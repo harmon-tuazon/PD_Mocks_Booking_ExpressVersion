@@ -266,12 +266,28 @@ const BookingForm = () => {
         </div>
 
         {/* Error Display with User-Friendly Messages */}
-        {error && (
+        {error && !isTimeConflictError && (
           <ErrorDisplay
             error={error}
             onDismiss={clearError}
             className="mb-6"
             showAction={true}
+          />
+        )}
+
+        {/* Time Conflict Warning Modal */}
+        {isTimeConflictError && timeConflicts && timeConflicts.length > 0 && (
+          <TimeConflictWarning
+            conflicts={timeConflicts}
+            onViewBookings={() => {
+              navigate('/my-bookings');
+              clearError();
+            }}
+            onChooseDifferent={() => {
+              goBack();
+              clearError();
+            }}
+            onClose={clearError}
           />
         )}
 
