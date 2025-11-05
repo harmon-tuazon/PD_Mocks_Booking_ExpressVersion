@@ -254,10 +254,12 @@ async function batchUpdateContactTokens(updates) {
 
 /**
  * Mark bookings as token_refunded in HubSpot
+ * Sets token_refunded, token_refunded_at, and token_refund_admin properties
  * @param {Array} bookingIds - Array of booking IDs to mark
+ * @param {string} adminEmail - Email of admin processing refund (default: 'system')
  * @returns {Promise<Object>} { successful: Array, failed: Array }
  */
-async function markBookingsAsRefunded(bookingIds) {
+async function markBookingsAsRefunded(bookingIds, adminEmail = 'system') {
   const results = {
     successful: [],
     failed: []
@@ -265,11 +267,14 @@ async function markBookingsAsRefunded(bookingIds) {
 
   console.log(`🏷️ Marking ${bookingIds.length} bookings as refunded...`);
 
-  // Prepare updates
+  // Prepare updates with all three refund properties
+  const refundTimestamp = Date.now().toString();
   const updates = bookingIds.map(id => ({
     id,
     properties: {
-      token_refunded: 'true'
+      token_refunded: 'true',
+      token_refunded_at: refundTimestamp,
+      token_refund_admin: adminEmail
     }
   }));
 
@@ -380,7 +385,7 @@ async function processRefunds(bookings, adminEmail = 'system') {
 
       // Step 3.5: Mark bookings as refunded
       const bookingIds = tokenBookings.map(b => b.id);
-      const markResults = await markBookingsAsRefunded(bookingIds);
+      const markResults = await markBookingsAsRefunded(bookingIds, adminEmail);
 
       // Step 3.6: Track results
       // Only mark as successful if BOTH token update AND booking mark succeeded
