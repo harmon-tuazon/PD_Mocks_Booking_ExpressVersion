@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import apiService from '../services/api';
 import useCachedCredits from './useCachedCredits';
+import { findConflictingBookings } from '../utils/timeConflictUtils';
 
 const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
   // Import the cached credits hook at the top level
@@ -22,12 +23,15 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     contactId: null,
     enrollmentId: null,
     creditBreakdown: null,
+    startTime: null,
+    endTime: null,
   });
 
   // UI state
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const [timeConflicts, setTimeConflicts] = useState([]);
 
   // Session storage for form persistence
   useEffect(() => {
@@ -75,11 +79,52 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     return null;
   };
 
+  // Check for time conflicts with existing bookings
+  const checkTimeConflicts = useCallback(async (sessionData) => {
+    try {
+      console.log('🕐 Checking for time conflicts with session:', sessionData);
+
+      // Fetch user's current bookings
+      const bookingsResponse = await apiService.bookings.list({
+        student_id: bookingData.studentId,
+        email: bookingData.email,
+        filter: 'upcoming',
+        limit: 50 // Get more bookings to check conflicts
+      });
+
+      if (!bookingsResponse.success || !bookingsResponse.data?.bookings) {
+        console.warn('Could not fetch bookings for conflict check, proceeding anyway');
+        return [];
+      }
+
+      // Find conflicts using the utility function
+      const conflicts = findConflictingBookings(
+        bookingsResponse.data.bookings,
+        sessionData
+      );
+
+      console.log('🕐 Time conflict check result:', {
+        totalBookings: bookingsResponse.data.bookings.length,
+        conflictsFound: conflicts.length,
+        conflicts: conflicts
+      });
+
+      setTimeConflicts(conflicts);
+      return conflicts;
+    } catch (error) {
+      console.error('Error checking time conflicts:', error);
+      // If we can't check conflicts, allow submission (backend will validate)
+      return [];
+    }
+  }, [bookingData.studentId, bookingData.email]);
+
   // Verify credits step - now uses cached credits
   const verifyCredits = useCallback(async (studentId, email) => {
     setLoading(true);
     setError(null);
+    setTimeConflicts([]); // Clear time conflicts when going back
     setValidationErrors({});
+    setTimeConflicts([]);
 
     // Validate inputs
     const studentIdError = validateStudentId(studentId);
@@ -149,6 +194,29 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
   const submitBooking = useCallback(async (immediateData = {}) => {
     setLoading(true);
     setError(null);
+
+    // NEW: Check for time conflicts before submission
+    if (mergedData.startTime && mergedData.endTime) {
+      const conflicts = await checkTimeConflicts({
+        start_time: mergedData.startTime,
+        end_time: mergedData.endTime,
+        exam_date: mergedData.examDate,
+        mock_type: mergedData.mockType
+      });
+
+      if (conflicts.length > 0) {
+        // Show conflict warning
+        console.log('⚠️ Time conflict detected, blocking submission');
+        setError({
+          code: 'TIME_CONFLICT',
+          message: 'You already have a booking that overlaps with this session time.',
+          conflicts: conflicts
+        });
+        setLoading(false);
+        return false;
+      }
+    }
+
     setStep('confirming');
 
     // Merge immediate data with existing booking data (immediate data takes priority)
@@ -385,7 +453,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     } finally {
       setLoading(false);
     }
-  }, [bookingData, invalidateCache]);  // Added invalidateCache to dependencies
+  }, [bookingData, invalidateCache, checkTimeConflicts]);  // Added invalidateCache to dependencies
 
   // Go back to previous step
   const goBack = useCallback(() => {
@@ -414,6 +482,8 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
       contactId: null,
       enrollmentId: null,
       creditBreakdown: null,
+      startTime: null,
+      endTime: null,
     });
     sessionStorage.removeItem('bookingFlow');
   }, [initialMockExamId, initialMockType]);
@@ -430,6 +500,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
   const clearError = useCallback(() => {
     setError(null);
     setValidationErrors({});
+    setTimeConflicts([]);
   }, []);
 
   // Combine loading states from both the hook and cached credits
@@ -442,10 +513,12 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     error,
     loading: combinedLoading,  // Use combined loading state
     validationErrors,
+    timeConflicts, // Expose time conflicts
 
     // Actions
     verifyCredits,
     submitBooking,
+    checkTimeConflicts, // Expose conflict checking function
     goBack,
     resetFlow,
     updateBookingData,
@@ -460,6 +533,6 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
       ? bookingData.name && bookingData.name.trim().length >= 2
       : false,
   };
-};;
+};
 
 export default useBookingFlow;

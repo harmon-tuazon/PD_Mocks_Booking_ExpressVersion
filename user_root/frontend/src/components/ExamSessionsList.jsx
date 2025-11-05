@@ -140,7 +140,9 @@ const ExamSessionsList = () => {
       state: {
         mockType,
         examDate: exam.exam_date,
-        location: exam.location
+        location: exam.location,
+        startTime: exam.start_time,
+        endTime: exam.end_time
       }
     });
   };

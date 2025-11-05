@@ -8,6 +8,7 @@ import InsufficientCreditsCard from './shared/InsufficientCreditsCard';
 import LoggedInUserCard from './shared/LoggedInUserCard';
 import LocationSelector from './shared/LocationSelector';
 import ErrorDisplay from './shared/ErrorDisplay';
+import TimeConflictWarning from './shared/TimeConflictWarning';
 import { formatDate } from '../services/api';
 
 import { getUserSession, clearUserSession } from '../utils/auth';
@@ -19,6 +20,8 @@ const BookingForm = () => {
   const mockType = location.state?.mockType || 'Situational Judgment';
   const examDate = location.state?.examDate || '';
   const examLocation = location.state?.location || 'Mississauga';
+  const startTime = location.state?.startTime || location.state?.start_time || null;
+  const endTime = location.state?.endTime || location.state?.end_time || null;
 
   // Get user session data
   const [userSession, setUserSession] = useState(null);
@@ -32,10 +35,12 @@ const BookingForm = () => {
     error,
     loading,
     validationErrors,
+    timeConflicts,
     verifyCredits,
     submitBooking,
     updateBookingData,
     clearError,
+    goBack,
     canProceed,
   } = useBookingFlow(mockExamId, mockType);
 
@@ -65,14 +70,16 @@ const BookingForm = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
-  // Update booking data with exam details
+  // Update booking data with exam details including times
   useEffect(() => {
     updateBookingData({
       mockExamId,
       mockType,
       examDate,
+      startTime,
+      endTime,
     });
-  }, [mockExamId, mockType, examDate, updateBookingData]);
+  }, [mockExamId, mockType, examDate, startTime, endTime, updateBookingData]);
 
   const handleSubmitBooking = async (e) => {
     e.preventDefault();
@@ -184,6 +191,9 @@ const BookingForm = () => {
     (typeof error === 'string' && error.toLowerCase().includes('duplicate')) ||
     (error?.message && error.message.toLowerCase().includes('duplicate'))
   );
+
+  // Check if we have a time conflict error
+  const isTimeConflictError = error && error.code === 'TIME_CONFLICT';
 
   if (showInsufficientCreditsCard) {
     return (

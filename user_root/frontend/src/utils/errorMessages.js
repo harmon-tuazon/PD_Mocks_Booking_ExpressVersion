@@ -46,6 +46,8 @@ const ERROR_MESSAGES = {
     severity: 'error'
   },
 
+    message: 'You already have a booking that overlaps with this session time.',
+
   // Validation errors
   VALIDATION_ERROR: {
     title: 'Invalid Information',
@@ -201,6 +203,7 @@ export function parseErrorMessage(error) {
       console.log('🔍 [parseErrorMessage] Matched: TIMEOUT_ERROR');
       return ERROR_MESSAGES.TIMEOUT_ERROR;
     }
+
 
     // Validation errors with specific message
     if (lowerMessage.includes('validation') || lowerMessage.includes('invalid')) {
