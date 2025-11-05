@@ -332,7 +332,10 @@ async function handleGetRequest(req, res) {
     if (!mockExamId) {
       return res.status(400).json({
         success: false,
-        error: 'Mock exam ID is required'
+        error: {
+          code: 'MISSING_ID',
+          message: 'Mock exam ID is required'
+        }
       });
     }
 
@@ -340,7 +343,10 @@ async function handleGetRequest(req, res) {
     if (!/^\d+$/.test(mockExamId)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid mock exam ID format'
+        error: {
+          code: 'INVALID_ID',
+          message: 'Invalid mock exam ID format'
+        }
       });
     }
 
@@ -384,6 +390,48 @@ async function handleGetRequest(req, res) {
 
     // Build response using format helper
     const response = formatMockExamResponse(mockExam);
+
+    // If this is a Mock Discussion, fetch prerequisite associations
+    if (mockExam.properties.mock_type === 'Mock Discussion') {
+      try {
+        const PREREQUISITE_ASSOCIATION_TYPE_ID = 1340;
+        const prerequisites = await hubspot.getMockExamAssociations(
+          mockExamId,
+          PREREQUISITE_ASSOCIATION_TYPE_ID
+        );
+
+        // Format prerequisite details
+        const prerequisiteDetails = prerequisites.map(exam => ({
+          id: exam.id,
+          mock_type: exam.properties.mock_type,
+          exam_date: exam.properties.exam_date,
+          location: exam.properties.location || 'Not specified',
+          start_time: exam.properties.start_time,
+          end_time: exam.properties.end_time,
+          capacity: parseInt(exam.properties.capacity || '0'),
+          total_bookings: parseInt(exam.properties.total_bookings || '0'),
+          is_active: exam.properties.is_active === 'true'
+        }));
+
+        // Sort by exam date (earliest first)
+        prerequisiteDetails.sort((a, b) => {
+          const dateA = new Date(a.exam_date);
+          const dateB = new Date(b.exam_date);
+          return dateA - dateB;
+        });
+
+        // Add prerequisite exams to response data
+        response.data.prerequisite_exams = prerequisiteDetails;
+        response.data.prerequisite_exam_ids = prerequisites.map(p => p.id);
+
+        console.log(`📚 Included ${prerequisiteDetails.length} prerequisite associations for Mock Discussion ${mockExamId}`);
+      } catch (error) {
+        console.error('Error fetching prerequisite associations:', error);
+        // Don't fail the entire request if prerequisites can't be fetched
+        response.data.prerequisite_exams = [];
+        response.data.prerequisite_exam_ids = [];
+      }
+    }
 
     // Cache the response (2 minutes TTL = 120 seconds)
     await cache.set(cacheKey, response, 120);

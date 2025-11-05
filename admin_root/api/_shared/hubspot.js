@@ -462,6 +462,104 @@ class HubSpotService {
   }
 
   /**
+   * Batch create associations using HubSpot v4 API
+   * @param {string} fromObjectType - Source object type (e.g., '2-50158913' for Mock Exams)
+   * @param {string} toObjectType - Target object type (e.g., '2-50158913' for Mock Exams)
+   * @param {Array} inputs - Array of association inputs with from, to, and types
+   * @returns {Promise<object>} Response from HubSpot API
+   */
+  async batchCreateAssociations(fromObjectType, toObjectType, inputs) {
+    try {
+      console.log(`Creating batch associations from ${fromObjectType} to ${toObjectType}`, {
+        inputCount: inputs.length,
+        sample: inputs[0]
+      });
+
+      const response = await this.apiCall(
+        'POST',
+        `/crm/v4/associations/${fromObjectType}/${toObjectType}/batch/create`,
+        { inputs }
+      );
+
+      console.log(`Successfully created ${inputs.length} associations`);
+      return response;
+    } catch (error) {
+      console.error('Error creating batch associations:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Batch delete associations using HubSpot v4 API
+   * @param {string} fromObjectType - Source object type (e.g., '2-50158913' for Mock Exams)
+   * @param {string} toObjectType - Target object type (e.g., '2-50158913' for Mock Exams)
+   * @param {Array} inputs - Array of association inputs with from and to IDs
+   * @returns {Promise<object>} Response from HubSpot API
+   */
+  async batchDeleteAssociations(fromObjectType, toObjectType, inputs) {
+    try {
+      console.log(`Deleting batch associations from ${fromObjectType} to ${toObjectType}`, {
+        inputCount: inputs.length
+      });
+
+      const response = await this.apiCall(
+        'POST',
+        `/crm/v4/associations/${fromObjectType}/${toObjectType}/batch/archive`,
+        { inputs }
+      );
+
+      console.log(`Successfully deleted ${inputs.length} associations`);
+      return response;
+    } catch (error) {
+      console.error('Error deleting batch associations:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get associations for a mock exam with specific association type
+   * @param {string} mockExamId - Mock exam ID to get associations for
+   * @param {number} associationTypeId - Association type ID (e.g., 1340 for prerequisites)
+   * @returns {Promise<Array>} Array of associated mock exam details
+   */
+  async getMockExamAssociations(mockExamId, associationTypeId = 1340) {
+    try {
+      // First get the mock exam with associations
+      const response = await this.apiCall(
+        'GET',
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.MOCK_EXAMS}/${mockExamId}?associations=mock_exams`
+      );
+
+      // Extract associations with the specific type
+      const associations = response.associations?.mock_exams?.results || [];
+      const prerequisiteAssociations = associations.filter(assoc => 
+        assoc.types?.some(type => 
+          type.associationCategory === 'USER_DEFINED' && 
+          type.associationTypeId === associationTypeId
+        )
+      );
+
+      // If no associations, return empty array
+      if (prerequisiteAssociations.length === 0) {
+        return [];
+      }
+
+      // Fetch details for each associated mock exam
+      const mockExamIds = prerequisiteAssociations.map(a => a.toObjectId || a.id);
+      const mockExamDetailsPromises = mockExamIds.map(id => this.getMockExam(id));
+      const mockExamDetails = await Promise.all(mockExamDetailsPromises);
+
+      return mockExamDetails.filter(exam => exam !== null);
+    } catch (error) {
+      console.error('Error getting mock exam associations:', error);
+      if (error.response?.status === 404) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Get a single mock exam by ID
    * Used to fetch mock exam details for display and validation
    */

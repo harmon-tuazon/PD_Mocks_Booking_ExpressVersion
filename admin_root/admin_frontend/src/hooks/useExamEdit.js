@@ -89,7 +89,10 @@ export function useExamEdit(examData) {
         is_active: examData.is_active !== undefined ? examData.is_active : true,
         // Keep track of booking count for validation
         booked_count: examData.booked_count || examData.total_bookings || 0,
-        total_bookings: examData.total_bookings || examData.booked_count || 0
+        total_bookings: examData.total_bookings || examData.booked_count || 0,
+        // Add prerequisite exam IDs for Mock Discussion
+        prerequisite_exam_ids: examData.prerequisite_exam_ids || [],
+        prerequisite_exam_details: examData.prerequisite_exam_details || []
       };
 
       setFormData(initialData);
@@ -277,12 +280,38 @@ export function useExamEdit(examData) {
       changes.exam_date = formData.exam_date;
     }
 
+    // Handle prerequisite exam IDs - don't include details, just the IDs
+    if (changes.prerequisite_exam_details) {
+      delete changes.prerequisite_exam_details;
+    }
+
+    // Extract prerequisite_exam_ids for separate handling if Mock Discussion
+    const prerequisiteIds = changes.prerequisite_exam_ids;
+    let hasPrerequisiteChanges = false;
+
+    if (formData.mock_type === 'Mock Discussion' && prerequisiteIds !== undefined) {
+      hasPrerequisiteChanges = true;
+      // Remove from main changes as it's handled separately
+      delete changes.prerequisite_exam_ids;
+    }
+
     // Format data for API
     const apiData = formatFormDataForApi(changes);
 
     // Execute save mutation
     try {
-      await saveMutation.mutateAsync(apiData);
+      // First save the main exam updates if there are any
+      if (Object.keys(apiData).length > 0) {
+        await saveMutation.mutateAsync(apiData);
+      }
+
+      // Then update prerequisites if they changed (for Mock Discussion only)
+      if (hasPrerequisiteChanges && examData?.id) {
+        await mockExamsApi.updatePrerequisites(examData.id, prerequisiteIds || []);
+        // Invalidate to refresh prerequisite data
+        queryClient.invalidateQueries(['mockExam', examData.id]);
+      }
+
       return true;
     } catch (error) {
       console.error('❌ [SAVE-CHANGES] Save failed:', error);
@@ -293,7 +322,7 @@ export function useExamEdit(examData) {
       });
       throw error;
     }
-  }, [formData, validation, saveMutation]);
+  }, [formData, validation, saveMutation, examData, queryClient]);
 
   /**
    * Check if save is allowed

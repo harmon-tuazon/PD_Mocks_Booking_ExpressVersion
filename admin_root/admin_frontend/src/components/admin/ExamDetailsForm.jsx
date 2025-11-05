@@ -4,6 +4,8 @@
  */
 
 import StatusBadge from './StatusBadge';
+import PrerequisiteExamSelector from './PrerequisiteExamSelector';
+import PrerequisiteExamsList from './PrerequisiteExamsList';
 import { ExclamationCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { fieldInfoMessages } from '../../utils/examValidation';
 import { formatTime } from '../../utils/timeFormatters';
@@ -142,6 +144,24 @@ const ExamDetailsForm = ({
                 </div>
               )}
             </div>
+
+            {/* Prerequisite Exams - Only for Mock Discussion */}
+            {displayData.mock_type === 'Mock Discussion' && (
+              <div className="col-span-2">
+                <Label>Prerequisite Exams (Optional)</Label>
+                {isEditing ? (
+                  <PrerequisiteExamSelector
+                    mockExamId={displayData.id || exam?.id}
+                    discussionExamDate={displayData.exam_date}
+                    currentAssociations={displayData.prerequisite_exam_ids || []}
+                    onChange={(selectedIds) => onFieldChange('prerequisite_exam_ids', selectedIds)}
+                    disabled={isSaving}
+                  />
+                ) : (
+                  <PrerequisiteExamsList exams={displayData.prerequisite_exam_details || []} />
+                )}
+              </div>
+            )}
 
             {/* Exam Date */}
             <div>

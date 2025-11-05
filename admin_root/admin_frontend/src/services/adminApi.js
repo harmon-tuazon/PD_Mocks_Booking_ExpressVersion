@@ -182,6 +182,40 @@ export const mockExamsApi = {
   cancelBookings: async (id, requestBody) => {
     const response = await api.patch(`/admin/mock-exams/${id}/cancel-bookings`, requestBody);
     return response.data;
+  },
+
+  /**
+   * Update prerequisite exams for a Mock Discussion
+   * @param {string} id - Mock exam ID (must be Mock Discussion type)
+   * @param {Array} prerequisiteIds - Array of prerequisite exam IDs
+   * @returns {Promise<Object>} Update result with associated exams
+   */
+  updatePrerequisites: async (id, prerequisiteIds) => {
+    const response = await api.post(`/admin/mock-exams/${id}/prerequisites`, {
+      prerequisite_exam_ids: prerequisiteIds
+    });
+    return response.data;
+  },
+
+  /**
+   * Get prerequisite exams for a Mock Discussion
+   * @param {string} id - Mock exam ID
+   * @returns {Promise<Object>} List of prerequisite exams
+   */
+  getPrerequisites: async (id) => {
+    const response = await api.get(`/admin/mock-exams/${id}/prerequisites`);
+    return response.data;
+  },
+
+  /**
+   * Remove a prerequisite association from a Mock Discussion
+   * @param {string} id - Mock exam ID
+   * @param {string} prerequisiteId - Prerequisite exam ID to remove
+   * @returns {Promise<Object>} Removal result
+   */
+  removePrerequisite: async (id, prerequisiteId) => {
+    const response = await api.delete(`/admin/mock-exams/${id}/prerequisites/${prerequisiteId}`);
+    return response.data;
   }
 };
 /**
