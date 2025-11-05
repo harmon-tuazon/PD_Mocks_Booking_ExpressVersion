@@ -20,7 +20,7 @@ import { usePrerequisiteExams, filterPrerequisiteExams } from '../../hooks/usePr
 import { formatDateLong } from '../../utils/dateUtils';
 import { formatTime } from '../../utils/timeFormatters';
 
-const const PrerequisiteExamSelector = ({
+const PrerequisiteExamSelector = ({
   mockExamId,
   discussionExamDate,
   currentAssociations = [],
