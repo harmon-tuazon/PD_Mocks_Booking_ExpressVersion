@@ -23,7 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 
-const const ExamDetailsForm = ({
+const ExamDetailsForm = ({
   exam,
   isEditing = false,
   formData = {},
