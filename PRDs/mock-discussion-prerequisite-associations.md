@@ -167,6 +167,106 @@ interface PrerequisiteExamSelectorProps {
 - Click to navigate to prerequisite exam details
 - Empty state message if no prerequisites
 
+#### 4. Data Fetching Strategy: Populating Available Exams
+
+**Question:** How do we populate the options in `PrerequisiteExamSelector`?
+
+**Answer:** Fetch eligible mock exams using existing list endpoint with specific filters.
+
+**Endpoint Used:** `GET /api/admin/mock-exams/list`
+
+**Query Parameters:**
+```javascript
+{
+  mock_type: ['Clinical Skills', 'Situational Judgment'],  // Only CS and SJ
+  is_active: true,                                         // Only active exams
+  exam_date_from: currentDate,                             // Only future exams
+  exam_date_to: mockDiscussionExamDate,                    // Before discussion date
+  sort_by: 'exam_date',
+  sort_order: 'asc',
+  limit: 100                                               // Reasonable limit
+}
+```
+
+**Filtering Logic:**
+
+**Backend Filters (via API):**
+1. ✅ `mock_type` IN ['Clinical Skills', 'Situational Judgment']
+2. ✅ `is_active = true`
+3. ✅ `exam_date >= today` (only future or ongoing exams)
+4. ✅ `exam_date < discussion_exam_date` (must occur before discussion)
+
+**Frontend Filters (in component):**
+1. ✅ Exclude currently associated exam IDs (prevent duplicates)
+2. ✅ Exclude the Mock Discussion exam itself (prevent self-association)
+3. ✅ Search/filter by text (user input)
+
+**Implementation in `PrerequisiteExamSelector`:**
+
+```javascript
+// usePrerequisiteExams.js
+export function usePrerequisiteExams(mockExamId, discussionExamDate) {
+  return useQuery({
+    queryKey: ['availablePrerequisites', mockExamId, discussionExamDate],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+
+      const response = await mockExamsApi.list({
+        mock_type: ['Clinical Skills', 'Situational Judgment'],
+        is_active: true,
+        exam_date_from: today,
+        exam_date_to: discussionExamDate,
+        sort_by: 'exam_date',
+        sort_order: 'asc',
+        limit: 100
+      });
+
+      return response.data.mock_exams;
+    },
+    enabled: !!discussionExamDate, // Only fetch when we have discussion date
+    staleTime: 5 * 60 * 1000 // 5 minutes cache
+  });
+}
+```
+
+**Example Data Flow:**
+
+```
+1. User clicks "Edit" on Mock Discussion (exam_date: 2026-01-15)
+2. Component fetches available exams:
+   GET /api/admin/mock-exams/list?mock_type=Clinical%20Skills,Situational%20Judgment
+       &is_active=true&exam_date_from=2025-11-05&exam_date_to=2026-01-15
+3. API returns filtered list (e.g., 25 exams)
+4. Component filters out:
+   - Currently associated exam IDs
+   - The Mock Discussion exam itself
+5. Remaining exams shown in multi-select (e.g., 23 options)
+6. User searches "Vancouver" → filtered to 5 options
+7. User selects 2 exams
+8. On save, sends only the 2 selected exam IDs to backend
+```
+
+**Edge Cases:**
+
+**No Available Exams:**
+```
+- Show: "No eligible prerequisite exams found"
+- Suggest: "Create Clinical Skills or Situational Judgment exams
+           scheduled before this discussion date"
+```
+
+**Discussion Date Not Set:**
+```
+- Disable selector
+- Show: "Set exam date first to see available prerequisites"
+```
+
+**Discussion in Past:**
+```
+- Show all CS/SJ exams before discussion date (even if past)
+- Allow association (for historical records)
+```
+
 ### Backend Requirements
 
 #### 1. New API Endpoint: Bulk Associate Prerequisites
@@ -374,30 +474,66 @@ interface PrerequisiteExamSelectorProps {
 
 ### Minimizing API Calls
 
-**Current Pattern (Inefficient):**
+**Association Creation - Current Pattern (Inefficient):**
 ```
 For each exam to associate:
   - POST /associations/[fromId]/[toId] × N times
 = N API calls for N associations
 ```
 
-**New Pattern (Efficient):**
+**Association Creation - New Pattern (Efficient):**
 ```
 Single batch request:
   - POST /crm/v4/associations/mock_exams/mock_exams/batch/create
 = 1 API call for N associations
 ```
 
+### Complete API Call Breakdown
+
+**Scenario:** Admin edits Mock Discussion with 3 prerequisite associations
+
+**Total API Calls Required: 3**
+
+1. **GET Mock Exam Details** (on page load)
+   ```
+   GET /api/admin/mock-exams/[id]?associations=mock_exams:1340
+   ```
+   Returns: Exam details + existing prerequisite associations
+
+2. **GET Available Exams** (when entering edit mode)
+   ```
+   GET /api/admin/mock-exams/list?mock_type=Clinical Skills,Situational Judgment
+       &is_active=true&exam_date_from=2025-11-05&exam_date_to=2026-01-15
+   ```
+   Returns: Filtered list of eligible prerequisite exams
+
+3. **POST Create Associations** (on save)
+   ```
+   POST /api/admin/mock-exams/[id]/prerequisites
+   Body: { prerequisite_exam_ids: ["id1", "id2", "id3"] }
+   ```
+   Internally makes 1 HubSpot batch API call for all 3 associations
+
+**Alternative (Less Efficient) Would Be:**
+```
+- GET exam details: 1 call
+- GET each available exam individually: 25+ calls
+- POST each association individually: 3 calls
+= 29+ API calls total (vs. 3 calls with our approach)
+```
+
 **Load Optimization:**
-1. **Initial Load:** Fetch available exams once when entering edit mode
-2. **Cache:** Store fetched exam list in component state (no refetch on re-render)
-3. **Lazy Load:** Only fetch when "Edit" button clicked (not on page load)
-4. **Debounce:** Search filter debounced at 300ms
+1. **Initial Load:** Mock exam details fetched (includes associations)
+2. **Lazy Load:** Available exams only fetched when "Edit" button clicked
+3. **Cache:** Store fetched exam list in React Query cache (5 min staleTime)
+4. **Debounce:** Search filter debounced at 300ms (no API calls)
+5. **Component State:** Search filtering done client-side (no API calls)
 
 **Association Retrieval:**
 1. Include prerequisite associations in main exam details GET request
 2. Use HubSpot's `associations` parameter: `?associations=mock_exams:1340`
 3. Single request returns exam + associations
+4. No separate API call needed to get associated exam details (included in response)
 
 ---
 
