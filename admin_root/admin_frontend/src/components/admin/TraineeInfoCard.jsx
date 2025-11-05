@@ -4,9 +4,9 @@ import { formatDateShort } from '../../utils/dateUtils';
 /**
  * TraineeInfoCard Component
  * Displays trainee contact information and token balances in a card format
- * Uses 3-column grid layout: Column 1 (Basic Info), Column 2 (Contact Details), Column 3 (Tokens)
+ * Uses 2-column grid layout for basic info with horizontal token badges below
  */
-const const TraineeInfoCard = ({ trainee }) => {
+const TraineeInfoCard = ({ trainee }) => {
   if (!trainee) return null;
 
   // Format phone number for display
@@ -161,4 +161,6 @@ const const TraineeInfoCard = ({ trainee }) => {
       </div>
     </div>
   );
-}
+};
+
+export default TraineeInfoCard;
