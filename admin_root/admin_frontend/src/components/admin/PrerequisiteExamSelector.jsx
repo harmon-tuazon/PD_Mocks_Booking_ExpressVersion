@@ -260,7 +260,7 @@ const PrerequisiteExamSelector = ({
     <div className={`border border-gray-200 dark:border-gray-700 rounded-lg ${className}`}>
       {/* Collapsible Header - always visible */}
       <div
-        className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+        className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
         onClick={toggleCollapse}
         role="button"
         tabIndex={0}
@@ -274,17 +274,17 @@ const PrerequisiteExamSelector = ({
         aria-label="Toggle prerequisite exams section"
       >
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-900 dark:text-gray-100">
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
             Prerequisite Exams (Optional)
           </span>
           {selectedIds.length > 0 && (
-            <Badge variant="secondary" className="ml-2">
+            <Badge variant="secondary" className="ml-2 text-xs py-0.5 px-1.5">
               {selectedIds.length} selected
             </Badge>
           )}
         </div>
         <ChevronDownIcon
-          className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
+          className={`h-4 w-4 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
             isCollapsed ? '' : 'rotate-180'
           }`}
         />
@@ -294,10 +294,10 @@ const PrerequisiteExamSelector = ({
       {!isCollapsed && (
         <>
           {/* Filters Section */}
-          <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-            <div className="space-y-3">
+          <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <div className="space-y-2">
               {/* Date Range Filter */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
                     From Date
@@ -325,7 +325,7 @@ const PrerequisiteExamSelector = ({
               </div>
 
               {/* Location and Type Filters */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {/* Location Filter */}
                 <div>
                   <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
@@ -376,8 +376,8 @@ const PrerequisiteExamSelector = ({
 
           {/* Selection Actions */}
           {!isLoading && !isError && filteredExams.length > 0 && (
-            <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="px-2 py-1.5 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div className="text-xs text-gray-600 dark:text-gray-400">
                 {selectedIds.length} of {filteredExams.length} selected
               </div>
               <div className="space-x-2">
@@ -400,8 +400,8 @@ const PrerequisiteExamSelector = ({
           )}
 
           {/* Exam List */}
-          <ScrollArea className="h-[400px]">
-            <div className="p-3 space-y-2">
+          <ScrollArea className="h-[250px]">
+            <div className="p-2 space-y-1.5">
               {isLoading && <LoadingSkeleton />}
 
               {isError && <ErrorState />}
@@ -420,7 +420,7 @@ const PrerequisiteExamSelector = ({
                   <div
                     key={exam.id}
                     className={`
-                      flex items-start space-x-3 p-3 rounded-lg border
+                      flex items-start space-x-3 p-2 rounded-lg border
                       ${isChecked
                         ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
                         : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}
@@ -453,23 +453,23 @@ const PrerequisiteExamSelector = ({
                     <div className="flex-1 min-w-0">
                       {/* Type Badge and Location */}
                       <div className="flex items-center gap-2 mb-2">
-                        <Badge variant={getMockTypeVariant(display.mockType)}>
+                        <Badge variant={getMockTypeVariant(display.mockType)} className="text-xs py-0.5 px-1.5">
                           {display.mockType}
                         </Badge>
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
                           <MapPinIcon className="inline h-3.5 w-3.5 mr-1" />
                           {display.location}
                         </span>
                       </div>
 
                       {/* Date and Time */}
-                      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-700 dark:text-gray-300">
                         <div className="flex items-center gap-1">
-                          <CalendarIcon className="h-4 w-4 text-gray-400" />
+                          <CalendarIcon className="h-3.5 w-3.5 text-gray-400" />
                           <span>{display.examDate}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <ClockIcon className="h-4 w-4 text-gray-400" />
+                          <ClockIcon className="h-3.5 w-3.5 text-gray-400" />
                           <span>{display.timeRange}</span>
                         </div>
                       </div>
@@ -489,10 +489,10 @@ const PrerequisiteExamSelector = ({
 
           {/* Footer with selection count */}
           {!isLoading && !isError && selectedIds.length > 0 && (
-            <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <div className="px-2 py-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
               <div className="flex items-center gap-2">
-                <ClipboardDocumentListIcon className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <ClipboardDocumentListIcon className="h-3.5 w-3.5 text-gray-500" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                   {selectedIds.length} exam{selectedIds.length !== 1 ? 's' : ''} selected
                 </span>
               </div>
