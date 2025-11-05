@@ -117,41 +117,41 @@ const TraineeInfoCard = ({ trainee }) => {
             </label>
             <div className="flex flex-wrap gap-3">
               {/* Mock Discussion Badge */}
-              <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-4 py-2.5 rounded-lg border border-blue-200 dark:border-blue-800">
-                <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
+              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Mock Discussion:
                 </span>
-                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-white bg-blue-600 dark:bg-blue-500 rounded-md">
+                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-700 rounded-md">
                   {trainee.tokens.mock_discussion}
                 </span>
               </div>
 
               {/* Clinical Skills Badge */}
-              <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 px-4 py-2.5 rounded-lg border border-green-200 dark:border-green-800">
-                <span className="text-sm font-medium text-green-900 dark:text-green-200">
+              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Clinical Skills:
                 </span>
-                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-white bg-green-600 dark:bg-green-500 rounded-md">
+                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-700 rounded-md">
                   {trainee.tokens.clinical_skills}
                 </span>
               </div>
 
               {/* Situational Judgment Badge */}
-              <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/20 px-4 py-2.5 rounded-lg border border-purple-200 dark:border-purple-800">
-                <span className="text-sm font-medium text-purple-900 dark:text-purple-200">
+              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Situational Judgment:
                 </span>
-                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-white bg-purple-600 dark:bg-purple-500 rounded-md">
+                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-700 rounded-md">
                   {trainee.tokens.situational_judgment}
                 </span>
               </div>
 
               {/* Mini-mock Badge */}
-              <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-900/20 px-4 py-2.5 rounded-lg border border-orange-200 dark:border-orange-800">
-                <span className="text-sm font-medium text-orange-900 dark:text-orange-200">
+              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Mini-mock:
                 </span>
-                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-white bg-orange-600 dark:bg-orange-500 rounded-md">
+                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-700 rounded-md">
                   {trainee.tokens.mini_mock}
                 </span>
               </div>
