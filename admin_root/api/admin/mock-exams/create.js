@@ -16,8 +16,23 @@ const { getCache } = require('../../_shared/cache');
  */
 async function createMockExamHandler(req, res) {
   try {
+    // 🔍 DEBUG: Log raw request body BEFORE validation
+    console.log('🔍 [DEBUG] RAW REQUEST BODY:', {
+      exam_date: req.body.exam_date,
+      exam_date_type: typeof req.body.exam_date,
+      exam_date_length: req.body.exam_date?.length,
+      full_body: JSON.stringify(req.body, null, 2)
+    });
+
     // Validate request body
     const validatedData = await validateInput(req.body, 'mockExamCreation');
+
+    // 🔍 DEBUG: Log validated data AFTER validation
+    console.log('🔍 [DEBUG] VALIDATED DATA:', {
+      exam_date: validatedData.exam_date,
+      exam_date_type: typeof validatedData.exam_date,
+      exam_date_length: validatedData.exam_date?.length
+    });
 
     console.log('📝 Creating single mock exam:', {
       mock_type: validatedData.mock_type,
@@ -33,6 +48,12 @@ async function createMockExamHandler(req, res) {
 
     // Create mock exam in HubSpot
     const result = await hubspot.createMockExam(validatedData);
+
+    // 🔍 DEBUG: Log the created mock_exam_name from HubSpot
+    console.log('🔍 [DEBUG] CREATED MOCK EXAM NAME:', {
+      mock_exam_name: result.properties?.mock_exam_name,
+      exam_date_used: validatedData.exam_date
+    });
 
     // Log success
     console.log(`✅ Mock exam created successfully:`, {
