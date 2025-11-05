@@ -41,6 +41,7 @@ describe('RefundService Unit Tests', () => {
       const result = refundService.getTokenPropertyName('Clinical Skills Token');
       expect(result).toBe('clinical_skills_token');
     });
+    
 
     test('returns null for unknown token type', () => {
       const result = refundService.getTokenPropertyName('Unknown Token');

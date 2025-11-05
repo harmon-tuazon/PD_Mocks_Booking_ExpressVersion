@@ -12,7 +12,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminApi } from '../services/adminApi';
+import { mockExamsApi } from '../services/adminApi';
 import toast from 'react-hot-toast';
 
 const useCancelBookingsMutation = (mockExamId) => {
@@ -34,7 +34,7 @@ const useCancelBookingsMutation = (mockExamId) => {
 
       console.log(`🗑️ [CANCEL] Requesting cancellation of ${bookings.length} bookings (refund: ${requestBody.refundTokens})`);
 
-      const response = await adminApi.mockExamsApi.cancelBookings(mockExamId, requestBody);
+      const response = await mockExamsApi.cancelBookings(mockExamId, requestBody);
       return response;
     },
 
