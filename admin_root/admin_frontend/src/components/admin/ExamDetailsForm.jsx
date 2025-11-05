@@ -23,7 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 
-const ExamDetailsForm = ({
+const const ExamDetailsForm = ({
   exam,
   isEditing = false,
   formData = {},
@@ -89,6 +89,273 @@ const ExamDetailsForm = ({
                     name="mock_type"
                     value={displayData.mock_type || ''}
                     onValueChange={(value) => onFieldChange('mock_type', value)}
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger className={getErrorClass('mock_type')}>
+                      <SelectValue placeholder="Select mock type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Situational Judgment">Situational Judgment</SelectItem>
+                      <SelectItem value="Clinical Skills">Clinical Skills</SelectItem>
+                      <SelectItem value="Mini-mock">Mini-mock</SelectItem>
+                      <SelectItem value="Mock Discussion">Mock Discussion</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {getFieldError('mock_type') && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                      {getFieldError('mock_type')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMockTypeBadgeColor(displayData.mock_type)}`}>
+                    {displayData.mock_type || 'N/A'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Status */}
+            <div>
+              <Label>Status</Label>
+              {isEditing ? (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="is_active"
+                    name="is_active"
+                    checked={displayData.is_active || false}
+                    onCheckedChange={(checked) => {
+                      onFieldChange('is_active', checked);
+                      onFieldBlur('is_active');
+                    }}
+                    disabled={isSaving}
+                  />
+                  <label htmlFor="is_active" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    <span className={displayData.is_active ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'}>
+                      {displayData.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </label>
+                </div>
+              ) : (
+                <div>
+                  <StatusBadge status={displayData.status || (displayData.is_active ? 'active' : 'inactive')} />
+                </div>
+              )}
+            </div>
+
+            {/* Exam Date */}
+            <div>
+              <Label>Exam Date</Label>
+              {isEditing ? (
+                <div>
+                  <DatePicker
+                    id="exam_date"
+                    name="exam_date"
+                    value={displayData.exam_date || ''}
+                    onChange={(value) => {
+                      onFieldChange('exam_date', value);
+                      onFieldBlur('exam_date');
+                    }}
+                    placeholder="Select exam date"
+                    disabled={isSaving}
+                    className={getFieldError('exam_date') ? 'border-red-500' : ''}
+                  />
+                  {getFieldError('exam_date') && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                      {getFieldError('exam_date')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-900 dark:text-gray-100 font-medium">
+                  {formatDateLong(displayData.exam_date)}
+                </div>
+              )}
+            </div>
+
+            {/* Location */}
+            <div>
+              <Label>Location</Label>
+              {isEditing ? (
+                <div>
+                  <Select
+                    name="location"
+                    value={displayData.location || ''}
+                    onValueChange={(value) => onFieldChange('location', value)}
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger className={getErrorClass('location')}>
+                      <SelectValue placeholder="Select a location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Mississauga">Mississauga</SelectItem>
+                      <SelectItem value="Mississauga - B9">Mississauga - B9</SelectItem>
+                      <SelectItem value="Mississauga - Lab D">Mississauga - Lab D</SelectItem>
+                      <SelectItem value="Vancouver">Vancouver</SelectItem>
+                      <SelectItem value="Montreal">Montreal</SelectItem>
+                      <SelectItem value="Calgary">Calgary</SelectItem>
+                      <SelectItem value="Richmond Hill">Richmond Hill</SelectItem>
+                      <SelectItem value="Online">Online</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {getFieldError('location') && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                      {getFieldError('location')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-900 dark:text-gray-100 font-medium">
+                  {displayData.location || 'N/A'}
+                </div>
+              )}
+            </div>
+
+            {/* Start Time */}
+            <div>
+              <Label>Start Time</Label>
+              {isEditing ? (
+                <div>
+                  <TimePickerSelect
+                    id="start_time"
+                    name="start_time"
+                    value={displayData.start_time || ''}
+                    onChange={(value) => {
+                      onFieldChange('start_time', value);
+                      onFieldBlur('start_time');
+                    }}
+                    placeholder="Select start time"
+                    disabled={isSaving}
+                    minuteStep={15}
+                    startHour={6}
+                    endHour={23}
+                    className={getFieldError('start_time') ? 'border-red-500' : ''}
+                  />
+                  {getFieldError('start_time') && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                      {getFieldError('start_time')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-900 dark:text-gray-100 font-medium">
+                  {formatTimeDisplay(displayData.start_time)}
+                </div>
+              )}
+            </div>
+
+            {/* End Time */}
+            <div>
+              <Label>End Time</Label>
+              {isEditing ? (
+                <div>
+                  <TimePickerSelect
+                    id="end_time"
+                    name="end_time"
+                    value={displayData.end_time || ''}
+                    onChange={(value) => {
+                      onFieldChange('end_time', value);
+                      onFieldBlur('end_time');
+                    }}
+                    placeholder="Select end time"
+                    disabled={isSaving}
+                    minuteStep={15}
+                    startHour={6}
+                    endHour={23}
+                    className={getFieldError('end_time') ? 'border-red-500' : ''}
+                  />
+                  {getFieldError('end_time') && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                      {getFieldError('end_time')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-900 dark:text-gray-100 font-medium">
+                  {formatTimeDisplay(displayData.end_time)}
+                </div>
+              )}
+            </div>
+
+            {/* Total Capacity */}
+            <div>
+              <Label>Total Capacity</Label>
+              {isEditing ? (
+                <div>
+                  <Input
+                    type="number"
+                    name="capacity"
+                    value={displayData.capacity || ''}
+                    onChange={(e) => onFieldChange('capacity', e.target.value)}
+                    onBlur={() => onFieldBlur('capacity')}
+                    disabled={isSaving}
+                    placeholder="Maximum number of participants"
+                    min="0"
+                    className={getErrorClass('capacity')}
+                  />
+                  {getFieldError('capacity') && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                      {getFieldError('capacity')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-900 dark:text-gray-100 font-medium">
+                  {displayData.capacity || 'N/A'}
+                </div>
+              )}
+            </div>
+
+            {/* System Record ID */}
+            <div>
+              <Label>System Record ID</Label>
+              <div className="font-mono text-sm text-gray-600 dark:text-gray-400">
+                {displayData.id || 'N/A'}
+              </div>
+            </div>
+
+            {/* Prerequisite Exams - Only for Mock Discussion - MOVED TO BOTTOM */}
+            {displayData.mock_type === 'Mock Discussion' && (
+              <div className="col-span-2">
+                <Label>Prerequisite Exams (Optional)</Label>
+                {isEditing ? (
+                  <PrerequisiteExamSelector
+                    mockExamId={displayData.id || exam?.id}
+                    discussionExamDate={displayData.exam_date}
+                    currentAssociations={displayData.prerequisite_exam_ids || []}
+                    onChange={(selectedIds) => onFieldChange('prerequisite_exam_ids', selectedIds)}
+                    disabled={isSaving}
+                  />
+                ) : (
+                  <PrerequisiteExamsList exams={displayData.prerequisite_exam_details || []} />
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Information Section - Notes (if present) */}
+      {!isEditing && displayData.notes && (
+        <div className="mt-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
+            Notes
+          </h3>
+          <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
+            {displayData.notes}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+} => onFieldChange('mock_type', value)}
                     disabled={isSaving}
                   >
                     <SelectTrigger className={getErrorClass('mock_type')}>
