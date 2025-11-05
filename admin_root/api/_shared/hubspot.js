@@ -878,12 +878,6 @@ class HubSpotService {
 
   async createMockExam(mockExamData) {
     try {
-      // 🔍 DEBUG: Log incoming data
-      console.log('🔍 [HUBSPOT] createMockExam received:', {
-        exam_date: mockExamData.exam_date,
-        exam_date_type: typeof mockExamData.exam_date
-      });
-
       // Validate required fields
       const requiredFields = ['mock_type', 'exam_date', 'start_time', 'end_time', 'location', 'capacity'];
       for (const field of requiredFields) {
@@ -904,16 +898,6 @@ class HubSpotService {
       // Generate mock_exam_name in format: {mock_type}-{location}-{exam_date}
       const mockExamName = `${mockExamData.mock_type}-${mockExamData.location}-${mockExamData.exam_date}`;
 
-      // 🔍 DEBUG: Log generated name
-      console.log('🔍 [HUBSPOT] Generated mock_exam_name:', {
-        mockExamName,
-        components: {
-          mock_type: mockExamData.mock_type,
-          location: mockExamData.location,
-          exam_date: mockExamData.exam_date
-        }
-      });
-
       // Set exam data with correct HubSpot property names and timestamp format
       const examData = {
         mock_type: mockExamData.mock_type,
@@ -930,13 +914,6 @@ class HubSpotService {
 
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}`, {
         properties: examData
-      });
-
-      // 🔍 DEBUG: Log HubSpot response
-      console.log('🔍 [HUBSPOT] HubSpot returned:', {
-        id: response.id,
-        mock_exam_name: response.properties?.mock_exam_name,
-        exam_date: response.properties?.exam_date
       });
 
       console.log(`Created mock exam ${response.id} with mock_exam_id ${newIndex}`);

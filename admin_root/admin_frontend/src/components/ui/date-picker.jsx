@@ -58,13 +58,6 @@ export function DatePicker({
     const day = String(date.getDate()).padStart(2, '0');
     const isoString = `${year}-${month}-${day}`;
 
-    // 🔍 DEBUG: Log date picker output
-    console.log('🔍 [DATE-PICKER] Selected date:', {
-      input_date: date,
-      output_iso: isoString,
-      year, month, day
-    });
-
     onChange?.(isoString);
   };
 
