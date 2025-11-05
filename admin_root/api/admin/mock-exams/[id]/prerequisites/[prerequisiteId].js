@@ -3,9 +3,9 @@
  * Remove a single prerequisite association from a Mock Discussion exam
  */
 
-const { requireAdmin } = require('../../middleware/requireAdmin');
-const hubspot = require('../../../_shared/hubspot');
-const { HUBSPOT_OBJECTS } = require('../../../_shared/hubspot');
+const { requireAdmin } = require('../../../../middleware/requireAdmin');
+const hubspot = require('../../../../../_shared/hubspot');
+const { HUBSPOT_OBJECTS } = require('../../../../../_shared/hubspot');
 
 // Association type ID for "requires attendance at" relationship
 const PREREQUISITE_ASSOCIATION_TYPE_ID = 1340;

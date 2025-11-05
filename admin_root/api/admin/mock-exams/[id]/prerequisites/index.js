@@ -8,10 +8,10 @@
  * - Retrieve all prerequisite associations for a mock exam
  */
 
-const { requireAdmin } = require('../../middleware/requireAdmin');
-const { validateInput } = require('../../../_shared/validation');
-const hubspot = require('../../../_shared/hubspot');
-const { HUBSPOT_OBJECTS } = require('../../../_shared/hubspot');
+const { requireAdmin } = require('../../../middleware/requireAdmin');
+const { validateInput } = require('../../../../_shared/validation');
+const hubspot = require('../../../../_shared/hubspot');
+const { HUBSPOT_OBJECTS } = require('../../../../_shared/hubspot');
 const Joi = require('joi');
 
 // Association type ID for "requires attendance at" relationship
