@@ -204,9 +204,31 @@ export function hasFormChanges(original, current) {
 
   const fieldsToCheck = Object.keys(validationRules);
 
+  // Check standard validation fields
   for (const field of fieldsToCheck) {
     if (original[field] !== current[field]) {
       return true;
+    }
+  }
+
+  // Check prerequisite_exam_ids array (for Mock Discussion)
+  if (original.prerequisite_exam_ids || current.prerequisite_exam_ids) {
+    const originalIds = original.prerequisite_exam_ids || [];
+    const currentIds = current.prerequisite_exam_ids || [];
+    
+    // Compare array lengths
+    if (originalIds.length !== currentIds.length) {
+      return true;
+    }
+    
+    // Compare array contents (order-independent)
+    const sortedOriginal = [...originalIds].sort();
+    const sortedCurrent = [...currentIds].sort();
+    
+    for (let i = 0; i < sortedOriginal.length; i++) {
+      if (sortedOriginal[i] !== sortedCurrent[i]) {
+        return true;
+      }
     }
   }
 
@@ -245,11 +267,29 @@ export function formatFormDataForApi(formData) {
 export function getChangedFields(original, current) {
   const changes = {};
 
+  // Check standard validation fields
   Object.keys(validationRules).forEach(field => {
     if (original[field] !== current[field]) {
       changes[field] = current[field];
     }
   });
+
+  // Check prerequisite_exam_ids array (for Mock Discussion)
+  if (original.prerequisite_exam_ids || current.prerequisite_exam_ids) {
+    const originalIds = original.prerequisite_exam_ids || [];
+    const currentIds = current.prerequisite_exam_ids || [];
+    
+    // Compare array contents
+    const sortedOriginal = [...originalIds].sort();
+    const sortedCurrent = [...currentIds].sort();
+    
+    const hasChanged = sortedOriginal.length !== sortedCurrent.length ||
+      sortedOriginal.some((id, index) => id !== sortedCurrent[index]);
+    
+    if (hasChanged) {
+      changes.prerequisite_exam_ids = currentIds;
+    }
+  }
 
   return changes;
 }

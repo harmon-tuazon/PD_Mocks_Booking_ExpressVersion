@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  MagnifyingGlassIcon,
+  ChevronDownIcon,
   CalendarIcon,
   ClockIcon,
   MapPinIcon,
@@ -17,7 +17,6 @@ import {
   ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
 import { usePrerequisiteExams, filterPrerequisiteExams } from '../../hooks/usePrerequisiteExams';
-import { useDebounce } from '../../hooks/useDebounce';
 import { formatDateLong } from '../../utils/dateUtils';
 import { formatTime } from '../../utils/timeFormatters';
 
@@ -32,9 +31,19 @@ const PrerequisiteExamSelector = ({
   // State for selected exam IDs
   const [selectedIds, setSelectedIds] = useState(currentAssociations);
 
-  // State for search
-  const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  // State for collapsible section
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // State for filters
+  const [filters, setFilters] = useState({
+    dateFrom: '',
+    dateTo: '',
+    location: '',
+    types: {
+      'Clinical Skills': true,
+      'Situational Judgment': true
+    }
+  });
 
   // Fetch available prerequisite exams
   const {
@@ -50,15 +59,66 @@ const PrerequisiteExamSelector = ({
     setSelectedIds(currentAssociations);
   }, [currentAssociations]);
 
-  // Filter exams based on search and exclusions
+  // Extract unique locations from available exams
+  const uniqueLocations = useMemo(() => {
+    const locations = new Set();
+    availableExams.forEach(exam => {
+      const props = exam.properties || exam;
+      if (props.location && props.location !== 'N/A') {
+        locations.add(props.location);
+      }
+    });
+    return Array.from(locations).sort();
+  }, [availableExams]);
+
+  // Filter exams based on all filters
   const filteredExams = useMemo(() => {
-    return filterPrerequisiteExams(
+    let filtered = filterPrerequisiteExams(
       availableExams,
       mockExamId,
       [], // Don't exclude already associated - show them as checked
-      debouncedSearchTerm
+      '' // No search term anymore
     );
-  }, [availableExams, mockExamId, debouncedSearchTerm]);
+
+    // Apply additional filters
+    filtered = filtered.filter(exam => {
+      const props = exam.properties || exam;
+
+      // Type filter
+      const mockType = props.mock_type || 'Unknown';
+      if (!filters.types[mockType]) {
+        return false;
+      }
+
+      // Location filter
+      if (filters.location && props.location !== filters.location) {
+        return false;
+      }
+
+      // Date range filter
+      if (filters.dateFrom || filters.dateTo) {
+        const examDate = props.exam_date;
+        if (examDate) {
+          const examDateObj = new Date(examDate);
+
+          if (filters.dateFrom) {
+            const fromDate = new Date(filters.dateFrom);
+            if (examDateObj < fromDate) return false;
+          }
+
+          if (filters.dateTo) {
+            const toDate = new Date(filters.dateTo);
+            toDate.setHours(23, 59, 59, 999); // Include entire day
+            if (examDateObj > toDate) return false;
+          }
+        }
+      }
+
+      return true;
+    });
+
+    return filtered;
+  }, [availableExams, mockExamId, filters]);
 
   // Handle checkbox toggle
   const handleExamToggle = useCallback((examId, checked) => {
@@ -82,6 +142,30 @@ const PrerequisiteExamSelector = ({
     setSelectedIds([]);
     onChange([]);
   }, [onChange]);
+
+  // Toggle collapse state
+  const toggleCollapse = useCallback(() => {
+    setIsCollapsed(!isCollapsed);
+  }, [isCollapsed]);
+
+  // Update filter
+  const updateFilter = useCallback((filterKey, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterKey]: value
+    }));
+  }, []);
+
+  // Update type filter
+  const updateTypeFilter = useCallback((type, checked) => {
+    setFilters(prev => ({
+      ...prev,
+      types: {
+        ...prev.types,
+        [type]: checked
+      }
+    }));
+  }, []);
 
   // Get mock type badge variant
   const getMockTypeVariant = (type) => {
@@ -174,148 +258,247 @@ const PrerequisiteExamSelector = ({
 
   return (
     <div className={`border border-gray-200 dark:border-gray-700 rounded-lg ${className}`}>
-      {/* Search Bar */}
-      <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-        <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            type="text"
-            placeholder="Search exams..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            disabled={disabled || isLoading}
-            className="pl-9 pr-3"
-          />
+      {/* Collapsible Header - always visible */}
+      <div
+        className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+        onClick={toggleCollapse}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleCollapse();
+          }
+        }}
+        aria-expanded={!isCollapsed}
+        aria-label="Toggle prerequisite exams section"
+      >
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-gray-900 dark:text-gray-100">
+            Prerequisite Exams (Optional)
+          </span>
+          {selectedIds.length > 0 && (
+            <Badge variant="secondary" className="ml-2">
+              {selectedIds.length} selected
+            </Badge>
+          )}
         </div>
+        <ChevronDownIcon
+          className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
+            isCollapsed ? '' : 'rotate-180'
+          }`}
+        />
       </div>
 
-      {/* Selection Actions */}
-      {!isLoading && !isError && filteredExams.length > 0 && (
-        <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            {selectedIds.length} of {filteredExams.length} selected
-          </div>
-          <div className="space-x-2">
-            <button
-              onClick={handleSelectAll}
-              disabled={disabled}
-              className="text-xs text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50"
-            >
-              Select All
-            </button>
-            <button
-              onClick={handleClearAll}
-              disabled={disabled || selectedIds.length === 0}
-              className="text-xs text-gray-600 hover:text-gray-500 dark:text-gray-400 dark:hover:text-gray-300 disabled:opacity-50"
-            >
-              Clear All
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Exam List */}
-      <ScrollArea className="h-[400px]">
-        <div className="p-3 space-y-2">
-          {isLoading && <LoadingSkeleton />}
-
-          {isError && <ErrorState />}
-
-          {!isLoading && !isError && filteredExams.length === 0 && (
-            <EmptyState
-              message={
-                debouncedSearchTerm
-                  ? "No exams match your search"
-                  : "No eligible prerequisite exams found. Create Clinical Skills or Situational Judgment exams scheduled before this discussion date."
-              }
-            />
-          )}
-
-          {!isLoading && !isError && filteredExams.map(exam => {
-            const display = formatExamDisplay(exam);
-            const isChecked = selectedIds.includes(exam.id);
-
-            return (
-              <div
-                key={exam.id}
-                className={`
-                  flex items-start space-x-3 p-3 rounded-lg border
-                  ${isChecked
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}
-                  ${disabled ? 'opacity-50' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}
-                  transition-colors cursor-pointer
-                `}
-                onClick={() => !disabled && handleExamToggle(exam.id, !isChecked)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
-                    e.preventDefault();
-                    handleExamToggle(exam.id, !isChecked);
-                  }
-                }}
-                aria-label={`Select ${display.mockType} exam on ${display.examDate}`}
-              >
-                {/* Checkbox */}
-                <div className="pt-1">
-                  <Checkbox
-                    checked={isChecked}
-                    onCheckedChange={(checked) => handleExamToggle(exam.id, checked)}
-                    disabled={disabled}
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label={`Select exam ${exam.id}`}
+      {/* Collapsible Content */}
+      {!isCollapsed && (
+        <>
+          {/* Filters Section */}
+          <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <div className="space-y-3">
+              {/* Date Range Filter */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                    From Date
+                  </label>
+                  <Input
+                    type="date"
+                    value={filters.dateFrom}
+                    onChange={(e) => updateFilter('dateFrom', e.target.value)}
+                    disabled={disabled || isLoading}
+                    className="h-8 text-sm"
                   />
                 </div>
-
-                {/* Exam Details */}
-                <div className="flex-1 min-w-0">
-                  {/* Type Badge and Location */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant={getMockTypeVariant(display.mockType)}>
-                      {display.mockType}
-                    </Badge>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      <MapPinIcon className="inline h-3.5 w-3.5 mr-1" />
-                      {display.location}
-                    </span>
-                  </div>
-
-                  {/* Date and Time */}
-                  <div className="flex flex-wrap items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
-                    <div className="flex items-center gap-1">
-                      <CalendarIcon className="h-4 w-4 text-gray-400" />
-                      <span>{display.examDate}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <ClockIcon className="h-4 w-4 text-gray-400" />
-                      <span>{display.timeRange}</span>
-                    </div>
-                  </div>
-
-                  {/* Booking Info */}
-                  {display.bookingInfo && (
-                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {display.bookingInfo}
-                    </div>
-                  )}
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                    To Date
+                  </label>
+                  <Input
+                    type="date"
+                    value={filters.dateTo}
+                    onChange={(e) => updateFilter('dateTo', e.target.value)}
+                    disabled={disabled || isLoading}
+                    className="h-8 text-sm"
+                  />
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </ScrollArea>
 
-      {/* Footer with selection count */}
-      {!isLoading && !isError && selectedIds.length > 0 && (
-        <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-          <div className="flex items-center gap-2">
-            <ClipboardDocumentListIcon className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {selectedIds.length} exam{selectedIds.length !== 1 ? 's' : ''} selected
-            </span>
+              {/* Location and Type Filters */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Location Filter */}
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                    Location
+                  </label>
+                  <select
+                    value={filters.location}
+                    onChange={(e) => updateFilter('location', e.target.value)}
+                    disabled={disabled || isLoading || uniqueLocations.length === 0}
+                    className="w-full h-8 text-sm px-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  >
+                    <option value="">All Locations</option>
+                    {uniqueLocations.map(location => (
+                      <option key={location} value={location}>
+                        {location}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Type Filters */}
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                    Exam Types
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={filters.types['Clinical Skills']}
+                        onCheckedChange={(checked) => updateTypeFilter('Clinical Skills', checked)}
+                        disabled={disabled || isLoading}
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Clinical</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={filters.types['Situational Judgment']}
+                        onCheckedChange={(checked) => updateTypeFilter('Situational Judgment', checked)}
+                        disabled={disabled || isLoading}
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Situational</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+
+          {/* Selection Actions */}
+          {!isLoading && !isError && filteredExams.length > 0 && (
+            <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                {selectedIds.length} of {filteredExams.length} selected
+              </div>
+              <div className="space-x-2">
+                <button
+                  onClick={handleSelectAll}
+                  disabled={disabled}
+                  className="text-xs text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={handleClearAll}
+                  disabled={disabled || selectedIds.length === 0}
+                  className="text-xs text-gray-600 hover:text-gray-500 dark:text-gray-400 dark:hover:text-gray-300 disabled:opacity-50"
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Exam List */}
+          <ScrollArea className="h-[400px]">
+            <div className="p-3 space-y-2">
+              {isLoading && <LoadingSkeleton />}
+
+              {isError && <ErrorState />}
+
+              {!isLoading && !isError && filteredExams.length === 0 && (
+                <EmptyState
+                  message="No exams match your filters. Adjust the filters or create Clinical Skills or Situational Judgment exams scheduled before this discussion date."
+                />
+              )}
+
+              {!isLoading && !isError && filteredExams.map(exam => {
+                const display = formatExamDisplay(exam);
+                const isChecked = selectedIds.includes(exam.id);
+
+                return (
+                  <div
+                    key={exam.id}
+                    className={`
+                      flex items-start space-x-3 p-3 rounded-lg border
+                      ${isChecked
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}
+                      ${disabled ? 'opacity-50' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}
+                      transition-colors cursor-pointer
+                    `}
+                    onClick={() => !disabled && handleExamToggle(exam.id, !isChecked)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        handleExamToggle(exam.id, !isChecked);
+                      }
+                    }}
+                    aria-label={`Select ${display.mockType} exam on ${display.examDate}`}
+                  >
+                    {/* Checkbox */}
+                    <div className="pt-1">
+                      <Checkbox
+                        checked={isChecked}
+                        onCheckedChange={(checked) => handleExamToggle(exam.id, checked)}
+                        disabled={disabled}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Select exam ${exam.id}`}
+                      />
+                    </div>
+
+                    {/* Exam Details */}
+                    <div className="flex-1 min-w-0">
+                      {/* Type Badge and Location */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant={getMockTypeVariant(display.mockType)}>
+                          {display.mockType}
+                        </Badge>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          <MapPinIcon className="inline h-3.5 w-3.5 mr-1" />
+                          {display.location}
+                        </span>
+                      </div>
+
+                      {/* Date and Time */}
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+                        <div className="flex items-center gap-1">
+                          <CalendarIcon className="h-4 w-4 text-gray-400" />
+                          <span>{display.examDate}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <ClockIcon className="h-4 w-4 text-gray-400" />
+                          <span>{display.timeRange}</span>
+                        </div>
+                      </div>
+
+                      {/* Booking Info */}
+                      {display.bookingInfo && (
+                        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          {display.bookingInfo}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+
+          {/* Footer with selection count */}
+          {!isLoading && !isError && selectedIds.length > 0 && (
+            <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <div className="flex items-center gap-2">
+                <ClipboardDocumentListIcon className="h-4 w-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {selectedIds.length} exam{selectedIds.length !== 1 ? 's' : ''} selected
+                </span>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -27,7 +27,8 @@ export const formatTime = (dateString) => {
   }
 
   // Handle UTC timestamps and ISO strings
-  const date = new Date(dateString);
+  // Convert string numbers to integers (HubSpot sometimes returns timestamps as strings)
+  const date = new Date(typeof dateString === 'string' && /^\d+$/.test(dateString) ? parseInt(dateString) : dateString);
 
   // Check if date is valid
   if (isNaN(date.getTime())) {
