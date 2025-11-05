@@ -19,6 +19,7 @@ const useBatchCancellation = (bookings = []) => {
   const [selectedBookingIds, setSelectedBookingIds] = useState(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [refundTokens, setRefundTokens] = useState(true);  // Default: enabled
 
   // Reset selections when bookings change (e.g., after successful cancellation)
   useEffect(() => {
@@ -138,6 +139,11 @@ const useBatchCancellation = (bookings = []) => {
     return Array.from(selectedBookingIds);
   }, [selectedBookingIds]);
 
+  // Toggle refund tokens
+  const toggleRefund = useCallback(() => {
+    setRefundTokens(prev => !prev);
+  }, []);
+
   return {
     // State
     isCancellationMode,
@@ -148,6 +154,7 @@ const useBatchCancellation = (bookings = []) => {
     totalCount,
     selectedBookings,
     selectedIds,
+    refundTokens,
 
     // Actions
     toggleMode,
@@ -159,6 +166,7 @@ const useBatchCancellation = (bookings = []) => {
     closeModal,
     startSubmitting,
     returnToSelecting,
+    toggleRefund,
 
     // Helpers
     isSelected,

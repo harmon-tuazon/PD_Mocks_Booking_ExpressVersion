@@ -6,14 +6,24 @@
  * - Batch cancel multiple bookings (up to 100 per request)
  * - Idempotent operations - safe to retry
  * - Soft delete: sets is_active = "Cancelled"
+ * - Token refund processing (configurable via refundTokens flag)
  * - Partial failure handling with detailed error reporting
  * - HubSpot batch API optimization with automatic chunking
  * - Cache invalidation for affected resources
- * - Audit logging with booking names (not IDs)
+ * - Audit logging with booking names and refund results
  *
  * Request Body:
  * {
- *   "bookingIds": ["string", ...]
+ *   "bookings": [
+ *     {
+ *       "id": "string",
+ *       "token_used": "string (optional)",
+ *       "associated_contact_id": "string (optional)",
+ *       "name": "string (optional)",
+ *       "email": "string (optional)"
+ *     }
+ *   ],
+ *   "refundTokens": boolean (optional, default: true)
  * }
  *
  * Path Parameters:
@@ -85,32 +95,53 @@ module.exports = async (req, res) => {
       });
     });
 
-    const { bookingIds } = req.validatedData;
+    const { bookings, refundTokens = true } = req.validatedData;
 
-    // Check if bookingIds array is within limits
-    if (bookingIds.length > MAX_BOOKINGS_PER_REQUEST) {
+    // Extract booking IDs for processing
+    const bookingIds = bookings.map(b => b.id);
+
+    // Check if bookings array is within limits
+    if (bookings.length > MAX_BOOKINGS_PER_REQUEST) {
       return res.status(400).json({
         success: false,
         error: {
           code: 'BATCH_SIZE_EXCEEDED',
           message: `Maximum ${MAX_BOOKINGS_PER_REQUEST} bookings can be cancelled per request`,
-          details: { provided: bookingIds.length, maximum: MAX_BOOKINGS_PER_REQUEST }
+          details: { provided: bookings.length, maximum: MAX_BOOKINGS_PER_REQUEST }
         }
       });
     }
 
     console.log(`🗑️ [CANCEL] Processing batch cancellation for mock exam ${mockExamId}`);
-    console.log(`🗑️ [CANCEL] Total bookings to process: ${bookingIds.length}`);
+    console.log(`🗑️ [CANCEL] Total bookings to process: ${bookings.length}`);
+    console.log(`🔄 [CANCEL] Token refunds enabled: ${refundTokens}`);
 
-    // Fetch all bookings in batches to verify they exist and get current status
-    console.log(`🔍 [CANCEL] Fetching booking details from HubSpot...`);
-    const existingBookings = await fetchBookingsBatch(bookingIds);
+    // Lightweight validation: Fetch only is_active status from HubSpot
+    console.log(`🔍 [CANCEL] Fetching booking status from HubSpot (lightweight)...`);
+    const statusMap = new Map();
 
-    // DEBUG: Log fetched booking data to trace caching issues
-    console.log(`🐛 [DEBUG] Fetched ${existingBookings.size} bookings from HubSpot`);
-    for (const [id, booking] of existingBookings) {
-      console.log(`🐛 [DEBUG] Booking ${id}: name="${booking.properties.name}", email="${booking.properties.email}"`);
+    // Fetch only is_active property (lightweight check)
+    for (let i = 0; i < bookingIds.length; i += HUBSPOT_BATCH_SIZE) {
+      const chunk = bookingIds.slice(i, i + HUBSPOT_BATCH_SIZE);
+
+      try {
+        const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
+          properties: ['is_active'],  // ONLY critical property for validation
+          inputs: chunk.map(id => ({ id }))
+        });
+
+        if (response.results) {
+          for (const booking of response.results) {
+            statusMap.set(booking.id, booking.properties.is_active);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ [CANCEL] Error fetching booking status batch:`, error);
+        // Continue processing other batches
+      }
     }
+
+    console.log(`✅ [CANCEL] Fetched status for ${statusMap.size} bookings from HubSpot`);
 
     // Initialize result tracking
     const results = {
@@ -119,27 +150,27 @@ module.exports = async (req, res) => {
       skipped: []
     };
 
-    // Validate and prepare updates
+    // Validate and prepare updates using bookings array from frontend
     const updates = [];
     const bookingDetailsForAudit = [];
 
-    for (const bookingId of bookingIds) {
-      const existingBooking = existingBookings.get(bookingId);
+    for (const booking of bookings) {
+      const currentStatus = statusMap.get(booking.id);
 
       // Check if booking exists
-      if (!existingBooking) {
+      if (!currentStatus) {
         results.failed.push({
-          bookingId,
+          bookingId: booking.id,
           error: 'Booking not found',
           code: 'BOOKING_NOT_FOUND'
         });
         continue;
       }
 
-      // Check if already cancelled (idempotency)
-      if (existingBooking.properties.is_active === 'Cancelled') {
+      // Check if already cancelled (idempotent)
+      if (currentStatus === 'Cancelled') {
         results.skipped.push({
-          bookingId,
+          bookingId: booking.id,
           reason: 'Already cancelled',
           currentStatus: 'Cancelled'
         });
@@ -148,17 +179,17 @@ module.exports = async (req, res) => {
 
       // Prepare update
       updates.push({
-        id: bookingId,
+        id: booking.id,
         properties: {
           is_active: 'Cancelled'
         }
       });
 
-      // Store booking details for audit log
+      // Store booking details for audit log (using frontend data)
       bookingDetailsForAudit.push({
-        id: bookingId,
-        name: existingBooking.properties.name || 'Unknown',
-        email: existingBooking.properties.email || 'No email'
+        id: booking.id,
+        name: booking.name || 'Unknown',
+        email: booking.email || 'No email'
       });
     }
 
@@ -183,6 +214,36 @@ module.exports = async (req, res) => {
           error: error.message || 'Failed to cancel booking',
           code: 'UPDATE_FAILED'
         });
+      }
+    }
+
+    // Process token refunds if enabled
+    let refundResults = null;
+    if (refundTokens && results.successful.length > 0) {
+      console.log(`🔄 [REFUND] Processing token refunds for ${results.successful.length} bookings`);
+
+      const refundService = require('../../../_shared/refund');
+
+      // Get bookings that were successfully cancelled
+      const successfulBookingIds = results.successful.map(r => r.bookingId);
+      const bookingsToRefund = bookings.filter(b => successfulBookingIds.includes(b.id));
+
+      try {
+        refundResults = await refundService.processRefunds(bookingsToRefund, adminEmail);
+
+        console.log(`✅ [REFUND] Refunded: ${refundResults.successful.length}, Failed: ${refundResults.failed.length}, Skipped: ${refundResults.skipped.length}`);
+      } catch (error) {
+        console.error(`❌ [REFUND] Error processing refunds:`, error);
+        // Don't fail the entire request if refunds fail
+        refundResults = {
+          successful: [],
+          failed: bookingsToRefund.map(b => ({
+            bookingId: b.id,
+            error: error.message || 'Refund processing failed',
+            code: 'REFUND_ERROR'
+          })),
+          skipped: []
+        };
       }
     }
 
@@ -213,7 +274,7 @@ module.exports = async (req, res) => {
       });
 
       // Create audit log asynchronously (non-blocking)
-      createAuditLog(mockExamId, summary, adminEmail, successfulBookingDetails).catch(error => {
+      createAuditLog(mockExamId, summary, adminEmail, successfulBookingDetails, refundResults).catch(error => {
         console.error('Failed to create audit log:', error);
       });
     }
@@ -225,6 +286,15 @@ module.exports = async (req, res) => {
       success: true,
       data: {
         summary,
+        refundSummary: refundResults ? {
+          enabled: true,
+          successful: refundResults.successful.length,
+          failed: refundResults.failed.length,
+          skipped: refundResults.skipped.length,
+          details: refundResults
+        } : {
+          enabled: false
+        },
         results
       },
       meta: {
@@ -399,7 +469,7 @@ async function invalidateCancellationCaches(mockExamId) {
  * Create audit log for booking cancellations
  * Following Section 5.5 of PRD for audit trail with booking names
  */
-async function createAuditLog(mockExamId, summary, adminEmail, bookingDetails) {
+async function createAuditLog(mockExamId, summary, adminEmail, bookingDetails, refundResults) {
   try {
     // DEBUG: Log what createAuditLog receives
     const timestamp = new Date().toISOString();
@@ -435,6 +505,12 @@ async function createAuditLog(mockExamId, summary, adminEmail, bookingDetails) {
       • Failed: ${summary.failed}<br/>
       • Skipped (already cancelled): ${summary.skipped}<br/>
       <br/>
+      ${refundResults ? `<strong>Token Refunds:</strong><br/>
+      • Refund Enabled: Yes<br/>
+      • Successfully Refunded: ${refundResults.successful.length}<br/>
+      • Failed Refunds: ${refundResults.failed.length}<br/>
+      • Skipped (no token): ${refundResults.skipped.length}<br/>
+      <br/>` : ''}
       <strong>Cancelled Bookings:</strong><br/>
       ${bookingsList}<br/>
       <br/>

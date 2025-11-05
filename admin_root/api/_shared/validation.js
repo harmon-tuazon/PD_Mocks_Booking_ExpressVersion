@@ -571,23 +571,59 @@ const schemas = {
       })
   }),
 
-  // Schema for batch booking cancellation (Admin)
+  // Schema for batch booking cancellation (Admin) - Supports booking objects with refund data
   batchBookingCancellation: Joi.object({
-    bookingIds: Joi.array()
+    bookings: Joi.array()
       .items(
-        Joi.string()
-          .pattern(/^\d+$/)
-          .messages({
-            'string.pattern.base': 'Booking ID must be numeric'
-          })
+        Joi.object({
+          id: Joi.string()
+            .pattern(/^\d+$/)
+            .required()
+            .messages({
+              'string.pattern.base': 'Booking ID must be numeric',
+              'any.required': 'Booking ID is required'
+            }),
+          token_used: Joi.string()
+            .allow('')
+            .optional()
+            .messages({
+              'string.base': 'Token used must be a string'
+            }),
+          associated_contact_id: Joi.string()
+            .pattern(/^\d+$/)
+            .allow('')
+            .optional()
+            .messages({
+              'string.pattern.base': 'Associated contact ID must be numeric'
+            }),
+          name: Joi.string()
+            .allow('')
+            .optional()
+            .messages({
+              'string.base': 'Name must be a string'
+            }),
+          email: Joi.string()
+            .email()
+            .allow('')
+            .optional()
+            .messages({
+              'string.email': 'Email must be a valid email address'
+            })
+        })
       )
       .min(1)
       .max(100)
       .required()
       .messages({
-        'array.min': 'At least one booking ID must be provided',
+        'array.min': 'At least one booking must be provided',
         'array.max': 'Maximum 100 bookings can be cancelled per request',
-        'any.required': 'Booking IDs array is required'
+        'any.required': 'Bookings array is required'
+      }),
+    refundTokens: Joi.boolean()
+      .default(true)
+      .optional()
+      .messages({
+        'boolean.base': 'refundTokens must be a boolean value'
       })
   }),
 

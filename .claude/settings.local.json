@@ -34,7 +34,11 @@
       "Bash(npx shadcn:*)",
       "mcp__serena__initial_instructions",
       "Bash(npx shadcn@latest add calendar popover button --yes)",
-      "mcp__serena__think_about_whether_you_are_done"
+      "mcp__serena__think_about_whether_you_are_done",
+      "Bash(create_test.js)",
+      "Bash(node create_test.js:*)",
+      "Bash(npm run test:coverage:*)",
+      "Bash(npm test)"
     ],
     "deny": [],
     "ask": []

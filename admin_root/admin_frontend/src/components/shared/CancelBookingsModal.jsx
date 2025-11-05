@@ -21,7 +21,9 @@ const CancelBookingsModal = ({
   onConfirm,
   selectedBookings = [],
   isLoading = false,
-  error = null
+  error = null,
+  refundTokens = true,         // NEW
+  onToggleRefund = () => {}     // NEW
 }) => {
   const [confirmationInput, setConfirmationInput] = useState('');
   const inputRef = useRef(null);
@@ -178,6 +180,27 @@ const CancelBookingsModal = ({
                         Please type {selectedBookings.length} to confirm
                       </p>
                     )}
+                  </div>
+
+                  {/* Refund Toggle */}
+                  <div className="mt-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <label className="flex items-start cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={refundTokens}
+                        onChange={onToggleRefund}
+                        disabled={isLoading}
+                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                      <div className="ml-3">
+                        <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                          Refund tokens to trainees
+                        </span>
+                        <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                          Booking tokens will be automatically returned to trainee accounts
+                        </p>
+                      </div>
+                    </label>
                   </div>
 
                   {/* Error Message */}

@@ -174,15 +174,13 @@ export const mockExamsApi = {
   },
 
   /**
-   * Cancel multiple bookings for a mock exam
+   * Cancel multiple bookings for a mock exam with optional token refund
    * @param {string} id - Mock exam ID
-   * @param {Array<string>} bookingIds - Array of booking IDs to cancel
+   * @param {Object} requestBody - Request body with bookings array and refundTokens flag
    * @returns {Promise<Object>} Cancellation results
    */
-  cancelBookings: async (id, bookingIds) => {
-    const response = await api.patch(`/admin/mock-exams/${id}/cancel-bookings`, {
-      bookingIds
-    });
+  cancelBookings: async (id, requestBody) => {
+    const response = await api.patch(`/admin/mock-exams/${id}/cancel-bookings`, requestBody);
     return response.data;
   }
 };

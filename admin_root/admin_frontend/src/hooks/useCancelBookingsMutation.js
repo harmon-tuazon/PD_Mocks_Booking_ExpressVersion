@@ -19,26 +19,34 @@ const useCancelBookingsMutation = (mockExamId) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ bookingIds }) => {
-      // Transform data to match backend expected format
+    mutationFn: async ({ bookings, refundTokens }) => {
+      // Send full booking objects from memory (optimization)
       const requestBody = {
-        bookingIds: bookingIds
+        bookings: bookings.map(b => ({
+          id: b.id,
+          token_used: b.token_used || '',
+          associated_contact_id: b.associated_contact_id || '',
+          name: b.name || 'Unknown',
+          email: b.email || ''
+        })),
+        refundTokens: refundTokens !== undefined ? refundTokens : true
       };
 
-      const response = await adminApi.patch(
-        `/admin/mock-exams/${mockExamId}/cancel-bookings`,
-        requestBody
-      );
+      console.log(`🗑️ [CANCEL] Requesting cancellation of ${bookings.length} bookings (refund: ${requestBody.refundTokens})`);
 
-      return response.data;
+      const response = await adminApi.mockExamsApi.cancelBookings(mockExamId, requestBody);
+      return response;
     },
 
-    onMutate: async ({ bookingIds }) => {
+    onMutate: async ({ bookings }) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries(['bookings', mockExamId]);
 
       // Snapshot the previous value
       const previousBookings = queryClient.getQueryData(['bookings', mockExamId]);
+
+      // Extract booking IDs
+      const bookingIds = bookings.map(b => b.id);
 
       // Optimistically update to show bookings as cancelled
       queryClient.setQueryData(['bookings', mockExamId], (old) => {
@@ -64,62 +72,42 @@ const useCancelBookingsMutation = (mockExamId) => {
     },
 
     onSuccess: async (responseData) => {
-      // Extract data from response structure: { success: true, data: { summary, results }, meta: {...} }
-      const { summary, results } = responseData.data || responseData;
+      const { summary, refundSummary } = responseData.data;
 
-      // Safety check - ensure summary exists
-      if (!summary) {
-        console.error('Invalid response structure:', responseData);
-        toast.error('Unexpected response format');
-        return;
-      }
+      console.log('✅ [CANCEL] Cancellation successful:', summary);
 
-      // Show success message
+      // Show cancellation success
       if (summary.cancelled > 0) {
-        toast.success(
-          `✓ Successfully cancelled ${summary.cancelled} booking${summary.cancelled !== 1 ? 's' : ''}`,
-          { duration: 5000 }
-        );
+        toast.success(`✓ Cancelled ${summary.cancelled} booking(s)`, { duration: 4000 });
       }
 
-      // Show warning if some failed
-      if (summary.failed > 0) {
-        toast.error(
-          `⚠ ${summary.failed} booking${summary.failed !== 1 ? 's' : ''} failed to cancel. See console for details.`,
-          { duration: 8000 }
-        );
-        console.error('Failed cancellations:', results.failed);
+      // Show refund results if enabled
+      if (refundSummary?.enabled) {
+        if (refundSummary.successful > 0) {
+          toast.success(
+            `✓ Refunded ${refundSummary.successful} token(s)`,
+            { duration: 5000 }
+          );
+        }
+        if (refundSummary.failed > 0) {
+          toast.error(
+            `⚠️ ${refundSummary.failed} refund(s) failed - check console`,
+            { duration: 8000 }
+          );
+          console.error('❌ [REFUND] Failed refunds:', refundSummary.details?.failed);
+        }
+        if (refundSummary.skipped > 0) {
+          toast.info(
+            `ℹ️ ${refundSummary.skipped} booking(s) had no tokens to refund`,
+            { duration: 5000 }
+          );
+        }
       }
 
-      // Show info if some were skipped
-      if (summary.skipped > 0) {
-        toast(
-          `ℹ ${summary.skipped} booking${summary.skipped !== 1 ? 's were' : ' was'} already cancelled`,
-          {
-            icon: '📋',
-            duration: 4000
-          }
-        );
-      }
-
-      // Immediately refetch bookings to show updated status
-      await queryClient.refetchQueries(['bookings', mockExamId], { exact: true });
-
-      // Also invalidate related queries for consistency
-      await queryClient.invalidateQueries(['admin', 'mock-exam', mockExamId]);
-      await queryClient.invalidateQueries(['admin', 'mock-exam', 'details', mockExamId]);
-      await queryClient.invalidateQueries(['admin', 'metrics']);
-      await queryClient.invalidateQueries(['admin', 'mock-exams']);
-
-      // Log detailed results for debugging
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Cancellation Results:', {
-          summary,
-          successful: results.successful,
-          failed: results.failed,
-          skipped: results.skipped
-        });
-      }
+      // Invalidate queries
+      await queryClient.invalidateQueries(['mockExam', mockExamId]);
+      await queryClient.invalidateQueries(['bookings', mockExamId]);
+      await queryClient.invalidateQueries(['mockExams']);
     },
 
     onError: (error, variables, context) => {

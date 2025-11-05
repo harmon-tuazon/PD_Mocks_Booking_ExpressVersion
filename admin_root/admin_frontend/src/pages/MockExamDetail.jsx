@@ -144,10 +144,11 @@ function MockExamDetail() {
     // Set to submitting state
     cancellation.startSubmitting();
 
-    // Call mutation
+    // Call mutation with full booking objects and refund flag
     cancelBookingsMutation.mutate(
       {
-        bookingIds: cancellation.selectedIds
+        bookings: cancellation.selectedBookings,  // Full booking objects
+        refundTokens: cancellation.refundTokens   // Refund flag
       },
       {
         onSuccess: () => {
@@ -383,6 +384,8 @@ function MockExamDetail() {
           selectedBookings={cancellation.selectedBookings}
           isLoading={cancelBookingsMutation.isLoading}
           error={cancelBookingsMutation.error?.message}
+          refundTokens={cancellation.refundTokens}
+          onToggleRefund={cancellation.toggleRefund}
         />
       </div>
     </div>

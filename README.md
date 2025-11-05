@@ -118,6 +118,13 @@ mocks_booking/
 - `GET /api/bookings/[id]` - Get individual booking details with associations
 - `DELETE /api/bookings/[id]` - Cancel booking with automatic credit restoration
 
+#### Admin - Mock Exam Management
+- `PATCH /api/admin/mock-exams/[id]/cancel-bookings` - Batch cancel bookings with optional token refunds
+  - Supports bulk cancellation of up to 100 bookings
+  - Optional automatic token refund to trainees
+  - Partial failure handling with detailed results
+  - Audit logging to mock exam timeline
+
 #### Webhooks
 - `POST /api/webhooks/booking-sync` - HubSpot data synchronization
 
@@ -191,8 +198,11 @@ npm run verify:hubspot-schema  # Verify HubSpot object schemas
   - Supports multiple types: Situational Judgment, Clinical Skills, Mini-mock, Mock Discussion
 - **Bookings (2-50158943)**: Student reservations linked to contacts
   - Unified booking object for both exams and discussions
+  - Token refund tracking properties: `token_refunded`, `token_refunded_at`, `token_refund_admin`
+  - Contact association: `associated_contact_id` (links booking to contact for refunds)
 - **Contacts (0-1)**: Student profiles with credit tracking
-  - Properties: specific exam tokens, shared mock tokens, mock_discussion_token (NEW)
+  - Token properties: `mock_discussion_token`, `clinical_skills_token`, `situational_judgment_token`, `mini_mock_token`
+  - Token counts automatically updated during refund operations
 
 ### Data Flow
 1. Frontend requests → API validation → HubSpot query/update
@@ -250,6 +260,8 @@ CRON_SECRET=your_cron_secret  # For scheduled jobs
 
 For detailed module documentation, see:
 
+### User-Facing Features
+
 - **[Mock Discussions Module](documentation/MOCK_DISCUSSIONS_MODULE.md)** - Complete documentation for the mock discussions booking system
   - API endpoints and request/response formats
   - Frontend components and state management
@@ -257,6 +269,28 @@ For detailed module documentation, see:
   - Token management and validation logic
   - Testing procedures and deployment checklist
   - Known limitations and future enhancements
+
+### Admin Features
+
+- **[Token Refund API](documentation/api/TOKEN_REFUND_API.md)** - Technical API documentation for token refund system
+  - Endpoint specification and request/response schemas
+  - Token type mapping and property names
+  - Performance characteristics and batch optimization
+  - Error handling and troubleshooting
+
+- **[Token Refund User Guide](documentation/user_guides/TOKEN_REFUND_USER_GUIDE.md)** - Admin user guide for token refunds
+  - How to use the refund feature
+  - When to enable/disable refunds
+  - Understanding refund results
+  - Troubleshooting failed refunds
+
+- **[Deployment Guide](documentation/DEPLOYMENT_GUIDE.md)** - Production deployment procedures
+  - Pre-deployment checklist (HubSpot properties, tests, builds)
+  - Deployment steps and verification
+  - Post-deployment validation and smoke tests
+  - Rollback procedures
+
+### System Documentation
 
 - **[HubSpot Schema Documentation](documentation/HUBSPOT_SCHEMA_DOCUMENTATION.md)** - Complete HubSpot CRM integration reference
 - **[Agent Developer Coordination Rules](documentation/AGENT_DEVELOPER_COORDINATION_RULES.md)** - Development protocols

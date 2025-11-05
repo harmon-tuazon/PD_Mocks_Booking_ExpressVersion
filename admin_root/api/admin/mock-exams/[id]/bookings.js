@@ -181,6 +181,7 @@ module.exports = async (req, res) => {
               'attendance',
               'attending_location',
               'token_used',
+              'associated_contact_id',  // Required for token refund logic
               'ndecc_exam_date',
               'exam_date',
               'mock_type',
@@ -281,6 +282,7 @@ module.exports = async (req, res) => {
         attendance: props.attendance || '',
         attending_location: props.attending_location || '',
         token_used: props.token_used || '',
+        associated_contact_id: props.associated_contact_id || '',  // For token refund
         is_active: props.is_active || '',
 
         // Add the missing property mappings
