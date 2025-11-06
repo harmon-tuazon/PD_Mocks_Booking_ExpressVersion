@@ -95,7 +95,11 @@ module.exports = async (req, res) => {
     // Delete the association using batch delete API (even for single deletion)
     const deleteInputs = [{
       from: { id: mockExamId },
-      to: { id: prerequisiteId }
+      to: { id: prerequisiteId },
+      types: [{
+        associationCategory: "USER_DEFINED",
+        associationTypeId: PREREQUISITE_ASSOCIATION_TYPE_ID
+      }]
     }];
 
     await hubspot.batchDeleteAssociations(
