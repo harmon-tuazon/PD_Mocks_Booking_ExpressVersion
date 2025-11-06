@@ -47,6 +47,11 @@ export function useExamEdit(examData) {
   const convertToTimeInput = (timeValue) => {
     if (!timeValue) return '';
 
+    // If already in HH:MM format, return as-is
+    if (typeof timeValue === 'string' && /^\d{2}:\d{2}$/.test(timeValue)) {
+      return timeValue;
+    }
+
     try {
       // Create Date object (handles ISO strings, timestamps, etc.)
       const date = new Date(timeValue);
@@ -74,7 +79,7 @@ export function useExamEdit(examData) {
       console.error('Error converting time for input:', error, timeValue);
       return '';
     }
-  };;
+  };;;
 
   // Initialize form data when exam data changes
   useEffect(() => {

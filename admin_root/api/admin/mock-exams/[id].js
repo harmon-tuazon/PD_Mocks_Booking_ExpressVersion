@@ -487,7 +487,9 @@ function formatMockExamResponse(mockExam) {
               minute: '2-digit',
               hour12: false
             });
-            return torontoTime;
+            // Extract just HH:MM (remove any extra formatting)
+            const timeParts = torontoTime.split(':');
+            return `${timeParts[0]}:${timeParts[1]}`;
           }
         }
 
@@ -496,10 +498,16 @@ function formatMockExamResponse(mockExam) {
         if (!isNaN(timestamp)) {
           const date = new Date(timestamp);
           if (!isNaN(date.getTime())) {
-            // Return HH:mm format in Toronto timezone
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            return `${hours}:${minutes}`;
+            // Convert to Toronto timezone and return HH:mm format
+            const torontoTime = date.toLocaleString('en-US', {
+              timeZone: 'America/Toronto',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            });
+            // Extract just HH:MM (remove any extra formatting)
+            const timeParts = torontoTime.split(':');
+            return `${timeParts[0]}:${timeParts[1]}`;
           }
         }
       } catch (e) {
@@ -507,7 +515,7 @@ function formatMockExamResponse(mockExam) {
       }
 
       return null;
-    };
+    };;
 
     // Format date to ISO string
     const formatDate = (dateValue) => {
