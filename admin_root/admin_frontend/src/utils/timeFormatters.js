@@ -32,6 +32,24 @@ export const formatTime = (dateString) => {
     return `${displayHour}:${String(minutes).padStart(2, '0')} ${ampm}`;
   }
 
+  // Handle ISO 8601 format (e.g., "2025-12-25T19:00:00Z")
+  if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(dateString)) {
+    const date = new Date(dateString);
+
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid ISO date string:', dateString);
+      return 'Invalid Date';
+    }
+
+    // Convert to Toronto timezone and format as 12-hour time
+    return date.toLocaleTimeString('en-US', {
+      timeZone: 'America/Toronto',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  }
+
   // Handle UTC timestamps and ISO strings
   // Convert string numbers to integers (HubSpot sometimes returns timestamps as strings)
   const date = new Date(typeof dateString === 'string' && /^\d+$/.test(dateString) ? parseInt(dateString) : dateString);
@@ -42,12 +60,12 @@ export const formatTime = (dateString) => {
     return 'Invalid Date';
   }
 
-  // Convert UTC to local time for display
+  // Convert to Toronto timezone for display
   return date.toLocaleTimeString('en-US', {
+    timeZone: 'America/Toronto',
     hour: 'numeric',
     minute: '2-digit',
     hour12: true
-    // Use user's local timezone instead of hardcoded Toronto
   });
 };
 

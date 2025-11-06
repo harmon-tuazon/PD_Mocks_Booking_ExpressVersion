@@ -476,14 +476,31 @@ function formatMockExamResponse(mockExam) {
       if (!timeValue) return null;
 
       try {
+        // Handle ISO 8601 format (e.g., "2025-12-25T19:00:00Z")
+        if (typeof timeValue === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(timeValue)) {
+          const date = new Date(timeValue);
+          if (!isNaN(date.getTime())) {
+            // Convert UTC to Toronto timezone and return HH:mm format
+            const torontoTime = date.toLocaleString('en-US', {
+              timeZone: 'America/Toronto',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            });
+            return torontoTime;
+          }
+        }
+
         // Handle Unix timestamp (milliseconds)
         const timestamp = typeof timeValue === 'string' ? parseInt(timeValue) : timeValue;
         if (!isNaN(timestamp)) {
           const date = new Date(timestamp);
-          // Return HH:mm format (required by HTML5 time inputs)
-          const hours = String(date.getHours()).padStart(2, '0');
-          const minutes = String(date.getMinutes()).padStart(2, '0');
-          return `${hours}:${minutes}`;
+          if (!isNaN(date.getTime())) {
+            // Return HH:mm format in Toronto timezone
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
+          }
         }
       } catch (e) {
         console.error('Error formatting time:', e);
