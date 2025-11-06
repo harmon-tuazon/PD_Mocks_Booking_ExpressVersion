@@ -334,7 +334,7 @@ const ExamDetailsForm = ({
                     disabled={isSaving}
                   />
                 ) : (
-                  <PrerequisiteExamsList exams={displayData.prerequisite_exam_details || []} />
+                  <PrerequisiteExamsList exams={displayData.prerequisite_exams || []} />
                 )}
               </div>
             )}

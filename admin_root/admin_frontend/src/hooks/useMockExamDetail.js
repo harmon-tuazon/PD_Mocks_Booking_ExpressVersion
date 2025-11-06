@@ -14,42 +14,19 @@ export const useMockExamDetail = (id) => {
   return useQuery({
     queryKey: ['mockExam', id],
     queryFn: async () => {
-      // Use the existing get endpoint that takes id as a query param
-      const response = await adminApi.get('/admin/mock-exams/get', {
-        params: { id }
-      });
+      // Use the getById endpoint which includes prerequisite associations
+      const response = await mockExamsApi.getById(id);
 
-      // API returns: { success: true, mockExam: { id, properties: {...}, bookings: [], metadata: {} } }
-      // Transform to match frontend expectations: { success: true, data: { id, ...properties, created_at, updated_at } }
-      const apiData = response.data;
-
-      if (!apiData?.mockExam) {
-        throw new Error('Invalid API response: missing mockExam data');
+      // API returns: { success: true, data: { id, mock_type, ..., prerequisite_exams, prerequisite_exam_ids }, meta: {...} }
+      // The response is already in the format we need
+      if (!response?.data) {
+        throw new Error('Invalid API response: missing data');
       }
 
-      const mockExam = apiData.mockExam;
-      const properties = mockExam.properties || {};
-      const metadata = mockExam.metadata || {};
-
-      // Flatten the structure for easier use in the frontend
-      // Pass start_time and end_time directly (they're Unix timestamps from HubSpot)
-      // These will be formatted by timeFormatters.js in display components
-      return {
-        success: apiData.success,
-        data: {
-          id: mockExam.id,
-          mock_type: properties.mock_type || '',
-          exam_date: properties.exam_date || '',
-          start_time: properties.start_time,  // Unix timestamp (milliseconds) - passed directly
-          end_time: properties.end_time,      // Unix timestamp (milliseconds) - passed directly
-          capacity: properties.capacity || 0,
-          total_bookings: properties.total_bookings || 0,
-          location: properties.location || '',
-          is_active: properties.is_active === true || properties.is_active === 'true',
-          created_at: metadata.created_at || '',
-          updated_at: metadata.updated_at || ''
-        }
-      };
+      // Return the response as-is since it already matches frontend expectations
+      // start_time and end_time are formatted as HH:mm by the backend
+      // prerequisite_exams and prerequisite_exam_ids are included for Mock Discussion exams
+      return response;
     },
     enabled: !!id,
     staleTime: 2 * 60 * 1000, // 2 minutes

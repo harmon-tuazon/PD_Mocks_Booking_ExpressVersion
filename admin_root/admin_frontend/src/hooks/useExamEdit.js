@@ -92,7 +92,7 @@ export function useExamEdit(examData) {
         total_bookings: examData.total_bookings || examData.booked_count || 0,
         // Add prerequisite exam IDs for Mock Discussion
         prerequisite_exam_ids: examData.prerequisite_exam_ids || [],
-        prerequisite_exam_details: examData.prerequisite_exam_details || []
+        prerequisite_exams: examData.prerequisite_exams || []
       };
 
       setFormData(initialData);
@@ -280,9 +280,9 @@ export function useExamEdit(examData) {
       changes.exam_date = formData.exam_date;
     }
 
-    // Handle prerequisite exam IDs - don't include details, just the IDs
-    if (changes.prerequisite_exam_details) {
-      delete changes.prerequisite_exam_details;
+    // Handle prerequisite exam IDs - don't include full exam objects in changes, just the IDs
+    if (changes.prerequisite_exams) {
+      delete changes.prerequisite_exams;
     }
 
     // Extract prerequisite_exam_ids for separate handling if Mock Discussion
@@ -309,15 +309,15 @@ export function useExamEdit(examData) {
       if (hasPrerequisiteChanges && examData?.id) {
         await mockExamsApi.updatePrerequisites(examData.id, prerequisiteIds || []);
 
-        // Refetch exam data to get updated prerequisite_exam_details
+        // Refetch exam data to get updated prerequisite_exams
         await queryClient.invalidateQueries(['mockExam', examData.id]);
-        const updatedExam = await queryClient.fetchQuery(['mockExam', examData.id]);
+        const updatedExamResponse = await queryClient.fetchQuery(['mockExam', examData.id]);
 
         // Update local state with new data
         const updatedFormData = {
           ...formData,
           prerequisite_exam_ids: prerequisiteIds,
-          prerequisite_exam_details: updatedExam.prerequisite_exam_details || []
+          prerequisite_exams: updatedExamResponse.data?.prerequisite_exams || []
         };
         setFormData(updatedFormData);
         originalDataRef.current = { ...updatedFormData };
