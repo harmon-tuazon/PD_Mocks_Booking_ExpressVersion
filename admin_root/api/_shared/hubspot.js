@@ -524,28 +524,30 @@ class HubSpotService {
    */
   async getMockExamAssociations(mockExamId, associationTypeId = 1340) {
     try {
-      // First get the mock exam with associations
+      // Use V4 associations API for consistent response structure
       const response = await this.apiCall(
         'GET',
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.mock_exams}`
+        `/crm/v4/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}/associations/${HUBSPOT_OBJECTS.mock_exams}`
       );
 
-      // Extract associations with the specific type
-      const associations = response.associations?.mock_exams?.results || [];
-      const prerequisiteAssociations = associations.filter(assoc => 
-        assoc.types?.some(type => 
-          type.associationCategory === 'USER_DEFINED' && 
-          type.associationTypeId === associationTypeId
+      // Filter associations by the specific type
+      const prerequisiteAssociations = (response.results || []).filter(assoc => 
+        assoc.associationTypes?.some(type => 
+          type.category === 'USER_DEFINED' && 
+          type.typeId === associationTypeId
         )
       );
 
       // If no associations, return empty array
       if (prerequisiteAssociations.length === 0) {
+        console.log(`No prerequisite associations found for exam ${mockExamId} with type ${associationTypeId}`);
         return [];
       }
 
+      console.log(`Found ${prerequisiteAssociations.length} prerequisite associations for exam ${mockExamId}`);
+
       // Fetch details for each associated mock exam
-      const mockExamIds = prerequisiteAssociations.map(a => a.toObjectId || a.id);
+      const mockExamIds = prerequisiteAssociations.map(a => a.toObjectId);
       const mockExamDetailsPromises = mockExamIds.map(id => this.getMockExam(id));
       const mockExamDetails = await Promise.all(mockExamDetailsPromises);
 
