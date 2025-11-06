@@ -285,41 +285,40 @@ const PrerequisiteExamSelector = ({
         <>
           {/* Filters Section */}
           <div className="p-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-            <div className="space-y-1.5">
-              {/* Date and Location Filters */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {/* From Date Filter */}
-                <div>
-                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
-                    From Date
-                  </label>
-                  <DatePicker
-                    value={filters.dateFrom}
-                    onChange={(date) => updateFilter('dateFrom', date)}
-                    placeholder="Select from date"
-                    disabled={disabled || isLoading}
-                    className="h-7 text-xs"
-                  />
-                </div>
-                {/* Location Filter */}
-                <div>
-                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
-                    Location
-                  </label>
-                  <select
-                    value={filters.location}
-                    onChange={(e) => updateFilter('location', e.target.value)}
-                    disabled={disabled || isLoading || uniqueLocations.length === 0}
-                    className="w-full h-7 text-xs px-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                  >
-                    <option value="">All Locations</option>
-                    {uniqueLocations.map(location => (
-                      <option key={location} value={location}>
-                        {location}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            {/* All filters in one line */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-1.5">
+              {/* From Date Filter */}
+              <div>
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
+                  From Date
+                </label>
+                <DatePicker
+                  value={filters.dateFrom}
+                  onChange={(date) => updateFilter('dateFrom', date)}
+                  placeholder="Select from date"
+                  disabled={disabled || isLoading}
+                  className="h-7 text-xs"
+                />
+              </div>
+
+              {/* Location Filter */}
+              <div>
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
+                  Location
+                </label>
+                <select
+                  value={filters.location}
+                  onChange={(e) => updateFilter('location', e.target.value)}
+                  disabled={disabled || isLoading || uniqueLocations.length === 0}
+                  className="w-full h-7 text-xs px-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  <option value="">All Locations</option>
+                  {uniqueLocations.map(location => (
+                    <option key={location} value={location}>
+                      {location}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Type Filters */}
@@ -327,7 +326,7 @@ const PrerequisiteExamSelector = ({
                 <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
                   Exam Types
                 </label>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 h-7">
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <Checkbox
                       checked={filters.types['Clinical Skills']}
