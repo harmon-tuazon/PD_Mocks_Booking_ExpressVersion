@@ -118,8 +118,8 @@ async function handlePostRequest(req, res, mockExamId, adminEmail) {
         }));
 
         await hubspot.batchDeleteAssociations(
-          HUBSPOT_OBJECTS.MOCK_EXAMS,
-          HUBSPOT_OBJECTS.MOCK_EXAMS,
+          HUBSPOT_OBJECTS.mock_exams,
+          HUBSPOT_OBJECTS.mock_exams,
           deleteInputs
         );
       }
@@ -224,8 +224,8 @@ async function handlePostRequest(req, res, mockExamId, adminEmail) {
       }));
 
       await hubspot.batchDeleteAssociations(
-        HUBSPOT_OBJECTS.MOCK_EXAMS,
-        HUBSPOT_OBJECTS.MOCK_EXAMS,
+        HUBSPOT_OBJECTS.mock_exams,
+        HUBSPOT_OBJECTS.mock_exams,
         deleteInputs
       );
     }
@@ -244,8 +244,8 @@ async function handlePostRequest(req, res, mockExamId, adminEmail) {
 
       // Make single batch API call to create all associations
       await hubspot.batchCreateAssociations(
-        HUBSPOT_OBJECTS.MOCK_EXAMS,
-        HUBSPOT_OBJECTS.MOCK_EXAMS,
+        HUBSPOT_OBJECTS.mock_exams,
+        HUBSPOT_OBJECTS.mock_exams,
         batchInputs
       );
     }

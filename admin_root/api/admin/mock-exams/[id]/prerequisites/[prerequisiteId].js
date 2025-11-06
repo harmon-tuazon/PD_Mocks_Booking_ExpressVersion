@@ -98,8 +98,8 @@ module.exports = async (req, res) => {
     }];
 
     await hubspot.batchDeleteAssociations(
-      HUBSPOT_OBJECTS.MOCK_EXAMS,
-      HUBSPOT_OBJECTS.MOCK_EXAMS,
+      HUBSPOT_OBJECTS.mock_exams,
+      HUBSPOT_OBJECTS.mock_exams,
       deleteInputs
     );
 
