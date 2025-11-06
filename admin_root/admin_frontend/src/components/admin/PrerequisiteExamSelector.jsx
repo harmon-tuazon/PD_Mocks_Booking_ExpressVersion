@@ -260,7 +260,7 @@ const PrerequisiteExamSelector = ({
     <div className={`border border-gray-200 dark:border-gray-700 rounded-lg ${className}`}>
       {/* Collapsible Header - always visible */}
       <div
-        className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+        className="flex items-center justify-between p-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
         onClick={toggleCollapse}
         role="button"
         tabIndex={0}
@@ -274,7 +274,7 @@ const PrerequisiteExamSelector = ({
         aria-label="Toggle prerequisite exams section"
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
             Prerequisite Exams (Optional)
           </span>
           {selectedIds.length > 0 && (
@@ -284,7 +284,7 @@ const PrerequisiteExamSelector = ({
           )}
         </div>
         <ChevronDownIcon
-          className={`h-4 w-4 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
+          className={`h-3.5 w-3.5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
             isCollapsed ? '' : 'rotate-180'
           }`}
         />
@@ -294,12 +294,12 @@ const PrerequisiteExamSelector = ({
       {!isCollapsed && (
         <>
           {/* Filters Section */}
-          <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-            <div className="space-y-2">
+          <div className="p-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <div className="space-y-1.5">
               {/* Date Range Filter */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 <div>
-                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
                     From Date
                   </label>
                   <Input
@@ -307,11 +307,11 @@ const PrerequisiteExamSelector = ({
                     value={filters.dateFrom}
                     onChange={(e) => updateFilter('dateFrom', e.target.value)}
                     disabled={disabled || isLoading}
-                    className="h-8 text-sm"
+                    className="h-7 text-xs"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
                     To Date
                   </label>
                   <Input
@@ -319,23 +319,23 @@ const PrerequisiteExamSelector = ({
                     value={filters.dateTo}
                     onChange={(e) => updateFilter('dateTo', e.target.value)}
                     disabled={disabled || isLoading}
-                    className="h-8 text-sm"
+                    className="h-7 text-xs"
                   />
                 </div>
               </div>
 
               {/* Location and Type Filters */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {/* Location Filter */}
                 <div>
-                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
                     Location
                   </label>
                   <select
                     value={filters.location}
                     onChange={(e) => updateFilter('location', e.target.value)}
                     disabled={disabled || isLoading || uniqueLocations.length === 0}
-                    className="w-full h-8 text-sm px-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    className="w-full h-7 text-xs px-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   >
                     <option value="">All Locations</option>
                     {uniqueLocations.map(location => (
@@ -348,25 +348,25 @@ const PrerequisiteExamSelector = ({
 
                 {/* Type Filters */}
                 <div>
-                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
                     Exam Types
                   </label>
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 cursor-pointer">
                       <Checkbox
                         checked={filters.types['Clinical Skills']}
                         onCheckedChange={(checked) => updateTypeFilter('Clinical Skills', checked)}
                         disabled={disabled || isLoading}
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">Clinical</span>
+                      <span className="text-xs text-gray-700 dark:text-gray-300">Clinical</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-1.5 cursor-pointer">
                       <Checkbox
                         checked={filters.types['Situational Judgment']}
                         onCheckedChange={(checked) => updateTypeFilter('Situational Judgment', checked)}
                         disabled={disabled || isLoading}
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">Situational</span>
+                      <span className="text-xs text-gray-700 dark:text-gray-300">Situational</span>
                     </label>
                   </div>
                 </div>
@@ -376,7 +376,7 @@ const PrerequisiteExamSelector = ({
 
           {/* Selection Actions */}
           {!isLoading && !isError && filteredExams.length > 0 && (
-            <div className="px-2 py-1.5 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div className="px-1.5 py-1 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <div className="text-xs text-gray-600 dark:text-gray-400">
                 {selectedIds.length} of {filteredExams.length} selected
               </div>
@@ -400,8 +400,8 @@ const PrerequisiteExamSelector = ({
           )}
 
           {/* Exam List */}
-          <ScrollArea className="h-[250px]">
-            <div className="p-2 space-y-1.5">
+          <ScrollArea className="h-[200px]">
+            <div className="p-1.5 space-y-1">
               {isLoading && <LoadingSkeleton />}
 
               {isError && <ErrorState />}
@@ -420,7 +420,7 @@ const PrerequisiteExamSelector = ({
                   <div
                     key={exam.id}
                     className={`
-                      flex items-start space-x-3 p-2 rounded-lg border
+                      flex items-start space-x-2 p-1.5 rounded-lg border
                       ${isChecked
                         ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
                         : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}
@@ -439,7 +439,7 @@ const PrerequisiteExamSelector = ({
                     aria-label={`Select ${display.mockType} exam on ${display.examDate}`}
                   >
                     {/* Checkbox */}
-                    <div className="pt-1">
+                    <div className="pt-0.5">
                       <Checkbox
                         checked={isChecked}
                         onCheckedChange={(checked) => handleExamToggle(exam.id, checked)}
@@ -452,31 +452,31 @@ const PrerequisiteExamSelector = ({
                     {/* Exam Details */}
                     <div className="flex-1 min-w-0">
                       {/* Type Badge and Location */}
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-1.5 mb-1">
                         <Badge variant={getMockTypeVariant(display.mockType)} className="text-xs py-0.5 px-1.5">
                           {display.mockType}
                         </Badge>
                         <span className="text-xs text-gray-600 dark:text-gray-400">
-                          <MapPinIcon className="inline h-3.5 w-3.5 mr-1" />
+                          <MapPinIcon className="inline h-3 w-3 mr-0.5" />
                           {display.location}
                         </span>
                       </div>
 
                       {/* Date and Time */}
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-700 dark:text-gray-300">
-                        <div className="flex items-center gap-1">
-                          <CalendarIcon className="h-3.5 w-3.5 text-gray-400" />
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                        <div className="flex items-center gap-0.5">
+                          <CalendarIcon className="h-3 w-3 text-gray-400" />
                           <span>{display.examDate}</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <ClockIcon className="h-3.5 w-3.5 text-gray-400" />
+                        <div className="flex items-center gap-0.5">
+                          <ClockIcon className="h-3 w-3 text-gray-400" />
                           <span>{display.timeRange}</span>
                         </div>
                       </div>
 
                       {/* Booking Info */}
                       {display.bookingInfo && (
-                        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                           {display.bookingInfo}
                         </div>
                       )}
@@ -489,9 +489,9 @@ const PrerequisiteExamSelector = ({
 
           {/* Footer with selection count */}
           {!isLoading && !isError && selectedIds.length > 0 && (
-            <div className="px-2 py-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-              <div className="flex items-center gap-2">
-                <ClipboardDocumentListIcon className="h-3.5 w-3.5 text-gray-500" />
+            <div className="px-1.5 py-1 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <div className="flex items-center gap-1.5">
+                <ClipboardDocumentListIcon className="h-3 w-3 text-gray-500" />
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                   {selectedIds.length} exam{selectedIds.length !== 1 ? 's' : ''} selected
                 </span>
