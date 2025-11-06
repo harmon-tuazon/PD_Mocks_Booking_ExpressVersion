@@ -28,7 +28,7 @@ const PrerequisiteExamsList = ({ exams = [] }) => {
 
   // Handle exam click to navigate to details
   const handleExamClick = (examId) => {
-    navigate(`/admin/mock-exams/${examId}`);
+    navigate(`/mock-exams/${examId}`);
   };
 
   // Empty state
