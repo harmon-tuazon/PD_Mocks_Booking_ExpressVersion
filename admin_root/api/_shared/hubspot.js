@@ -1196,82 +1196,102 @@ class HubSpotService {
         console.log(`Date filtering applied: ${response.results?.length || 0} -> ${results.length} exams`);
       }
 
-      // Now fetch actual bookings and count only Active ones
-      // Process each mock exam to get accurate active booking count
-      const enrichedResults = await Promise.all(results.map(async (exam) => {
+      // OPTIMIZED: Batch fetch associations for all exams instead of individual calls
+      // This reduces N API calls to 1 batch call
+      let enrichedResults = results;
+
+      if (results.length > 0) {
         try {
-          // HubSpot search API doesn't return associations, so we need to fetch them separately
-          // Make a GET call to fetch the exam with associations
-          let examWithAssociations = exam;
-          if (!exam.associations) {
-            try {
-              examWithAssociations = await this.apiCall('GET',
-                `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${exam.id}?associations=${HUBSPOT_OBJECTS.bookings}`
-              );
-              // Merge properties from search result with associations from GET
-              examWithAssociations.properties = exam.properties;
-            } catch (assocError) {
-              console.error(`Error fetching associations for exam ${exam.id}:`, assocError.message);
-              examWithAssociations = exam; // Fall back to original exam without associations
+          // Batch read all exams with associations (100 per batch, HubSpot limit)
+          const allExamsWithAssociations = [];
+          for (let i = 0; i < results.length; i += 100) {
+            const chunk = results.slice(i, i + 100);
+            const batchResponse = await this.apiCall('POST',
+              `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/read`,
+              {
+                properties: ['mock_type', 'exam_date', 'start_time', 'end_time', 'location', 'capacity', 'total_bookings', 'is_active', 'hs_createdate', 'hs_lastmodifieddate'],
+                propertiesWithHistory: [],
+                inputs: chunk.map(exam => ({ id: exam.id })),
+                associations: [HUBSPOT_OBJECTS.bookings]
+              }
+            );
+
+            if (batchResponse.results) {
+              allExamsWithAssociations.push(...batchResponse.results);
             }
           }
 
-          // Extract booking IDs from associations (using flexible key matching)
-          const bookingIds = [];
-          const bookingsKey = this.findAssociationKey(examWithAssociations.associations, HUBSPOT_OBJECTS.bookings, 'bookings');
+          // Create a map of exam ID -> associations for quick lookup
+          const associationsMap = new Map();
+          allExamsWithAssociations.forEach(exam => {
+            associationsMap.set(exam.id, exam.associations);
+          });
 
-          if (bookingsKey && examWithAssociations.associations[bookingsKey]?.results?.length > 0) {
-            examWithAssociations.associations[bookingsKey].results.forEach(assoc => {
-              bookingIds.push(assoc.id);
-            });
+          // Collect all booking IDs across all exams
+          const allBookingIds = [];
+          const examToBookingsMap = new Map();
+
+          results.forEach(exam => {
+            const associations = associationsMap.get(exam.id);
+            const bookingsKey = this.findAssociationKey(associations, HUBSPOT_OBJECTS.bookings, 'bookings');
+            const bookingIds = [];
+
+            if (bookingsKey && associations?.[bookingsKey]?.results?.length > 0) {
+              associations[bookingsKey].results.forEach(assoc => {
+                bookingIds.push(assoc.id);
+                allBookingIds.push(assoc.id);
+              });
+            }
+
+            examToBookingsMap.set(exam.id, bookingIds);
+          });
+
+          // Batch fetch all booking statuses at once (instead of per exam)
+          // This reduces M*N calls to M calls (where M = number of batches needed)
+          const bookingStatusMap = new Map();
+
+          if (allBookingIds.length > 0) {
+            for (let i = 0; i < allBookingIds.length; i += 100) {
+              const chunk = allBookingIds.slice(i, i + 100);
+              const batchResponse = await this.apiCall('POST',
+                `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`,
+                {
+                  properties: ['is_active'],
+                  inputs: chunk.map(id => ({ id }))
+                }
+              );
+
+              if (batchResponse.results) {
+                batchResponse.results.forEach(booking => {
+                  const status = booking.properties.is_active;
+                  const isActive = status === 'Active' || status === 'active' ||
+                                 status === 'Completed' || status === 'completed';
+                  bookingStatusMap.set(booking.id, isActive);
+                });
+              }
+            }
           }
 
-          // If no bookings, set count to 0
-          if (bookingIds.length === 0) {
+          // Now calculate active booking counts for each exam
+          enrichedResults = results.map(exam => {
+            const bookingIds = examToBookingsMap.get(exam.id) || [];
+            const activeBookingsCount = bookingIds.filter(id => bookingStatusMap.get(id)).length;
+
             return {
               ...exam,
               properties: {
                 ...exam.properties,
-                total_bookings: '0' // HubSpot stores as string
+                total_bookings: String(activeBookingsCount)
               }
             };
-          }
+          });
 
-          // Batch fetch booking details to check is_active status
-          // Process in chunks of 100 (HubSpot batch limit)
-          let activeBookingsCount = 0;
-          for (let i = 0; i < bookingIds.length; i += 100) {
-            const chunk = bookingIds.slice(i, i + 100);
-            const batchResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
-              properties: ['is_active'],
-              inputs: chunk.map(id => ({ id }))
-            });
-
-            if (batchResponse.results) {
-              // Count only Active/Completed bookings (exclude Cancelled)
-              // Handle multiple case variations: Active, active, Completed, completed
-              const activeInChunk = batchResponse.results.filter(booking => {
-                const status = booking.properties.is_active;
-                return status === 'Active' || status === 'active' ||
-                       status === 'Completed' || status === 'completed';
-              }).length;
-              activeBookingsCount += activeInChunk;
-            }
-          }
-
-          return {
-            ...exam,
-            properties: {
-              ...exam.properties,
-              total_bookings: String(activeBookingsCount) // Convert to string for consistency
-            }
-          };
         } catch (error) {
-          console.error(`Error fetching bookings for mock exam ${exam.id}:`, error);
-          // On error, keep the stored value
-          return exam;
+          console.error('Error batch fetching exam associations:', error);
+          // Fall back to using stored total_bookings values
+          enrichedResults = results;
         }
-      }));
+      }
 
       // Format response with pagination info
       return {
