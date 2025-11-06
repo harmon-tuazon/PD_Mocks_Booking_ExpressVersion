@@ -16,6 +16,7 @@ const Joi = require('joi');
 
 // Association type ID for "requires attendance at" relationship
 const PREREQUISITE_ASSOCIATION_TYPE_ID = 1340;
+const { getCache } = require('../../../../_shared/cache');
 
 module.exports = async (req, res) => {
   try {
@@ -123,6 +124,12 @@ async function handlePostRequest(req, res, mockExamId, adminEmail) {
           deleteInputs
         );
       }
+
+      // CRITICAL: Invalidate cache after prerequisites change
+      const cache = getCache();
+      const cacheKey = `admin:mock-exam:details:${mockExamId}`;
+      await cache.delete(cacheKey);
+      console.log(`🗑️ Cache invalidated for mock exam ${mockExamId} after clearing prerequisites`);
 
       return res.status(200).json({
         success: true,
@@ -261,6 +268,12 @@ async function handlePostRequest(req, res, mockExamId, adminEmail) {
       capacity: parseInt(exam.properties.capacity || '0'),
       total_bookings: parseInt(exam.properties.total_bookings || '0')
     }));
+
+    // CRITICAL: Invalidate cache after prerequisites change
+    const cache = getCache();
+    const cacheKey = `admin:mock-exam:details:${mockExamId}`;
+    await cache.delete(cacheKey);
+    console.log(`🗑️ Cache invalidated for mock exam ${mockExamId} after updating prerequisites`);
 
     // Log the operation for audit trail
     console.log(`Admin ${adminEmail} updated prerequisites for Mock Discussion ${mockExamId}:`, {

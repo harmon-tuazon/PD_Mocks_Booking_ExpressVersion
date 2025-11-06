@@ -6,6 +6,7 @@
 const { requireAdmin } = require('../../../../middleware/requireAdmin');
 const hubspot = require('../../../../../_shared/hubspot');
 const { HUBSPOT_OBJECTS } = require('../../../../../_shared/hubspot');
+const { getCache } = require('../../../../../_shared/cache');
 
 // Association type ID for "requires attendance at" relationship
 const PREREQUISITE_ASSOCIATION_TYPE_ID = 1340;
@@ -102,6 +103,12 @@ module.exports = async (req, res) => {
       HUBSPOT_OBJECTS.mock_exams,
       deleteInputs
     );
+
+    // CRITICAL: Invalidate cache after prerequisite removal
+    const cache = getCache();
+    const cacheKey = `admin:mock-exam:details:${mockExamId}`;
+    await cache.delete(cacheKey);
+    console.log(`🗑️ Cache invalidated for mock exam ${mockExamId} after removing prerequisite ${prerequisiteId}`);
 
     // Log the operation for audit trail
     console.log(`Admin ${adminEmail} removed prerequisite ${prerequisiteId} from Mock Discussion ${mockExamId}`);
