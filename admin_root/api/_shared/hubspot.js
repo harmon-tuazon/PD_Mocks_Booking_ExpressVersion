@@ -527,7 +527,7 @@ class HubSpotService {
       // First get the mock exam with associations
       const response = await this.apiCall(
         'GET',
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=mock_exams`
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.mock_exams}`
       );
 
       // Extract associations with the specific type
