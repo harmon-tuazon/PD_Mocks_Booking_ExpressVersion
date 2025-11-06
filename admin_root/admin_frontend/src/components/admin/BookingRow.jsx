@@ -14,6 +14,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatTime } from '../../utils/timeFormatters';
+import { formatDateLong } from '../../utils/dateUtils';
 import { COLUMN_DEFINITIONS, FIXED_COLUMNS, TRAINEE_ONLY_COLUMNS } from '../../hooks/useColumnVisibility';
 
 const BookingRow = ({
@@ -163,12 +164,7 @@ const BookingRow = ({
         return (
           <td key={columnId} className={baseClasses} style={cellStyle}>
             <div className="text-gray-900 dark:text-gray-100">
-              {booking.exam_date ?
-                new Date(booking.exam_date).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric'
-                }) : '-'}
+              {booking.exam_date ? formatDateLong(booking.exam_date) : '-'}
             </div>
           </td>
         );
