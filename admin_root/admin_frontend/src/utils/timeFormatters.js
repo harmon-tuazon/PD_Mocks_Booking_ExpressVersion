@@ -17,6 +17,12 @@
 export const formatTime = (dateString) => {
   if (!dateString) return '';
 
+  // Special case: If it's already formatted as 12-hour time (like "3:00 PM" or "10:30 AM")
+  // Just return it as-is
+  if (typeof dateString === 'string' && /^\d{1,2}:\d{2}\s?(AM|PM)$/i.test(dateString)) {
+    return dateString;
+  }
+
   // Special case: If it's already in HH:mm or HH:mm:ss format (from HubSpot)
   // Convert to 12-hour format manually
   if (typeof dateString === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(dateString)) {
