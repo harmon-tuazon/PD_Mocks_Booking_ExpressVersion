@@ -6,7 +6,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Badge } from '@/components/ui/badge';
 import {
   ChevronDownIcon,
@@ -37,7 +37,6 @@ const PrerequisiteExamSelector = ({
   // State for filters
   const [filters, setFilters] = useState({
     dateFrom: '',
-    dateTo: '',
     location: '',
     types: {
       'Clinical Skills': true,
@@ -95,22 +94,13 @@ const PrerequisiteExamSelector = ({
         return false;
       }
 
-      // Date range filter
-      if (filters.dateFrom || filters.dateTo) {
+      // Date filter (from date only)
+      if (filters.dateFrom) {
         const examDate = props.exam_date;
         if (examDate) {
           const examDateObj = new Date(examDate);
-
-          if (filters.dateFrom) {
-            const fromDate = new Date(filters.dateFrom);
-            if (examDateObj < fromDate) return false;
-          }
-
-          if (filters.dateTo) {
-            const toDate = new Date(filters.dateTo);
-            toDate.setHours(23, 59, 59, 999); // Include entire day
-            if (examDateObj > toDate) return false;
-          }
+          const fromDate = new Date(filters.dateFrom);
+          if (examDateObj < fromDate) return false;
         }
       }
 
@@ -296,36 +286,21 @@ const PrerequisiteExamSelector = ({
           {/* Filters Section */}
           <div className="p-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
             <div className="space-y-1.5">
-              {/* Date Range Filter */}
+              {/* Date and Location Filters */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {/* From Date Filter */}
                 <div>
                   <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
                     From Date
                   </label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={filters.dateFrom}
-                    onChange={(e) => updateFilter('dateFrom', e.target.value)}
+                    onChange={(date) => updateFilter('dateFrom', date)}
+                    placeholder="Select from date"
                     disabled={disabled || isLoading}
                     className="h-7 text-xs"
                   />
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
-                    To Date
-                  </label>
-                  <Input
-                    type="date"
-                    value={filters.dateTo}
-                    onChange={(e) => updateFilter('dateTo', e.target.value)}
-                    disabled={disabled || isLoading}
-                    className="h-7 text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* Location and Type Filters */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {/* Location Filter */}
                 <div>
                   <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
@@ -345,30 +320,30 @@ const PrerequisiteExamSelector = ({
                     ))}
                   </select>
                 </div>
+              </div>
 
-                {/* Type Filters */}
-                <div>
-                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
-                    Exam Types
+              {/* Type Filters */}
+              <div>
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-0.5">
+                  Exam Types
+                </label>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox
+                      checked={filters.types['Clinical Skills']}
+                      onCheckedChange={(checked) => updateTypeFilter('Clinical Skills', checked)}
+                      disabled={disabled || isLoading}
+                    />
+                    <span className="text-xs text-gray-700 dark:text-gray-300">Clinical</span>
                   </label>
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <Checkbox
-                        checked={filters.types['Clinical Skills']}
-                        onCheckedChange={(checked) => updateTypeFilter('Clinical Skills', checked)}
-                        disabled={disabled || isLoading}
-                      />
-                      <span className="text-xs text-gray-700 dark:text-gray-300">Clinical</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <Checkbox
-                        checked={filters.types['Situational Judgment']}
-                        onCheckedChange={(checked) => updateTypeFilter('Situational Judgment', checked)}
-                        disabled={disabled || isLoading}
-                      />
-                      <span className="text-xs text-gray-700 dark:text-gray-300">Situational</span>
-                    </label>
-                  </div>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox
+                      checked={filters.types['Situational Judgment']}
+                      onCheckedChange={(checked) => updateTypeFilter('Situational Judgment', checked)}
+                      disabled={disabled || isLoading}
+                    />
+                    <span className="text-xs text-gray-700 dark:text-gray-300">Situational</span>
+                  </label>
                 </div>
               </div>
             </div>

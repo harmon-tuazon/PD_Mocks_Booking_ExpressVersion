@@ -308,8 +308,30 @@ export function useExamEdit(examData) {
       // Then update prerequisites if they changed (for Mock Discussion only)
       if (hasPrerequisiteChanges && examData?.id) {
         await mockExamsApi.updatePrerequisites(examData.id, prerequisiteIds || []);
-        // Invalidate to refresh prerequisite data
-        queryClient.invalidateQueries(['mockExam', examData.id]);
+
+        // Refetch exam data to get updated prerequisite_exam_details
+        await queryClient.invalidateQueries(['mockExam', examData.id]);
+        const updatedExam = await queryClient.fetchQuery(['mockExam', examData.id]);
+
+        // Update local state with new data
+        const updatedFormData = {
+          ...formData,
+          prerequisite_exam_ids: prerequisiteIds,
+          prerequisite_exam_details: updatedExam.prerequisite_exam_details || []
+        };
+        setFormData(updatedFormData);
+        originalDataRef.current = { ...updatedFormData };
+
+        // If ONLY prerequisites changed (no other fields), we need to handle state updates here
+        if (Object.keys(apiData).length === 0) {
+          // Exit edit mode
+          setIsEditing(false);
+          setIsDirty(false);
+          validation.resetValidation();
+
+          // Show success toast
+          notify.success('Mock exam updated successfully');
+        }
       }
 
       return true;
@@ -320,6 +342,11 @@ export function useExamEdit(examData) {
         response: error.response?.data,
         status: error.response?.status
       });
+
+      // Show error toast for prerequisite update failures
+      const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to save changes';
+      notify.error(errorMessage);
+
       throw error;
     }
   }, [formData, validation, saveMutation, examData, queryClient]);
