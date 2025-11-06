@@ -79,6 +79,7 @@ export function useExamEdit(examData) {
   useEffect(() => {
     if (examData) {
       const initialData = {
+        id: examData.id || '',
         mock_type: examData.mock_type || '',
         exam_date: examData.exam_date || '',
         start_time: convertToTimeInput(examData.start_time),
