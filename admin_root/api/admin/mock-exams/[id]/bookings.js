@@ -128,10 +128,6 @@ module.exports = async (req, res) => {
       `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}`
     );
 
-    // DEBUG: Log the full associations response
-    console.log('🔍 [DEBUG] Full HubSpot associations response:', JSON.stringify(mockExamWithAssociations, null, 2));
-    console.log('🔍 [DEBUG] Associations object:', mockExamWithAssociations.associations);
-    console.log('🔍 [DEBUG] Association keys available:', Object.keys(mockExamWithAssociations.associations || {}));
 
     // Extract booking IDs from associations
     // HubSpot returns association keys in various formats depending on portal configuration:
@@ -145,7 +141,6 @@ module.exports = async (req, res) => {
         key === HUBSPOT_OBJECTS.bookings || key.includes('bookings')
       );
 
-      console.log('🔍 [DEBUG] Found bookings key:', bookingsKey);
 
       if (bookingsKey && mockExamWithAssociations.associations[bookingsKey]?.results?.length > 0) {
         mockExamWithAssociations.associations[bookingsKey].results.forEach(association => {
@@ -154,7 +149,6 @@ module.exports = async (req, res) => {
       }
     }
 
-    console.log('🔍 [DEBUG] Extracted booking IDs:', bookingIds);
 
     // If there are no bookings, return empty result
     let allBookings = [];
