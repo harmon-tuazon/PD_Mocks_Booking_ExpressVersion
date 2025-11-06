@@ -425,35 +425,40 @@ const PrerequisiteExamSelector = ({
 
                     {/* Exam Details */}
                     <div className="flex-1 min-w-0">
-                      {/* Type Badge and Location */}
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Badge variant={getMockTypeVariant(display.mockType)} className="text-xs py-0.5 px-1.5">
+                      {/* Type Badge */}
+                      <div className="mb-1">
+                        <Badge variant={getMockTypeVariant(display.mockType)} className="text-xs">
                           {display.mockType}
                         </Badge>
-                        <span className="text-xs text-gray-600 dark:text-gray-400">
-                          <MapPinIcon className="inline h-3 w-3 mr-0.5" />
-                          {display.location}
-                        </span>
                       </div>
 
-                      {/* Date and Time */}
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                      {/* All details on one line - matching view mode */}
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                        {/* Location */}
+                        <div className="flex items-center gap-0.5">
+                          <MapPinIcon className="h-3 w-3 text-gray-400" />
+                          <span>{display.location}</span>
+                        </div>
+
+                        {/* Date */}
                         <div className="flex items-center gap-0.5">
                           <CalendarIcon className="h-3 w-3 text-gray-400" />
                           <span>{display.examDate}</span>
                         </div>
+
+                        {/* Time */}
                         <div className="flex items-center gap-0.5">
                           <ClockIcon className="h-3 w-3 text-gray-400" />
                           <span>{display.timeRange}</span>
                         </div>
-                      </div>
 
-                      {/* Booking Info */}
-                      {display.bookingInfo && (
-                        <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                          {display.bookingInfo}
-                        </div>
-                      )}
+                        {/* Booking Info - inline */}
+                        {display.bookingInfo && (
+                          <span className="text-gray-500 dark:text-gray-400">
+                            ({display.bookingInfo})
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

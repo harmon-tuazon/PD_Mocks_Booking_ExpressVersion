@@ -66,14 +66,15 @@ export function useExamEdit(examData) {
         hour12: false
       });
 
-
-      // Return HH:MM format
-      return estTimeString;
+      // Extract just HH:MM from the time string (remove seconds if present)
+      // toLocaleTimeString might return "14:00:00" or "14:00"
+      const timeParts = estTimeString.split(':');
+      return `${timeParts[0]}:${timeParts[1]}`;
     } catch (error) {
       console.error('Error converting time for input:', error, timeValue);
       return '';
     }
-  };
+  };;
 
   // Initialize form data when exam data changes
   useEffect(() => {
