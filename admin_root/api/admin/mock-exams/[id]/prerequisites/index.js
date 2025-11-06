@@ -76,74 +76,41 @@ module.exports = async (req, res) => {
 /**
  * Handle POST request to create prerequisite associations
  */
-async function handlePostRequest(req, res, mockExamId, adminEmail) {
+async function handlePostRequest(req, res) {
   try {
-    // Validate request body
-    const schema = Joi.object({
-      prerequisite_exam_ids: Joi.array()
-        .items(Joi.string().pattern(/^\d+$/))
-        .min(0)
-        .max(50) // Reasonable limit to prevent excessive API calls
-        .required()
-        .messages({
-          'array.base': 'prerequisite_exam_ids must be an array',
-          'array.min': 'prerequisite_exam_ids can be an empty array',
-          'array.max': 'Cannot associate more than 50 prerequisites at once',
-          'string.pattern.base': 'Each exam ID must be numeric'
-        })
-    });
+    // Verify admin authentication
+    const user = await requireAdmin(req);
+    const adminEmail = user?.email || 'admin@prepdoctors.ca';
 
-    const { error, value } = schema.validate(req.body);
-    if (error) {
+    // Extract mock exam ID from query params
+    const mockExamId = req.query.id;
+
+    // Validate mock exam ID format
+    if (!mockExamId || !/^\d+$/.test(mockExamId)) {
       return res.status(400).json({
         success: false,
         error: {
-          code: 'VALIDATION_ERROR',
-          message: error.details[0].message
+          code: 'INVALID_ID',
+          message: 'Valid mock exam ID is required'
         }
       });
     }
 
-    const { prerequisite_exam_ids } = value;
+    // Parse request body
+    const { prerequisite_exam_ids = [] } = req.body;
 
-    // If empty array, clear all associations (intentional)
-    if (prerequisite_exam_ids.length === 0) {
-      // Get existing associations
-      const existingPrereqs = await hubspot.getMockExamAssociations(mockExamId, PREREQUISITE_ASSOCIATION_TYPE_ID);
-
-      if (existingPrereqs.length > 0) {
-        // Delete all existing associations
-        const deleteInputs = existingPrereqs.map(prereq => ({
-          from: { id: mockExamId },
-          to: { id: prereq.id }
-        }));
-
-        await hubspot.batchDeleteAssociations(
-          HUBSPOT_OBJECTS.mock_exams,
-          HUBSPOT_OBJECTS.mock_exams,
-          deleteInputs
-        );
-      }
-
-      // CRITICAL: Invalidate cache after prerequisites change
-      const cache = getCache();
-      const cacheKey = `admin:mock-exam:details:${mockExamId}`;
-      await cache.delete(cacheKey);
-      console.log(`🗑️ Cache invalidated for mock exam ${mockExamId} after clearing prerequisites`);
-
-      return res.status(200).json({
-        success: true,
-        data: {
-          mock_exam_id: mockExamId,
-          associations_created: 0,
-          associations_deleted: existingPrereqs.length,
-          prerequisite_exams: []
-        },
-        message: 'All prerequisite associations removed'
+    // Validate that prerequisite_exam_ids is an array
+    if (!Array.isArray(prerequisite_exam_ids)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_INPUT',
+          message: 'prerequisite_exam_ids must be an array'
+        }
       });
     }
 
-    // Fetch the mock exam to verify it exists and check its type
+    // Verify the mock exam exists
     const mockExam = await hubspot.getMockExam(mockExamId);
 
     if (!mockExam) {
@@ -162,56 +129,119 @@ async function handlePostRequest(req, res, mockExamId, adminEmail) {
         success: false,
         error: {
           code: 'INVALID_EXAM_TYPE',
-          message: 'Prerequisites can only be associated with Mock Discussion exams'
+          message: 'Prerequisites can only be set for Mock Discussion exams'
         }
       });
     }
 
-    // Fetch all prerequisite exams to validate
-    const prereqPromises = prerequisite_exam_ids.map(id => hubspot.getMockExam(id));
-    const prerequisiteExams = await Promise.all(prereqPromises);
+    // If empty array, delete all associations
+    if (prerequisite_exam_ids.length === 0) {
+      // Get existing associations
+      const existingPrereqs = await hubspot.getMockExamAssociations(mockExamId, PREREQUISITE_ASSOCIATION_TYPE_ID);
 
-    // Validate all prerequisites exist and are correct type
+      if (existingPrereqs.length > 0) {
+        // Delete all existing associations
+        const deleteInputs = existingPrereqs.map(prereq => ({
+          from: { id: mockExamId },
+          to: [{ id: prereq.id }],
+          types: [{
+            associationCategory: "USER_DEFINED",
+            associationTypeId: PREREQUISITE_ASSOCIATION_TYPE_ID
+          }]
+        }));
+
+        await hubspot.batchDeleteAssociations(
+          HUBSPOT_OBJECTS.mock_exams,
+          HUBSPOT_OBJECTS.mock_exams,
+          deleteInputs
+        );
+      }
+
+      // CRITICAL: Invalidate cache after prerequisites change
+      const cache = getCache();
+      const cacheKey = `admin:mock-exam:details:${mockExamId}`;
+      await cache.delete(cacheKey);
+      console.log(`🗑️ Cache invalidated for mock exam ${mockExamId}`);
+
+      console.log(`Admin ${adminEmail} cleared all prerequisites from Mock Discussion ${mockExamId}`);
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          mock_exam_id: mockExamId,
+          prerequisite_exam_ids: [],
+          prerequisite_exams: []
+        },
+        message: 'All prerequisite associations removed successfully'
+      });
+    }
+
+    // Validate that prerequisite IDs are valid numbers
+    for (const prereqId of prerequisite_exam_ids) {
+      if (!/^\d+$/.test(prereqId)) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_PREREQUISITE_ID',
+            message: `Invalid prerequisite exam ID: ${prereqId}`
+          }
+        });
+      }
+    }
+
+    // Verify all prerequisite exams exist and are Clinical Skills or Situational Judgment
     const validPrerequisites = [];
-    const errors = [];
-
-    for (let i = 0; i < prerequisiteExams.length; i++) {
-      const prereqExam = prerequisiteExams[i];
-      const prereqId = prerequisite_exam_ids[i];
-
-      if (!prereqExam) {
-        errors.push(`Exam ID ${prereqId} not found`);
-        continue;
-      }
-
-      const prereqType = prereqExam.properties.mock_type;
-      if (prereqType !== 'Clinical Skills' && prereqType !== 'Situational Judgment') {
-        errors.push(`Exam ID ${prereqId} is type "${prereqType}" - only Clinical Skills and Situational Judgment exams can be prerequisites`);
-        continue;
-      }
-
-      // Prevent self-association
-      if (prereqId === mockExamId) {
-        errors.push('Cannot associate an exam as its own prerequisite');
-        continue;
-      }
-
-      validPrerequisites.push({
-        id: prereqId,
-        exam: prereqExam
-      });
-    }
-
-    // If there were validation errors, return them
-    if (errors.length > 0) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Some prerequisites could not be validated',
-          details: errors
+    for (const prereqId of prerequisite_exam_ids) {
+      try {
+        const prereqExam = await hubspot.getMockExam(prereqId);
+        
+        if (!prereqExam) {
+          return res.status(404).json({
+            success: false,
+            error: {
+              code: 'PREREQUISITE_NOT_FOUND',
+              message: `Prerequisite exam ${prereqId} not found`
+            }
+          });
         }
-      });
+
+        // Only allow Clinical Skills and Situational Judgment as prerequisites
+        const mockType = prereqExam.properties.mock_type;
+        if (mockType !== 'Clinical Skills' && mockType !== 'Situational Judgment') {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'INVALID_PREREQUISITE_TYPE',
+              message: `Only Clinical Skills and Situational Judgment exams can be prerequisites (exam ${prereqId} is ${mockType})`
+            }
+          });
+        }
+
+        // Verify prerequisite is scheduled before the Discussion exam
+        const discussionDate = new Date(mockExam.properties.exam_date);
+        const prereqDate = new Date(prereqExam.properties.exam_date);
+
+        if (prereqDate >= discussionDate) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'INVALID_PREREQUISITE_DATE',
+              message: `Prerequisite exam ${prereqId} must be scheduled before the Discussion exam`
+            }
+          });
+        }
+
+        validPrerequisites.push({ id: prereqId, exam: prereqExam });
+      } catch (error) {
+        console.error(`Error fetching prerequisite exam ${prereqId}:`, error);
+        return res.status(500).json({
+          success: false,
+          error: {
+            code: 'PREREQUISITE_FETCH_ERROR',
+            message: `Failed to verify prerequisite exam ${prereqId}`
+          }
+        });
+      }
     }
 
     // Get existing associations to handle updates properly
@@ -227,7 +257,11 @@ async function handlePostRequest(req, res, mockExamId, adminEmail) {
     if (toDelete.length > 0) {
       const deleteInputs = toDelete.map(prereqId => ({
         from: { id: mockExamId },
-        to: { id: prereqId }
+        to: [{ id: prereqId }],
+        types: [{
+          associationCategory: "USER_DEFINED",
+          associationTypeId: PREREQUISITE_ASSOCIATION_TYPE_ID
+        }]
       }));
 
       await hubspot.batchDeleteAssociations(
@@ -269,41 +303,45 @@ async function handlePostRequest(req, res, mockExamId, adminEmail) {
       total_bookings: parseInt(exam.properties.total_bookings || '0')
     }));
 
+    // Sort prerequisite details by exam date (earliest first)
+    prerequisiteDetails.sort((a, b) => {
+      const dateA = new Date(a.exam_date);
+      const dateB = new Date(b.exam_date);
+      return dateA - dateB;
+    });
+
     // CRITICAL: Invalidate cache after prerequisites change
     const cache = getCache();
     const cacheKey = `admin:mock-exam:details:${mockExamId}`;
     await cache.delete(cacheKey);
-    console.log(`🗑️ Cache invalidated for mock exam ${mockExamId} after updating prerequisites`);
+    console.log(`🗑️ Cache invalidated for mock exam ${mockExamId}`);
 
     // Log the operation for audit trail
-    console.log(`Admin ${adminEmail} updated prerequisites for Mock Discussion ${mockExamId}:`, {
-      created: toCreate.length,
-      deleted: toDelete.length,
-      total: prerequisite_exam_ids.length
-    });
+    console.log(`Admin ${adminEmail} updated prerequisites for Mock Discussion ${mockExamId}: added ${toCreate.length}, removed ${toDelete.length}`);
 
     return res.status(200).json({
       success: true,
       data: {
         mock_exam_id: mockExamId,
-        associations_created: toCreate.length,
-        associations_deleted: toDelete.length,
-        total_prerequisites: prerequisite_exam_ids.length,
-        prerequisite_exams: prerequisiteDetails
+        prerequisite_exam_ids: prerequisite_exam_ids,
+        prerequisite_exams: prerequisiteDetails,
+        changes: {
+          created: toCreate.length,
+          deleted: toDelete.length
+        }
       },
-      message: `Successfully updated prerequisites: ${toCreate.length} added, ${toDelete.length} removed`
+      message: 'Prerequisite associations updated successfully'
     });
 
   } catch (error) {
     console.error('Error creating prerequisite associations:', error);
 
-    // Handle HubSpot API errors
-    if (error.response?.status === 404) {
-      return res.status(404).json({
+    if (error.message === 'Authentication required') {
+      return res.status(401).json({
         success: false,
         error: {
-          code: 'NOT_FOUND',
-          message: 'Mock exam or prerequisite not found'
+          code: 'UNAUTHORIZED',
+          message: 'Authentication required'
         }
       });
     }
@@ -318,7 +356,13 @@ async function handlePostRequest(req, res, mockExamId, adminEmail) {
       });
     }
 
-    throw error;
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'An error occurred while creating prerequisite associations'
+      }
+    });
   }
 }
 
