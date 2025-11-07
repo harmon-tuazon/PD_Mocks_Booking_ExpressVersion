@@ -827,6 +827,7 @@ class HubSpotService {
         'exam_date',      // Fetch directly from booking if available
         'is_active',      // Fetch directly from booking if available
         'associated_mock_exam',  // HubSpot object ID of the associated mock exam (for prerequisite validation)
+        'attendance',     // Required for prerequisite validation (Yes/No/null)
         'name',
         'email',
         'dominant_hand',
@@ -1165,6 +1166,7 @@ class HubSpotService {
           booking_id: booking.properties.booking_id,
           booking_number: booking.properties.booking_id, // For frontend compatibility
           mock_exam_id: booking.properties.associated_mock_exam || mockExamData.id, // HubSpot mock exam object ID (for prerequisite validation)
+          attendance: booking.properties.attendance || null, // Required for prerequisite validation
           name: booking.properties.name,
           email: booking.properties.email,
           dominant_hand: booking.properties.dominant_hand === 'true',
