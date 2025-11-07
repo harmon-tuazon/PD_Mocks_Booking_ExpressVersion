@@ -191,6 +191,43 @@ module.exports = async (req, res) => {
       }
     }
 
+
+    // Fetch prerequisite associations for all discussions (PRD v2.1.0)
+    const prerequisiteMap = new Map();
+    if (searchResult.results.length > 0) {
+      try {
+        const discussionIds = searchResult.results.map(discussion => discussion.id);
+        console.log('Fetching prerequisite associations for ' + discussionIds.length + ' discussions...');
+
+        // Batch read prerequisite associations using association type ID 1340 ("requires attendance at")
+        const prerequisiteAssociations = await hubspot.batch.batchReadAssociations(
+          '2-50158913', // mock_exams (discussions)
+          discussionIds,
+          '2-50158913', // mock_exams (prerequisites - same object type)
+          1340          // "requires attendance at" association type
+        );
+
+        console.log('Retrieved ' + prerequisiteAssociations.length + ' prerequisite association records');
+
+        // Build prerequisite map: discussion ID -> array of prerequisite exam IDs
+        for (const assoc of prerequisiteAssociations) {
+          const discussionId = assoc.from?.id;
+          if (discussionId) {
+            const prereqIds = (assoc.to || []).map(t => String(t.toObjectId));
+            if (prereqIds.length > 0) {
+              prerequisiteMap.set(discussionId, prereqIds);
+              console.log('  Discussion ' + discussionId + ': ' + prereqIds.length + ' prerequisite(s)');
+            }
+          }
+        }
+
+        console.log('Built prerequisite map with ' + prerequisiteMap.size + ' discussions having prerequisites');
+      } catch (prereqError) {
+        console.error('Failed to fetch prerequisite associations:', prereqError);
+        // Continue without prerequisites on error (fail-safe behavior)
+      }
+    }
+
     // Process discussions for response
     const processedDiscussions = searchResult.results.map(discussion => {
       const capacity = parseInt(discussion.properties.capacity) || 0;
@@ -234,7 +271,8 @@ module.exports = async (req, res) => {
         location: discussion.properties.location || 'Virtual/TBD',
         is_active: true,
         status: availableSlots === 0 ? 'full' :
-                 availableSlots <= 3 ? 'limited' : 'available'
+                 availableSlots <= 3 ? 'limited' : 'available',
+        prerequisite_exam_ids: prerequisiteMap.get(discussion.id) || []
       };
     });
 
