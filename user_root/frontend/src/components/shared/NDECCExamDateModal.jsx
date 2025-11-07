@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { FiCalendar, FiX, FiCheck, FiAlertCircle } from 'react-icons/fi';
+import { DatePicker } from '../ui/date-picker';
+import { formatDisplayDate, toISODateString } from '../../utils/dateFormatting';
 
 /**
  * NDECC Exam Date Edit Modal
  *
  * Allows users to set or update their NDECC exam date
- * - Date picker input
- * - Current date display
+ * - shadcn/ui DatePicker component
+ * - Current date display with consistent formatting
  * - Save and Cancel actions
  * - Loading states
  * - Success/error feedback
@@ -29,21 +31,18 @@ const NDECCExamDateModal = ({
   // Initialize date from currentDate when modal opens
   useEffect(() => {
     if (isOpen && currentDate) {
-      // If currentDate is a Date object or string, format it to YYYY-MM-DD
-      const dateStr = typeof currentDate === 'string'
-        ? currentDate.split('T')[0] // Handle ISO string
-        : currentDate instanceof Date
-          ? currentDate.toISOString().split('T')[0]
-          : '';
+      // Convert to YYYY-MM-DD format using utility function
+      const dateStr = toISODateString(currentDate);
       setSelectedDate(dateStr);
     } else if (isOpen) {
       setSelectedDate('');
     }
 
-    // Reset states when modal opens/closes
+    // Reset states when modal opens/closes - FIX for Issue #2
     if (isOpen) {
       setError(null);
       setSuccess(false);
+      setIsLoading(false); // Reset loading state when modal reopens
     }
   }, [isOpen, currentDate]);
 
@@ -81,22 +80,8 @@ const NDECCExamDateModal = ({
     };
   }, [isOpen]);
 
-  // Format date for display
-  const formatDisplayDate = (dateString) => {
-    if (!dateString) return 'Not set';
-    try {
-      const [year, month, day] = dateString.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      return date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch (error) {
-      return dateString;
-    }
-  };
+  // Date formatting now handled by centralized utility function
+  // This ensures consistency with SidebarNavigation and other components
 
   // Handle save
   const handleSave = async () => {
@@ -133,11 +118,15 @@ const NDECCExamDateModal = ({
     }
   };
 
-  // Handle date change
-  const handleDateChange = (e) => {
-    setSelectedDate(e.target.value);
+  // Handle date change from DatePicker
+  const handleDateChange = (dateString) => {
+    setSelectedDate(dateString);
     setError(null);
   };
+
+  // Get minimum date (today)
+  const minDate = new Date();
+  minDate.setHours(0, 0, 0, 0);
 
   // Don't render if not open
   if (!isOpen) return null;
@@ -198,7 +187,7 @@ const NDECCExamDateModal = ({
                   </div>
                 )}
 
-                {/* Date Picker */}
+                {/* Date Picker - Updated to use shadcn/ui DatePicker */}
                 <div className="mt-4">
                   <label
                     htmlFor="ndecc-exam-date"
@@ -206,15 +195,15 @@ const NDECCExamDateModal = ({
                   >
                     {currentDate ? 'New exam date' : 'Select exam date'}
                   </label>
-                  <input
-                    ref={dateInputRef}
-                    type="date"
+                  <DatePicker
                     id="ndecc-exam-date"
+                    name="ndecc-exam-date"
                     value={selectedDate}
                     onChange={handleDateChange}
                     disabled={isLoading || success}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-dark-bg text-gray-900 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed transition-colors duration-200"
-                    min={new Date().toISOString().split('T')[0]}
+                    minDate={minDate}
+                    placeholder="Select a date"
+                    className="w-full"
                   />
                 </div>
 

@@ -5,6 +5,7 @@ import { ResponsiveLogo } from './Logo';
 import DarkModeToggle from '../DarkModeToggle';
 import NDECCExamDateModal from './NDECCExamDateModal';
 import apiService from '../../services/api';
+import { formatShortDate } from '../../utils/dateFormatting';
 
 /**
  * Sidebar Navigation Component
@@ -211,19 +212,14 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                   </span>
                 </div>
 
-                {/* NDECC Exam Date with Edit Button */}
+                {/* NDECC Exam Date with Edit Button - Uses consistent date formatting */}
                 <div className="flex items-start justify-between">
                   <div className="flex items-start flex-1 min-w-0">
                     <svg className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <span className="text-xs text-primary-700 dark:text-primary-300 break-words flex-1">
-                      NDECC Exam: {userSession.ndeccExamDate ?
-                        new Date(userSession.ndeccExamDate).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        }) : 'Not set'}
+                      NDECC Exam: {formatShortDate(userSession.ndeccExamDate)}
                     </span>
                   </div>
                   <button
