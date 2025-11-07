@@ -301,225 +301,227 @@ const BookingsTable = ({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        {safeBookings.length === 0 ? (
-          /* Empty State */
-          <div className="text-center py-12">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No bookings found</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {searchTerm ? 'Try adjusting your search criteria' : 'No bookings have been made for this exam yet'}
-            </p>
-          </div>
-        ) : (
-          <>
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  {/* Checkbox column (selection modes) */}
-                  {isSelectionMode && (
-                    <NonSortableHeader align="center">
-                      <Checkbox disabled className="opacity-0" />
-                    </NonSortableHeader>
-                  )}
+      {/* Empty State */}
+      {safeBookings.length === 0 && (
+        <div className="text-center py-12">
+          <svg
+            className="mx-auto h-12 w-12 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+            />
+          </svg>
+          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No bookings found</h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {searchTerm ? 'Try adjusting your search criteria' : 'No bookings have been made for this exam yet'}
+          </p>
+        </div>
+      )}
 
-                  {/* Admin view: Render fixed columns + visible dynamic columns */}
-                  {!hideTraineeInfo && getColumnOrder().map(columnId => {
-                    const columnDef = getColumnDef(columnId);
-                    if (!columnDef) return null;
+      {/* Table - with horizontal scroll */}
+      {safeBookings.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
+              <tr>
+                {/* Checkbox column (selection modes) */}
+                {isSelectionMode && (
+                  <NonSortableHeader align="center">
+                    <Checkbox disabled className="opacity-0" />
+                  </NonSortableHeader>
+                )}
 
-                    // Skip dynamic columns that aren't visible
-                    if (!columnDef.fixed && !isColumnVisible(columnId)) {
-                      return null;
-                    }
+                {/* Admin view: Render fixed columns + visible dynamic columns */}
+                {!hideTraineeInfo && getColumnOrder().map(columnId => {
+                  const columnDef = getColumnDef(columnId);
+                  if (!columnDef) return null;
 
-                    // Fixed columns (always visible and sticky)
-                    if (columnDef.fixed) {
+                  // Skip dynamic columns that aren't visible
+                  if (!columnDef.fixed && !isColumnVisible(columnId)) {
+                    return null;
+                  }
+
+                  // Fixed columns (always visible and sticky)
+                  if (columnDef.fixed) {
+                    return (
+                      <SortableHeader
+                        key={columnId}
+                        column={columnId}
+                        align="center"
+                        isFixed={true}
+                      >
+                        {columnDef.label}
+                      </SortableHeader>
+                    );
+                  }
+
+                  // Dynamic columns based on ID
+                  switch (columnId) {
+                    case 'time':
+                    case 'attendance':
+                    case 'status':
+                      // Non-sortable columns
                       return (
-                        <SortableHeader 
-                          key={columnId} 
-                          column={columnId} 
-                          align="center" 
-                          isFixed={true}
-                        >
+                        <NonSortableHeader key={columnId} column={columnId} align="center">
+                          {columnDef.label}
+                        </NonSortableHeader>
+                      );
+                    default:
+                      // Sortable columns
+                      return (
+                        <SortableHeader key={columnId} column={columnId} align="center">
                           {columnDef.label}
                         </SortableHeader>
                       );
-                    }
-
-                    // Dynamic columns based on ID
-                    switch (columnId) {
-                      case 'time':
-                      case 'attendance':
-                      case 'status':
-                        // Non-sortable columns
-                        return (
-                          <NonSortableHeader key={columnId} column={columnId} align="center">
-                            {columnDef.label}
-                          </NonSortableHeader>
-                        );
-                      default:
-                        // Sortable columns
-                        return (
-                          <SortableHeader key={columnId} column={columnId} align="center">
-                            {columnDef.label}
-                          </SortableHeader>
-                        );
-                    }
-                  })}
-
-                  {/* Trainee view: Show trainee-only columns + all standard columns */}
-                  {hideTraineeInfo && [...TRAINEE_ONLY_COLUMNS, ...columnDefinitions].map(columnDef => {
-                    // Render based on column type
-                    switch (columnDef.id) {
-                      case 'time':
-                      case 'attendance':
-                      case 'status':
-                      case 'mock_type':
-                        // Non-sortable columns
-                        return (
-                          <NonSortableHeader key={columnDef.id} column={columnDef.id} align="center">
-                            {columnDef.label}
-                          </NonSortableHeader>
-                        );
-                      default:
-                        return (
-                          <SortableHeader key={columnDef.id} column={columnDef.id} align="center">
-                            {columnDef.label}
-                          </SortableHeader>
-                        );
-                    }
-                  })}
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
-                {safeBookings.map((booking) => {
-                  // Determine selection state and handler based on active mode
-                  let isSelected = false;
-                  let onToggleSelection = null;
-                  let isDisabled = false;
-
-                  if (isAttendanceMode) {
-                    isSelected = attendanceState.isSelected?.(booking.id) || false;
-                    onToggleSelection = attendanceState.onToggleSelection;
-                  } else if (isCancellationMode) {
-                    isSelected = cancellationState.isSelected?.(booking.id) || false;
-                    onToggleSelection = cancellationState.onToggleSelection;
-                    // Disable if booking is already cancelled
-                    isDisabled = !cancellationState.canCancel?.(booking.id);
                   }
-
-                  return (
-                    <BookingRow
-                      key={booking.id}
-                      booking={booking}
-                      isAttendanceMode={isAttendanceMode}
-                      isCancellationMode={isCancellationMode}
-                      isSelected={isSelected}
-                      onToggleSelection={onToggleSelection}
-                      isDisabled={isDisabled}
-                      hideTraineeInfo={hideTraineeInfo}
-                      visibleColumns={hideTraineeInfo ? traineeViewColumns : visibleColumns}
-                      columnOrder={hideTraineeInfo ? traineeViewColumns : getColumnOrder()}
-                      sizeClass={getCellClasses()}
-                    />
-                  );
                 })}
-              </tbody>
-            </table>
 
-            {/* Pagination Controls */}
-            <div className="bg-white dark:bg-dark-card px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
-              <div className="flex-1 flex justify-between sm:hidden">
+                {/* Trainee view: Show trainee-only columns + all standard columns */}
+                {hideTraineeInfo && [...TRAINEE_ONLY_COLUMNS, ...columnDefinitions].map(columnDef => {
+                  // Render based on column type
+                  switch (columnDef.id) {
+                    case 'time':
+                    case 'attendance':
+                    case 'status':
+                    case 'mock_type':
+                      // Non-sortable columns
+                      return (
+                        <NonSortableHeader key={columnDef.id} column={columnDef.id} align="center">
+                          {columnDef.label}
+                        </NonSortableHeader>
+                      );
+                    default:
+                      return (
+                        <SortableHeader key={columnDef.id} column={columnDef.id} align="center">
+                          {columnDef.label}
+                        </SortableHeader>
+                      );
+                  }
+                })}
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
+              {safeBookings.map((booking) => {
+                // Determine selection state and handler based on active mode
+                let isSelected = false;
+                let onToggleSelection = null;
+                let isDisabled = false;
+
+                if (isAttendanceMode) {
+                  isSelected = attendanceState.isSelected?.(booking.id) || false;
+                  onToggleSelection = attendanceState.onToggleSelection;
+                } else if (isCancellationMode) {
+                  isSelected = cancellationState.isSelected?.(booking.id) || false;
+                  onToggleSelection = cancellationState.onToggleSelection;
+                  // Disable if booking is already cancelled
+                  isDisabled = !cancellationState.canCancel?.(booking.id);
+                }
+
+                return (
+                  <BookingRow
+                    key={booking.id}
+                    booking={booking}
+                    isAttendanceMode={isAttendanceMode}
+                    isCancellationMode={isCancellationMode}
+                    isSelected={isSelected}
+                    onToggleSelection={onToggleSelection}
+                    isDisabled={isDisabled}
+                    hideTraineeInfo={hideTraineeInfo}
+                    visibleColumns={hideTraineeInfo ? traineeViewColumns : visibleColumns}
+                    columnOrder={hideTraineeInfo ? traineeViewColumns : getColumnOrder()}
+                    sizeClass={getCellClasses()}
+                  />
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pagination Controls - outside horizontal scroll */}
+      {safeBookings.length > 0 && (
+        <div className="bg-white dark:bg-dark-card px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
+          <div className="flex-1 flex justify-between sm:hidden">
+            <button
+              onClick={() => onPageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => onPageChange(currentPage + 1)}
+              disabled={currentPage === safeTotalPages}
+              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs text-gray-700 dark:text-gray-300">
+                Showing <span className="font-medium">{startItem}</span> to{' '}
+                <span className="font-medium">{endItem}</span>
+              </p>
+            </div>
+            <div>
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                 <button
                   onClick={() => onPageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Previous
+                  <span className="sr-only">Previous</span>
+                  <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
                 </button>
+
+                {/* Page numbers */}
+                {[...Array(Math.min(5, safeTotalPages))].map((_, index) => {
+                  let pageNumber;
+                  if (safeTotalPages <= 5) {
+                    pageNumber = index + 1;
+                  } else if (currentPage <= 3) {
+                    pageNumber = index + 1;
+                  } else if (currentPage >= safeTotalPages - 2) {
+                    pageNumber = safeTotalPages - 4 + index;
+                  } else {
+                    pageNumber = currentPage - 2 + index;
+                  }
+
+                  return (
+                    <button
+                      key={pageNumber}
+                      onClick={() => onPageChange(pageNumber)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        currentPage === pageNumber
+                          ? 'z-10 bg-primary-50 dark:bg-primary-900/30 border-primary-500 text-primary-600 dark:text-primary-400'
+                          : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  );
+                })}
+
                 <button
                   onClick={() => onPageChange(currentPage + 1)}
                   disabled={currentPage === safeTotalPages}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next
+                  <span className="sr-only">Next</span>
+                  <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
                 </button>
-              </div>
-              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs text-gray-700 dark:text-gray-300">
-                    Showing <span className="font-medium">{startItem}</span> to{' '}
-                    <span className="font-medium">{endItem}</span>
-                  </p>
-                </div>
-                <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                    <button
-                      onClick={() => onPageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <span className="sr-only">Previous</span>
-                      <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
-                    </button>
-
-                    {/* Page numbers */}
-                    {[...Array(Math.min(5, safeTotalPages))].map((_, index) => {
-                      let pageNumber;
-                      if (safeTotalPages <= 5) {
-                        pageNumber = index + 1;
-                      } else if (currentPage <= 3) {
-                        pageNumber = index + 1;
-                      } else if (currentPage >= safeTotalPages - 2) {
-                        pageNumber = safeTotalPages - 4 + index;
-                      } else {
-                        pageNumber = currentPage - 2 + index;
-                      }
-
-                      return (
-                        <button
-                          key={pageNumber}
-                          onClick={() => onPageChange(pageNumber)}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                            currentPage === pageNumber
-                              ? 'z-10 bg-primary-50 dark:bg-primary-900/30 border-primary-500 text-primary-600 dark:text-primary-400'
-                              : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                          }`}
-                        >
-                          {pageNumber}
-                        </button>
-                      );
-                    })}
-
-                    <button
-                      onClick={() => onPageChange(currentPage + 1)}
-                      disabled={currentPage === safeTotalPages}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <span className="sr-only">Next</span>
-                      <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
-                    </button>
-                  </nav>
-                </div>
-              </div>
+              </nav>
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
