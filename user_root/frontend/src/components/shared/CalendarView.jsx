@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, isBefore, startOfDay } from 'date-fns';
+import { FiLock } from 'react-icons/fi';
 import { formatTimeRange } from '../../services/api';
+import { checkPrerequisites } from '../../utils/prerequisiteHelpers';
 
-const CalendarView = ({ exams, onDateSelect, onExamSelect }) => {
+const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedSessions, setSelectedSessions] = useState([]);
@@ -66,6 +68,14 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect }) => {
 
   const handleSessionSelect = (session) => {
     onExamSelect && onExamSelect(session);
+  };
+
+  // Check if session has unmet prerequisites
+  const hasUnmetPrerequisites = (session) => {
+    if (!session.prerequisite_exam_ids || session.prerequisite_exam_ids.length === 0) {
+      return false;
+    }
+    return !checkPrerequisites(session.prerequisite_exam_ids, userBookings);
   };
 
   const getDayClasses = (date) => {
@@ -226,6 +236,14 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect }) => {
                         {session.is_active ? 'Active' : 'Inactive'}
                       </div>
                     </div>
+
+                    {/* Prerequisites Badge */}
+                    {hasUnmetPrerequisites(session) && (
+                      <div className="flex items-center gap-1 mb-2 text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                        <FiLock className="h-3 w-3" />
+                        <span>Prerequisites Required</span>
+                      </div>
+                    )}
 
                     <div className="space-y-2 text-xs font-body text-gray-700 dark:text-gray-300">
                       <div className="flex items-center gap-2">

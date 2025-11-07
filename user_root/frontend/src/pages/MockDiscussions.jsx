@@ -675,6 +675,7 @@ const MockDiscussions = () => {
             exams={filteredDiscussions}
             onExamSelect={handleSelectDiscussion}
             examType="Mock Discussion"
+            userBookings={userBookings}
           />
         )}
       </div>
