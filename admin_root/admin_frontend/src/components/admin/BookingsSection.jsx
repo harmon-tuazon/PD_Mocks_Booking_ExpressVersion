@@ -59,10 +59,10 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
   // Handle booking cancellation using simplified batch endpoint
   const handleCancelBookings = async () => {
     const selectedBookings = bookings.filter(booking =>
-      cancellationState.isSelected(booking.id)
+      cancellationState?.isSelected?.(booking.id)
     );
 
-    cancellationState.startSubmitting();
+    cancellationState?.startSubmitting?.();
 
     try {
       // Simple single API call - no grouping needed
@@ -93,13 +93,13 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
         toast.warning(`${result.data.summary.failed} booking(s) could not be cancelled`, { duration: 6000 });
       }
 
-      cancellationState.closeModal();
-      cancellationState.toggleMode(); // Exit cancellation mode
+      cancellationState?.closeModal?.();
+      cancellationState?.toggleMode?.(); // Exit cancellation mode
       if (onRefresh) {
         onRefresh(); // Refresh booking data
       }
     } catch (error) {
-      cancellationState.returnToSelecting();
+      cancellationState?.returnToSelecting?.();
 
       const errorMessage = error.message || 'Failed to cancel bookings';
       toast.error(`Cancellation Failed: ${errorMessage}`, { duration: 6000 });
@@ -312,16 +312,16 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
               unmarkedCount: summary?.unmarked || 0
             }}
             cancellationState={{
-              isCancellationMode: cancellationState.isCancellationMode,
-              selectedIds: Array.from(cancellationState.selectedBookingIds),
-              selectedCount: cancellationState.selectedBookingIds.size,
-              onToggleMode: cancellationState.toggleMode,
-              onToggleSelection: cancellationState.toggleSelection,
-              onSelectAll: () => cancellationState.selectAll(processedBookings),
-              onClearAll: cancellationState.clearAll,
-              onOpenModal: cancellationState.openModal,
-              canCancel: cancellationState.canCancel,
-              isSelected: cancellationState.isSelected
+              isCancellationMode: cancellationState?.isCancellationMode || false,
+              selectedIds: cancellationState?.selectedIds || [],
+              selectedCount: cancellationState?.selectedCount || 0,
+              onToggleMode: cancellationState?.toggleMode,
+              onToggleSelection: cancellationState?.toggleSelection,
+              onSelectAll: () => cancellationState?.selectAll?.(processedBookings),
+              onClearAll: cancellationState?.clearAll,
+              onOpenModal: cancellationState?.openModal,
+              canCancel: cancellationState?.canCancel,
+              isSelected: cancellationState?.isSelected
             }}
             onSort={handleSort}  // Enable sorting in trainee dashboard view
             sortConfig={sortConfig}
@@ -333,13 +333,13 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
 
       {/* Cancel Bookings Modal */}
       <CancelBookingsModal
-        isOpen={cancellationState.isModalOpen}
-        onClose={cancellationState.closeModal}
+        isOpen={cancellationState?.isModalOpen || false}
+        onClose={cancellationState?.closeModal}
         onConfirm={handleCancelBookings}
-        selectedBookings={bookings.filter(b => cancellationState.isSelected(b.id))}
-        isLoading={cancellationState.isSubmitting}
-        refundTokens={cancellationState.refundTokens}
-        onToggleRefund={cancellationState.toggleRefund}
+        selectedBookings={bookings.filter(b => cancellationState?.isSelected?.(b.id))}
+        isLoading={cancellationState?.isSubmitting || false}
+        refundTokens={cancellationState?.refundTokens ?? true}
+        onToggleRefund={cancellationState?.toggleRefund}
       />
     </div>
   );
