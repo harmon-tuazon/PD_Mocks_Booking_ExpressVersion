@@ -53,13 +53,14 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
   // Client-side filtering and sorting logic
   const processedBookings = useMemo(() => {
     if (!bookings || bookings.length === 0) return [];
-    
-    return bookings.filter(booking => {
+
+    // Step 1: Filter bookings
+    const filteredBookings = bookings.filter(booking => {
       // Location filter
       if (filters.locations.length > 0 && !filters.locations.includes(booking.attending_location)) {
         return false;
       }
-      
+
       // Attendance filter
       if (filters.attendance.length > 0) {
         // Map booking.attendance value to filter values
@@ -69,17 +70,17 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
         } else if (booking.attendance === 'No' || booking.attendance === false) {
           attendanceValue = 'No';
         }
-        
+
         if (!filters.attendance.includes(attendanceValue)) {
           return false;
         }
       }
-      
+
       // Mock type filter
       if (filters.mockTypes.length > 0 && !filters.mockTypes.includes(booking.mock_exam_type)) {
         return false;
       }
-      
+
       // Date range filter
       if (filters.dateFrom && booking.exam_date) {
         const examDate = new Date(booking.exam_date);
@@ -97,7 +98,7 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
           return false;
         }
       }
-      
+
       // Status filter
       if (filters.status !== 'All') {
         // Map booking status to filter values
@@ -113,7 +114,7 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
             bookingStatus = 'Completed';
           }
         }
-        
+
         if (filters.status !== bookingStatus) {
           return false;
         }
