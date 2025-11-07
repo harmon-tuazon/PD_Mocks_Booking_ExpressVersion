@@ -242,6 +242,23 @@ const apiService = {
       });
     },
   },
+
+  // User profile
+  user: {
+    /**
+     * Update NDECC exam date for a student
+     * @param {string} studentId - The student's HubSpot contact ID
+     * @param {string} email - The student's email address
+     * @param {string} examDate - The NDECC exam date in YYYY-MM-DD format
+     */
+    updateNDECCExamDate: async (studentId, email, examDate) => {
+      return api.put('/user/update-ndecc-date', {
+        student_id: studentId,
+        email: email,
+        ndecc_exam_date: examDate
+      });
+    },
+  },
 };
 
 // Helper functions

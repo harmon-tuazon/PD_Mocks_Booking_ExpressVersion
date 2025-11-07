@@ -211,6 +211,49 @@ const schemas = {
       })
   }),
 
+  // Schema for updating NDECC exam date
+  updateNdeccDate: Joi.object({
+    student_id: Joi.string()
+      .pattern(/^[A-Z0-9]+$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Student ID must contain only uppercase letters and numbers',
+        'any.required': 'Student ID is required'
+      }),
+    email: Joi.string()
+      .email()
+      .required()
+      .messages({
+        'string.email': 'Please enter a valid email address',
+        'any.required': 'Email is required'
+      }),
+    ndecc_exam_date: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .required()
+      .custom((value, helpers) => {
+        // Validate date format and ensure it's today or in the future
+        const inputDate = new Date(value);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset to start of day for comparison
+
+        if (isNaN(inputDate.getTime())) {
+          return helpers.error('any.invalid');
+        }
+
+        if (inputDate < today) {
+          return helpers.error('date.min');
+        }
+
+        return value;
+      })
+      .messages({
+        'string.pattern.base': 'NDECC exam date must be in YYYY-MM-DD format',
+        'any.required': 'NDECC exam date is required',
+        'any.invalid': 'Invalid date provided',
+        'date.min': 'NDECC exam date must be today or in the future'
+      })
+  })
+
 };
 
 /**

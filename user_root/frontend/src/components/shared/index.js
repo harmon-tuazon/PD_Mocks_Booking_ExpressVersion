@@ -7,4 +7,6 @@ export { default as Logo } from './Logo';
 export { default as LoggedInUserCard } from './LoggedInUserCard';
 export { default as DeleteBookingModal } from './DeleteBookingModal';
 export { default as InsufficientTokensError } from './InsufficientTokensError';
-export { default as InsufficientCreditsCard } from './InsufficientCreditsCard';export { default as PrerequisiteWarningModal } from './PrerequisiteWarningModal';
+export { default as InsufficientCreditsCard } from './InsufficientCreditsCard';
+export { default as PrerequisiteWarningModal } from './PrerequisiteWarningModal';
+export { default as NDECCExamDateModal } from './NDECCExamDateModal';

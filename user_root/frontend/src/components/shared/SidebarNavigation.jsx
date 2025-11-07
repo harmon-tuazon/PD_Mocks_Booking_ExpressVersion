@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getUserSession, clearUserSession } from '../../utils/auth';
+import { getUserSession, clearUserSession, setUserSession as updateUserSession } from '../../utils/auth';
 import { ResponsiveLogo } from './Logo';
 import DarkModeToggle from '../DarkModeToggle';
+import NDECCExamDateModal from './NDECCExamDateModal';
+import apiService from '../../services/api';
 
 /**
  * Sidebar Navigation Component
@@ -16,6 +18,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [userSession, setUserSession] = useState(null);
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
 
   // Check for user session on mount
   useEffect(() => {
@@ -86,6 +89,35 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
     setUserSession(null);
     navigate('/login');
     setIsOpen(false);
+  };
+
+  // Handle NDECC exam date save
+  const handleSaveExamDate = async (examDate) => {
+    if (!userSession) {
+      throw new Error('No user session found');
+    }
+
+    try {
+      // Call API to update exam date
+      await apiService.user.updateNDECCExamDate(
+        userSession.studentId,
+        userSession.email,
+        examDate
+      );
+
+      // Update local user session with new date
+      const updatedSession = {
+        ...userSession,
+        ndeccExamDate: examDate
+      };
+      updateUserSession(updatedSession);
+      setUserSession(updatedSession);
+
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Failed to update NDECC exam date:', error);
+      throw new Error(error.response?.data?.error?.message || 'Failed to update exam date');
+    }
   };
 
   // Don't show navigation on login page or if not authenticated
@@ -179,19 +211,31 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                   </span>
                 </div>
 
-                {/* NDECC Exam Date */}
-                <div className="flex items-start">
-                  <svg className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-xs text-primary-700 dark:text-primary-300 break-words">
-                    NDECC Exam: {userSession.ndeccExamDate ?
-                      new Date(userSession.ndeccExamDate).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      }) : 'N/A'}
-                  </span>
+                {/* NDECC Exam Date with Edit Button */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start flex-1 min-w-0">
+                    <svg className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-xs text-primary-700 dark:text-primary-300 break-words flex-1">
+                      NDECC Exam: {userSession.ndeccExamDate ?
+                        new Date(userSession.ndeccExamDate).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        }) : 'Not set'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsDateModalOpen(true)}
+                    className="ml-2 p-1 rounded hover:bg-primary-200 dark:hover:bg-primary-700/50 transition-colors duration-200 flex-shrink-0 group"
+                    title={userSession.ndeccExamDate ? 'Edit exam date' : 'Set exam date'}
+                    aria-label={userSession.ndeccExamDate ? 'Edit exam date' : 'Set exam date'}
+                  >
+                    <svg className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400 group-hover:text-primary-700 dark:group-hover:text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             </div>
@@ -271,6 +315,14 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
           </div>
         </div>
       </div>
+
+      {/* NDECC Exam Date Modal */}
+      <NDECCExamDateModal
+        isOpen={isDateModalOpen}
+        currentDate={userSession?.ndeccExamDate}
+        onSave={handleSaveExamDate}
+        onClose={() => setIsDateModalOpen(false)}
+      />
     </>
   );
 };
