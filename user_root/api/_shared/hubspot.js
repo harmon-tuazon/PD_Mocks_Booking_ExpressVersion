@@ -1175,8 +1175,6 @@ class HubSpotService {
           start_time: mockExamData.start_time,
           end_time: mockExamData.end_time,
           is_active: mockExamData.is_active,  // Include is_active for frontend use
-          // Nested structure for backward compatibility
-          mock_exam: mockExamData,
           status: finalStatus,  // Use the properly mapped status
           created_at: booking.properties.hs_createdate
         });

@@ -53,7 +53,7 @@ export const findConflictingBookings = (existingBookings, newSession) => {
 
   return existingBookings.filter(booking => {
     // Only check active bookings (exclude cancelled, completed, failed)
-    const isActive = booking.is_active || booking.mock_exam?.is_active;
+    const isActive = booking.is_active;
 
     // Check various representations of active status
     const isActiveBooking =
@@ -66,9 +66,9 @@ export const findConflictingBookings = (existingBookings, newSession) => {
       return false;
     }
 
-    // Get time fields - check both direct properties and nested mock_exam
-    const bookingStartTime = booking.start_time || booking.mock_exam?.start_time;
-    const bookingEndTime = booking.end_time || booking.mock_exam?.end_time;
+    // Get time fields from booking
+    const bookingStartTime = booking.start_time;
+    const bookingEndTime = booking.end_time;
 
     // Check if bookings have required time data
     if (!bookingStartTime || !bookingEndTime) {
@@ -119,24 +119,12 @@ export const formatConflictMessage = (conflictingBooking) => {
     return 'Conflicting booking';
   }
 
-  // Get dates and times from various possible locations
-  const examDate = conflictingBooking.exam_date ||
-                  conflictingBooking.mock_exam?.exam_date ||
-                  conflictingBooking.start_time;
-
-  const startTime = conflictingBooking.start_time ||
-                   conflictingBooking.mock_exam?.start_time;
-
-  const endTime = conflictingBooking.end_time ||
-                 conflictingBooking.mock_exam?.end_time;
-
-  const mockType = conflictingBooking.mock_type ||
-                  conflictingBooking.mock_exam?.mock_type ||
-                  'Mock Exam';
-
-  const location = conflictingBooking.location ||
-                  conflictingBooking.mock_exam?.location ||
-                  'Mississauga';
+  // Get dates and times from booking
+  const examDate = conflictingBooking.exam_date || conflictingBooking.start_time;
+  const startTime = conflictingBooking.start_time;
+  const endTime = conflictingBooking.end_time;
+  const mockType = conflictingBooking.mock_type || 'Mock Exam';
+  const location = conflictingBooking.location || 'Mississauga';
 
   // Format date - FIX: Parse ISO date string as local date to avoid timezone shift
   let dateStr = 'Unknown Date';
@@ -221,13 +209,13 @@ export const canModifyBooking = (booking) => {
   if (!booking) return false;
 
   // Check if booking is cancelled or completed
-  const status = booking.is_active || booking.mock_exam?.is_active;
+  const status = booking.is_active;
   if (status === 'Cancelled' || status === 'Completed' || status === 'Failed') {
     return false;
   }
 
   // Check if booking is in the past
-  const examDate = booking.exam_date || booking.mock_exam?.exam_date;
+  const examDate = booking.exam_date;
   if (examDate) {
     const bookingDate = new Date(examDate);
     const now = new Date();
