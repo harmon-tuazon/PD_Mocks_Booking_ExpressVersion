@@ -48,7 +48,8 @@ function TraineeDashboard() {
   const {
     data: bookingsData,
     isLoading: isLoadingBookings,
-    error: bookingsError
+    error: bookingsError,
+    refetch: refetchBookings
   } = useQuery({
     queryKey: ['trainee-bookings', contactId],
     queryFn: () => traineeApi.getBookings(contactId),
@@ -156,6 +157,7 @@ function TraineeDashboard() {
               summary={bookingsSummary}
               loading={isLoadingBookings}
               error={bookingsError}
+              onRefresh={refetchBookings}
             />
           </>
         )}

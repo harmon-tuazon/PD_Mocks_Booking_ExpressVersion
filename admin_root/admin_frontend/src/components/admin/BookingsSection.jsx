@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import BookingsTable from './BookingsTable';
 import BookingFilters from './BookingFilters';
+import useBatchCancellation from '../../hooks/useBatchCancellation';
+import CancelBookingsModal from '../shared/CancelBookingsModal';
 
 /**
  * LoadingSkeleton Component
@@ -22,7 +25,7 @@ const LoadingSkeleton = () => {
  * Wrapper component for bookings table with summary badges
  * Handles loading, error, and empty states
  */
-const BookingsSection = ({ bookings, summary, loading, error }) => {
+const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
   // State for active filters
   const [filters, setFilters] = useState({
     locations: [],
@@ -39,6 +42,9 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
     direction: 'desc'
   });
 
+  // Cancellation functionality
+  const cancellationState = useBatchCancellation(bookings || []);
+
   // Sort handler
   const handleSort = (column) => {
     setSortConfig(prevConfig => ({
@@ -48,6 +54,72 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
           ? 'desc'
           : 'asc'
     }));
+  };
+
+  // Handle booking cancellation
+  // Note: For trainee bookings, we need to handle cancellations across multiple mock exams
+  const handleCancelBookings = async () => {
+    const selectedBookings = bookings.filter(booking =>
+      cancellationState.isSelected(booking.id)
+    );
+
+    cancellationState.startSubmitting();
+
+    try {
+      // Group bookings by mock exam ID for batch cancellation
+      const bookingsByExam = selectedBookings.reduce((acc, booking) => {
+        const examId = booking.mock_exam_id;
+        if (!acc[examId]) {
+          acc[examId] = [];
+        }
+        acc[examId].push({
+          id: booking.id,
+          token_used: booking.token_used,
+          associated_contact_id: booking.associated_contact_id || booking.contact_id,
+          name: booking.name,
+          email: booking.email
+        });
+        return acc;
+      }, {});
+
+      // Import API service
+      const { mockExamsApi } = await import('../../services/adminApi');
+
+      // Cancel bookings for each mock exam
+      const cancelPromises = Object.entries(bookingsByExam).map(([examId, examBookings]) => {
+        return mockExamsApi.cancelBookings(examId, {
+          bookings: examBookings,
+          refundTokens: cancellationState.refundTokens
+        });
+      });
+
+      const results = await Promise.all(cancelPromises);
+
+      // Show success toasts
+      const totalCancelled = results.reduce((sum, result) => {
+        return sum + (result.data?.summary?.cancelled || 0);
+      }, 0);
+
+      if (totalCancelled > 0) {
+        toast.success(`Successfully cancelled ${totalCancelled} booking(s)`, { duration: 4000 });
+      }
+
+      cancellationState.closeModal();
+      cancellationState.toggleMode(); // Exit cancellation mode
+      if (onRefresh) {
+        onRefresh(); // Refresh booking data
+      }
+    } catch (error) {
+      cancellationState.returnToSelecting();
+
+      const errorMessage = error?.response?.data?.error?.message ||
+                          error?.response?.data?.message ||
+                          error.message ||
+                          'Failed to cancel bookings';
+
+      toast.error(`Cancellation Failed: ${errorMessage}`, { duration: 6000 });
+      console.error('Failed to cancel bookings:', error);
+    }
   };
 
   // Client-side filtering and sorting logic
@@ -255,9 +327,16 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
               unmarkedCount: summary?.unmarked || 0
             }}
             cancellationState={{
-              isCancellationMode: false,
-              selectedIds: [],
-              selectedCount: 0
+              isCancellationMode: cancellationState.isCancellationMode,
+              selectedIds: Array.from(cancellationState.selectedBookingIds),
+              selectedCount: cancellationState.selectedBookingIds.size,
+              onToggleMode: cancellationState.toggleMode,
+              onToggleSelection: cancellationState.toggleSelection,
+              onSelectAll: () => cancellationState.selectAll(processedBookings),
+              onClearAll: cancellationState.clearAll,
+              onOpenModal: cancellationState.openModal,
+              canCancel: cancellationState.canCancel,
+              isSelected: cancellationState.isSelected
             }}
             onSort={handleSort}  // Enable sorting in trainee dashboard view
             sortConfig={sortConfig}
@@ -266,6 +345,17 @@ const BookingsSection = ({ bookings, summary, loading, error }) => {
           />
         </div>
       )}
+
+      {/* Cancel Bookings Modal */}
+      <CancelBookingsModal
+        isOpen={cancellationState.isModalOpen}
+        onClose={cancellationState.closeModal}
+        onConfirm={handleCancelBookings}
+        selectedBookings={bookings.filter(b => cancellationState.isSelected(b.id))}
+        isLoading={cancellationState.isSubmitting}
+        refundTokens={cancellationState.refundTokens}
+        onToggleRefund={cancellationState.toggleRefund}
+      />
     </div>
   );
 };
