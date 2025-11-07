@@ -1733,24 +1733,71 @@ class HubSpotService {
     // Flatten results from all batches
     const allResults = allBatchResults.flat();
 
-    // Recalculate booking counts by fetching actual bookings and counting only Active ones
-    const enrichedResults = await Promise.all(allResults.map(async (exam) => {
-      try {
-        // HubSpot batch read API doesn't return associations, so we need to fetch them separately
-        // Make a GET call to fetch the exam with associations
-        let examWithAssociations = exam;
-        if (!exam.associations) {
-          try {
-            examWithAssociations = await this.apiCall('GET',
-              `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${exam.id}?associations=${HUBSPOT_OBJECTS.bookings}`
-            );
-            // Merge properties from batch result with associations from GET
-            examWithAssociations.properties = exam.properties;
-          } catch (assocError) {
-            console.error(`Error fetching associations for exam ${exam.id}:`, assocError.message);
-            examWithAssociations = exam; // Fall back to original exam without associations
+    // Separate exams that need associations fetched
+    const examsNeedingAssociations = allResults.filter(exam => !exam.associations);
+    const examsWithAssociations = allResults.filter(exam => exam.associations);
+
+    // Batch fetch associations for exams that need them
+    let enrichedExamsMap = new Map();
+
+    if (examsNeedingAssociations.length > 0) {
+      // Chunk into batches of 100 (HubSpot limit)
+      const chunks = [];
+      for (let i = 0; i < examsNeedingAssociations.length; i += 100) {
+        chunks.push(examsNeedingAssociations.slice(i, i + 100));
+      }
+
+      // Fetch associations in batches with delay between
+      for (const chunk of chunks) {
+        try {
+          const batchResponse = await this.apiCall('POST',
+            `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/read`,
+            {
+              inputs: chunk.map(exam => ({
+                id: exam.id
+              })),
+              properties: [], // We already have properties
+              associations: [HUBSPOT_OBJECTS.bookings]
+            }
+          );
+
+          batchResponse.results.forEach(exam => {
+            // Merge properties from original exam with associations from batch
+            enrichedExamsMap.set(exam.id, {
+              ...exam,
+              properties: chunk.find(e => e.id === exam.id)?.properties || exam.properties
+            });
+          });
+
+          // Small delay between batches to avoid rate limits
+          if (chunks.length > 1) {
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
+        } catch (batchError) {
+          console.error(`Error fetching associations batch:`, batchError.message);
+          // Add exams without associations on error
+          chunk.forEach(exam => {
+            enrichedExamsMap.set(exam.id, exam);
+          });
         }
+      }
+    }
+
+    // Add exams that already had associations
+    examsWithAssociations.forEach(exam => {
+      enrichedExamsMap.set(exam.id, exam);
+    });
+
+    // Maintain original order
+    const examsWithAssociationsData = allResults.map(exam =>
+      enrichedExamsMap.get(exam.id) || exam
+    );
+
+    // Recalculate booking counts by fetching actual bookings and counting only Active ones
+    const enrichedResults = await Promise.all(examsWithAssociationsData.map(async (exam) => {
+      try {
+        // exam now has associations from batch fetch, no individual GET needed
+        let examWithAssociations = exam;
 
         // Extract booking IDs from associations (using flexible key matching)
         const bookingIds = [];
