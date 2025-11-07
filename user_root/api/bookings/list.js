@@ -122,12 +122,6 @@ async function handler(req, res) {
       shared_mock_credits: parseInt(contact.properties.shared_mock_credits) || 0
     };
 
-    // Create credit_breakdown for TokenCard compatibility
-    const credit_breakdown = {
-      specific_credits: 0,  // Placeholder - frontend determines based on mock type
-      shared_credits: parseInt(contact.properties.shared_mock_credits) || 0
-    };
-
     // Step 2: Get contact's HubSpot object ID for associations API
     const contactHsObjectId = contact.properties.hs_object_id || contactId;
     console.log(`🔗 Using contact HubSpot object ID: ${contactHsObjectId} for associations API`);
@@ -376,8 +370,7 @@ async function handler(req, res) {
       const responseData = {
         bookings: bookingsData.bookings,
         pagination: bookingsData.pagination,
-        credits: credits,  // Keep existing for table display
-        credit_breakdown: credit_breakdown  // Add this for TokenCard compatibility
+        credits: credits
       };
 
       // Return success response
@@ -415,8 +408,7 @@ async function handler(req, res) {
             has_next: false,
             has_previous: false
           },
-          credits: credits,  // Keep existing for table display
-          credit_breakdown: credit_breakdown  // Add this for TokenCard compatibility
+          credits: credits
         };
 
         return res.status(200).json(createSuccessResponse(
