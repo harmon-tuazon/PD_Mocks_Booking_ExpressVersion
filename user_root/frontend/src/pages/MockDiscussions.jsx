@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FiLock } from 'react-icons/fi';
 import apiService, { formatDate, formatTime, formatTimeRange } from '../services/api';
 import CapacityBadge from '../components/shared/CapacityBadge';
 import TokenCard from '../components/shared/TokenCard';
 import CalendarView from '../components/shared/CalendarView';
 import Logo from '../components/shared/Logo';
 import InsufficientTokensError from '../components/shared/InsufficientTokensError';
+import PrerequisiteWarningModal from '../components/shared/PrerequisiteWarningModal';
 import { getUserSession } from '../utils/auth';
 import useCachedCredits from '../hooks/useCachedCredits';
 import LocationFilter from '../components/shared/LocationFilter';
+import { checkPrerequisites, getMissingPrerequisites } from '../utils/prerequisiteHelpers';
 
 const MockDiscussions = () => {
   const navigate = useNavigate();
@@ -22,6 +25,17 @@ const MockDiscussions = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [showInsufficientTokensError, setShowInsufficientTokensError] = useState(false);
+  const [showPrereqModal, setShowPrereqModal] = useState(false);
+  const [currentPrereqData, setCurrentPrereqData] = useState(null);
+  const [userBookings, setUserBookings] = useState([]);
+
+  // Helper function to check if a discussion has unmet prerequisites
+  const hasUnmetPrerequisites = (discussion) => {
+    if (!discussion.prerequisite_exam_ids || discussion.prerequisite_exam_ids.length === 0) {
+      return false;
+    }
+    return !checkPrerequisites(discussion.prerequisite_exam_ids, userBookings);
+  };
 
   // Use the cached credits hook
   const { credits, loading: creditsLoading, fetchCredits } = useCachedCredits();
@@ -46,6 +60,7 @@ const MockDiscussions = () => {
     if (userData) {
       setUserSession(userData);
       fetchCredits(userData.studentId, userData.email); // This already fetches Mock Discussion credits
+      fetchUserBookings(userData.studentId, userData.email); // Fetch user bookings for prerequisite validation
     }
   }, []);
 
@@ -96,6 +111,25 @@ const MockDiscussions = () => {
     }
   };
 
+  const fetchUserBookings = async (studentId, email) => {
+    try {
+      const result = await apiService.bookings.list({
+        student_id: studentId,
+        email: email
+      });
+
+      if (result.success && result.data?.bookings) {
+        setUserBookings(result.data.bookings);
+      } else {
+        console.warn('Failed to fetch user bookings for prerequisite validation:', result.error);
+        setUserBookings([]); // Set empty array to prevent blocking
+      }
+    } catch (err) {
+      console.error('Error fetching user bookings:', err);
+      setUserBookings([]); // Set empty array to prevent blocking
+    }
+  };
+
 
   const handleSelectDiscussion = (discussion) => {
     if (discussion.available_slots === 0) {
@@ -108,6 +142,33 @@ const MockDiscussions = () => {
       return;
     }
 
+    // Check prerequisites if discussion has prerequisite_exam_ids
+    if (discussion.prerequisite_exam_ids && discussion.prerequisite_exam_ids.length > 0) {
+      const meetsPrerequisites = checkPrerequisites(
+        discussion.prerequisite_exam_ids,
+        userBookings
+      );
+
+      if (!meetsPrerequisites) {
+        // Get missing prerequisites details
+        const missingPrereqs = getMissingPrerequisites(
+          discussion.prerequisite_exam_ids,
+          userBookings,
+          discussions // Use all discussions as the source of exam details
+        );
+
+        // Set prerequisite data and show modal
+        setCurrentPrereqData({
+          examName: `Mock Discussion - ${formatDate(discussion.exam_date)}`,
+          examDate: discussion.exam_date,
+          prerequisiteExams: missingPrereqs
+        });
+        setShowPrereqModal(true);
+        return; // Don't proceed to booking
+      }
+    }
+
+    // Proceed with booking
     navigate(`/book/mock-discussion/${discussion.mock_exam_id}`, {
       state: {
         mockType: 'Mock Discussion',
@@ -459,14 +520,25 @@ const MockDiscussions = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-3">
-                            <CapacityBadge
-                              availableSlots={discussion.available_slots}
-                              capacity={discussion.capacity}
-                            />
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                              {discussion.available_slots} of {discussion.capacity} slots
-                            </span>
+                          <div className="flex flex-col space-y-2">
+                            {/* Prerequisites Badge */}
+                            {hasUnmetPrerequisites(discussion) && (
+                              <div className="flex items-center gap-1 text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                                <FiLock className="h-3 w-3" />
+                                <span>Prerequisites Required</span>
+                              </div>
+                            )}
+
+                            {/* Capacity Badge */}
+                            <div className="flex items-center space-x-3">
+                              <CapacityBadge
+                                availableSlots={discussion.available_slots}
+                                capacity={discussion.capacity}
+                              />
+                              <span className="text-sm text-gray-600 dark:text-gray-400">
+                                {discussion.available_slots} of {discussion.capacity} slots
+                              </span>
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -497,15 +569,26 @@ const MockDiscussions = () => {
                   className={`card-brand dark:bg-dark-card dark:border-dark-border ${discussion.available_slots > 0 && mockDiscussionTokens > 0 ? 'hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-600' : 'opacity-75'} transition-all duration-200`}
                 >
                   <div className="space-y-3">
-                    {/* Date and Capacity Badge */}
-                    <div className="flex items-center justify-between">
+                    {/* Date and Badges */}
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <h3 className="text-lg font-headline font-semibold text-navy-800 dark:text-gray-100">
                         {formatDate(discussion.exam_date)}
                       </h3>
-                      <CapacityBadge
-                        availableSlots={discussion.available_slots}
-                        capacity={discussion.capacity}
-                      />
+                      <div className="flex items-center gap-2">
+                        {/* Prerequisites Badge */}
+                        {hasUnmetPrerequisites(discussion) && (
+                          <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                            <FiLock className="h-3 w-3" />
+                            <span>Prereqs Required</span>
+                          </div>
+                        )}
+
+                        {/* Capacity Badge */}
+                        <CapacityBadge
+                          availableSlots={discussion.available_slots}
+                          capacity={discussion.capacity}
+                        />
+                      </div>
                     </div>
 
                     {/* Time and Location */}
@@ -595,6 +678,15 @@ const MockDiscussions = () => {
           />
         )}
       </div>
+
+      {/* Prerequisite Warning Modal */}
+      <PrerequisiteWarningModal
+        isOpen={showPrereqModal}
+        examName={currentPrereqData?.examName}
+        examDate={currentPrereqData?.examDate}
+        prerequisiteExams={currentPrereqData?.prerequisiteExams || []}
+        onClose={() => setShowPrereqModal(false)}
+      />
     </div>
   );
 };
