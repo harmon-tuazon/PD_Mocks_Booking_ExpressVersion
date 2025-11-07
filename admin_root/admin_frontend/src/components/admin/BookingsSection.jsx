@@ -56,8 +56,7 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
     }));
   };
 
-  // Handle booking cancellation
-  // Note: For trainee bookings, we need to handle cancellations across multiple mock exams
+  // Handle booking cancellation using simplified batch endpoint
   const handleCancelBookings = async () => {
     const selectedBookings = bookings.filter(booking =>
       cancellationState.isSelected(booking.id)
@@ -66,42 +65,32 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
     cancellationState.startSubmitting();
 
     try {
-      // Group bookings by mock exam ID for batch cancellation
-      const bookingsByExam = selectedBookings.reduce((acc, booking) => {
-        const examId = booking.mock_exam_id;
-        if (!acc[examId]) {
-          acc[examId] = [];
-        }
-        acc[examId].push({
-          id: booking.id,
-          token_used: booking.token_used,
-          associated_contact_id: booking.associated_contact_id || booking.contact_id,
-          name: booking.name,
-          email: booking.email
-        });
-        return acc;
-      }, {});
-
-      // Import API service
-      const { mockExamsApi } = await import('../../services/adminApi');
-
-      // Cancel bookings for each mock exam
-      const cancelPromises = Object.entries(bookingsByExam).map(([examId, examBookings]) => {
-        return mockExamsApi.cancelBookings(examId, {
-          bookings: examBookings,
-          refundTokens: cancellationState.refundTokens
-        });
+      // Simple single API call - no grouping needed
+      const response = await fetch('/api/bookings/batch-cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookings: selectedBookings.map(b => ({
+            id: b.id,
+            student_id: b.student_id || b.associated_contact_id || b.contact_id,
+            email: b.email,
+            reason: 'Admin cancelled from trainee dashboard'
+          }))
+        })
       });
 
-      const results = await Promise.all(cancelPromises);
+      const result = await response.json();
 
-      // Show success toasts
-      const totalCancelled = results.reduce((sum, result) => {
-        return sum + (result.data?.summary?.cancelled || 0);
-      }, 0);
+      if (!result.success) {
+        throw new Error(result.error || 'Cancellation failed');
+      }
 
-      if (totalCancelled > 0) {
-        toast.success(`Successfully cancelled ${totalCancelled} booking(s)`, { duration: 4000 });
+      // Show success message
+      toast.success(`Successfully cancelled ${result.data.summary.successful} booking(s)`, { duration: 4000 });
+
+      // Show warning if partial failure
+      if (result.data.summary.failed > 0) {
+        toast.warning(`${result.data.summary.failed} booking(s) could not be cancelled`, { duration: 6000 });
       }
 
       cancellationState.closeModal();
@@ -112,11 +101,7 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
     } catch (error) {
       cancellationState.returnToSelecting();
 
-      const errorMessage = error?.response?.data?.error?.message ||
-                          error?.response?.data?.message ||
-                          error.message ||
-                          'Failed to cancel bookings';
-
+      const errorMessage = error.message || 'Failed to cancel bookings';
       toast.error(`Cancellation Failed: ${errorMessage}`, { duration: 6000 });
       console.error('Failed to cancel bookings:', error);
     }
