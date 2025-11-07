@@ -172,18 +172,13 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
             </button>
           </div>
 
-          {/* Enhanced User Info Section - Compact */}
+          {/* Ultra-Compact User Info Section */}
           {userSession && (
-            <div className="px-6 pb-6 border-b border-gray-200 dark:border-dark-border">
-              {/* Welcome Message - Reduced margin */}
-              <div className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                Welcome back!
-              </div>
-
-              {/* User Details Card - Compact spacing */}
-              <div className="bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-lg p-3 space-y-2">
+            <div className="px-6 pb-4 border-b border-gray-200 dark:border-dark-border">
+              {/* User Details Card - Ultra-compact */}
+              <div className="bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-lg p-2 space-y-1">
                 {/* Student Name */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <svg className="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
@@ -193,7 +188,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                 </div>
 
                 {/* Student ID */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <svg className="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
                   </svg>
@@ -203,7 +198,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                 </div>
 
                 {/* Email */}
-                <div className="flex items-start gap-2">
+                <div className="flex items-start gap-1.5">
                   <svg className="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
@@ -212,24 +207,19 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                   </span>
                 </div>
 
-                {/* NDECC Exam Date with Edit Button - Compact separator */}
-                <div className="flex items-start justify-between gap-2 pt-1.5 border-t border-primary-200/50 dark:border-primary-700/30">
-                  <div className="flex items-start gap-2 flex-1 min-w-0">
-                    <svg className="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {/* NDECC Exam Date - Single line, no separator */}
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <svg className="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium text-primary-600 dark:text-primary-400 mb-0.5">
-                        NDECC Exam Date
-                      </div>
-                      <div className="text-xs font-semibold text-primary-900 dark:text-primary-200 break-words">
-                        {formatShortDate(userSession.ndeccExamDate)}
-                      </div>
-                    </div>
+                    <span className="text-xs font-medium text-primary-700 dark:text-primary-300 truncate">
+                      NDECC: {formatShortDate(userSession.ndeccExamDate)}
+                    </span>
                   </div>
                   <button
                     onClick={() => setIsDateModalOpen(true)}
-                    className="p-1.5 rounded-md hover:bg-primary-200 dark:hover:bg-primary-700/50 transition-colors duration-200 flex-shrink-0 group"
+                    className="p-1 rounded-md hover:bg-primary-200 dark:hover:bg-primary-700/50 transition-colors duration-200 flex-shrink-0 group"
                     title={userSession.ndeccExamDate ? 'Edit exam date' : 'Set exam date'}
                     aria-label={userSession.ndeccExamDate ? 'Edit exam date' : 'Set exam date'}
                   >
