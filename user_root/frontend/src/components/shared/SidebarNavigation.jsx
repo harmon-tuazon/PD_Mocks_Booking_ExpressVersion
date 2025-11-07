@@ -176,59 +176,64 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
           {userSession && (
             <div className="px-6 pb-6 border-b border-gray-200 dark:border-dark-border">
               {/* Welcome Message */}
-              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
                 Welcome back!
               </div>
 
-              {/* User Details Card */}
-              <div className="bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-lg p-4 space-y-2">
+              {/* User Details Card - Improved spacing and icon sizes */}
+              <div className="bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-lg p-5 space-y-3.5">
                 {/* Student Name */}
-                <div className="flex items-center">
-                  <svg className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
-                  <span className="text-sm font-medium text-primary-900 dark:text-primary-200 truncate">
+                  <span className="text-sm font-semibold text-primary-900 dark:text-primary-200 truncate">
                     {userSession.studentName || 'Student'}
                   </span>
                 </div>
 
                 {/* Student ID */}
-                <div className="flex items-center">
-                  <svg className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
                   </svg>
-                  <span className="text-xs font-medium text-primary-700 dark:text-primary-300 truncate">
-                    ID: {userSession.studentId}
+                  <span className="text-sm font-medium text-primary-700 dark:text-primary-300 truncate">
+                    {userSession.studentId}
                   </span>
                 </div>
 
                 {/* Email */}
-                <div className="flex items-start">
-                  <svg className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                  <span className="text-xs text-primary-700 dark:text-primary-300 break-words">
+                  <span className="text-sm text-primary-700 dark:text-primary-300 break-words leading-relaxed">
                     {userSession.email}
                   </span>
                 </div>
 
                 {/* NDECC Exam Date with Edit Button - Uses consistent date formatting */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start flex-1 min-w-0">
-                    <svg className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-start justify-between gap-3 pt-2 border-t border-primary-200/50 dark:border-primary-700/30">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <svg className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <span className="text-xs text-primary-700 dark:text-primary-300 break-words flex-1">
-                      NDECC Exam: {formatShortDate(userSession.ndeccExamDate)}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-primary-600 dark:text-primary-400 mb-1">
+                        NDECC Exam Date
+                      </div>
+                      <div className="text-sm font-semibold text-primary-900 dark:text-primary-200 break-words">
+                        {formatShortDate(userSession.ndeccExamDate)}
+                      </div>
+                    </div>
                   </div>
                   <button
                     onClick={() => setIsDateModalOpen(true)}
-                    className="ml-2 p-1 rounded hover:bg-primary-200 dark:hover:bg-primary-700/50 transition-colors duration-200 flex-shrink-0 group"
+                    className="p-2 rounded-md hover:bg-primary-200 dark:hover:bg-primary-700/50 transition-colors duration-200 flex-shrink-0 group"
                     title={userSession.ndeccExamDate ? 'Edit exam date' : 'Set exam date'}
                     aria-label={userSession.ndeccExamDate ? 'Edit exam date' : 'Set exam date'}
                   >
-                    <svg className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400 group-hover:text-primary-700 dark:group-hover:text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-primary-600 dark:text-primary-400 group-hover:text-primary-700 dark:group-hover:text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
