@@ -693,9 +693,13 @@ class HubSpotService {
    * Soft delete a booking (set status to cancelled)
    * Preferred method for cancelling bookings
    */
+  /**
+   * Soft delete a booking (set status to cancelled)
+   * Preferred method for cancelling bookings
+   */
   async softDeleteBooking(bookingId) {
     return this.updateBooking(bookingId, {
-      booking_status: 'cancelled'
+      is_active: 'Cancelled'
     });
   }
 
