@@ -14,7 +14,7 @@ import { Calendar, MapPin, Users, BookOpen, CheckCircle, XCircle, Filter, X } fr
  * 4. Exam Date (date range)
  * 5. Booking Status (single select)
  */
-const BookingFilters = ({ bookings = [], filters, onFiltersChange, className = '' }) => {
+const BookingFilters = ({ bookings = [], filters, onFiltersChange, className = '', cancelButton = null }) => {
   // Hardcoded location and mock type options (aligned with mock exam dashboard)
   const uniqueValues = useMemo(() => {
     return {
@@ -310,35 +310,40 @@ const BookingFilters = ({ bookings = [], filters, onFiltersChange, className = '
             <CheckCircle className="h-3 w-3" />
             Status
           </label>
-          <Select
-            value={localFilters.status}
-            onValueChange={(value) => handleFilterChange('status', value)}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All Bookings</SelectItem>
-              <SelectItem value="Active">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                  Active
-                </span>
-              </SelectItem>
-              <SelectItem value="Completed">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                  Completed
-                </span>
-              </SelectItem>
-              <SelectItem value="Cancelled">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                  Cancelled
-                </span>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select
+              value={localFilters.status}
+              onValueChange={(value) => handleFilterChange('status', value)}
+              className="flex-1"
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Bookings</SelectItem>
+                <SelectItem value="Active">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                    Active
+                  </span>
+                </SelectItem>
+                <SelectItem value="Completed">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    Completed
+                  </span>
+                </SelectItem>
+                <SelectItem value="Cancelled">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                    Cancelled
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {/* Cancel button - passed from parent */}
+            {cancelButton}
+          </div>
         </div>
       </div>
 

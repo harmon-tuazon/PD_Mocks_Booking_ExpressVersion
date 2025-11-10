@@ -243,33 +243,78 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
         </h2>
       </div>
 
-      {/* Booking Filters */}
+      {/* Booking Filters with Cancel Button */}
       {!loading && !error && bookings && bookings.length > 0 && (
         <BookingFilters
           bookings={bookings}
           filters={filters}
           onFiltersChange={setFilters}
           className="mb-6"
+          cancelButton={
+            <button
+              onClick={() => cancellationState?.toggleMode()}
+              className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors shadow-sm ${
+                cancellationState?.isCancellationMode
+                  ? 'text-white bg-red-700 hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
+                  : 'text-red-700 dark:text-red-300 bg-white dark:bg-gray-800 border border-red-300 dark:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
+              }`}
+              disabled={processedBookings.length === 0}
+            >
+              <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              {cancellationState?.isCancellationMode ? 'Exit Cancellation Mode' : 'Cancel Bookings'}
+            </button>
+          }
         />
       )}
 
-      {/* Cancel Bookings Button */}
-      {!loading && !error && bookings && bookings.length > 0 && (
-        <div className="mb-4 flex justify-end">
-          <button
-            onClick={() => cancellationState?.toggleMode()}
-            className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors shadow-sm ${
-              cancellationState?.isCancellationMode
-                ? 'text-white bg-red-700 hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
-                : 'text-red-700 dark:text-red-300 bg-white dark:bg-gray-800 border border-red-300 dark:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
-            }`}
-            disabled={processedBookings.length === 0}
-          >
-            <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            {cancellationState?.isCancellationMode ? 'Exit Cancellation Mode' : 'Cancel Bookings'}
-          </button>
+      {/* Cancellation Selection Banner */}
+      {!loading && !error && bookings && bookings.length > 0 && cancellationState?.isCancellationMode && (
+        <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {cancellationState?.selectedCount || 0} of {processedBookings.length} selected
+              </span>
+              <button
+                onClick={() => cancellationState?.selectAll?.(processedBookings)}
+                className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+              >
+                Select All
+              </button>
+              <button
+                onClick={() => cancellationState?.clearAll?.()}
+                className="text-sm text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+              >
+                Clear
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => cancellationState?.openModal?.()}
+                disabled={cancellationState?.selectedCount === 0}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Cancel Selected ({cancellationState?.selectedCount || 0})
+              </button>
+              <button
+                onClick={() => cancellationState?.toggleMode?.()}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
+              >
+                <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Exit
+              </button>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+            Note: Only active bookings can be cancelled. Already cancelled bookings are disabled.
+          </p>
         </div>
       )}
 
@@ -331,18 +376,7 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
               noShowCount: summary?.no_show || 0,
               unmarkedCount: summary?.unmarked || 0
             }}
-            cancellationState={{
-              isCancellationMode: cancellationState?.isCancellationMode || false,
-              selectedIds: cancellationState?.selectedIds || [],
-              selectedCount: cancellationState?.selectedCount || 0,
-              onToggleMode: cancellationState?.toggleMode,
-              onToggleSelection: cancellationState?.toggleSelection,
-              onSelectAll: () => cancellationState?.selectAll?.(processedBookings),
-              onClearAll: cancellationState?.clearAll,
-              onOpenModal: cancellationState?.openModal,
-              canCancel: cancellationState?.canCancel,
-              isSelected: cancellationState?.isSelected
-            }}
+            cancellationState={cancellationState}
             onSort={handleSort}  // Enable sorting in trainee dashboard view
             sortConfig={sortConfig}
             currentPage={1}

@@ -33,9 +33,9 @@ const BookingsTable = ({
   totalItems,
   onPageChange,
   // Attendance marking props
-  attendanceProps = null,
+  attendanceState = null,
   // Cancellation props
-  cancellationProps = null,
+  cancellationState = null,
   // Hide search bar prop
   hideSearch = false,
   // Hide trainee info columns (name, email, student_id, dominant_hand)
@@ -209,12 +209,12 @@ const BookingsTable = ({
   const safeBookings = Array.isArray(bookings) ? bookings : [];
 
   // Extract attendance props if provided
-  const isAttendanceMode = attendanceProps?.isAttendanceMode || false;
-  const attendanceState = attendanceProps || {};
+  const isAttendanceMode = attendanceState?.isAttendanceMode || false;
+  const attendanceData = attendanceState || {};
 
   // Extract cancellation props if provided
-  const isCancellationMode = cancellationProps?.isCancellationMode || false;
-  const cancellationState = cancellationProps || {};
+  const isCancellationMode = cancellationState?.isCancellationMode || false;
+  const cancellationData = cancellationState || {};
 
   // Determine which mode is active (they're mutually exclusive)
   const isSelectionMode = isAttendanceMode || isCancellationMode;
@@ -228,40 +228,40 @@ const BookingsTable = ({
   return (
     <div>
       {/* Attendance Controls (badges and buttons always shown, control panel when in mode) */}
-      {attendanceProps && (
+      {attendanceState && (
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <AttendanceControls
-            isAttendanceMode={attendanceState.isAttendanceMode}
-            isSubmitting={attendanceState.isSubmitting}
-            selectedCount={attendanceState.selectedCount}
-            selectableCount={attendanceState.selectableCount}
-            attendedCount={attendanceState.attendedCount}
-            noShowCount={attendanceState.noShowCount}
-            unmarkedCount={attendanceState.unmarkedCount}
-            totalCount={attendanceState.totalCount}
-            action={attendanceState.action}
-            onToggleMode={attendanceState.onToggleMode}
-            onSelectAll={attendanceState.onSelectAll}
-            onClearAll={attendanceState.onClearAll}
-            onSetAction={attendanceState.onSetAction}
-            onApplyAction={attendanceState.onApplyAction}
-            onCancelBookings={attendanceState.onCancelBookings}
+            isAttendanceMode={attendanceData.isAttendanceMode}
+            isSubmitting={attendanceData.isSubmitting}
+            selectedCount={attendanceData.selectedCount}
+            selectableCount={attendanceData.selectableCount}
+            attendedCount={attendanceData.attendedCount}
+            noShowCount={attendanceData.noShowCount}
+            unmarkedCount={attendanceData.unmarkedCount}
+            totalCount={attendanceData.totalCount}
+            action={attendanceData.action}
+            onToggleMode={attendanceData.onToggleMode}
+            onSelectAll={attendanceData.onSelectAll}
+            onClearAll={attendanceData.onClearAll}
+            onSetAction={attendanceData.onSetAction}
+            onApplyAction={attendanceData.onApplyAction}
+            onCancelBookings={attendanceData.onCancelBookings}
             isCancellationMode={isCancellationMode}
           />
 
           {/* Cancellation Controls (shown only when in cancellation mode, below the badges) */}
-          {cancellationProps && isCancellationMode && (
+          {cancellationState && isCancellationMode && (
             <div className="mt-4">
               <CancellationControls
-                isCancellationMode={cancellationState.isCancellationMode}
-                isSubmitting={cancellationState.isSubmitting}
-                selectedCount={cancellationState.selectedCount}
-                cancellableCount={cancellationState.cancellableCount}
-                totalCount={cancellationState.totalCount}
-                onToggleMode={cancellationState.onToggleMode}
-                onSelectAll={cancellationState.onSelectAll}
-                onClearAll={cancellationState.onClearAll}
-                onOpenModal={cancellationState.onOpenModal}
+                isCancellationMode={cancellationData.isCancellationMode}
+                isSubmitting={cancellationData.isSubmitting}
+                selectedCount={cancellationData.selectedCount}
+                cancellableCount={cancellationData.cancellableCount}
+                totalCount={cancellationData.totalCount}
+                onToggleMode={cancellationData.onToggleMode}
+                onSelectAll={cancellationData.onSelectAll}
+                onClearAll={cancellationData.onClearAll}
+                onOpenModal={cancellationData.onOpenModal}
               />
             </div>
           )}
@@ -414,13 +414,13 @@ const BookingsTable = ({
                 let isDisabled = false;
 
                 if (isAttendanceMode) {
-                  isSelected = attendanceState.isSelected?.(booking.id) || false;
-                  onToggleSelection = attendanceState.onToggleSelection;
+                  isSelected = attendanceData.isSelected?.(booking.id) || false;
+                  onToggleSelection = attendanceData.onToggleSelection;
                 } else if (isCancellationMode) {
-                  isSelected = cancellationState.isSelected?.(booking.id) || false;
-                  onToggleSelection = cancellationState.onToggleSelection;
+                  isSelected = cancellationData.isSelected?.(booking.id) || false;
+                  onToggleSelection = cancellationData.toggleSelection;
                   // Disable if booking is already cancelled
-                  isDisabled = !cancellationState.canCancel?.(booking.id);
+                  isDisabled = !cancellationData.canCancel?.(booking.id);
                 }
 
                 return (
