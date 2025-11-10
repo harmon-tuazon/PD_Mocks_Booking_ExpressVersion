@@ -210,9 +210,9 @@ function MockExams() {
         <div className="bg-white dark:bg-dark-card shadow-sm dark:shadow-gray-900/50 rounded-lg">
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6">
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Common Properties */}
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label>
                     Mock Type <span className="text-red-500">*</span>
@@ -261,7 +261,9 @@ function MockExams() {
                     disabled={capacityMode === 'per-slot'}
                     className={capacityMode === 'per-slot' ? 'opacity-50 cursor-not-allowed' : ''}
                   />
-                  <div className="flex items-center space-x-2 mt-2">
+
+                  {/* Capacity mode checkbox */}
+                  <div className="flex items-center space-x-2 mt-1.5">
                     <Checkbox
                       id="per-slot-capacity"
                       checked={capacityMode === 'per-slot'}
@@ -274,6 +276,20 @@ function MockExams() {
                       Set capacity per time slot
                     </label>
                   </div>
+
+                  {/* Active status checkbox */}
+                  <div className="flex items-center space-x-2 mt-1.5">
+                    <Checkbox
+                      id="is_active"
+                      checked={formData.is_active}
+                      onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                    />
+                    <label htmlFor="is_active" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                      Active (available for booking)
+                    </label>
+                  </div>
+
+                  {/* Helper text */}
                   {capacityMode === 'global' && (
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       This capacity will be applied to all time slots
@@ -309,17 +325,8 @@ function MockExams() {
                 </div>
               </div>
 
-              {/* Active Status */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="is_active"
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                />
-                <label htmlFor="is_active" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                  Active (available for booking)
-                </label>
-              </div>
+              {/* Divider */}
+              <div className="border-t border-gray-200 dark:border-gray-700"></div>
 
               {/* Time Slots - Always show TimeSlotBuilder */}
               <TimeSlotBuilder

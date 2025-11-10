@@ -109,7 +109,7 @@ const TimeSlotBuilder = ({ timeSlots, onChange, capacityMode = 'global', globalC
   const overlappingSlots = checkOverlaps();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex justify-between items-center">
         <Label>
           Time Slots <span className="text-red-500">*</span>
@@ -137,7 +137,7 @@ const TimeSlotBuilder = ({ timeSlots, onChange, capacityMode = 'global', globalC
       )}
 
       {timeSlots.length > 0 && (
-        <div className="border border-gray-300 dark:border-gray-600 rounded-md p-4 bg-gray-50 dark:bg-gray-800">
+        <div className="border border-gray-300 dark:border-gray-600 rounded-md p-3 bg-gray-50 dark:bg-gray-800">
           <div className="space-y-3">
             {timeSlots.map((slot, index) => (
           <div key={index}>
