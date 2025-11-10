@@ -337,7 +337,7 @@ function MockExamDetail() {
             totalPages={bookingsData?.pagination?.totalPages || 1}
             totalItems={bookingsData?.pagination?.total || 0}
             onPageChange={handlePageChange}
-            attendanceProps={{
+            attendanceState={{
               isAttendanceMode: attendance.isAttendanceMode,
               isSubmitting: attendance.isSubmitting,
               selectedCount: attendance.selectedCount,
@@ -359,7 +359,7 @@ function MockExamDetail() {
               isCancellationMode: cancellation.isCancellationMode
             }}
             // Add cancellation props
-            cancellationProps={{
+            cancellationState={{
               isCancellationMode: cancellation.isCancellationMode,
               isSubmitting: cancellation.isSubmitting,
               selectedCount: cancellation.selectedCount,
