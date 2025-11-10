@@ -227,8 +227,8 @@ const BookingsTable = ({
 
   return (
     <div>
-      {/* Attendance Controls (badges and buttons always shown, control panel when in mode) */}
-      {attendanceState && (
+      {/* Attendance Controls (only shown in admin view for mock exam management) */}
+      {attendanceState && !hideTraineeInfo && (
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <AttendanceControls
             isAttendanceMode={attendanceData.isAttendanceMode}
