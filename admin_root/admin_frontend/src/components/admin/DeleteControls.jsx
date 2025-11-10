@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { TrashIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
-import { mockExamsApi } from '../../services/adminApi';
+import { useDeleteMockExam } from '../../hooks/useDeleteMockExam';
 
 const DeleteControls = ({
   examId,
@@ -16,39 +16,27 @@ const DeleteControls = ({
   className = ''
 }) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState(null);
+
+  // Use the React Query mutation hook instead of manual API call
+  const deleteExamMutation = useDeleteMockExam();
 
   const handleDeleteClick = () => {
     setShowConfirmDialog(true);
-    setError(null);
   };
 
-  const handleConfirmDelete = async () => {
-    setIsDeleting(true);
-    setError(null);
-
-    try {
-      // Call delete API
-      const response = await mockExamsApi.delete(examId);
-
-      // Success - close modal and call success callback
-      setShowConfirmDialog(false);
-
-      if (onDeleteSuccess) {
-        onDeleteSuccess(response);
+  const handleConfirmDelete = () => {
+    deleteExamMutation.mutate(examId, {
+      onSuccess: (response) => {
+        setShowConfirmDialog(false);
+        if (onDeleteSuccess) {
+          onDeleteSuccess(response);
+        }
       }
-    } catch (err) {
-      // Show error in modal
-      const errorMessage = err.message || 'Failed to delete mock exam';
-      setError(errorMessage);
-      setIsDeleting(false);
-    }
+    });
   };
 
   const handleCancel = () => {
     setShowConfirmDialog(false);
-    setError(null);
   };
 
   // Format exam date for display
@@ -61,9 +49,9 @@ const DeleteControls = ({
       {/* Delete Button */}
       <button
         onClick={handleDeleteClick}
-        disabled={disabled}
+        disabled={disabled || deleteExamMutation.isPending}
         className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm transition-colors ${
-          disabled
+          disabled || deleteExamMutation.isPending
             ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'
             : 'text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
         } ${className}`}
@@ -81,7 +69,7 @@ const DeleteControls = ({
             <div
               className="fixed inset-0 transition-opacity"
               aria-hidden="true"
-              onClick={!isDeleting ? handleCancel : undefined}
+              onClick={!deleteExamMutation.isPending ? handleCancel : undefined}
             >
               <div className="absolute inset-0 bg-gray-500 opacity-75 dark:bg-gray-900 dark:opacity-75"></div>
             </div>
@@ -150,10 +138,10 @@ const DeleteControls = ({
                     </div>
 
                     {/* Error Message */}
-                    {error && (
+                    {deleteExamMutation.error && (
                       <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
                         <p className="text-sm text-red-800 dark:text-red-300">
-                          {error}
+                          {deleteExamMutation.error?.message || 'Failed to delete mock exam'}
                         </p>
                       </div>
                     )}
@@ -167,14 +155,14 @@ const DeleteControls = ({
                 <button
                   type="button"
                   onClick={handleConfirmDelete}
-                  disabled={isDeleting}
+                  disabled={deleteExamMutation.isPending}
                   className={`w-full inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white sm:col-start-2 sm:text-sm ${
-                    isDeleting
+                    deleteExamMutation.isPending
                       ? 'bg-red-400 cursor-not-allowed'
                       : 'bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
                   }`}
                 >
-                  {isDeleting ? (
+                  {deleteExamMutation.isPending ? (
                     <>
                       <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
                       Deleting...
@@ -190,9 +178,9 @@ const DeleteControls = ({
                 <button
                   type="button"
                   onClick={handleCancel}
-                  disabled={isDeleting}
+                  disabled={deleteExamMutation.isPending}
                   className={`mt-3 w-full inline-flex justify-center rounded-md border shadow-sm px-4 py-2 text-base font-medium sm:mt-0 sm:col-start-1 sm:text-sm ${
-                    isDeleting
+                    deleteExamMutation.isPending
                       ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700'
                       : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600'
                   }`}

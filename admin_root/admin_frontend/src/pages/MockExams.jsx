@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { mockExamsApi } from '../services/adminApi';
 import TimeSlotBuilder from '../components/admin/TimeSlotBuilder';
@@ -37,6 +37,7 @@ const LOCATIONS = [
 
 function MockExams() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [showPreview, setShowPreview] = useState(false);
   const [formData, setFormData] = useState({
@@ -59,6 +60,11 @@ function MockExams() {
       setErrorMessage('');
       setShowPreview(false);
       resetForm();
+
+      // Invalidate dashboard queries to trigger refresh
+      queryClient.invalidateQueries({ queryKey: ['mockExams'] });
+      queryClient.invalidateQueries({ queryKey: ['mock-exam-aggregates'] });
+      queryClient.invalidateQueries({ queryKey: ['mockExamsMetrics'] });
     },
     onError: (error) => {
       setErrorMessage(error.message || 'Failed to create mock exam');
@@ -77,6 +83,11 @@ function MockExams() {
       setErrorMessage('');
       setShowPreview(false);
       resetForm();
+
+      // Invalidate dashboard queries to trigger refresh
+      queryClient.invalidateQueries({ queryKey: ['mockExams'] });
+      queryClient.invalidateQueries({ queryKey: ['mock-exam-aggregates'] });
+      queryClient.invalidateQueries({ queryKey: ['mockExamsMetrics'] });
     },
     onError: (error) => {
       setErrorMessage(error.message || 'Failed to create mock exams');

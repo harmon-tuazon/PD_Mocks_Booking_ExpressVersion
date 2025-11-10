@@ -38,8 +38,8 @@ export function useDeleteMockExam() {
       // Invalidate all related queries to trigger refetch
       // This ensures the dashboard and all lists are updated
       queryClient.invalidateQueries(['mockExams']);
-      queryClient.invalidateQueries(['mockExamMetrics']);
-      queryClient.invalidateQueries(['mockExamAggregates']);
+      queryClient.invalidateQueries(['mockExamsMetrics']);
+      queryClient.invalidateQueries(['mock-exam-aggregates']);
 
       // Remove the specific exam from cache since it no longer exists
       queryClient.removeQueries(['mockExam', examId]);
