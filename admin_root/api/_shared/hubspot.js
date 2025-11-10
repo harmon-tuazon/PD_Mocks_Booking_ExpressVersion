@@ -1032,7 +1032,7 @@ class HubSpotService {
    * Batch create multiple mock exams
    * Efficient method for creating multiple exam sessions at once
    */
-  async batchCreateMockExams(commonProperties, timeSlots) {
+  async batchCreateMockExams(commonProperties, timeSlots, capacityMode = 'global') {
     try {
       // Validate inputs
       if (!timeSlots || !Array.isArray(timeSlots) || timeSlots.length === 0) {
@@ -1058,13 +1058,18 @@ class HubSpotService {
         // Generate mock_exam_name in format: {mock_type}-{location}-{exam_date}
         const mockExamName = `${commonProperties.mock_type}-${commonProperties.location}-${examDate}`;
 
+        // Determine capacity based on mode
+        const capacity = capacityMode === 'per-slot' 
+          ? (slot.capacity || 20)  // Use slot-specific capacity
+          : (commonProperties.capacity || 20);  // Use global capacity
+
         const properties = {
           mock_type: commonProperties.mock_type,
           exam_date: examDate,
           start_time: startTimestamp,  // Unix timestamp in milliseconds
           end_time: endTimestamp,      // Unix timestamp in milliseconds
           location: commonProperties.location,
-          capacity: commonProperties.capacity || 20,
+          capacity: capacity,  // Dynamic based on capacity mode
           total_bookings: 0,
           is_active: 'true',
           mock_exam_id: mockExamIndex,  // Using internal HubSpot property name

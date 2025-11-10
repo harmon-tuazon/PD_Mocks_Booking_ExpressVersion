@@ -46,7 +46,8 @@ function MockExams() {
     location: 'Mississauga',
     is_active: true
   });
-  const [timeSlots, setTimeSlots] = useState([{ start_time: '', end_time: '' }]);
+  const [capacityMode, setCapacityMode] = useState('global'); // 'global' or 'per-slot'
+  const [timeSlots, setTimeSlots] = useState([{ start_time: '', end_time: '', capacity: 15 }]);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -67,8 +68,8 @@ function MockExams() {
 
   // Mutation for bulk creation
   const createBulkMutation = useMutation({
-    mutationFn: ({ commonProperties, timeSlots }) =>
-      mockExamsApi.createBulk(commonProperties, timeSlots),
+    mutationFn: ({ commonProperties, timeSlots, capacityMode }) =>
+      mockExamsApi.createBulk(commonProperties, timeSlots, capacityMode),
     onSuccess: (data) => {
       setSuccessMessage(
         `Successfully created ${data.created_count} mock exam${data.created_count > 1 ? 's' : ''}`
@@ -88,23 +89,29 @@ function MockExams() {
 
     // Automatically detect single vs bulk based on time slots count
     if (timeSlots.length === 1) {
-      // Single session - use the first time slot
+      // Single session - determine capacity based on mode
       const singleSessionData = {
         ...formData,
         start_time: timeSlots[0].start_time,
-        end_time: timeSlots[0].end_time
+        end_time: timeSlots[0].end_time,
+        capacity: capacityMode === 'per-slot' ? timeSlots[0].capacity : formData.capacity
       };
       createSingleMutation.mutate(singleSessionData);
     } else {
-      // Multiple sessions - use bulk creation
+      // Multiple sessions - pass capacity mode to backend
       const commonProperties = {
         mock_type: formData.mock_type,
         exam_date: formData.exam_date,
-        capacity: formData.capacity,
         location: formData.location,
-        is_active: formData.is_active
+        is_active: formData.is_active,
+        // Only include capacity in commonProperties if global mode
+        ...(capacityMode === 'global' && { capacity: formData.capacity })
       };
-      createBulkMutation.mutate({ commonProperties, timeSlots });
+      createBulkMutation.mutate({
+        commonProperties,
+        timeSlots,
+        capacityMode
+      });
     }
   };
 
@@ -116,16 +123,22 @@ function MockExams() {
       location: 'Mississauga',
       is_active: true
     });
-    setTimeSlots([{ start_time: '', end_time: '' }]);
+    setTimeSlots([{ start_time: '', end_time: '', capacity: 15 }]);
+    setCapacityMode('global');
   };
 
   const isFormValid = () => {
-    const commonFieldsValid = formData.mock_type && formData.exam_date && formData.capacity && formData.location;
+    const commonFieldsValid = formData.mock_type && formData.exam_date && formData.location;
+
+    // Check capacity based on mode
+    const capacityValid = capacityMode === 'global'
+      ? formData.capacity > 0
+      : timeSlots.every(slot => slot.capacity && slot.capacity > 0);
 
     // Check if all time slots are filled
     const timeSlotsValid = timeSlots.length > 0 && timeSlots.every(slot => slot.start_time && slot.end_time);
 
-    return commonFieldsValid && timeSlotsValid;
+    return commonFieldsValid && capacityValid && timeSlotsValid;
   };
 
   const handleBack = () => {
@@ -245,7 +258,36 @@ function MockExams() {
                     value={formData.capacity}
                     onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
                     required
+                    disabled={capacityMode === 'per-slot'}
                   />
+                  {capacityMode === 'per-slot' && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Set capacity individually for each time slot below
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>
+                    Capacity Mode
+                  </Label>
+                  <Select
+                    value={capacityMode}
+                    onValueChange={(value) => setCapacityMode(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="global">Apply to All Time Slots</SelectItem>
+                      <SelectItem value="per-slot">Set Per Time Slot</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {capacityMode === 'global' && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      This capacity will be used for all time slots
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -284,7 +326,12 @@ function MockExams() {
               </div>
 
               {/* Time Slots - Always show TimeSlotBuilder */}
-              <TimeSlotBuilder timeSlots={timeSlots} onChange={setTimeSlots} />
+              <TimeSlotBuilder
+                timeSlots={timeSlots}
+                onChange={setTimeSlots}
+                capacityMode={capacityMode}
+                globalCapacity={formData.capacity}
+              />
 
               {/* Preview Section */}
               {showPreview && isFormValid() && (
@@ -293,6 +340,7 @@ function MockExams() {
                     mockExamData={formData}
                     timeSlots={timeSlots}
                     mode={timeSlots.length === 1 ? 'single' : 'bulk'}
+                    capacityMode={capacityMode}
                   />
                 </div>
               )}

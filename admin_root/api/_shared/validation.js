@@ -299,17 +299,17 @@ const schemas = {
           'string.pattern.base': 'Exam date must be in YYYY-MM-DD format',
           'any.required': 'Exam date is required'
         }),
+      // Capacity is now optional - required only when capacityMode is 'global'
       capacity: Joi.number()
         .integer()
         .min(1)
         .max(100)
-        .required()
+        .optional()
         .messages({
           'number.base': 'Capacity must be a number',
           'number.integer': 'Capacity must be an integer',
           'number.min': 'Capacity must be at least 1',
-          'number.max': 'Capacity cannot exceed 100',
-          'any.required': 'Capacity is required'
+          'number.max': 'Capacity cannot exceed 100'
         }),
       location: Joi.string()
         .valid('Mississauga', 'Mississauga - B9', 'Mississauga - Lab D', 'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill', 'Online')
@@ -341,6 +341,18 @@ const schemas = {
             .messages({
               'string.pattern.base': 'End time must be in HH:MM format (24-hour)',
               'any.required': 'End time is required for each time slot'
+            }),
+          // Capacity per slot - required when capacityMode is 'per-slot'
+          capacity: Joi.number()
+            .integer()
+            .min(1)
+            .max(100)
+            .optional()
+            .messages({
+              'number.base': 'Slot capacity must be a number',
+              'number.integer': 'Slot capacity must be an integer',
+              'number.min': 'Slot capacity must be at least 1',
+              'number.max': 'Slot capacity cannot exceed 100'
             })
         }).custom((value, helpers) => {
           // Validate end time > start time for each slot
@@ -364,7 +376,43 @@ const schemas = {
         'array.max': 'Cannot create more than 50 mock exams at once',
         'any.required': 'Time slots are required',
         'custom.endTimeBeforeStart': 'End time must be after start time for all time slots'
+      }),
+    // New capacity mode parameter
+    capacityMode: Joi.string()
+      .valid('global', 'per-slot')
+      .default('global')
+      .messages({
+        'any.only': 'Capacity mode must be either "global" or "per-slot"'
       })
+  }).custom((value, helpers) => {
+    // Custom validation: Ensure capacity is provided based on mode
+    if (value.capacityMode === 'global') {
+      if (!value.commonProperties.capacity) {
+        return helpers.error('custom.globalCapacityRequired');
+      }
+      // In global mode, time slots should not have individual capacities
+      const hasSlotCapacity = value.timeSlots.some(slot => slot.capacity !== undefined);
+      if (hasSlotCapacity) {
+        return helpers.error('custom.noSlotCapacityInGlobalMode');
+      }
+    } else if (value.capacityMode === 'per-slot') {
+      // In per-slot mode, each slot must have capacity
+      const missingCapacity = value.timeSlots.some(slot => !slot.capacity);
+      if (missingCapacity) {
+        return helpers.error('custom.perSlotCapacityRequired');
+      }
+      // Common properties should not have capacity in per-slot mode
+      if (value.commonProperties.capacity !== undefined) {
+        return helpers.error('custom.noGlobalCapacityInPerSlotMode');
+      }
+    }
+    return value;
+  }, 'capacity mode validation')
+  .messages({
+    'custom.globalCapacityRequired': 'Capacity is required in commonProperties when capacityMode is "global"',
+    'custom.perSlotCapacityRequired': 'Each time slot must have a capacity when capacityMode is "per-slot"',
+    'custom.noSlotCapacityInGlobalMode': 'Time slots should not have individual capacities when capacityMode is "global"',
+    'custom.noGlobalCapacityInPerSlotMode': 'Common properties should not have capacity when capacityMode is "per-slot"'
   }),
 
   // Schema for listing mock exams (Admin Dashboard)

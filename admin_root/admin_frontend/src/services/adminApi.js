@@ -80,13 +80,15 @@ export const mockExamsApi = {
   /**
    * Create multiple mock exams with different time slots
    * @param {Object} commonProperties - Properties shared across all exams
-   * @param {Array} timeSlots - Array of {start_time, end_time} objects
+   * @param {Array} timeSlots - Array of {start_time, end_time, capacity?} objects
+   * @param {string} capacityMode - Either 'global' or 'per-slot'
    * @returns {Promise<Object>} Bulk creation results
    */
-  createBulk: async (commonProperties, timeSlots) => {
+  createBulk: async (commonProperties, timeSlots, capacityMode = 'global') => {
     const response = await api.post('/admin/mock-exams/bulk-create', {
       commonProperties,
-      timeSlots
+      timeSlots,
+      capacityMode
     });
     return response.data;
   },

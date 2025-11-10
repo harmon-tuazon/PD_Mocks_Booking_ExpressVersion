@@ -6,15 +6,16 @@
 import { useState } from 'react';
 import { TimePickerSelect } from '@/components/ui/time-picker';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
-const TimeSlotBuilder = ({ timeSlots, onChange }) => {
+const TimeSlotBuilder = ({ timeSlots, onChange, capacityMode = 'global', globalCapacity = 15 }) => {
   const [errors, setErrors] = useState({});
 
   /**
    * Add a new empty time slot
    */
   const addTimeSlot = () => {
-    onChange([...timeSlots, { start_time: '', end_time: '' }]);
+    onChange([...timeSlots, { start_time: '', end_time: '', capacity: globalCapacity }]);
   };
 
   /**
@@ -139,15 +140,15 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
         <div className="border border-gray-300 dark:border-gray-600 rounded-md p-4 bg-gray-50 dark:bg-gray-800">
           <div className="space-y-3">
             {timeSlots.map((slot, index) => (
-          <div
-            key={index}
-            className={`flex gap-3 items-start p-3 border rounded-md ${
-              overlappingSlots.includes(index)
-                ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20'
-                : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700'
-            }`}
-          >
-            <div className="flex-1 grid grid-cols-2 gap-3">
+          <div key={index}>
+            <div
+              className={`flex gap-3 items-start p-3 border rounded-md ${
+                overlappingSlots.includes(index)
+                  ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20'
+                  : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700'
+              }`}
+            >
+              <div className={`flex-1 grid ${capacityMode === 'per-slot' ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
               <div>
                 <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
                   Start Time
@@ -177,6 +178,23 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
                   required
                 />
               </div>
+
+              {capacityMode === 'per-slot' && (
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    Capacity
+                  </label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={slot.capacity || globalCapacity}
+                    onChange={(e) => updateTimeSlot(index, 'capacity', parseInt(e.target.value) || 0)}
+                    placeholder="15"
+                    className="w-full"
+                  />
+                </div>
+              )}
             </div>
 
             <button
@@ -189,15 +207,14 @@ const TimeSlotBuilder = ({ timeSlots, onChange }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-
+            </div>
             {errors[index] && (
-              <div className="col-span-2 text-sm text-red-600 dark:text-red-400">
+              <div className="mt-2 text-sm text-red-600 dark:text-red-400">
                 {errors[index]}
               </div>
             )}
-
             {overlappingSlots.includes(index) && !errors[index] && (
-              <div className="col-span-2 text-sm text-red-600 dark:text-red-400">
+              <div className="mt-2 text-sm text-red-600 dark:text-red-400">
                 This time slot overlaps with another slot
               </div>
             )}

@@ -5,7 +5,7 @@
 
 import { formatDateLong } from '../../utils/dateUtils';
 
-const MockExamPreview = ({ mockExamData, timeSlots, mode }) => {
+const MockExamPreview = ({ mockExamData, timeSlots, mode, capacityMode = 'global' }) => {
 
   /**
    * Get preview items based on mode
@@ -14,8 +14,9 @@ const MockExamPreview = ({ mockExamData, timeSlots, mode }) => {
     if (mode === 'single') {
       return [{
         ...mockExamData,
-        start_time: mockExamData.start_time,
-        end_time: mockExamData.end_time
+        start_time: timeSlots[0].start_time,
+        end_time: timeSlots[0].end_time,
+        capacity: capacityMode === 'per-slot' ? timeSlots[0].capacity : mockExamData.capacity
       }];
     } else {
       // Bulk mode - combine common properties with each time slot
@@ -23,6 +24,7 @@ const MockExamPreview = ({ mockExamData, timeSlots, mode }) => {
         ...mockExamData,
         start_time: slot.start_time,
         end_time: slot.end_time,
+        capacity: capacityMode === 'per-slot' ? slot.capacity : mockExamData.capacity,
         index: index + 1
       }));
     }

@@ -25,15 +25,17 @@ async function bulkCreateMockExamsHandler(req, res) {
     console.log('✅ [BULK-CREATE] Validation passed:', {
       commonProperties: validatedData.commonProperties,
       timeSlotsCount: validatedData.timeSlots.length,
+      capacityMode: validatedData.capacityMode,
       timeSlots: validatedData.timeSlots
     });
 
-    const { commonProperties, timeSlots } = validatedData;
+    const { commonProperties, timeSlots, capacityMode = 'global' } = validatedData;
 
     console.log('📝 [BULK-CREATE] Bulk creating mock exams:', {
       mock_type: commonProperties.mock_type,
       exam_date: commonProperties.exam_date,
       location: commonProperties.location,
+      capacity_mode: capacityMode,
       time_slots_count: timeSlots.length,
       admin_user: req.user?.email
     });
@@ -63,10 +65,11 @@ async function bulkCreateMockExamsHandler(req, res) {
     console.log('🔍 [BULK-CREATE] Step 4: Calling batchCreateMockExams...');
     console.log('📤 [BULK-CREATE] Sending to HubSpot:', {
       commonProperties,
+      capacityMode,
       timeSlots
     });
-    
-    const result = await hubspot.batchCreateMockExams(commonProperties, timeSlots);
+
+    const result = await hubspot.batchCreateMockExams(commonProperties, timeSlots, capacityMode);
     
     console.log('📥 [BULK-CREATE] Received result from HubSpot:', {
       resultType: typeof result,
@@ -102,10 +105,11 @@ async function bulkCreateMockExamsHandler(req, res) {
     // Return success response
     const mockExams = Array.isArray(result) ? result : [];
     console.log('📤 [BULK-CREATE] Sending success response with', mockExams.length, 'exams');
-    
+
     return res.status(201).json({
       success: true,
       created_count: mockExams.length,
+      capacity_mode: capacityMode,
       mockExams: mockExams.map(exam => ({
         id: exam.id,
         properties: exam.properties
