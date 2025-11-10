@@ -99,10 +99,7 @@ const BookingTimeWarningModal = ({
                 </h3>
                 <div className="mt-2">
                   <p className="text-sm font-body text-yellow-700 dark:text-yellow-300">
-                    {daysUntilExam === 0
-                      ? 'This exam is today. '
-                      : 'This exam is tomorrow. '}
-                    To ensure adequate preparation time, the latest date you can book is <strong>2 days before</strong> the exam date.
+                    This exam is today. To ensure adequate preparation time, the latest date you can book is <strong>1 day before</strong> the exam date.
                   </p>
                 </div>
 

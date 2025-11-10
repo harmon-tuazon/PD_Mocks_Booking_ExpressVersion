@@ -108,7 +108,7 @@ const ExamSessionsList = () => {
   };
 
   const handleSelectExam = (exam) => {
-    // Check date proximity - Block if exam is today or tomorrow (≤ 1 day away)
+    // Check date proximity - Block if exam is today (< 1 day away)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -122,8 +122,8 @@ const ExamSessionsList = () => {
     const timeDiff = examDate.getTime() - today.getTime();
     const daysUntilExam = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
 
-    // Block if exam is today (0 days) or tomorrow (1 day)
-    if (daysUntilExam <= 1) {
+    // Block if exam is today (0 days) - allow booking until 1 day before
+    if (daysUntilExam < 1) {
       setTooCloseBookingWarning({
         examDate: exam.exam_date,
         daysUntilExam: daysUntilExam
