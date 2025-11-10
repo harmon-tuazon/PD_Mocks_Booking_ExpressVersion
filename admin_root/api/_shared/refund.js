@@ -32,9 +32,9 @@ const HUBSPOT_BATCH_SIZE = 100;
  */
 const TOKEN_PROPERTY_MAP = {
   'Mock Discussion Token': 'mock_discussion_token',
-  'Clinical Skills Token': 'clinical_skills_token',
-  'Situational Judgment Token': 'situational_judgment_token',
-  'Mini-mock Token': 'mini_mock_token'
+  'Clinical Skills Token': 'cs_credits',
+  'Situational Judgment Token': 'sj_credits',
+  'Mini-mock Token': 'sjmini_credits'
 };
 
 /**

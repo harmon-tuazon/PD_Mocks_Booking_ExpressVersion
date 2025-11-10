@@ -98,7 +98,7 @@ module.exports = async (req, res) => {
             properties: [
               'firstname', 'lastname', 'email', 'phone', 'student_id', 'ndecc_exam_date',
               // Token properties
-              'mock_discussion_token', 'clinical_skills_token', 'situational_judgment_token', 'mini_mock_token'
+              'mock_discussion_token', 'cs_credits', 'sj_credits', 'sjmini_credits', 'shared_mock_credits'
             ],
             limit: 10
           }
@@ -131,7 +131,7 @@ module.exports = async (req, res) => {
             properties: [
               'firstname', 'lastname', 'email', 'phone', 'student_id', 'ndecc_exam_date',
               // Token properties
-              'mock_discussion_token', 'clinical_skills_token', 'situational_judgment_token', 'mini_mock_token'
+              'mock_discussion_token', 'cs_credits', 'sj_credits', 'sjmini_credits', 'shared_mock_credits'
             ],
             limit: 10
           }
@@ -157,9 +157,10 @@ module.exports = async (req, res) => {
         // Include token properties
         tokens: {
           mock_discussion: parseInt(contact.properties.mock_discussion_token, 10) || 0,
-          clinical_skills: parseInt(contact.properties.clinical_skills_token, 10) || 0,
-          situational_judgment: parseInt(contact.properties.situational_judgment_token, 10) || 0,
-          mini_mock: parseInt(contact.properties.mini_mock_token, 10) || 0
+          clinical_skills: parseInt(contact.properties.cs_credits, 10) || 0,
+          situational_judgment: parseInt(contact.properties.sj_credits, 10) || 0,
+          mini_mock: parseInt(contact.properties.sjmini_credits, 10) || 0,
+          shared_mock: parseInt(contact.properties.shared_mock_credits, 10) || 0
         }
       }));
 

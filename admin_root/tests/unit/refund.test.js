@@ -39,9 +39,18 @@ describe('RefundService Unit Tests', () => {
 
     test('maps Clinical Skills Token correctly', () => {
       const result = refundService.getTokenPropertyName('Clinical Skills Token');
-      expect(result).toBe('clinical_skills_token');
+      expect(result).toBe('cs_credits');
     });
-    
+
+    test('maps Situational Judgment Token correctly', () => {
+      const result = refundService.getTokenPropertyName('Situational Judgment Token');
+      expect(result).toBe('sj_credits');
+    });
+
+    test('maps Mini-mock Token correctly', () => {
+      const result = refundService.getTokenPropertyName('Mini-mock Token');
+      expect(result).toBe('sjmini_credits');
+    });
 
     test('returns null for unknown token type', () => {
       const result = refundService.getTokenPropertyName('Unknown Token');
@@ -103,7 +112,7 @@ describe('RefundService Unit Tests', () => {
 
       expect(Object.keys(grouped)).toHaveLength(2);
       expect(grouped['mock_discussion_token']).toHaveLength(2);
-      expect(grouped['clinical_skills_token']).toHaveLength(1);
+      expect(grouped['cs_credits']).toHaveLength(1);
     });
   });
 

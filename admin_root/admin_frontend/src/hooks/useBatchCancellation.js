@@ -81,21 +81,25 @@ const useBatchCancellation = (bookings = []) => {
   }, []);
 
   // Toggle individual booking selection
-  const toggleSelection = useCallback((bookingId) => {
+  const toggleSelection = useCallback((bookingId, booking) => {
+    // Validate booking can be selected
+    if (booking?.is_active === 'Cancelled' || booking?.booking_status === 'cancelled') {
+      return false;
+    }
+
     setSelectedBookingIds(prev => {
       const newSet = new Set(prev);
       if (newSet.has(bookingId)) {
         newSet.delete(bookingId);
       } else {
         // Only add if booking is cancellable
-        const booking = bookings.find(b => b.id === bookingId);
         if (booking && booking.is_active !== 'Cancelled' && booking.booking_status !== 'cancelled') {
           newSet.add(bookingId);
         }
       }
       return newSet;
     });
-  }, [bookings]);
+  }, []);
 
   // Check if a booking is selected
   const isSelected = useCallback((bookingId) => {
