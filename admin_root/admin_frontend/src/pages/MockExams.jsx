@@ -259,33 +259,29 @@ function MockExams() {
                     onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
                     required
                     disabled={capacityMode === 'per-slot'}
+                    className={capacityMode === 'per-slot' ? 'opacity-50 cursor-not-allowed' : ''}
                   />
-                  {capacityMode === 'per-slot' && (
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Set capacity individually for each time slot below
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>
-                    Capacity Mode
-                  </Label>
-                  <Select
-                    value={capacityMode}
-                    onValueChange={(value) => setCapacityMode(value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="global">Apply to All Time Slots</SelectItem>
-                      <SelectItem value="per-slot">Set Per Time Slot</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Checkbox
+                      id="per-slot-capacity"
+                      checked={capacityMode === 'per-slot'}
+                      onCheckedChange={(checked) => setCapacityMode(checked ? 'per-slot' : 'global')}
+                    />
+                    <label
+                      htmlFor="per-slot-capacity"
+                      className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
+                    >
+                      Set capacity per time slot
+                    </label>
+                  </div>
                   {capacityMode === 'global' && (
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      This capacity will be used for all time slots
+                      This capacity will be applied to all time slots
+                    </p>
+                  )}
+                  {capacityMode === 'per-slot' && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Set individual capacity for each time slot below
                     </p>
                   )}
                 </div>
