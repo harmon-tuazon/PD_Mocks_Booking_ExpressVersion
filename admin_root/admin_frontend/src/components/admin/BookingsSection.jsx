@@ -57,6 +57,9 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
     }));
   };
 
+  // State to track if we're refreshing after cancellation
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // Handle booking cancellation using simplified batch endpoint
   const handleCancelBookings = async () => {
     const selectedBookings = bookings.filter(booking =>
@@ -90,8 +93,19 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
 
       cancellationState?.closeModal?.();
       cancellationState?.toggleMode?.(); // Exit cancellation mode
+
+      // Set refreshing state and add a small delay to ensure backend has completed processing
       if (onRefresh) {
-        onRefresh(); // Refresh booking data
+        setIsRefreshing(true);
+
+        // Wait a moment for backend to complete, then refresh
+        setTimeout(async () => {
+          try {
+            await onRefresh(); // Wait for refresh to complete
+          } finally {
+            setIsRefreshing(false); // Clear refreshing state regardless of success/failure
+          }
+        }, 300);
       }
     } catch (error) {
       cancellationState?.returnToSelecting?.();
@@ -248,14 +262,14 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
           cancelButton={
             <button
               onClick={() => cancellationState?.toggleMode()}
-              className={`inline-flex h-9 items-center whitespace-nowrap px-2 py-1.5 text-xs font-medium rounded-md transition-colors shadow-sm ${
+              className={`inline-flex h-9 items-center justify-between whitespace-nowrap px-3 py-2 text-sm font-medium rounded-md transition-colors shadow-sm ${
                 cancellationState?.isCancellationMode
-                  ? 'text-white bg-red-700 hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
-                  : 'text-red-700 dark:text-red-300 bg-white dark:bg-gray-800 border border-red-300 dark:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
+                  ? 'text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500'
+                  : 'text-red-700 dark:text-red-400 bg-white dark:bg-[#1a4166] border border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-1 focus:ring-red-500'
               }`}
               disabled={processedBookings.length === 0}
             >
-              <svg className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
               {cancellationState?.isCancellationMode ? 'Exit Cancel Mode' : 'Cancel Bookings'}
@@ -314,7 +328,7 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
       )}
 
       {/* Content Area */}
-      {loading && <LoadingSkeleton />}
+      {(loading || isRefreshing) && <LoadingSkeleton />}
 
       {error && !loading && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
@@ -354,7 +368,16 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
       )}
 
       {!loading && !error && processedBookings.length > 0 && (
-        <div>
+        <div className="relative">
+          {/* Show a loading overlay when refreshing */}
+          {isRefreshing && (
+            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center z-10 rounded-lg">
+              <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Refreshing bookings...</span>
+              </div>
+            </div>
+          )}
           <BookingsTable
             bookings={processedBookings}
             totalPages={totalPages}

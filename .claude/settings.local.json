@@ -39,7 +39,8 @@
       "Bash(node create_test.js:*)",
       "Bash(npm run test:coverage:*)",
       "Bash(npm test)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(npm run:*)"
     ],
     "deny": [],
     "ask": []
