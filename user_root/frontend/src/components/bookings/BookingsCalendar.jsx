@@ -471,7 +471,14 @@ const BookingsCalendar = ({ bookings, onBookingClick, onCancelBooking, isLoading
                 <p className="mt-1 text-sm text-gray-500">This date has no scheduled exams</p>
               </div>
             ) : (
-              displayBookings.map((booking, index) => (
+              displayBookings
+                .sort((a, b) => {
+                  // Sort by start_time chronologically
+                  const timeA = a.start_time || '00:00';
+                  const timeB = b.start_time || '00:00';
+                  return timeA.localeCompare(timeB);
+                })
+                .map((booking, index) => (
                 <div key={booking.id || booking.booking_number || index}
                      className="bg-white border-2 border-green-200 rounded-lg p-4 hover:shadow-lg hover:border-green-300 transition-all duration-200">
                   {/* Booking Card Header */}

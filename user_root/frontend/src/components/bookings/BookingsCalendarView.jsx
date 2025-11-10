@@ -281,7 +281,14 @@ const BookingsCalendarView = ({ bookings, onCancelBooking, isLoading, error }) =
                 </p>
 
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {selectedBookings.map((booking) => {
+                  {selectedBookings
+                    .sort((a, b) => {
+                      // Sort by start_time chronologically
+                      const timeA = a.start_time || '00:00';
+                      const timeB = b.start_time || '00:00';
+                      return timeA.localeCompare(timeB);
+                    })
+                    .map((booking) => {
                     const now = new Date();
                     const bookingDate = parseISO(booking.exam_date);
                     const status = getBookingStatus(booking);

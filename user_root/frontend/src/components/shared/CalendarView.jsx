@@ -218,7 +218,14 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [] }) 
               </p>
 
               <div className="space-y-3 max-h-96 overflow-y-auto">
-                {selectedSessions.map((session) => (
+                {selectedSessions
+                  .sort((a, b) => {
+                    // Sort by start_time chronologically
+                    const timeA = a.start_time || '00:00';
+                    const timeB = b.start_time || '00:00';
+                    return timeA.localeCompare(timeB);
+                  })
+                  .map((session) => (
                   <div
                     key={session.mock_exam_id}
                     className={`p-3 border-2 border-cool-grey dark:border-dark-border rounded-lg ${session.available_slots > 0 ? 'hover:shadow-md cursor-pointer hover:border-primary-300 dark:hover:border-primary-600 bg-white dark:bg-dark-card' : 'opacity-75 bg-gray-50 dark:bg-dark-bg/50'} transition-all duration-200`}
