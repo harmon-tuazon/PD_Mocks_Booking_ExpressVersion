@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from '../ui/select';
 import { Checkbox } from '../ui/checkbox';
 import { DatePicker } from '../ui/date-picker';
-import { Calendar, MapPin, Users, BookOpen, CheckCircle, XCircle, Filter, X } from 'lucide-react';
+import { Calendar, MapPin, Users, BookOpen, CheckCircle, X } from 'lucide-react';
 
 /**
  * BookingFilters Component
@@ -113,20 +113,12 @@ const BookingFilters = ({ bookings = [], filters, onFiltersChange, className = '
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Active filters header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Filters
+      {/* Active filters header - simplified without filter icon and text */}
+      {activeFilterCount > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300">
+            {activeFilterCount} active filter{activeFilterCount > 1 ? 's' : ''}
           </span>
-          {activeFilterCount > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300">
-              {activeFilterCount} active
-            </span>
-          )}
-        </div>
-        {activeFilterCount > 0 && (
           <Button
             onClick={clearAllFilters}
             variant="ghost"
@@ -136,24 +128,22 @@ const BookingFilters = ({ bookings = [], filters, onFiltersChange, className = '
             <X className="h-3 w-3 mr-1" />
             Clear All
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Filter controls - responsive layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-
-        {/* Filter 1: Location */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-            <MapPin className="h-3 w-3" />
-            Location
-          </label>
-          <div className="relative">
+      {/* Filter controls - two-row layout for better organization */}
+      <div className="space-y-3">
+        {/* Row 1: Main filters and Cancel button */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* Filter 1: Location */}
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+              <MapPin className="h-3 w-3" />
+              Location
+            </label>
             <Select>
-              <SelectTrigger className="w-full">
-                <SelectValue
-                  placeholder="Select locations"
-                >
+              <SelectTrigger className="w-full h-9 text-sm">
+                <SelectValue placeholder="Select locations">
                   {localFilters.locations.length > 0
                     ? `${localFilters.locations.length} selected`
                     : "All locations"
@@ -181,142 +171,113 @@ const BookingFilters = ({ bookings = [], filters, onFiltersChange, className = '
               </SelectContent>
             </Select>
           </div>
-        </div>
 
-        {/* Filter 2: Attendance */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-            <Users className="h-3 w-3" />
-            Attendance
-          </label>
-          <Select>
-            <SelectTrigger className="w-full">
-              <SelectValue
-                placeholder="Select attendance"
-              >
-                {localFilters.attendance.length > 0
-                  ? `${localFilters.attendance.length} selected`
-                  : "All attendance"
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-64">
-              <SelectGroup>
-                <div
-                  className="flex items-center space-x-2 px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
-                  onClick={() => toggleAttendance('Yes')}
-                >
-                  <Checkbox
-                    checked={localFilters.attendance.includes('Yes')}
-                    className="pointer-events-none"
-                  />
-                  <label className="text-sm cursor-pointer flex-1 text-green-600 dark:text-green-400">
-                    Attended
-                  </label>
-                </div>
-                <div
-                  className="flex items-center space-x-2 px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
-                  onClick={() => toggleAttendance('No')}
-                >
-                  <Checkbox
-                    checked={localFilters.attendance.includes('No')}
-                    className="pointer-events-none"
-                  />
-                  <label className="text-sm cursor-pointer flex-1 text-red-600 dark:text-red-400">
-                    No Show
-                  </label>
-                </div>
-                <div
-                  className="flex items-center space-x-2 px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
-                  onClick={() => toggleAttendance('Unmarked')}
-                >
-                  <Checkbox
-                    checked={localFilters.attendance.includes('Unmarked')}
-                    className="pointer-events-none"
-                  />
-                  <label className="text-sm cursor-pointer flex-1 text-gray-600 dark:text-gray-400">
-                    Unmarked
-                  </label>
-                </div>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Filter 3: Mock Type */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-            <BookOpen className="h-3 w-3" />
-            Mock Type
-          </label>
-          <Select>
-            <SelectTrigger className="w-full">
-              <SelectValue
-                placeholder="Select mock types"
-              >
-                {localFilters.mockTypes.length > 0
-                  ? `${localFilters.mockTypes.length} selected`
-                  : "All types"
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-64">
-              <SelectGroup>
-                {uniqueValues.mockTypes.map(mockType => (
+          {/* Filter 2: Attendance */}
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+              <Users className="h-3 w-3" />
+              Attendance
+            </label>
+            <Select>
+              <SelectTrigger className="w-full h-9 text-sm">
+                <SelectValue placeholder="Select attendance">
+                  {localFilters.attendance.length > 0
+                    ? `${localFilters.attendance.length} selected`
+                    : "All attendance"
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                <SelectGroup>
                   <div
-                    key={mockType}
                     className="flex items-center space-x-2 px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
-                    onClick={() => toggleMockType(mockType)}
+                    onClick={() => toggleAttendance('Yes')}
                   >
                     <Checkbox
-                      checked={localFilters.mockTypes.includes(mockType)}
+                      checked={localFilters.attendance.includes('Yes')}
                       className="pointer-events-none"
                     />
-                    <label className="text-sm cursor-pointer flex-1">
-                      {mockType}
+                    <label className="text-sm cursor-pointer flex-1 text-green-600 dark:text-green-400">
+                      Attended
                     </label>
                   </div>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Filter 4: Date Range */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-            <Calendar className="h-3 w-3" />
-            Exam Date
-          </label>
-          <div className="flex gap-2">
-            <DatePicker
-              value={localFilters.dateFrom}
-              onChange={(date) => handleFilterChange('dateFrom', date)}
-              placeholder="From"
-              className="flex-1"
-            />
-            <DatePicker
-              value={localFilters.dateTo}
-              onChange={(date) => handleFilterChange('dateTo', date)}
-              placeholder="To"
-              className="flex-1"
-            />
+                  <div
+                    className="flex items-center space-x-2 px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                    onClick={() => toggleAttendance('No')}
+                  >
+                    <Checkbox
+                      checked={localFilters.attendance.includes('No')}
+                      className="pointer-events-none"
+                    />
+                    <label className="text-sm cursor-pointer flex-1 text-red-600 dark:text-red-400">
+                      No Show
+                    </label>
+                  </div>
+                  <div
+                    className="flex items-center space-x-2 px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                    onClick={() => toggleAttendance('Unmarked')}
+                  >
+                    <Checkbox
+                      checked={localFilters.attendance.includes('Unmarked')}
+                      className="pointer-events-none"
+                    />
+                    <label className="text-sm cursor-pointer flex-1 text-gray-600 dark:text-gray-400">
+                      Unmarked
+                    </label>
+                  </div>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
-        </div>
 
-        {/* Filter 5: Booking Status */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-            <CheckCircle className="h-3 w-3" />
-            Status
-          </label>
-          <div className="flex gap-2">
+          {/* Filter 3: Mock Type */}
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+              <BookOpen className="h-3 w-3" />
+              Mock Type
+            </label>
+            <Select>
+              <SelectTrigger className="w-full h-9 text-sm">
+                <SelectValue placeholder="Select mock types">
+                  {localFilters.mockTypes.length > 0
+                    ? `${localFilters.mockTypes.length} selected`
+                    : "All types"
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                <SelectGroup>
+                  {uniqueValues.mockTypes.map(mockType => (
+                    <div
+                      key={mockType}
+                      className="flex items-center space-x-2 px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                      onClick={() => toggleMockType(mockType)}
+                    >
+                      <Checkbox
+                        checked={localFilters.mockTypes.includes(mockType)}
+                        className="pointer-events-none"
+                      />
+                      <label className="text-sm cursor-pointer flex-1">
+                        {mockType}
+                      </label>
+                    </div>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Filter 4: Booking Status */}
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+              <CheckCircle className="h-3 w-3" />
+              Status
+            </label>
             <Select
               value={localFilters.status}
               onValueChange={(value) => handleFilterChange('status', value)}
-              className="flex-1"
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full h-9 text-sm">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
@@ -341,9 +302,38 @@ const BookingFilters = ({ bookings = [], filters, onFiltersChange, className = '
                 </SelectItem>
               </SelectContent>
             </Select>
-            {/* Cancel button - passed from parent */}
+          </div>
+
+          {/* Cancel Bookings button */}
+          <div className="flex items-end">
             {cancelButton}
           </div>
+        </div>
+
+        {/* Row 2: Date Range */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="lg:col-span-2 space-y-1.5">
+            <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+              <Calendar className="h-3 w-3" />
+              Exam Date Range
+            </label>
+            <div className="flex gap-2">
+              <DatePicker
+                value={localFilters.dateFrom}
+                onChange={(date) => handleFilterChange('dateFrom', date)}
+                placeholder="From date"
+                className="flex-1"
+              />
+              <DatePicker
+                value={localFilters.dateTo}
+                onChange={(date) => handleFilterChange('dateTo', date)}
+                placeholder="To date"
+                className="flex-1"
+              />
+            </div>
+          </div>
+          {/* Empty columns for alignment */}
+          <div className="lg:col-span-3"></div>
         </div>
       </div>
 
