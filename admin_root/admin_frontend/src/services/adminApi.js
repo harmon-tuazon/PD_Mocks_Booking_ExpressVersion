@@ -251,6 +251,21 @@ export const traineeApi = {
       params: { include_inactive: true }
     });
     return response.data;
+  },
+
+  /**
+   * Batch cancel multiple bookings (admin-authenticated)
+   * @param {Array} bookings - Array of booking objects with id, student_id, email, reason
+   * @returns {Promise<Object>} Cancellation results
+   */
+  batchCancelBookings: async (bookings) => {
+    if (!bookings || bookings.length === 0) {
+      throw new Error('Bookings array is required');
+    }
+    const response = await api.post('/bookings/batch-cancel', {
+      bookings
+    });
+    return response.data;
   }
 };
 

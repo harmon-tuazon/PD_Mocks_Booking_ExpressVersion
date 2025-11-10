@@ -4,6 +4,7 @@ import BookingsTable from './BookingsTable';
 import BookingFilters from './BookingFilters';
 import useBatchCancellation from '../../hooks/useBatchCancellation';
 import CancelBookingsModal from '../shared/CancelBookingsModal';
+import { traineeApi } from '../../services/adminApi';
 
 /**
  * LoadingSkeleton Component
@@ -65,21 +66,15 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
     cancellationState?.startSubmitting?.();
 
     try {
-      // Simple single API call - no grouping needed
-      const response = await fetch('/api/bookings/batch-cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bookings: selectedBookings.map(b => ({
-            id: b.id,
-            student_id: b.student_id || b.associated_contact_id || b.contact_id,
-            email: b.email,
-            reason: 'Admin cancelled from trainee dashboard'
-          }))
-        })
-      });
-
-      const result = await response.json();
+      // Use authenticated API method
+      const result = await traineeApi.batchCancelBookings(
+        selectedBookings.map(b => ({
+          id: b.id,
+          student_id: b.student_id || b.associated_contact_id || b.contact_id,
+          email: b.email,
+          reason: 'Admin cancelled from trainee dashboard'
+        }))
+      );
 
       if (!result.success) {
         throw new Error(result.error || 'Cancellation failed');
@@ -253,17 +248,17 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
           cancelButton={
             <button
               onClick={() => cancellationState?.toggleMode()}
-              className={`inline-flex h-9 items-center px-3 py-2 text-sm font-medium rounded-md transition-colors shadow-sm ${
+              className={`inline-flex h-9 items-center whitespace-nowrap px-2 py-1.5 text-xs font-medium rounded-md transition-colors shadow-sm ${
                 cancellationState?.isCancellationMode
                   ? 'text-white bg-red-700 hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
                   : 'text-red-700 dark:text-red-300 bg-white dark:bg-gray-800 border border-red-300 dark:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
               }`}
               disabled={processedBookings.length === 0}
             >
-              <svg className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              {cancellationState?.isCancellationMode ? 'Exit Cancellation Mode' : 'Cancel Bookings'}
+              {cancellationState?.isCancellationMode ? 'Exit Cancel Mode' : 'Cancel Bookings'}
             </button>
           }
         />
