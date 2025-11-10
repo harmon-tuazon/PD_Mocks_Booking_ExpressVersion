@@ -115,30 +115,59 @@ export function useExamEdit(examData) {
       }
       return await mockExamsApi.update(examData.id, updates);
     },
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
+      try {
+        // Invalidate queries to mark them stale
+        queryClient.invalidateQueries(['mockExam', examData.id]);
+        queryClient.invalidateQueries(['mockExams']);
+        queryClient.invalidateQueries(['mockExamMetrics']);
+        queryClient.invalidateQueries(['mockExamAggregates']);
 
-      // Extract updated properties from response
-      const updatedProperties = response.mockExam?.properties || {};
+        // Wait for fresh data to be fetched
+        const freshExamData = await queryClient.fetchQuery(['mockExam', examData.id]);
 
-      // Invalidate queries to refetch fresh data
-      // This is simpler and more reliable than manually updating cache
-      queryClient.invalidateQueries(['mockExam', examData.id]);
-      queryClient.invalidateQueries(['mockExams']);
-      queryClient.invalidateQueries(['mockExamMetrics']);
-      queryClient.invalidateQueries(['mockExamAggregates']);
+        // Extract complete updated data from fresh query result
+        const updatedProperties = freshExamData?.data?.properties || freshExamData?.data || {};
 
-      // Update local form state with the updated properties
-      const updatedFormData = { ...formData, ...updatedProperties };
-      setFormData(updatedFormData);
-      originalDataRef.current = { ...updatedFormData };
+        // Update local form state with complete fresh data
+        const updatedFormData = { ...updatedProperties };
 
-      // Exit edit mode
-      setIsEditing(false);
-      setIsDirty(false);
-      validation.resetValidation();
+        // Preserve computed fields and prerequisite data
+        if (updatedProperties.booked_count !== undefined || updatedProperties.total_bookings !== undefined) {
+          updatedFormData.booked_count = updatedProperties.booked_count || updatedProperties.total_bookings || 0;
+          updatedFormData.total_bookings = updatedProperties.total_bookings || updatedProperties.booked_count || 0;
+        }
 
-      // Show success message
-      notify.success('Mock exam updated successfully');
+        // Convert time fields to input format
+        if (updatedProperties.start_time) {
+          updatedFormData.start_time = convertToTimeInput(updatedProperties.start_time);
+        }
+        if (updatedProperties.end_time) {
+          updatedFormData.end_time = convertToTimeInput(updatedProperties.end_time);
+        }
+
+        // Preserve prerequisite data if available
+        if (freshExamData?.data?.prerequisite_exam_ids) {
+          updatedFormData.prerequisite_exam_ids = freshExamData.data.prerequisite_exam_ids;
+        }
+        if (freshExamData?.data?.prerequisite_exams) {
+          updatedFormData.prerequisite_exams = freshExamData.data.prerequisite_exams;
+        }
+
+        setFormData(updatedFormData);
+        originalDataRef.current = { ...updatedFormData };
+
+        // NOW safe to exit edit mode - React Query has fresh data
+        setIsEditing(false);
+        setIsDirty(false);
+        validation.resetValidation();
+
+        // Show success message
+        notify.success('Mock exam updated successfully');
+      } catch (error) {
+        console.error('Error refreshing exam data after save:', error);
+        notify.error('Saved but failed to refresh display. Please reload the page.');
+      }
     },
     onError: (error) => {
       console.error('❌ [SAVE-ERROR]:', error);
