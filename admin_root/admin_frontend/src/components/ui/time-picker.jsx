@@ -69,7 +69,7 @@ export function TimePicker({
 export function TimePickerSelect({
   value,
   onChange,
-  placeholder = "HH:MM",
+  placeholder = "HH:MM or H:MM AM/PM",
   disabled = false,
   className,
   id,
@@ -113,16 +113,71 @@ export function TimePickerSelect({
     return `${displayHour}:${String(minute).padStart(2, '0')} ${period}`;
   }
 
+  // Parse 12-hour format with AM/PM to 24-hour format
+  const parse12HourTo24Hour = (timeStr) => {
+    // Remove extra spaces and make case-insensitive
+    const normalizedStr = timeStr.trim().replace(/\s+/g, ' ');
+
+    // Check for 12-hour format with AM/PM
+    const twelveHourRegex = /^(\d{1,2}):([0-5][0-9])\s*(AM|PM|am|pm)$/i;
+    const match = normalizedStr.match(twelveHourRegex);
+
+    if (match) {
+      let hour = parseInt(match[1], 10);
+      const minute = match[2];
+      const period = match[3].toUpperCase();
+
+      // Validate hour range (1-12)
+      if (hour < 1 || hour > 12) {
+        return null;
+      }
+
+      // Convert to 24-hour format
+      if (period === 'AM') {
+        // 12:00 AM = 00:00
+        if (hour === 12) {
+          hour = 0;
+        }
+      } else { // PM
+        // 12:00 PM = 12:00 (noon)
+        // 1:00 PM = 13:00, etc.
+        if (hour !== 12) {
+          hour += 12;
+        }
+      }
+
+      // Return in HH:MM format
+      return `${String(hour).padStart(2, '0')}:${minute}`;
+    }
+
+    return null;
+  };
+
   // Handle manual input change
   const handleInputChange = (e) => {
     const newValue = e.target.value;
     setInputValue(newValue);
 
-    // Validate HH:MM format
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (timeRegex.test(newValue) || newValue === '') {
+    // First check if it's already valid 24-hour format
+    const twentyFourHourRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (twentyFourHourRegex.test(newValue)) {
+      onChange?.(newValue);
+      return;
+    }
+
+    // Try to parse as 12-hour format with AM/PM
+    const parsed24Hour = parse12HourTo24Hour(newValue);
+    if (parsed24Hour) {
+      onChange?.(parsed24Hour);
+      return;
+    }
+
+    // Allow empty value
+    if (newValue === '') {
       onChange?.(newValue);
     }
+    // For invalid formats, we don't call onChange, keeping the input value
+    // This allows users to continue typing
   };
 
   // Handle selection from dropdown
