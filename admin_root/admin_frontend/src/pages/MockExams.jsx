@@ -267,7 +267,13 @@ function MockExams() {
                     <Checkbox
                       id="per-slot-capacity"
                       checked={capacityMode === 'per-slot'}
-                      onCheckedChange={(checked) => setCapacityMode(checked ? 'per-slot' : 'global')}
+                      onCheckedChange={(checked) => {
+                        setCapacityMode(checked ? 'per-slot' : 'global');
+                        if (checked) {
+                          // Clear global capacity when switching to per-slot mode
+                          setFormData({ ...formData, capacity: '' });
+                        }
+                      }}
                     />
                     <label
                       htmlFor="per-slot-capacity"

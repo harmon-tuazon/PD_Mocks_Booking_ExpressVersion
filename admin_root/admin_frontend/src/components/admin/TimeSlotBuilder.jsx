@@ -15,7 +15,9 @@ const TimeSlotBuilder = ({ timeSlots, onChange, capacityMode = 'global', globalC
    * Add a new empty time slot
    */
   const addTimeSlot = () => {
-    onChange([...timeSlots, { start_time: '', end_time: '', capacity: globalCapacity }]);
+    // Default to 15 if globalCapacity is empty/falsy
+    const defaultCapacity = globalCapacity || 15;
+    onChange([...timeSlots, { start_time: '', end_time: '', capacity: defaultCapacity }]);
   };
 
   /**
