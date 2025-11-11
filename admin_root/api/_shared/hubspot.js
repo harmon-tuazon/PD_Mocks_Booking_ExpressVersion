@@ -413,39 +413,35 @@ class HubSpotService {
    * Create a new booking
    * Main method for creating bookings with all required associations
    */
+  /**
+   * Create a new booking
+   */
   async createBooking(bookingData) {
-    try {
-      // Create the booking object
-      const bookingResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}`, {
-        properties: bookingData
-      });
+    const properties = {
+      booking_id: bookingData.bookingId,
+      name: bookingData.name,
+      email: bookingData.email,
+      is_active: 'Active',  // Set booking as active when created
+      ...(bookingData.tokenUsed ? { token_used: bookingData.tokenUsed } : {})
+    };
 
-      const bookingId = bookingResponse.id;
-
-      // Create associations if provided
-      if (bookingData.contact_id) {
-        await this.createAssociation(
-          HUBSPOT_OBJECTS.bookings,
-          bookingId,
-          HUBSPOT_OBJECTS.contacts,
-          bookingData.contact_id
-        );
-      }
-
-      if (bookingData.mock_exam_id) {
-        await this.createAssociation(
-          HUBSPOT_OBJECTS.bookings,
-          bookingId,
-          HUBSPOT_OBJECTS.mock_exams,
-          bookingData.mock_exam_id
-        );
-      }
-
-      return bookingResponse;
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      throw error;
+    // Add idempotency key if provided
+    if (bookingData.idempotencyKey) {
+      properties.idempotency_key = bookingData.idempotencyKey;
     }
+
+    // Add conditional fields based on what's provided
+    if (bookingData.dominantHand !== undefined) {
+      properties.dominant_hand = bookingData.dominantHand.toString();
+    }
+
+    if (bookingData.attendingLocation) {
+      properties.attending_location = bookingData.attendingLocation;
+    }
+
+    const payload = { properties };
+
+    return await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}`, payload);
   }
 
   /**
