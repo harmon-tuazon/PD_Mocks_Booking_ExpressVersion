@@ -398,33 +398,6 @@ class HubSpotService {
 
 
   /**
-   * Get default association type ID for standard object relationships
-   */
-  getDefaultAssociationTypeId(fromObjectType, toObjectType) {
-    // Specific association type IDs from HubSpot for this instance
-    const defaultTypes = {
-      // Bookings to other objects (using HUBSPOT_DEFINED IDs from the improvement request)
-      [`${HUBSPOT_OBJECTS.bookings}_${HUBSPOT_OBJECTS.contacts}`]: 1289,    // Bookings → Contacts
-      [`${HUBSPOT_OBJECTS.bookings}_${HUBSPOT_OBJECTS.mock_exams}`]: 1291,  // Bookings → Mock Exams
-
-      // Reverse relationships (same IDs work bidirectionally)
-      [`${HUBSPOT_OBJECTS.contacts}_${HUBSPOT_OBJECTS.bookings}`]: 1289,
-      [`${HUBSPOT_OBJECTS.mock_exams}_${HUBSPOT_OBJECTS.bookings}`]: 1291,
-    };
-
-    const key = `${fromObjectType}_${toObjectType}`;
-    const typeId = defaultTypes[key];
-
-    if (typeId) {
-      console.log(`✅ Using association type ID ${typeId} for ${fromObjectType} → ${toObjectType}`);
-      return typeId;
-    }
-
-    console.log(`⚠️ No specific association type found for ${fromObjectType} → ${toObjectType}, using default: 1`);
-    return 1;
-  }
-
-  /**
    * Create association between objects
    */
   async createAssociation(fromObjectType, fromObjectId, toObjectType, toObjectId) {
@@ -456,26 +429,6 @@ class HubSpotService {
         status: error.response?.status,
         details: error.response?.data
       });
-      throw error;
-    }
-  }
-
-  /**
-   * Remove association between two objects
-   * @param {string} fromObjectType - Source object type (e.g., 'bookings')
-   * @param {string} fromObjectId - Source object ID
-   * @param {string} toObjectType - Target object type (e.g., 'mock_exams')
-   * @param {string} toObjectId - Target object ID
-   */
-  async removeAssociation(fromObjectType, fromObjectId, toObjectType, toObjectId) {
-    const path = `/crm/v4/objects/${fromObjectType}/${fromObjectId}/associations/${toObjectType}/${toObjectId}`;
-
-    try {
-      const result = await this.apiCall('DELETE', path);
-      console.log(`✅ Association removed successfully between ${fromObjectType}(${fromObjectId}) and ${toObjectType}(${toObjectId})`);
-      return result;
-    } catch (error) {
-      console.error(`❌ Failed to remove association:`, error);
       throw error;
     }
   }
@@ -529,24 +482,6 @@ class HubSpotService {
     ].join(',');
 
     return await this.apiCall('GET', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?properties=${properties}`);
-  }
-
-  /**
-   * Get basic booking information without associations (simplified)
-   * @param {string} bookingId - The booking ID
-   * @returns {Promise<object>} Basic booking object
-   */
-  async getBasicBooking(bookingId) {
-    const properties = [
-      'booking_id',
-      'status',
-      'is_active',
-      'name',
-      'email'
-    ].join(',');
-
-    const result = await this.apiCall('GET', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/${bookingId}?properties=${properties}`);
-    return result.data || result;
   }
 
   /**
@@ -730,58 +665,6 @@ class HubSpotService {
       if (error.response?.status === 404) {
         console.log(`Contact ${contactId} not found or has no booking associations`);
         return [];
-      }
-      
-      throw error;
-    }
-  }
-
-  /**
-   * Get paginated booking associations for a contact with HubSpot after-token support
-   * 
-   * @param {string} contactId - Contact ID
-   * @param {Object} options - Pagination options
-   * @param {number} options.limit - Max associations to fetch (default: 100, max: 500)
-   * @param {string} options.after - HubSpot after token for pagination
-   * @returns {Promise<{bookingIds: string[], paging: Object}>} - Booking IDs and paging info
-   */
-  async getContactBookingAssociationsPaginated(contactId, { limit = 100, after = null } = {}) {
-    try {
-      // Ensure limit doesn't exceed HubSpot max
-      const fetchLimit = Math.min(limit, 500);
-      
-      let url = `/crm/v4/objects/${HUBSPOT_OBJECTS.contacts}/${contactId}/associations/${HUBSPOT_OBJECTS.bookings}?limit=${fetchLimit}`;
-      
-      if (after) {
-        url += `&after=${after}`;
-      }
-
-      const associations = await this.apiCall('GET', url);
-
-      if (!associations?.results || associations.results.length === 0) {
-        console.log(`No booking associations found for contact ${contactId}`);
-        return {
-          bookingIds: [],
-          paging: null
-        };
-      }
-
-      // Extract booking IDs from associations
-      const bookingIds = associations.results.map(assoc => assoc.toObjectId);
-
-      console.log(`✅ Found ${bookingIds.length} booking associations for contact ${contactId}`);
-
-      return {
-        bookingIds,
-        paging: associations.paging || null
-      };
-
-    } catch (error) {
-      console.error(`❌ Error getting paginated booking associations for contact ${contactId}:`, error);
-      
-      if (error.response?.status === 404) {
-        console.log(`Contact ${contactId} not found or has no booking associations`);
-        return { bookingIds: [], paging: null };
       }
       
       throw error;
@@ -1459,49 +1342,6 @@ class HubSpotService {
       new_total_bookings: newBookings,
       available_slots: capacity - newBookings
     };
-  }
-
-  /**
-   * Create a cancellation note on the associated deal 
-   * @param {string} dealId - The deal ID
-   * @param {object} cancellationData - Cancellation details
-   * @returns {Promise<void>}
-   */
-  async createCancellationNote(dealId, cancellationData) {
-    const timestamp = new Date().toISOString();
-    const noteContent = `
-❌ <strong>Booking Canceled</strong>
-━━━━━━━━━━━━━━━━━━━━━━
-<strong>Booking ID:</strong> ${cancellationData.booking_id}
-<strong>Mock Type:</strong> ${cancellationData.mock_type}
-<strong>Exam Date:</strong> ${cancellationData.exam_date}
-<strong>Canceled At:</strong> ${timestamp}
-${cancellationData.reason ? `<strong>Reason:</strong> ${cancellationData.reason}` : ''}
-<strong>Credits Restored:</strong> ${cancellationData.credits_restored.amount} ${cancellationData.credits_restored.credit_type}
-━━━━━━━━━━━━━━━━━━━━━━
-<em>Automated cancellation via booking system</em>`;
-
-    await this.apiCall({
-      method: 'POST',
-      url: `/crm/v3/objects/notes`,
-      data: {
-        properties: {
-          hs_timestamp: timestamp,
-          hs_note_body: noteContent
-        },
-        associations: [
-          {
-            to: { id: dealId },
-            types: [
-              {
-                associationCategory: 'HUBSPOT_DEFINED',
-                associationTypeId: 214  // Note to Deal association
-              }
-            ]
-          }
-        ]
-      }
-    });
   }
 
   /**

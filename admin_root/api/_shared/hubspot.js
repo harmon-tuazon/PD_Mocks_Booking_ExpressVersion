@@ -462,23 +462,6 @@ class HubSpotService {
   }
 
   /**
-   * Get the default association type ID between two object types
-   * Helper method for creating associations
-   */
-  getDefaultAssociationTypeId(fromObjectType, toObjectType) {
-    // Define known association type IDs (these are HubSpot defaults)
-    const associationMap = {
-      [`${HUBSPOT_OBJECTS.bookings}_${HUBSPOT_OBJECTS.contacts}`]: 'booking_to_contact',
-      [`${HUBSPOT_OBJECTS.bookings}_${HUBSPOT_OBJECTS.mock_exams}`]: 'booking_to_mock_exam',
-      [`${HUBSPOT_OBJECTS.mock_exams}_${HUBSPOT_OBJECTS.bookings}`]: 'mock_exam_to_booking',
-      [`${HUBSPOT_OBJECTS.contacts}_${HUBSPOT_OBJECTS.bookings}`]: 'contact_to_booking'
-    };
-
-    const key = `${fromObjectType}_${toObjectType}`;
-    return associationMap[key] || 'default';
-  }
-
-  /**
    * Create an association between two HubSpot objects
    * Core method for linking bookings to contacts and mock exams
    */
@@ -513,21 +496,6 @@ class HubSpotService {
         status: error.response?.status,
         details: error.response?.data
       });
-      throw error;
-    }
-  }
-
-  /**
-   * Remove an association between two HubSpot objects
-   * Used when cancelling bookings or cleaning up data
-   */
-  async removeAssociation(fromObjectType, fromObjectId, toObjectType, toObjectId) {
-    try {
-      await this.apiCall('DELETE', `/crm/v4/objects/${fromObjectType}/${fromObjectId}/associations/${toObjectType}/${toObjectId}`);
-      console.log(`Removed association between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}`);
-      return true;
-    } catch (error) {
-      console.error('Error removing association:', error);
       throw error;
     }
   }
@@ -644,20 +612,6 @@ class HubSpotService {
       return response;
     } catch (error) {
       console.error(`Error getting mock exam ${mockExamId}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get basic booking information
-   * Lightweight method for quick booking lookups
-   */
-  async getBasicBooking(bookingId) {
-    try {
-      const response = await this.apiCall('GET', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/${bookingId}`);
-      return response;
-    } catch (error) {
-      console.error('Error getting booking:', error);
       throw error;
     }
   }
