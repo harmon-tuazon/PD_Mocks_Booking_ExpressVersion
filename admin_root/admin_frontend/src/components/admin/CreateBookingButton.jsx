@@ -16,8 +16,23 @@ import CreateBookingModal from './CreateBookingModal';
 const CreateBookingButton = ({ mockExam, onSuccess }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Disable button if mock exam is inactive
-  const isDisabled = mockExam?.is_active !== 'true';
+  // Debug: Log mockExam data to understand the structure
+  React.useEffect(() => {
+    if (mockExam) {
+      console.log('[CreateBookingButton] Mock Exam Data:', {
+        id: mockExam.id,
+        is_active: mockExam.is_active,
+        is_active_type: typeof mockExam.is_active,
+        mock_type: mockExam.mock_type,
+        full_data: mockExam
+      });
+    }
+  }, [mockExam]);
+
+  // Disable button if mock exam is not loaded or is inactive
+  // Handle both string 'true' and boolean true for is_active
+  const isDisabled = !mockExam ||
+    (mockExam.is_active !== 'true' && mockExam.is_active !== true);
 
   const handleOpenModal = () => {
     if (!isDisabled) {
