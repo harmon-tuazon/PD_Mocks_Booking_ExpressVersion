@@ -1164,7 +1164,6 @@ class HubSpotService {
         bookingsWithExams.push({
           id: booking.id,
           booking_id: booking.properties.booking_id,
-          booking_number: booking.properties.booking_id, // For frontend compatibility
           mock_exam_id: booking.properties.associated_mock_exam || mockExamData.id, // HubSpot mock exam object ID (for prerequisite validation)
           attendance: booking.properties.attendance || null, // Required for prerequisite validation
           name: booking.properties.name,

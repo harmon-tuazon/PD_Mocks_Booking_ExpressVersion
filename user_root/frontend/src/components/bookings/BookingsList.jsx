@@ -215,7 +215,7 @@ const BookingsList = ({
             <div className="flex items-center gap-2 text-gray-600">
               <FiHash className="w-4 h-4 flex-shrink-0" />
               <span className="text-xs font-mono truncate">
-                {booking.booking_number || booking.booking_id || 'Booking ID TBD'}
+                {booking.booking_id || 'Booking ID TBD'}
               </span>
             </div>
           </div>

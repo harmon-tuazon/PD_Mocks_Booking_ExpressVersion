@@ -417,7 +417,7 @@ const BookingsCalendar = ({ bookings, onBookingClick, onCancelBooking, isLoading
     }, [selectedBooking, selectedDate, bookingsByDate]);
 
     const drawerTitle = selectedBooking
-      ? `Booking #${selectedBooking.booking_number}`
+      ? `Booking #${selectedBooking.booking_id}`
       : selectedDate
         ? `${format(selectedDate, 'EEEE, MMMM d')}`
         : 'Bookings';
@@ -479,7 +479,7 @@ const BookingsCalendar = ({ bookings, onBookingClick, onCancelBooking, isLoading
                   return timeA.localeCompare(timeB);
                 })
                 .map((booking, index) => (
-                <div key={booking.id || booking.booking_number || index}
+                <div key={booking.id || booking.booking_id || index}
                      className="bg-white border-2 border-green-200 rounded-lg p-4 hover:shadow-lg hover:border-green-300 transition-all duration-200">
                   {/* Booking Card Header */}
                   <div className="flex justify-between items-start mb-3">

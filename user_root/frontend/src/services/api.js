@@ -328,16 +328,10 @@ export const formatTimeRange = (exam) => {
   return 'Time TBD';
 };
 
-// Helper to format booking number from booking_id
+// Helper to get booking ID for display
+// Returns the booking_id directly - no formatting needed
 export const formatBookingNumber = (booking) => {
-  if (booking.booking_number) {
-    return booking.booking_number;
-  }
-  if (booking.booking_id) {
-    // Extract last 8 chars of booking_id for display
-    return `BK-${booking.booking_id.slice(-8).toUpperCase()}`;
-  }
-  return 'Booking ID TBD';
+  return booking.booking_id || 'Booking ID TBD';
 };
 
 // Helper to get booking status from is_active flag
@@ -375,8 +369,8 @@ export const normalizeBooking = (booking) => {
     ...booking,
     // Ensure we have an id property
     id: booking.id || booking.booking_id || booking.recordId,
-    // Ensure we have booking_number
-    booking_number: formatBookingNumber(booking),
+    // Ensure we have booking_id (primary identifier)
+    booking_id: booking.booking_id || 'Booking ID TBD',
     // Ensure we have a status
     status: getBookingStatus(booking),
     // Ensure location is available

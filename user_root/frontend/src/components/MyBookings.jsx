@@ -197,7 +197,6 @@ const MyBookings = () => {
       bookingToDelete: {
         id: bookingToDelete.id,
         booking_id: bookingToDelete.booking_id,
-        booking_number: bookingToDelete.booking_number,
         is_active: bookingToDelete.is_active,
         allKeys: Object.keys(bookingToDelete)
       }
@@ -376,8 +375,8 @@ const MyBookings = () => {
 
       switch (field) {
         case 'booking_number':
-          aValue = a.booking_number || '';
-          bValue = b.booking_number || '';
+          aValue = a.booking_id || '';
+          bValue = b.booking_id || '';
           break;
         case 'exam_type':
           aValue = a.mock_type || '';
