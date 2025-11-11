@@ -23,7 +23,6 @@ const ExistingBookingsCard = ({
   // Fetch bookings from API
   const fetchBookings = useCallback(async (force = false) => {
     if (!studentId || !email) {
-      console.log('🔍 [ExistingBookingsCard] No studentId or email, skipping fetch');
       setLoading(false);
       return;
     }
@@ -31,28 +30,14 @@ const ExistingBookingsCard = ({
     // Prevent duplicate fetches within 1 second unless forced
     const now = Date.now();
     if (!force && now - lastFetchRef.current < 1000) {
-      console.log('🔍 [ExistingBookingsCard] Skipping duplicate fetch (within 1s)');
       return;
     }
     lastFetchRef.current = now;
-
-    console.log('🔍 [ExistingBookingsCard] Starting fetchBookings:', {
-      studentId,
-      email,
-      force,
-      timestamp: new Date().toISOString()
-    });
 
     setLoading(true);
     setError(null);
 
     try {
-      console.log('🔍 [ExistingBookingsCard] Calling API...', { 
-        force,
-        studentId,
-        email 
-      });
-      
       const response = await apiService.bookings.list({
         student_id: studentId,
         email: email,
@@ -61,56 +46,17 @@ const ExistingBookingsCard = ({
         force: force
       });
 
-      console.log('🔍 [ExistingBookingsCard] Raw API response:', response);
-      console.log('🔍 [ExistingBookingsCard] Response structure:', {
-        success: response.success,
-        hasData: !!response.data,
-        dataKeys: response.data ? Object.keys(response.data) : [],
-        bookingsCount: response.data?.bookings?.length,
-        fullResponse: JSON.stringify(response, null, 2)
-      });
-
       if (!response.success) {
-        console.error('🔍 [ExistingBookingsCard] API returned success=false:', {
-          error: response.error,
-          message: response.message,
-          code: response.code,
-          fullResponse: response
-        });
         throw new Error(response.error || response.message || 'Failed to fetch bookings');
       }
 
       if (response.success) {
         const allBookings = response.data.bookings || [];
 
-        console.log('🔍 [ExistingBookingsCard] Raw bookings from API:', allBookings.map(b => ({
-          id: b.id,
-          booking_id: b.booking_id,
-          is_active: b.is_active,
-          mock_exam_is_active: b.mock_exam?.is_active,
-          status: b.status,
-          exam_date: b.exam_date || b.mock_exam?.exam_date
-        })));
-
         // Filter to only show bookings where is_active === "Active"
         const activeBookings = allBookings.filter(booking => {
           const isActive = booking.is_active || booking.mock_exam?.is_active;
-          const isActiveBooking = isActive === 'Active' || isActive === 'active';
-
-          console.log(`🔍 [ExistingBookingsCard] Filtering booking ${booking.id}:`, {
-            is_active: booking.is_active,
-            mock_exam_is_active: booking.mock_exam?.is_active,
-            final_is_active: isActive,
-            passes_filter: isActiveBooking
-          });
-
-          return isActiveBooking;
-        });
-
-        console.log('🔍 [ExistingBookingsCard] Filtered active bookings:', {
-          total: allBookings.length,
-          active: activeBookings.length,
-          activeIds: activeBookings.map(b => b.booking_id || b.id)
+          return isActive === 'Active' || isActive === 'active';
         });
 
         setBookings(activeBookings);
@@ -120,56 +66,34 @@ const ExistingBookingsCard = ({
         throw new Error(response.error || 'Failed to fetch bookings');
       }
     } catch (err) {
-      console.error('❌ [ExistingBookingsCard] Error fetching bookings:', {
-        message: err.message,
-        response: err.response,
-        responseData: err.response?.data,
-        responseStatus: err.response?.status,
-        stack: err.stack,
-        fullError: err
-      });
+      console.error('[ExistingBookingsCard] Error fetching bookings:', err.message);
       setError('Unable to load bookings');
       setBookings([]);
     } finally {
       setLoading(false);
-      console.log('🔍 [ExistingBookingsCard] Fetch complete');
     }
   }, [studentId, email]);
 
   // Fetch bookings on mount and when dependencies change
   useEffect(() => {
-    console.log('🔍 [ExistingBookingsCard] Component mounted or dependencies changed');
     fetchBookings();
-  }, [fetchBookings, refreshKey]); // Add refreshKey as dependency
+  }, [fetchBookings, refreshKey]);
 
   // Refetch bookings when navigating back to this page or when explicitly requested
   useEffect(() => {
-    console.log('🔍 [ExistingBookingsCard] Location/State change detected:', {
-      pathname: location.pathname,
-      refreshBookings: location.state?.refreshBookings,
-      fullState: location.state,
-      timestamp: new Date().toISOString()
-    });
-
-    // Fetch when location changes (user navigates to this page)
-    // Also check if we should refresh based on navigation state
     const shouldRefresh = location.state?.refreshBookings;
 
     if (shouldRefresh) {
-      console.log('🔍 [ExistingBookingsCard] refreshBookings flag detected! Forcing refresh with 2s delay for HubSpot sync');
       // Add a delay to ensure HubSpot has updated
       setTimeout(() => {
-        console.log('🔍 [ExistingBookingsCard] Executing delayed refresh after navigation');
         fetchBookings(true);
       }, 2000);
     } else {
-      console.log('🔍 [ExistingBookingsCard] Regular navigation detected, fetching immediately');
       fetchBookings(true);
     }
 
     // Clear the refresh flag from location state to prevent unnecessary refetches
     if (shouldRefresh && window.history.replaceState) {
-      console.log('🔍 [ExistingBookingsCard] Clearing refreshBookings flag from history state');
       window.history.replaceState({}, document.title);
     }
   }, [location.pathname, location.state?.refreshBookings]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -177,15 +101,12 @@ const ExistingBookingsCard = ({
   // Refetch when page becomes visible (user switches tabs back)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      console.log('🔍 [ExistingBookingsCard] Visibility change:', document.visibilityState);
       if (document.visibilityState === 'visible') {
-        console.log('🔍 [ExistingBookingsCard] Page became visible, refreshing bookings');
         fetchBookings(true);
       }
     };
 
     const handleFocus = () => {
-      console.log('🔍 [ExistingBookingsCard] Window gained focus, refreshing bookings');
       fetchBookings(true);
     };
 
@@ -204,21 +125,15 @@ const ExistingBookingsCard = ({
     const handleStorageChange = (e) => {
       // Handle both bookingCreated and bookingCancelled events
       if ((e.key === 'bookingCreated' || e.key === 'bookingCancelled') && e.newValue) {
-        console.log(`🔍 [ExistingBookingsCard] Detected ${e.key} via localStorage:`, e.newValue);
-
         // Parse the value to check if it's for our user
         try {
           const bookingInfo = JSON.parse(e.newValue);
           if (bookingInfo.studentId === studentId) {
-            const eventType = e.key === 'bookingCreated' ? 'new booking' : 'cancelled booking';
-            console.log(`🔍 [ExistingBookingsCard] ${eventType} is for current user, refreshing with delay`);
-
             // Add delay for HubSpot sync
             setTimeout(() => {
-              console.log(`🔍 [ExistingBookingsCard] Executing delayed refresh after ${eventType}`);
-              setRefreshKey(prev => prev + 1); // Force component refresh
+              setRefreshKey(prev => prev + 1);
               fetchBookings(true);
-            }, 2500); // 2.5 second delay for HubSpot
+            }, 2500);
 
             // Clear the signal
             localStorage.removeItem(e.key);
@@ -236,7 +151,6 @@ const ExistingBookingsCard = ({
         try {
           const bookingInfo = JSON.parse(pendingRefresh);
           if (bookingInfo.studentId === studentId) {
-            console.log(`🔍 [ExistingBookingsCard] Found pending ${key} signal on mount`);
             setTimeout(() => {
               setRefreshKey(prev => prev + 1);
               fetchBookings(true);
@@ -260,15 +174,10 @@ const ExistingBookingsCard = ({
   // Listen for custom events as backup mechanism
   useEffect(() => {
     const handleBookingUpdate = (e) => {
-      console.log('🔍 [ExistingBookingsCard] Received custom booking update event:', e.detail);
-
       // Check if the event is for the current user
       if (e.detail && e.detail.studentId === studentId) {
-        console.log('🔍 [ExistingBookingsCard] Custom event is for current user, refreshing');
-
         // Add delay for HubSpot sync
         setTimeout(() => {
-          console.log('🔍 [ExistingBookingsCard] Executing delayed refresh after custom event');
           setRefreshKey(prev => prev + 1);
           fetchBookings(true);
         }, 2500);
@@ -294,7 +203,6 @@ const ExistingBookingsCard = ({
     if (document.visibilityState === 'visible') {
       // Start polling
       intervalId = setInterval(() => {
-        console.log('🔍 [ExistingBookingsCard] Periodic refresh (30s interval)');
         fetchBookings(true);
       }, 30000); // 30 seconds
     }
@@ -303,7 +211,6 @@ const ExistingBookingsCard = ({
       if (document.visibilityState === 'visible' && !intervalId) {
         // Resume polling when page becomes visible
         intervalId = setInterval(() => {
-          console.log('🔍 [ExistingBookingsCard] Periodic refresh (30s interval)');
           fetchBookings(true);
         }, 30000);
       } else if (document.visibilityState === 'hidden' && intervalId) {
