@@ -17,7 +17,7 @@ import { Fragment, useState, useEffect, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
-import { adminApi } from '../../services/adminApi';
+import { mockExamsApi } from '../../services/adminApi';
 
 const CreateBookingModal = ({ isOpen, onClose, mockExam, onSuccess }) => {
   const inputRef = useRef(null);
@@ -141,7 +141,7 @@ const CreateBookingModal = ({ isOpen, onClose, mockExam, onSuccess }) => {
       }
 
       // Call API
-      const result = await adminApi.createBookingFromExam(payload);
+      const result = await mockExamsApi.createBookingFromExam(payload);
 
       if (result.success) {
         toast.success(
