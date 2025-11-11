@@ -483,36 +483,36 @@ class HubSpotService {
    * Core method for linking bookings to contacts and mock exams
    */
   async createAssociation(fromObjectType, fromObjectId, toObjectType, toObjectId) {
+    const path = `/crm/v4/objects/${fromObjectType}/${fromObjectId}/associations/${toObjectType}/${toObjectId}`;
+
+    // IMPORTANT: Use empty payload to let HubSpot use the default association type
+    // This works for all associations including bookings ↔ contacts, bookings ↔ mock_exams, and notes
+    const payload = [];
+
     try {
-      // Determine the correct association parameters
-      let associationCategory = 'HUBSPOT_DEFINED';
-      let associationTypeId = 1; // Default fallback
-      
-      // Notes in this portal use object type 0-46 and require USER_DEFINED associations
-      if (fromObjectType === 'notes' || fromObjectType === '0-46') {
-        // Notes associating to other objects use USER_DEFINED category with type 1250
-        associationCategory = 'USER_DEFINED';
-        associationTypeId = 1250;
-      } else if (toObjectType === 'notes' || toObjectType === '0-46') {
-        // Other objects associating to notes also use USER_DEFINED with type 1249
-        associationCategory = 'USER_DEFINED';
-        associationTypeId = 1249;
-      }
-
-      await this.apiCall('PUT', `/crm/v4/objects/${fromObjectType}/${fromObjectId}/associations/${toObjectType}/${toObjectId}`, [
-        {
-          associationCategory: associationCategory,
-          associationTypeId: associationTypeId
-        }
-      ]);
-
-      return true;
+      const result = await this.apiCall('PUT', path, payload);
+      console.log(`✅ Association created successfully:`, {
+        from: `${fromObjectType}(${fromObjectId})`,
+        to: `${toObjectType}(${toObjectId})`
+      });
+      return result;
     } catch (error) {
-      // Check if association already exists (not an error)
-      if (error.message.includes('already exists')) {
+      // If association already exists, consider it success
+      if (error.message && error.message.includes('already exists')) {
+        console.log(`ℹ️ Association already exists (considered success):`, {
+          from: `${fromObjectType}(${fromObjectId})`,
+          to: `${toObjectType}(${toObjectId})`
+        });
         return true;
       }
-      console.error('❌ Error creating association:', error);
+
+      console.error(`❌ Failed to create association:`, {
+        from: `${fromObjectType}(${fromObjectId})`,
+        to: `${toObjectType}(${toObjectId})`,
+        error: error.message,
+        status: error.response?.status,
+        details: error.response?.data
+      });
       throw error;
     }
   }
