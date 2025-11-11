@@ -22,6 +22,7 @@ import BookingsTable from '../components/admin/BookingsTable';
 import EditControls from '../components/admin/EditControls';
 import DeleteControls from '../components/admin/DeleteControls';
 import CancelBookingsModal from '../components/shared/CancelBookingsModal';
+import CreateBookingButton from '../components/admin/CreateBookingButton';
 import { useState } from 'react';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
@@ -197,6 +198,18 @@ function MockExamDetail() {
     navigate('/mock-exams');
   };
 
+  // Handle successful booking creation
+  const handleBookingCreated = async (bookingData) => {
+    console.log('✅ [MockExamDetail] New booking created:', bookingData);
+
+    // The useMockExamDetail and useBookingsByExam hooks use React Query,
+    // which will automatically refetch when the component is re-rendered
+    // or when we manually invalidate the query cache
+
+    // For now, just log success - React Query will handle the refetch
+    // If we need to manually trigger a refetch, we can use queryClient.invalidateQueries
+  };
+
   // Loading state
   if (isLoadingExam) {
     return (
@@ -320,9 +333,15 @@ function MockExamDetail() {
         {/* Bookings Table Section */}
         <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Bookings ({bookingsData?.pagination?.total || 0})
-            </h2>
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Bookings ({bookingsData?.pagination?.total || 0})
+              </h2>
+              <CreateBookingButton
+                mockExam={examData?.data}
+                onSuccess={handleBookingCreated}
+              />
+            </div>
           </div>
 
           <BookingsTable

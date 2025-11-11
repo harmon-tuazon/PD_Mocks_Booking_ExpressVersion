@@ -695,6 +695,64 @@ const schemas = {
   }),
 
   // Schema for trainee bookings (Admin)
+
+  // Schema for admin booking creation from mock exam details
+  adminBookingCreation: Joi.object({
+    mock_exam_id: Joi.string()
+      .required()
+      .messages({
+        'any.required': 'Mock exam ID is required'
+      }),
+    student_id: Joi.string()
+      .pattern(/^[A-Z0-9]+$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Student ID must contain only uppercase letters and numbers',
+        'any.required': 'Student ID is required'
+      }),
+    email: Joi.string()
+      .email()
+      .required()
+      .messages({
+        'string.email': 'Please enter a valid email address',
+        'any.required': 'Email is required'
+      }),
+    mock_type: Joi.string()
+      .valid('Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion')
+      .required()
+      .messages({
+        'any.only': 'Mock type must be one of: Situational Judgment, Clinical Skills, Mini-mock, or Mock Discussion',
+        'any.required': 'Mock type is required'
+      }),
+    exam_date: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Exam date must be in YYYY-MM-DD format',
+        'any.required': 'Exam date is required'
+      }),
+    // Conditional fields based on mock_type
+    dominant_hand: Joi.alternatives()
+      .try(Joi.boolean(), Joi.string().valid('true', 'false', 'Right', 'Left'))
+      .when('mock_type', {
+        is: 'Clinical Skills',
+        then: Joi.required().messages({
+          'any.required': 'Dominant hand selection is required for Clinical Skills exams'
+        }),
+        otherwise: Joi.optional().strip()
+      }),
+    attending_location: Joi.string()
+      .valid('mississauga', 'calgary', 'vancouver', 'montreal', 'richmond_hill', 'Mississauga', 'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill')
+      .when('mock_type', {
+        is: Joi.string().valid('Situational Judgment', 'Mini-mock'),
+        then: Joi.required().messages({
+          'any.required': 'Attending location is required for Situational Judgment and Mini-mock exams',
+          'any.only': 'Location must be one of: Mississauga, Calgary, Vancouver, Montreal, or Richmond Hill'
+        }),
+        otherwise: Joi.optional().strip()
+      })
+  }),
+
   traineeBookings: Joi.object({
     contactId: Joi.string()
       .pattern(/^\d+$/)

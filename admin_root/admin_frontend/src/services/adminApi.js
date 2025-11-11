@@ -260,6 +260,20 @@ export const traineeApi = {
    * @param {Array} bookings - Array of booking objects with id, student_id, email, reason
    * @returns {Promise<Object>} Cancellation results
    */
+
+  /**
+   * Create a booking on behalf of a trainee (admin-authenticated)
+   * @param {Object} bookingData - Booking creation data
+   * @returns {Promise<Object>} Created booking result
+   */
+  createBookingFromExam: async (bookingData) => {
+    if (!bookingData || !bookingData.mock_exam_id || !bookingData.student_id || !bookingData.email) {
+      throw new Error('Mock exam ID, student ID, and email are required');
+    }
+    const response = await api.post('/admin/bookings/create', bookingData);
+    return response.data;
+  },
+
   batchCancelBookings: async (bookings) => {
     if (!bookings || bookings.length === 0) {
       throw new Error('Bookings array is required');
