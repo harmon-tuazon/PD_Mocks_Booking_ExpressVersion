@@ -268,6 +268,71 @@ class HubSpotService {
   }
 
   /**
+   * Search for a contact by student ID and email
+   * @param {string} studentId - Student ID to search for
+   * @param {string} email - Email address to search for  
+   * @param {string} mockType - Optional mock type to fetch specific credit properties
+   * @returns {Promise<object|null>} Contact object or null if not found
+   */
+  async searchContacts(studentId, email, mockType = null) {
+    // Build properties list based on mock type
+    const baseProperties = [
+      'student_id',
+      'firstname',
+      'lastname',
+      'email',
+      'hs_object_id',
+      'ndecc_exam_date'
+    ];
+    
+    let creditProperties = [];
+    if (mockType) {
+      switch (mockType) {
+        case 'Mock Discussion':
+          creditProperties = ['mock_discussion_token'];
+          break;
+        case 'Situational Judgment':
+          creditProperties = ['sj_credits', 'shared_mock_credits'];
+          break;
+        case 'Clinical Skills':
+          creditProperties = ['cs_credits', 'shared_mock_credits'];
+          break;
+        case 'Mini-mock':
+          creditProperties = ['sjmini_credits'];
+          break;
+        default:
+          // If unknown type, fetch all credit properties as fallback
+          creditProperties = ['sj_credits', 'cs_credits', 'sjmini_credits', 'mock_discussion_token', 'shared_mock_credits'];
+      }
+    } else {
+      // If no type specified, fetch all credit properties (for backward compatibility)
+      creditProperties = ['sj_credits', 'cs_credits', 'sjmini_credits', 'mock_discussion_token', 'shared_mock_credits'];
+    }
+    
+    const searchPayload = {
+      filterGroups: [{
+        filters: [
+          {
+            propertyName: 'student_id',
+            operator: 'EQ',
+            value: studentId
+          },
+          {
+            propertyName: 'email',
+            operator: 'EQ',
+            value: email
+          }
+        ]
+      }],
+      properties: [...baseProperties, ...creditProperties],
+      limit: 1
+    };
+
+    const result = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/search`, searchPayload);
+    return result.results?.[0] || null;
+  }
+
+  /**
    * Check if a booking already exists
    * Used to prevent duplicate bookings and validate booking operations
    * @param {string} bookingId - The HubSpot booking ID
