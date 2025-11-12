@@ -218,12 +218,13 @@ function MockExams() {
           </div>
         )}
 
-        <div className="bg-white dark:bg-dark-card shadow-sm dark:shadow-gray-900/50 rounded-lg">
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6">
-            <div className="space-y-4">
-              {/* Common Properties */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Form Container with max-width */}
+        <div className="max-w-4xl mx-auto">
+          <div className="space-y-4 pb-24">
+              {/* Basic Information Section */}
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-100 mb-4">Basic Information</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label>
                     Mock Type <span className="text-red-500">*</span>
@@ -257,11 +258,39 @@ function MockExams() {
                     required
                   />
                 </div>
+              </div>
 
-                <div>
-                  <Label>
-                    Capacity <span className="text-red-500">*</span>
-                  </Label>
+              {/* Location Field - Full Width */}
+              <div>
+                <Label>
+                  Location <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.location}
+                  onValueChange={(value) => setFormData({ ...formData, location: value })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LOCATIONS.map((loc) => (
+                      <SelectItem key={loc} value={loc}>
+                        {loc}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Capacity Settings Section */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-100 mb-4">Capacity Settings</h3>
+              <div>
+                <Label>
+                  Capacity <span className="text-red-500">*</span>
+                </Label>
                   <Input
                     type="number"
                     min="1"
@@ -318,55 +347,39 @@ function MockExams() {
                     </p>
                   )}
                 </div>
-
-                <div>
-                  <Label>
-                    Location <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={formData.location}
-                    onValueChange={(value) => setFormData({ ...formData, location: value })}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LOCATIONS.map((loc) => (
-                        <SelectItem key={loc} value={loc}>
-                          {loc}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
+            </div>
 
-              {/* Divider */}
-              <div className="border-t border-gray-200 dark:border-gray-700"></div>
-
-              {/* Time Slots - Always show TimeSlotBuilder */}
+            {/* Time Slots Section */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-100 mb-4">Time Slots</h3>
               <TimeSlotBuilder
                 timeSlots={timeSlots}
                 onChange={setTimeSlots}
                 capacityMode={capacityMode}
                 globalCapacity={formData.capacity}
               />
+            </div>
 
-              {/* Preview Section */}
-              {showPreview && isFormValid() && (
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                  <MockExamPreview
-                    mockExamData={formData}
-                    timeSlots={timeSlots}
-                    mode={timeSlots.length === 1 ? 'single' : 'bulk'}
-                    capacityMode={capacityMode}
-                  />
-                </div>
-              )}
+            {/* Preview Section */}
+            {showPreview && isFormValid() && (
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-100 mb-4">Preview</h3>
+                <MockExamPreview
+                  mockExamData={formData}
+                  timeSlots={timeSlots}
+                  mode={timeSlots.length === 1 ? 'single' : 'bulk'}
+                  capacityMode={capacityMode}
+                />
+              </div>
+            )}
+          </div>
+        </div>
 
-              {/* Action Buttons */}
-              <div className="flex justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700">
+        {/* Sticky Action Bar */}
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 py-4 z-10">
+          <div className="max-w-4xl mx-auto px-6">
+            <div className="flex justify-between items-center">
                 <button
                   type="button"
                   onClick={() => setShowPreview(!showPreview)}
@@ -387,7 +400,8 @@ function MockExams() {
                   </button>
 
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={handleSubmit}
                     disabled={!isFormValid() || isLoading}
                     className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
                   >
@@ -408,7 +422,7 @@ function MockExams() {
                 </div>
               </div>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>
