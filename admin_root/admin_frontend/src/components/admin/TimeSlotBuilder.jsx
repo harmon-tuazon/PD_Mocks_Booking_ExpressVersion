@@ -113,7 +113,7 @@ const TimeSlotBuilder = ({ timeSlots, onChange, capacityMode = 'global', globalC
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-center">
-        <Label>
+        <Label className="text-gray-700 dark:text-gray-300">
           Time Slots <span className="text-red-500">*</span>
         </Label>
         <button

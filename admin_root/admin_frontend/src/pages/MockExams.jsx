@@ -220,13 +220,13 @@ function MockExams() {
 
         {/* Form Container with max-width */}
         <div className="max-w-4xl mx-auto">
-          <div className="space-y-4">
+          <div className="space-y-6">
               {/* Basic Information Section */}
-              <div className="bg-gray-800 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-100 mb-4">Basic Information</h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Basic Information</h3>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <Label>
+                  <Label className="text-gray-700 dark:text-gray-300">
                     Mock Type <span className="text-red-500">*</span>
                   </Label>
                   <Select
@@ -248,7 +248,7 @@ function MockExams() {
                 </div>
 
                 <div>
-                  <Label>
+                  <Label className="text-gray-700 dark:text-gray-300">
                     Exam Date <span className="text-red-500">*</span>
                   </Label>
                   <DatePicker
@@ -261,8 +261,8 @@ function MockExams() {
               </div>
 
               {/* Location Field - Full Width */}
-              <div>
-                <Label>
+              <div className="mt-4">
+                <Label className="text-gray-700 dark:text-gray-300">
                   Location <span className="text-red-500">*</span>
                 </Label>
                 <Select
@@ -285,10 +285,10 @@ function MockExams() {
             </div>
 
             {/* Capacity Settings Section */}
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-100 mb-4">Capacity Settings</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Capacity Settings</h3>
               <div>
-                <Label>
+                <Label className="text-gray-700 dark:text-gray-300">
                   Capacity <span className="text-red-500">*</span>
                 </Label>
                   <Input
@@ -350,8 +350,8 @@ function MockExams() {
               </div>
 
             {/* Sessions Information Section */}
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-100 mb-4">Sessions Information</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Sessions Information</h3>
               <TimeSlotBuilder
                 timeSlots={timeSlots}
                 onChange={setTimeSlots}
@@ -362,8 +362,8 @@ function MockExams() {
 
             {/* Preview Section */}
             {showPreview && isFormValid() && (
-              <div className="bg-gray-800 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-100 mb-4">Preview</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Preview</h3>
                 <MockExamPreview
                   mockExamData={formData}
                   timeSlots={timeSlots}
@@ -374,8 +374,8 @@ function MockExams() {
             )}
 
             {/* Action Buttons - placed within form after Preview Section */}
-            <div className="bg-gray-800 rounded-lg p-6">
-              <div className="flex justify-between items-center">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <button
                   type="button"
                   onClick={() => setShowPreview(!showPreview)}
