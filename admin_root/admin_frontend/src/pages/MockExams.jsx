@@ -348,7 +348,6 @@ function MockExams() {
                   )}
                 </div>
               </div>
-            </div>
 
             {/* Time Slots Section */}
             <div className="bg-gray-800 rounded-lg p-6">
@@ -425,7 +424,6 @@ function MockExams() {
           </div>
         </div>
       </div>
-    </div>
   );
 }
 
