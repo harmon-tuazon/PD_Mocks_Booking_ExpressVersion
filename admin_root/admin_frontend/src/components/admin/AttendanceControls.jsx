@@ -137,12 +137,12 @@ const AttendanceControls = ({
           {/* Mark Attendance Button */}
           <button
             onClick={onToggleMode}
-            className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors shadow-sm ${
+            className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors shadow-sm border ${
               isCancellationMode
-                ? 'text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                ? 'text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 cursor-not-allowed'
                 : isAttendanceMode
-                ? 'text-white bg-primary-700 hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
-                : 'text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
+                ? 'text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700 hover:bg-primary-100 dark:hover:bg-primary-900/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
+                : 'text-primary-600 dark:text-primary-400 bg-white dark:bg-gray-800 border-primary-300 dark:border-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
             }`}
             disabled={totalCount === 0 || isCancellationMode}
             title={isCancellationMode ? 'Exit cancellation mode to mark attendance' : ''}
