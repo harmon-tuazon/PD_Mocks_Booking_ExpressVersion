@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { mockExamsApi } from '../services/adminApi';
 import TimeSlotBuilder from '../components/admin/TimeSlotBuilder';
 import MockExamPreview from '../components/admin/MockExamPreview';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/outline';
 import {
   Select,
   SelectContent,
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { convertTorontoToUTC, formatTorontoDateTime } from '../utils/dateTimeUtils';
 
 const MOCK_TYPES = [
   'Situational Judgment',
@@ -45,7 +46,9 @@ function MockExams() {
     exam_date: '',
     capacity: 15,
     location: 'Mississauga',
-    is_active: true
+    is_active: true,
+    activation_mode: 'immediate', // NEW: 'immediate' | 'scheduled'
+    scheduled_activation_datetime: null // NEW: ISO datetime string in UTC
   });
   const [capacityMode, setCapacityMode] = useState('global'); // 'global' or 'per-slot'
   const [timeSlots, setTimeSlots] = useState([{ start_time: '', end_time: '', capacity: 15 }]);
@@ -98,6 +101,13 @@ function MockExams() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Prepare scheduled activation datetime if needed
+    let scheduledDateTime = null;
+    if (formData.activation_mode === 'scheduled' && formData.scheduled_activation_datetime) {
+      // Convert Toronto time to UTC for backend
+      scheduledDateTime = convertTorontoToUTC(formData.scheduled_activation_datetime);
+    }
+
     // Automatically detect single vs bulk based on time slots count
     if (timeSlots.length === 1) {
       // Single session - determine capacity based on mode
@@ -105,7 +115,11 @@ function MockExams() {
         ...formData,
         start_time: timeSlots[0].start_time,
         end_time: timeSlots[0].end_time,
-        capacity: capacityMode === 'per-slot' ? timeSlots[0].capacity : formData.capacity
+        capacity: capacityMode === 'per-slot' ? timeSlots[0].capacity : formData.capacity,
+        // Override is_active if scheduling
+        is_active: formData.activation_mode === 'scheduled' ? false : formData.is_active,
+        // Include scheduled datetime if applicable
+        scheduled_activation_datetime: scheduledDateTime
       };
       createSingleMutation.mutate(singleSessionData);
     } else {
@@ -114,7 +128,8 @@ function MockExams() {
         mock_type: formData.mock_type,
         exam_date: formData.exam_date,
         location: formData.location,
-        is_active: formData.is_active,
+        is_active: formData.activation_mode === 'scheduled' ? false : formData.is_active,
+        scheduled_activation_datetime: scheduledDateTime,
         // Only include capacity in commonProperties if global mode
         ...(capacityMode === 'global' && { capacity: formData.capacity })
       };
@@ -132,7 +147,9 @@ function MockExams() {
       exam_date: '',
       capacity: 15,
       location: 'Mississauga',
-      is_active: true
+      is_active: true,
+      activation_mode: 'immediate',
+      scheduled_activation_datetime: null
     });
     setTimeSlots([{ start_time: '', end_time: '', capacity: 15 }]);
     setCapacityMode('global');
@@ -149,7 +166,12 @@ function MockExams() {
     // Check if all time slots are filled
     const timeSlotsValid = timeSlots.length > 0 && timeSlots.every(slot => slot.start_time && slot.end_time);
 
-    return commonFieldsValid && capacityValid && timeSlotsValid;
+    // Check scheduled activation datetime if in scheduled mode
+    const scheduledDateTimeValid = formData.activation_mode === 'scheduled'
+      ? !!formData.scheduled_activation_datetime
+      : true;
+
+    return commonFieldsValid && capacityValid && timeSlotsValid && scheduledDateTimeValid;
   };
 
   const handleBack = () => {
@@ -335,19 +357,110 @@ function MockExams() {
                     </label>
                   </div>
 
-                  {/* Active status checkbox */}
-                  <div className="flex items-center space-x-2 mt-1.5">
-                    <Checkbox
-                      id="is_active"
-                      checked={formData.is_active}
-                      onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                    />
-                    <label htmlFor="is_active" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                      Active (available for booking)
-                    </label>
-                  </div>
                 </div>
               </div>
+
+            {/* Activation Mode Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Activation Settings</h3>
+
+              {/* Activation Mode Radio Buttons */}
+              <div className="space-y-4">
+                <div className="flex items-start">
+                  <input
+                    type="radio"
+                    id="immediate_activation"
+                    name="activation_mode"
+                    value="immediate"
+                    checked={formData.activation_mode === 'immediate'}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      activation_mode: 'immediate',
+                      is_active: true,
+                      scheduled_activation_datetime: null
+                    })}
+                    className="mt-1 h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                  />
+                  <label htmlFor="immediate_activation" className="ml-3">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Activate Immediately
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Session becomes active as soon as it's created
+                    </p>
+                  </label>
+                </div>
+
+                <div className="flex items-start">
+                  <input
+                    type="radio"
+                    id="scheduled_activation"
+                    name="activation_mode"
+                    value="scheduled"
+                    checked={formData.activation_mode === 'scheduled'}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      activation_mode: 'scheduled',
+                      is_active: false,
+                      scheduled_activation_datetime: null
+                    })}
+                    className="mt-1 h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                  />
+                  <label htmlFor="scheduled_activation" className="ml-3">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Schedule Activation
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Session activates automatically at scheduled time
+                    </p>
+                  </label>
+                </div>
+              </div>
+
+              {/* Scheduled DateTime Picker (Conditional) */}
+              {formData.activation_mode === 'scheduled' && (
+                <div className="mt-6 pl-7">
+                  <Label htmlFor="scheduled_activation_datetime" className="text-gray-700 dark:text-gray-300">
+                    Activation Date & Time <span className="text-red-500">*</span>
+                  </Label>
+                  <input
+                    type="datetime-local"
+                    id="scheduled_activation_datetime"
+                    value={formData.scheduled_activation_datetime || ''}
+                    min={new Date().toISOString().slice(0, 16)} // Prevent past dates
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      scheduled_activation_datetime: e.target.value
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                    required={formData.activation_mode === 'scheduled'}
+                  />
+                  <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
+                    <ClockIcon className="h-4 w-4 mr-1" />
+                    <span>Time zone: America/Toronto (EST/EDT)</span>
+                  </div>
+                  {formData.scheduled_activation_datetime && (
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                      Session will activate at: {formatTorontoDateTime(formData.scheduled_activation_datetime)}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Active status checkbox - only show if immediate mode */}
+              {formData.activation_mode === 'immediate' && (
+                <div className="flex items-center space-x-2 mt-6">
+                  <Checkbox
+                    id="is_active"
+                    checked={formData.is_active}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                  />
+                  <label htmlFor="is_active" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    Active (available for booking immediately)
+                  </label>
+                </div>
+              )}
+            </div>
 
             {/* Sessions Information Section */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">

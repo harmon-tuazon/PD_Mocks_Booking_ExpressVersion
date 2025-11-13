@@ -256,7 +256,7 @@ class HubSpotService {
 
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, {
         filterGroups: [{ filters }],
-        properties: ['mock_type', 'exam_date', 'start_time', 'end_time', 'location', 'capacity', 'total_bookings', 'is_active'],
+        properties: ['mock_type', 'exam_date', 'start_time', 'end_time', 'location', 'capacity', 'total_bookings', 'is_active', 'scheduled_activation_datetime'],
         limit: 100
       });
 
@@ -1041,6 +1041,14 @@ class HubSpotService {
         mock_exam_name: mockExamName  // Format: {mock_type}-{location}-{exam_date}
       };
 
+      // Add scheduled activation datetime if provided
+      if (mockExamData.scheduled_activation_datetime) {
+        // Convert ISO datetime string to Unix timestamp (milliseconds)
+        const scheduledTimestamp = new Date(mockExamData.scheduled_activation_datetime).getTime();
+        examData.scheduled_activation_datetime = scheduledTimestamp;
+        console.log(`Setting scheduled activation for: ${mockExamData.scheduled_activation_datetime} (${scheduledTimestamp})`);
+      }
+
       const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}`, {
         properties: examData
       });
@@ -1096,10 +1104,17 @@ class HubSpotService {
           location: commonProperties.location,
           capacity: capacity,  // Dynamic based on capacity mode
           total_bookings: 0,
-          is_active: 'true',
+          is_active: commonProperties.is_active !== undefined ? commonProperties.is_active : 'true',
           mock_exam_id: mockExamIndex,  // Using internal HubSpot property name
           mock_exam_name: mockExamName  // Format: {mock_type}-{location}-{exam_date}
         };
+
+        // Add scheduled activation datetime if provided (for bulk creation with scheduling)
+        if (commonProperties.scheduled_activation_datetime) {
+          // Convert ISO datetime string to Unix timestamp (milliseconds)
+          const scheduledTimestamp = new Date(commonProperties.scheduled_activation_datetime).getTime();
+          properties.scheduled_activation_datetime = scheduledTimestamp;
+        }
 
         return { properties };
       });
@@ -1151,15 +1166,38 @@ class HubSpotService {
       }
 
       if (status) {
-        // Map frontend status values to HubSpot is_active property
-        // Frontend sends: "active" or "inactive"
-        // HubSpot expects: "true" or "false" (as strings)
-        const isActiveValue = status === 'active' ? 'true' : 'false';
-        filters.push({
-          propertyName: 'is_active',
-          operator: 'EQ',
-          value: isActiveValue
-        });
+        // Map frontend status values to HubSpot filters
+        // Frontend sends: "active", "inactive", or "scheduled"
+        // HubSpot expects: "true" or "false" (as strings) for is_active
+
+        if (status === 'scheduled') {
+          // For scheduled: is_active=false AND scheduled_activation_datetime HAS_PROPERTY
+          filters.push({
+            propertyName: 'is_active',
+            operator: 'EQ',
+            value: 'false'
+          });
+          filters.push({
+            propertyName: 'scheduled_activation_datetime',
+            operator: 'HAS_PROPERTY'
+          });
+        } else {
+          // For active/inactive: just check is_active
+          const isActiveValue = status === 'active' ? 'true' : 'false';
+          filters.push({
+            propertyName: 'is_active',
+            operator: 'EQ',
+            value: isActiveValue
+          });
+
+          // For inactive status, exclude scheduled sessions
+          if (status === 'inactive') {
+            filters.push({
+              propertyName: 'scheduled_activation_datetime',
+              operator: 'NOT_HAS_PROPERTY'
+            });
+          }
+        }
       }
 
       // NOTE: exam_date is stored as a string property in HubSpot
@@ -1245,7 +1283,7 @@ class HubSpotService {
             const batchResponse = await this.apiCall('POST',
               `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/read`,
               {
-                properties: ['mock_type', 'exam_date', 'start_time', 'end_time', 'location', 'capacity', 'total_bookings', 'is_active', 'hs_createdate', 'hs_lastmodifieddate'],
+                properties: ['mock_type', 'exam_date', 'start_time', 'end_time', 'location', 'capacity', 'total_bookings', 'is_active', 'scheduled_activation_datetime', 'hs_createdate', 'hs_lastmodifieddate'],
                 propertiesWithHistory: [],
                 inputs: chunk.map(exam => ({ id: exam.id })),
                 associations: [HUBSPOT_OBJECTS.bookings]
@@ -1646,7 +1684,7 @@ class HubSpotService {
 
       // Get all mock exams (we'll filter by date in application code)
       const searchRequest = {
-        properties: ['exam_date', 'capacity', 'total_bookings', 'is_active'],
+        properties: ['exam_date', 'capacity', 'total_bookings', 'is_active', 'scheduled_activation_datetime'],
         limit: 200  // Increased limit to get more results before filtering
       };
 
@@ -1897,20 +1935,43 @@ class HubSpotService {
       // We'll fetch all records and filter dates in application code
       
       if (filters.filter_status) {
-        // Map frontend status to HubSpot is_active property
-        const isActiveValue = filters.filter_status === 'active' ? 'true' : 'false';
-        searchFilters.push({
-          propertyName: 'is_active',
-          operator: 'EQ',
-          value: isActiveValue
-        });
+        // Map frontend status to HubSpot filters
+        if (filters.filter_status === 'scheduled') {
+          // For scheduled: is_active=false AND scheduled_activation_datetime HAS_PROPERTY
+          searchFilters.push({
+            propertyName: 'is_active',
+            operator: 'EQ',
+            value: 'false'
+          });
+          searchFilters.push({
+            propertyName: 'scheduled_activation_datetime',
+            operator: 'HAS_PROPERTY'
+          });
+        } else {
+          // For active/inactive: just check is_active
+          const isActiveValue = filters.filter_status === 'active' ? 'true' : 'false';
+          searchFilters.push({
+            propertyName: 'is_active',
+            operator: 'EQ',
+            value: isActiveValue
+          });
+
+          // For inactive status, exclude scheduled sessions
+          if (filters.filter_status === 'inactive') {
+            searchFilters.push({
+              propertyName: 'scheduled_activation_datetime',
+              operator: 'NOT_HAS_PROPERTY'
+            });
+          }
+        }
       }
       
       // Build search request - now includes associations to fetch bookings
       const searchRequest = {
         properties: [
           'mock_type', 'exam_date', 'start_time', 'end_time',
-          'capacity', 'total_bookings', 'location', 'is_active'
+          'capacity', 'total_bookings', 'location', 'is_active',
+          'scheduled_activation_datetime'
         ],
         associations: [HUBSPOT_OBJECTS.bookings], // Fetch booking associations
         limit: 200,  // HubSpot max limit per request

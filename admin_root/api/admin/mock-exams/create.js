@@ -19,14 +19,36 @@ async function createMockExamHandler(req, res) {
     // Validate request body
     const validatedData = await validateInput(req.body, 'mockExamCreation');
 
-    console.log('📝 Creating single mock exam:', {
-      mock_type: validatedData.mock_type,
-      exam_date: validatedData.exam_date,
-      location: validatedData.location,
-      start_time: validatedData.start_time,
-      end_time: validatedData.end_time,
-      admin_user: req.user?.email
-    });
+    // Handle scheduled activation mode
+    if (validatedData.activation_mode === 'scheduled') {
+      // Ensure is_active is false when scheduling activation
+      validatedData.is_active = false;
+
+      console.log('📝 Creating SCHEDULED mock exam:', {
+        mock_type: validatedData.mock_type,
+        exam_date: validatedData.exam_date,
+        location: validatedData.location,
+        start_time: validatedData.start_time,
+        end_time: validatedData.end_time,
+        scheduled_activation: validatedData.scheduled_activation_datetime,
+        admin_user: req.user?.email
+      });
+    } else {
+      // For immediate activation, ensure is_active is true
+      validatedData.is_active = true;
+      // Clear any scheduled activation datetime
+      validatedData.scheduled_activation_datetime = null;
+
+      console.log('📝 Creating IMMEDIATE mock exam:', {
+        mock_type: validatedData.mock_type,
+        exam_date: validatedData.exam_date,
+        location: validatedData.location,
+        start_time: validatedData.start_time,
+        end_time: validatedData.end_time,
+        is_active: validatedData.is_active,
+        admin_user: req.user?.email
+      });
+    }
 
     // Initialize HubSpot service
     const hubspot = new HubSpotService();

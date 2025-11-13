@@ -4,6 +4,8 @@
  */
 
 import { formatDateLong } from '../../utils/dateUtils';
+import { formatTorontoDateTime } from '../../utils/dateTimeUtils';
+import { ClockIcon } from '@heroicons/react/24/outline';
 
 const MockExamPreview = ({ mockExamData, timeSlots, mode, capacityMode = 'global' }) => {
 
@@ -103,13 +105,21 @@ const MockExamPreview = ({ mockExamData, timeSlots, mode, capacityMode = 'global
               </div>
 
               <div className="flex items-center text-xs pt-1">
-                <span className={`inline-flex items-center px-2 py-1 rounded-full ${
-                  item.is_active
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-                }`}>
-                  {item.is_active ? '● Active' : '○ Inactive'}
-                </span>
+                {/* Show scheduled activation if applicable */}
+                {item.activation_mode === 'scheduled' && item.scheduled_activation_datetime ? (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                    <ClockIcon className="h-3 w-3 mr-1" />
+                    Scheduled: {formatTorontoDateTime(item.scheduled_activation_datetime)}
+                  </span>
+                ) : (
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full ${
+                    item.is_active
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                  }`}>
+                    {item.is_active ? '● Active' : '○ Inactive'}
+                  </span>
+                )}
               </div>
             </div>
           </div>

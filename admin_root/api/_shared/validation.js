@@ -246,11 +246,41 @@ const schemas = {
         'any.only': 'Location must be one of: Mississauga, Mississauga - B9, Mississauga - Lab D, Calgary, Vancouver, Montreal, Richmond Hill, or Online',
         'any.required': 'Location is required'
       }),
+    // Activation mode controls whether session activates immediately or is scheduled
+    activation_mode: Joi.string()
+      .valid('immediate', 'scheduled')
+      .optional()
+      .default('immediate')
+      .messages({
+        'any.only': 'Activation mode must be either "immediate" or "scheduled"'
+      }),
     is_active: Joi.boolean()
       .optional()
-      .default(true)
+      .when('activation_mode', {
+        is: 'scheduled',
+        then: Joi.valid(false).default(false),  // Force false when scheduled
+        otherwise: Joi.default(true)
+      })
       .messages({
-        'boolean.base': 'is_active must be a boolean value'
+        'boolean.base': 'is_active must be a boolean value',
+        'any.only': 'is_active must be false when using scheduled activation mode'
+      }),
+    // Scheduled activation datetime - required when activation_mode is 'scheduled'
+    scheduled_activation_datetime: Joi.date()
+      .iso()
+      .min('now')  // Must be in future
+      .when('activation_mode', {
+        is: 'scheduled',
+        then: Joi.required()
+          .messages({
+            'any.required': 'Scheduled activation date/time is required when using scheduled activation mode',
+            'date.min': 'Scheduled activation must be in the future'
+          }),
+        otherwise: Joi.optional().allow(null, '')
+      })
+      .messages({
+        'date.iso': 'Invalid datetime format. Use ISO 8601 format (e.g., 2025-01-20T14:00:00Z)',
+        'date.min': 'Scheduled activation date must be in the future'
       }),
     start_time: Joi.string()
       .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
@@ -318,11 +348,41 @@ const schemas = {
           'any.only': 'Location must be one of: Mississauga, Mississauga - B9, Mississauga - Lab D, Calgary, Vancouver, Montreal, Richmond Hill, or Online',
           'any.required': 'Location is required'
         }),
+      // Activation mode for bulk creation
+      activation_mode: Joi.string()
+        .valid('immediate', 'scheduled')
+        .optional()
+        .default('immediate')
+        .messages({
+          'any.only': 'Activation mode must be either "immediate" or "scheduled"'
+        }),
       is_active: Joi.boolean()
         .optional()
-        .default(true)
+        .when('activation_mode', {
+          is: 'scheduled',
+          then: Joi.valid(false).default(false),  // Force false when scheduled
+          otherwise: Joi.default(true)
+        })
         .messages({
-          'boolean.base': 'is_active must be a boolean value'
+          'boolean.base': 'is_active must be a boolean value',
+          'any.only': 'is_active must be false when using scheduled activation mode'
+        }),
+      // Scheduled activation datetime for bulk creation
+      scheduled_activation_datetime: Joi.date()
+        .iso()
+        .min('now')  // Must be in future
+        .when('activation_mode', {
+          is: 'scheduled',
+          then: Joi.required()
+            .messages({
+              'any.required': 'Scheduled activation date/time is required when using scheduled activation mode',
+              'date.min': 'Scheduled activation must be in the future'
+            }),
+          otherwise: Joi.optional().allow(null, '')
+        })
+        .messages({
+          'date.iso': 'Invalid datetime format. Use ISO 8601 format (e.g., 2025-01-20T14:00:00Z)',
+          'date.min': 'Scheduled activation date must be in the future'
         })
     }).required(),
     timeSlots: Joi.array()
@@ -476,10 +536,10 @@ const schemas = {
         'any.only': 'filter_mock_type must be one of: Situational Judgment, Clinical Skills, Mini-mock, or Mock Discussion'
       }),
     filter_status: Joi.string()
-      .valid('all', 'active', 'inactive')
+      .valid('all', 'active', 'inactive', 'scheduled')
       .optional()
       .messages({
-        'any.only': 'filter_status must be one of: all, active, or inactive'
+        'any.only': 'filter_status must be one of: all, active, inactive, or scheduled'
       }),
     filter_date_from: Joi.string()
       .pattern(/^\d{4}-\d{2}-\d{2}$/)

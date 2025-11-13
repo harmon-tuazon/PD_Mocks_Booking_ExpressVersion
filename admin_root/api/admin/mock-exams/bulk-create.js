@@ -31,14 +31,36 @@ async function bulkCreateMockExamsHandler(req, res) {
 
     const { commonProperties, timeSlots, capacityMode = 'global' } = validatedData;
 
-    console.log('📝 [BULK-CREATE] Bulk creating mock exams:', {
-      mock_type: commonProperties.mock_type,
-      exam_date: commonProperties.exam_date,
-      location: commonProperties.location,
-      capacity_mode: capacityMode,
-      time_slots_count: timeSlots.length,
-      admin_user: req.user?.email
-    });
+    // Handle scheduled activation mode for bulk creation
+    if (commonProperties.activation_mode === 'scheduled') {
+      // Ensure is_active is false when scheduling activation
+      commonProperties.is_active = false;
+
+      console.log('📝 [BULK-CREATE] Bulk creating SCHEDULED mock exams:', {
+        mock_type: commonProperties.mock_type,
+        exam_date: commonProperties.exam_date,
+        location: commonProperties.location,
+        capacity_mode: capacityMode,
+        time_slots_count: timeSlots.length,
+        scheduled_activation: commonProperties.scheduled_activation_datetime,
+        admin_user: req.user?.email
+      });
+    } else {
+      // For immediate activation, ensure is_active is true
+      commonProperties.is_active = true;
+      // Clear any scheduled activation datetime
+      commonProperties.scheduled_activation_datetime = null;
+
+      console.log('📝 [BULK-CREATE] Bulk creating IMMEDIATE mock exams:', {
+        mock_type: commonProperties.mock_type,
+        exam_date: commonProperties.exam_date,
+        location: commonProperties.location,
+        capacity_mode: capacityMode,
+        time_slots_count: timeSlots.length,
+        is_active: commonProperties.is_active,
+        admin_user: req.user?.email
+      });
+    }
 
     // Check overlap in time slots
     console.log('🔍 [BULK-CREATE] Step 2: Checking time slot overlaps...');

@@ -54,5 +54,11 @@
   ],
   "env": {
     "ADMIN_MODE": "true"
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/admin/cron/activate-scheduled-exams",
+      "schedule": "0 5 * * *"
+    }
+  ]
 }

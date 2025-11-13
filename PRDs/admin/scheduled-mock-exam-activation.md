@@ -181,16 +181,17 @@ if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
 {
   "crons": [{
     "path": "/api/admin/cron/activate-scheduled-exams",
-    "schedule": "*/15 * * * *"
+    "schedule": "0 5 * * *"
   }]
 }
 ```
 
 **Schedule Rationale:**
-- `*/15 * * * *` = Every 15 minutes
-- Provides reasonable precision (sessions activate within 15 min of scheduled time)
-- Balances API usage vs responsiveness
-- Can be adjusted to `*/5 * * * *` for 5-minute precision if needed
+- `0 5 * * *` = Daily at 5:00 AM UTC (12:00 AM EST / 1:00 AM EDT)
+- Runs at midnight Toronto time during winter (EST)
+- Runs at 1:00 AM Toronto time during summer (EDT) - acceptable 1-hour delay
+- Daily execution is appropriate since sessions are scheduled days/weeks in advance
+- Reduces API usage while ensuring timely activation
 
 **Environment Variable:**
 - Add `CRON_SECRET` in Vercel dashboard

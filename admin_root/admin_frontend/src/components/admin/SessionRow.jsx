@@ -1,6 +1,7 @@
 import React from 'react';
 import { EyeIcon, ClockIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { formatDateShort } from '../../utils/dateUtils';
+import { formatTorontoDateTime } from '../../utils/dateTimeUtils';
 
 const SessionRow = ({
   session,
@@ -64,7 +65,7 @@ const SessionRow = ({
         {/* Empty column for alignment with aggregate Type column */}
         <td className="px-6 py-3">
           <div className="pl-8">
-            {/* Active/Inactive Indicator with Checkbox */}
+            {/* Active/Inactive/Scheduled Indicator with Checkbox */}
             <div className="flex items-center gap-3">
               {/* Checkbox - only visible when selected */}
               {isSelected && (
@@ -76,10 +77,28 @@ const SessionRow = ({
                   className="h-4 w-4 text-primary-600 bg-white border-gray-300 rounded focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
                 />
               )}
-              <div className={`h-2.5 w-2.5 rounded-full ${session.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
-              <span className={`text-xs font-medium ${session.is_active ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                {session.is_active ? 'Active' : 'Inactive'}
-              </span>
+
+              {/* Status indicator - show scheduled status if applicable */}
+              {!session.is_active && session.scheduled_activation_datetime ? (
+                <>
+                  <ClockIcon className="h-4 w-4 text-blue-500" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-medium text-blue-700 dark:text-blue-400">
+                      Scheduled
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatTorontoDateTime(session.scheduled_activation_datetime)}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className={`h-2.5 w-2.5 rounded-full ${session.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
+                  <span className={`text-xs font-medium ${session.is_active ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                    {session.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </td>
@@ -165,9 +184,23 @@ const SessionRow = ({
               className="h-4 w-4 text-primary-600 bg-white border-gray-300 rounded focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
             />
           )}
-          <div className={`h-2.5 w-2.5 rounded-full ${session.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
-          <div className="text-sm font-medium text-gray-900 dark:text-white">
-            {session.mock_type}
+
+          {/* Status indicator */}
+          {!session.is_active && session.scheduled_activation_datetime ? (
+            <ClockIcon className="h-4 w-4 text-blue-500" title={`Scheduled: ${formatTorontoDateTime(session.scheduled_activation_datetime)}`} />
+          ) : (
+            <div className={`h-2.5 w-2.5 rounded-full ${session.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
+          )}
+
+          <div>
+            <div className="text-sm font-medium text-gray-900 dark:text-white">
+              {session.mock_type}
+            </div>
+            {!session.is_active && session.scheduled_activation_datetime && (
+              <div className="text-xs text-blue-600 dark:text-blue-400">
+                Activates: {formatTorontoDateTime(session.scheduled_activation_datetime)}
+              </div>
+            )}
           </div>
         </div>
       </td>

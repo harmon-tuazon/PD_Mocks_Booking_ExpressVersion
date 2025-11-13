@@ -3,6 +3,8 @@
  * Displays key metrics for the mock exams dashboard
  */
 
+import { ClockIcon } from '@heroicons/react/24/outline';
+
 const DashboardMetrics = ({ metrics, isLoading }) => {
   if (isLoading) {
     return (
@@ -21,30 +23,49 @@ const DashboardMetrics = ({ metrics, isLoading }) => {
 
   if (!metrics) return null;
 
-  const cards = [
-    {
-      name: 'Total Sessions',
-      value: metrics.total_sessions || 0,
-      icon: (
-        <svg className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-        </svg>
-      ),
-      bgColor: 'bg-primary-50',
-      textColor: 'text-primary-600'
-    },
-    {
-      name: 'Upcoming Sessions',
-      value: metrics.upcoming_sessions || 0,
-      icon: (
-        <svg className="h-6 w-6 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      ),
-      bgColor: 'bg-teal-50',
-      textColor: 'text-teal-600'
-    },
-    {
+  // Build cards array dynamically based on available metrics
+  const cards = [];
+
+  // Always show total sessions
+  cards.push({
+    name: 'Total Sessions',
+    value: metrics.total_sessions || 0,
+    icon: (
+      <svg className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+      </svg>
+    ),
+    bgColor: 'bg-primary-50',
+    textColor: 'text-primary-600'
+  });
+
+  // Show scheduled sessions if available (from backend metrics)
+  if (metrics.scheduled_sessions !== undefined && metrics.scheduled_sessions > 0) {
+    cards.push({
+      name: 'Scheduled',
+      value: metrics.scheduled_sessions,
+      icon: <ClockIcon className="h-6 w-6 text-blue-600" />,
+      bgColor: 'bg-blue-50',
+      textColor: 'text-blue-600'
+    });
+  }
+
+  // Upcoming sessions
+  cards.push({
+    name: 'Upcoming Sessions',
+    value: metrics.upcoming_sessions || 0,
+    icon: (
+      <svg className="h-6 w-6 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    ),
+    bgColor: 'bg-teal-50',
+    textColor: 'text-teal-600'
+  });
+
+  // Only show fully booked or avg utilization if we have 4 or fewer cards
+  if (cards.length < 4) {
+    cards.push({
       name: 'Fully Booked',
       value: metrics.fully_booked || 0,
       icon: (
@@ -54,8 +75,11 @@ const DashboardMetrics = ({ metrics, isLoading }) => {
       ),
       bgColor: 'bg-coral-50',
       textColor: 'text-coral-600'
-    },
-    {
+    });
+  }
+
+  if (cards.length < 4) {
+    cards.push({
       name: 'Avg Utilization',
       value: `${metrics.average_utilization || 0}%`,
       icon: (
@@ -65,8 +89,8 @@ const DashboardMetrics = ({ metrics, isLoading }) => {
       ),
       bgColor: 'bg-primary-50',
       textColor: 'text-primary-600'
-    }
-  ];
+    });
+  }
 
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">

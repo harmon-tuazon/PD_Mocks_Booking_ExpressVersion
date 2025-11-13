@@ -7,7 +7,7 @@
  * This keeps the logic DRY and testable.
  */
 
-const hubspot = require('./hubspot');
+const { HubSpotService } = require('./hubspot');
 const { getCache } = require('./cache');
 
 // HubSpot Object Type IDs
@@ -111,6 +111,7 @@ async function findOverdueSessions() {
   };
 
   try {
+    const hubspot = new HubSpotService();
     const response = await hubspot.apiCall('POST',
       `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`,
       searchRequest
@@ -143,6 +144,8 @@ async function batchActivateSessions(sessions) {
   }));
 
   // Process in batches of 100 (HubSpot limit)
+  const hubspot = new HubSpotService();
+
   for (let i = 0; i < updates.length; i += BATCH_SIZE) {
     const chunk = updates.slice(i, i + BATCH_SIZE);
 
