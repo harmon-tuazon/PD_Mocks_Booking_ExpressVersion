@@ -325,20 +325,18 @@ function MockExamDetail() {
                 onSave={examEdit.saveChanges}
                 onCancel={examEdit.forceCancelEdit}
               />
-              {/* Delete Controls - only render if exam exists */}
-              {exam && (
-                <DeleteControls
-                  examId={exam.id}
-                  examDetails={{
-                    mock_type: exam.mock_type,
-                    exam_date: exam.exam_date,
-                    location: exam.location,
-                    total_bookings: exam.total_bookings || 0
-                  }}
-                  onDeleteSuccess={handleDeleteSuccess}
-                  disabled={examEdit.isEditing}
-                />
-              )}
+              {/* Delete Controls */}
+              <DeleteControls
+                examId={exam?.id}
+                examDetails={{
+                  mock_type: exam?.mock_type,
+                  exam_date: exam?.exam_date,
+                  location: exam?.location,
+                  total_bookings: exam?.total_bookings || 0
+                }}
+                onDeleteSuccess={handleDeleteSuccess}
+                disabled={examEdit.isEditing}
+              />
             </div>
           </div>
           <p className="font-body text-base text-gray-600 dark:text-gray-300">
@@ -369,12 +367,10 @@ function MockExamDetail() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Bookings ({bookingsData?.pagination?.total || 0})
               </h2>
-              {exam && (
-                <CreateBookingButton
-                  mockExam={exam}
-                  onSuccess={handleBookingCreated}
-                />
-              )}
+              <CreateBookingButton
+                mockExam={examData?.data}
+                onSuccess={handleBookingCreated}
+              />
             </div>
           </div>
 
