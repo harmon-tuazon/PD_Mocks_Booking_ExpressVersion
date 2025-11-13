@@ -51,6 +51,12 @@ const AggregateRow = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Safety check: return null if aggregate is not defined
+  if (!aggregate) {
+    console.error('AggregateRow: aggregate prop is undefined');
+    return null;
+  }
+
   // Check if sessions are preloaded in the aggregate data
   const hasPreloadedSessions = Boolean(aggregate.sessions);
 
