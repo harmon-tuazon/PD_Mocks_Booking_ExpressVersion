@@ -258,8 +258,8 @@ const schemas = {
       .optional()
       .when('activation_mode', {
         is: 'scheduled',
-        then: Joi.valid(false).default(false),  // Force false when scheduled
-        otherwise: Joi.default(true)
+        then: Joi.boolean().valid(false).default(false),  // Force false when scheduled
+        otherwise: Joi.boolean().default(true)
       })
       .messages({
         'boolean.base': 'is_active must be a boolean value',
