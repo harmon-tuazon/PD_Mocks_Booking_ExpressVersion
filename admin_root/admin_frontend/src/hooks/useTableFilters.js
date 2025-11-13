@@ -8,7 +8,7 @@ const DEFAULT_FILTERS = {
   page: 1,
   limit: 25,
   sort_by: 'exam_date',
-  sort_order: 'asc',
+  sort_order: 'desc',
   filter_location: '',
   filter_mock_type: '',
   filter_status: 'all',
