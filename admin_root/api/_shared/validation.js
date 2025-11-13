@@ -268,19 +268,19 @@ const schemas = {
     // Scheduled activation datetime - required when activation_mode is 'scheduled'
     scheduled_activation_datetime: Joi.date()
       .iso()
-      .min('now')  // Must be in future
+      .min(new Date(new Date().setHours(0, 0, 0, 0)))  // Allow today onwards (for testing)
       .when('activation_mode', {
         is: 'scheduled',
         then: Joi.required()
           .messages({
             'any.required': 'Scheduled activation date/time is required when using scheduled activation mode',
-            'date.min': 'Scheduled activation must be in the future'
+            'date.min': 'Scheduled activation must be today or in the future'
           }),
         otherwise: Joi.optional().allow(null, '')
       })
       .messages({
         'date.iso': 'Invalid datetime format. Use ISO 8601 format (e.g., 2025-01-20T14:00:00Z)',
-        'date.min': 'Scheduled activation date must be in the future'
+        'date.min': 'Scheduled activation date must be today or in the future'
       }),
     start_time: Joi.string()
       .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
@@ -370,19 +370,19 @@ const schemas = {
       // Scheduled activation datetime for bulk creation
       scheduled_activation_datetime: Joi.date()
         .iso()
-        .min('now')  // Must be in future
+        .min(new Date(new Date().setHours(0, 0, 0, 0)))  // Allow today onwards (for testing)
         .when('activation_mode', {
           is: 'scheduled',
           then: Joi.required()
             .messages({
               'any.required': 'Scheduled activation date/time is required when using scheduled activation mode',
-              'date.min': 'Scheduled activation must be in the future'
+              'date.min': 'Scheduled activation must be today or in the future'
             }),
           otherwise: Joi.optional().allow(null, '')
         })
         .messages({
           'date.iso': 'Invalid datetime format. Use ISO 8601 format (e.g., 2025-01-20T14:00:00Z)',
-          'date.min': 'Scheduled activation date must be in the future'
+          'date.min': 'Scheduled activation date must be today or in the future'
         })
     }).required(),
     timeSlots: Joi.array()
