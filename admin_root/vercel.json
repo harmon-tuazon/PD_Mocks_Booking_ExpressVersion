@@ -58,7 +58,7 @@
   "crons": [
     {
       "path": "/api/admin/cron/activate-scheduled-exams",
-      "schedule": "0 5 * * *"
+      "schedule": "0 5,17 * * *"
     }
   ]
 }

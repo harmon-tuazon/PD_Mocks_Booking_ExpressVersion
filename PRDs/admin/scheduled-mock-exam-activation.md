@@ -41,7 +41,7 @@ Enable admins to schedule when mock exam sessions become active instead of requi
 4. Maintain system reliability with automated background jobs
 
 ### Success Metrics
-- ✅ 100% of scheduled activations execute within 15 minutes of scheduled time
+- ✅ 100% of scheduled activations execute within 12 hours of scheduled time
 - ✅ Zero manual activations required for pre-scheduled sessions
 - ✅ 90% reduction in admin time spent on session activation
 - ✅ Clear audit trail of scheduled vs manual activations
@@ -181,17 +181,19 @@ if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
 {
   "crons": [{
     "path": "/api/admin/cron/activate-scheduled-exams",
-    "schedule": "0 5 * * *"
+    "schedule": "0 5,17 * * *"
   }]
 }
 ```
 
 **Schedule Rationale:**
-- `0 5 * * *` = Daily at 5:00 AM UTC (12:00 AM EST / 1:00 AM EDT)
-- Runs at midnight Toronto time during winter (EST)
-- Runs at 1:00 AM Toronto time during summer (EDT) - acceptable 1-hour delay
-- Daily execution is appropriate since sessions are scheduled days/weeks in advance
-- Reduces API usage while ensuring timely activation
+- `0 5,17 * * *` = Twice daily at 5:00 AM UTC and 5:00 PM UTC
+  - **5:00 AM UTC** = 12:00 AM EST / 1:00 AM EDT (midnight Toronto time)
+  - **5:00 PM UTC** = 12:00 PM EST / 1:00 PM EDT (noon Toronto time)
+- Maximum 12-hour delay for scheduled activations
+- Covers both morning and afternoon activation needs
+- Twice-daily execution balances timely activation with API efficiency
+- Reduces API usage while supporting same-day noon activations
 
 **Environment Variable:**
 - Add `CRON_SECRET` in Vercel dashboard
@@ -532,7 +534,7 @@ Return response:
 **Handling:**
 - Log error details
 - Return 500 response
-- Cron will retry on next scheduled run (15 min later)
+- Cron will retry on next scheduled run (up to 12 hours later)
 - Sessions eventually activate (self-healing)
 
 ### Scenario 2: Partial Batch Failure
