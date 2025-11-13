@@ -118,11 +118,12 @@ module.exports = async (req, res) => {
             capacity: capacity,
             total_bookings: totalBookings,
             location: session.properties.location,
-            is_active: session.properties.is_active === 'true',
+            is_active: session.properties.is_active,
+            scheduled_activation_datetime: session.properties.scheduled_activation_datetime,
             utilization_rate: capacity > 0
               ? Math.round((totalBookings / capacity) * 100)
               : 0,
-            status: session.properties.is_active === 'true' ? 'active' : 'inactive',
+            status: session.properties.is_active,
             created_at: session.properties.hs_createdate,
             updated_at: session.properties.hs_lastmodifieddate
           };

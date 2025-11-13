@@ -1778,6 +1778,7 @@ class HubSpotService {
             properties: [
               'mock_type', 'exam_date', 'start_time', 'end_time',
               'capacity', 'total_bookings', 'location', 'is_active',
+              'scheduled_activation_datetime',
               'hs_createdate', 'hs_lastmodifieddate'
             ],
             inputs: batchIds.map(id => ({ id }))
