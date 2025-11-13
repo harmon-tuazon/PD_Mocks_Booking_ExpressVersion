@@ -166,7 +166,20 @@ function MockExamsDashboard() {
     }
   }, [viewMode, paginatedAggregates, mockExamsData]);
 
-  const bulkSelection = useBulkSelection(currentSessions);
+  // Calculate total session count across all pages for consistent display
+  const totalSessionCount = useMemo(() => {
+    if (viewMode === 'aggregate') {
+      // For aggregate view, sum session counts from all aggregates (not just paginated)
+      return sortedAggregates.reduce((total, aggregate) => {
+        return total + (aggregate.session_count || 0);
+      }, 0);
+    } else {
+      // For list view, use backend pagination total
+      return paginationInfo.total_records;
+    }
+  }, [viewMode, sortedAggregates, paginationInfo.total_records]);
+
+  const bulkSelection = useBulkSelection(currentSessions, totalSessionCount);
 
   // Fetch metrics data (only pass non-empty date filters)
   const metricsFilters = useMemo(() => {

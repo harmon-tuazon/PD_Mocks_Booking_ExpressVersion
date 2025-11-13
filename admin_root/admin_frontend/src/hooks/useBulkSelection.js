@@ -4,10 +4,11 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
  * Custom hook for managing bulk selection of mock exam sessions
  * Based on the pattern from useBatchCancellation but adapted for mock exams
  *
- * @param {Array} sessions - Array of mock exam sessions
+ * @param {Array} sessions - Array of mock exam sessions (on current page)
+ * @param {number} overrideTotalCount - Optional total session count across all pages
  * @returns {Object} Selection state and methods
  */
-const useBulkSelection = (sessions = []) => {
+const useBulkSelection = (sessions = [], overrideTotalCount = null) => {
   // Core state
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedSessionIds, setSelectedSessionIds] = useState(new Set());
@@ -35,7 +36,7 @@ const useBulkSelection = (sessions = []) => {
 
   // Get counts
   const selectedCount = selectedSessionIds.size;
-  const totalCount = sessions.length;
+  const totalCount = overrideTotalCount !== null ? overrideTotalCount : sessions.length;
 
   // Get selected sessions with their details
   const selectedSessions = useMemo(() => {
