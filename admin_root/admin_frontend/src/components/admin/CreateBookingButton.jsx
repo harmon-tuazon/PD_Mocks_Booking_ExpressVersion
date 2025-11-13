@@ -23,7 +23,7 @@ const CreateBookingButton = ({ mockExam, onSuccess }) => {
         id: mockExam.id,
         is_active: mockExam.is_active,
         is_active_type: typeof mockExam.is_active,
-        mock_type: mockExam.mock_type,
+        mock_type: mockExam?.mock_type,
         full_data: mockExam
       });
     }

@@ -124,11 +124,11 @@ const CreateBookingModal = ({ isOpen, onClose, mockExam, onSuccess }) => {
     try {
       // Prepare request payload
       const payload = {
-        mock_exam_id: mockExam.id,
+        mock_exam_id: mockExam?.id,
         student_id: formData.student_id,
         email: formData.email.toLowerCase(),
-        mock_type: mockExam.mock_type,
-        exam_date: mockExam.exam_date
+        mock_type: mockExam?.mock_type,
+        exam_date: mockExam?.exam_date
       };
 
       // Add conditional fields
