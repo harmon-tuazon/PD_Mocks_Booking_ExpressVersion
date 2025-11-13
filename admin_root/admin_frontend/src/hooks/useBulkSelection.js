@@ -1,4 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { adminApi } from '../services/adminApi';
 
 /**
  * Custom hook for managing bulk selection of mock exam sessions
@@ -9,9 +11,13 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
  * @returns {Object} Selection state and methods
  */
 const useBulkSelection = (sessions = [], overrideTotalCount = null) => {
+  const queryClient = useQueryClient();
+
   // Core state
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedSessionIds, setSelectedSessionIds] = useState(new Set());
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [operationResult, setOperationResult] = useState(null);
 
   // ESC key listener to exit selection mode
   useEffect(() => {
@@ -112,6 +118,47 @@ const useBulkSelection = (sessions = [], overrideTotalCount = null) => {
     return Array.from(selectedSessionIds);
   }, [selectedSessionIds]);
 
+  // Execute bulk toggle operation
+  const executeBulkToggle = useCallback(async (sessionIds) => {
+    setIsSubmitting(true);
+    setOperationResult(null);
+
+    try {
+      const response = await adminApi.post('/admin/mock-exams/bulk-toggle-status', {
+        sessionIds
+      });
+
+      const result = response.data;
+      setOperationResult(result);
+
+      // Invalidate queries to refetch data
+      await Promise.all([
+        queryClient.invalidateQueries(['mock-exams']),
+        queryClient.invalidateQueries(['mock-exams-list']),
+        queryClient.invalidateQueries(['aggregates']),
+        queryClient.invalidateQueries(['mock-exam-aggregates']),
+        queryClient.invalidateQueries(['metrics'])
+      ]);
+
+      return result;
+    } catch (error) {
+      console.error('Bulk toggle failed:', error);
+      const errorResult = {
+        success: false,
+        summary: {
+          total: sessionIds.length,
+          updated: 0,
+          failed: sessionIds.length
+        },
+        error: error.response?.data?.error || { message: 'Failed to toggle session status' }
+      };
+      setOperationResult(errorResult);
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [queryClient]);
+
   return {
     // State
     isSelectionMode,
@@ -120,6 +167,8 @@ const useBulkSelection = (sessions = [], overrideTotalCount = null) => {
     selectedSessions,
     selectedSessionIds,
     selectedIds,
+    isSubmitting,
+    operationResult,
 
     // Actions
     toggleMode,
@@ -127,6 +176,7 @@ const useBulkSelection = (sessions = [], overrideTotalCount = null) => {
     selectAll,
     clearAll,
     exitToView,
+    executeBulkToggle,
 
     // Helpers
     isSelected

@@ -12,7 +12,9 @@ import DashboardMetrics from '../components/admin/DashboardMetrics';
 import FilterBar from '../components/admin/FilterBar';
 import MockExamsSelectionToolbar from '../components/admin/MockExamsSelectionToolbar';
 import MockExamsTable from '../components/admin/MockExamsTable';
-import { useMemo, useState } from 'react';
+import BulkToggleActiveModal from '../components/admin/BulkToggleActiveModal';
+import { useMemo, useState, useCallback } from 'react';
+import toast from 'react-hot-toast';
 
 function MockExamsDashboard() {
   const navigate = useNavigate();
@@ -23,6 +25,9 @@ function MockExamsDashboard() {
   // State for pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20; // Match BookingsTable
+
+  // State for bulk toggle modal
+  const [isBulkToggleModalOpen, setIsBulkToggleModalOpen] = useState(false);
 
   // Initialize filter management
   const {
@@ -238,6 +243,48 @@ function MockExamsDashboard() {
     navigate(`/mock-exams/${session.id}`);
   };
 
+  // Handler for opening bulk toggle modal
+  const handleToggleActiveStatus = useCallback(() => {
+    setIsBulkToggleModalOpen(true);
+  }, []);
+
+  // Handler for confirming bulk toggle operation
+  const handleConfirmToggle = useCallback(async () => {
+    try {
+      const sessionIds = bulkSelection.selectedIds;
+      const result = await bulkSelection.executeBulkToggle(sessionIds);
+
+      // Show success/failure toast based on results
+      if (result.success) {
+        if (result.summary.failed === 0) {
+          // All successful
+          toast.success(
+            `Successfully toggled status for ${result.summary.updated} session${result.summary.updated !== 1 ? 's' : ''}`
+          );
+        } else {
+          // Partial success
+          toast.success(
+            `Toggled ${result.summary.updated} of ${result.summary.total} sessions. ${result.summary.failed} failed.`,
+            { duration: 6000 }
+          );
+        }
+      } else {
+        // Complete failure
+        toast.error('Failed to toggle session status. Please try again.');
+      }
+
+      // Exit selection mode and close modal on success
+      if (result.success && result.summary.updated > 0) {
+        bulkSelection.exitToView();
+        setIsBulkToggleModalOpen(false);
+      }
+    } catch (error) {
+      // Error toast already shown by executeBulkToggle
+      console.error('Toggle confirmation error:', error);
+      // Keep modal open on error so user can retry or cancel
+    }
+  }, [bulkSelection]);
+
   // Map backend sort column names back to frontend for display
   const getCurrentSortForAggregate = () => {
     const reverseColumnMap = {
@@ -303,6 +350,9 @@ function MockExamsDashboard() {
             totalCount={bulkSelection.totalCount}
             onClearAll={bulkSelection.clearAll}
             onExitMode={bulkSelection.exitToView}
+            onToggleActiveStatus={handleToggleActiveStatus}
+            selectedSessions={bulkSelection.selectedSessions}
+            isSubmitting={bulkSelection.isSubmitting}
           />
         )}
 
@@ -345,6 +395,15 @@ function MockExamsDashboard() {
           isSelectionMode={bulkSelection.isSelectionMode}
           onToggleSelection={bulkSelection.toggleSelection}
           isSelected={bulkSelection.isSelected}
+        />
+
+        {/* Bulk Toggle Active Modal */}
+        <BulkToggleActiveModal
+          isOpen={isBulkToggleModalOpen}
+          onClose={() => setIsBulkToggleModalOpen(false)}
+          onConfirm={handleConfirmToggle}
+          selectedSessions={bulkSelection.selectedSessions}
+          isSubmitting={bulkSelection.isSubmitting}
         />
       </div>
     </div>

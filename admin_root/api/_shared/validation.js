@@ -578,6 +578,21 @@ const schemas = {
       })
   }),
 
+  // Schema for bulk toggle status (Admin)
+  bulkToggleStatus: Joi.object({
+    sessionIds: Joi.array()
+      .items(Joi.string().pattern(/^\d+$/))
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one session ID is required',
+        'array.max': 'Maximum 100 sessions can be toggled at once',
+        'string.pattern.base': 'Invalid session ID format',
+        'any.required': 'Session IDs are required'
+      })
+  }),
+
   // Schema for batch attendance update (Admin)
   batchAttendanceUpdate: Joi.object({
     bookings: Joi.array()
