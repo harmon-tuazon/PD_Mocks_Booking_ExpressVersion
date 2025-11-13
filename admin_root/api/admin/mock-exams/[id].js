@@ -42,8 +42,8 @@ async function handlePatchRequest(req, res) {
     const user = await requireAdmin(req);
     const adminEmail = user?.email || 'admin@prepdoctors.ca';
 
-    // Vercel dynamic routes provide parameters in req.params
-    const mockExamId = req.params.id;
+    // Extract ID from query params (Vercel provides dynamic route params via req.query)
+    const mockExamId = req.query.id;
 
     // Validate ID format
     if (!mockExamId) {
@@ -325,8 +325,8 @@ async function handleGetRequest(req, res) {
     // Verify admin authentication
     const user = await requireAdmin(req);
 
-    // Vercel dynamic routes provide parameters in req.params
-    const mockExamId = req.params.id;
+    // Extract ID from query params (Vercel provides dynamic route params via req.query)
+    const mockExamId = req.query.id;
 
     // Validate ID format
     if (!mockExamId) {
