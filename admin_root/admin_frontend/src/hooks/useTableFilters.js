@@ -11,7 +11,7 @@ const DEFAULT_FILTERS = {
   sort_order: 'desc',
   filter_location: '',
   filter_mock_type: '',
-  filter_status: 'all',
+  filter_status: '', // Changed from 'all' to empty string to match other filters
   filter_date_from: '',
   filter_date_to: ''
 };
@@ -106,7 +106,7 @@ export function useTableFilters(initialFilters = {}) {
     return (
       filters.filter_location !== '' ||
       filters.filter_mock_type !== '' ||
-      filters.filter_status !== 'all' ||
+      filters.filter_status !== '' || // Changed from 'all' to empty string
       filters.filter_date_from !== '' ||
       filters.filter_date_to !== ''
     );
@@ -119,7 +119,7 @@ export function useTableFilters(initialFilters = {}) {
     let count = 0;
     if (filters.filter_location) count++;
     if (filters.filter_mock_type) count++;
-    if (filters.filter_status !== 'all') count++;
+    if (filters.filter_status !== '' && filters.filter_status !== 'all') count++; // Check both for compatibility
     if (filters.filter_date_from) count++;
     if (filters.filter_date_to) count++;
     return count;

@@ -1,8 +1,35 @@
 import React, { useState } from 'react';
-import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronRightIcon, ClockIcon } from '@heroicons/react/24/outline';
 import SessionRow from './SessionRow';
 import { useFetchAggregateSessions } from '../../hooks/useFetchAggregateSessions';
 import { formatDateLong } from '../../utils/dateUtils';
+
+/**
+ * Determine the aggregate status based on all sessions within the aggregate
+ * @param {Array} sessions - Array of session objects
+ * @returns {Object|null} Status object with type, label, and color
+ */
+const determineAggregateStatus = (sessions) => {
+  if (!sessions || sessions.length === 0) return null;
+
+  // Collect all unique statuses
+  const statuses = new Set(sessions.map(s => s.is_active));
+
+  // If all sessions have the same status
+  if (statuses.size === 1) {
+    const status = sessions[0].is_active;
+    if (status === 'active') {
+      return { type: 'all_active', label: 'All Active', color: 'green' };
+    } else if (status === 'inactive') {
+      return { type: 'all_inactive', label: 'All Inactive', color: 'gray' };
+    } else if (status === 'scheduled') {
+      return { type: 'all_scheduled', label: 'All Scheduled', color: 'blue' };
+    }
+  }
+
+  // Mixed statuses
+  return { type: 'mixed', label: 'Mixed Status', color: 'yellow' };
+};
 
 const AggregateRow = ({
   aggregate,
@@ -43,6 +70,9 @@ const AggregateRow = ({
     setIsExpanded(!isExpanded);
   };
 
+  // Calculate the aggregate status from sessions
+  const aggregateStatus = determineAggregateStatus(sessions);
+
   return (
     <>
       {/* Aggregate Row - Clickable Header */}
@@ -76,6 +106,35 @@ const AggregateRow = ({
           </div>
         </td>
 
+        {/* Status Column */}
+        <td className="px-6 py-4">
+          {aggregateStatus ? (
+            <div className="flex items-center gap-2">
+              {/* Status icon based on type */}
+              {aggregateStatus.type === 'all_scheduled' ? (
+                <ClockIcon className="h-4 w-4 text-blue-500 flex-shrink-0" />
+              ) : aggregateStatus.type === 'all_active' ? (
+                <div className="h-2.5 w-2.5 rounded-full bg-green-500 flex-shrink-0" />
+              ) : aggregateStatus.type === 'all_inactive' ? (
+                <div className="h-2.5 w-2.5 rounded-full bg-gray-400 flex-shrink-0" />
+              ) : (
+                <div className="h-2.5 w-2.5 rounded-full bg-yellow-500 flex-shrink-0" />
+              )}
+              {/* Status label */}
+              <span className={`text-xs font-medium ${
+                aggregateStatus.color === 'green' ? 'text-green-700 dark:text-green-400' :
+                aggregateStatus.color === 'gray' ? 'text-gray-500 dark:text-gray-400' :
+                aggregateStatus.color === 'blue' ? 'text-blue-700 dark:text-blue-400' :
+                'text-yellow-700 dark:text-yellow-400'
+              }`}>
+                {aggregateStatus.label}
+              </span>
+            </div>
+          ) : (
+            <span className="text-xs text-gray-400">--</span>
+          )}
+        </td>
+
         {/* Date Column */}
         <td className="px-6 py-4">
           <div className="flex items-center gap-2">
@@ -99,7 +158,7 @@ const AggregateRow = ({
       {/* Expanded Sessions */}
       {isExpanded && (
         <tr>
-          <td colSpan="4" className="p-0">
+          <td colSpan="5" className="p-0">
             <div className="bg-gray-50 dark:bg-gray-900 border-l-4 border-blue-500">
               {showLoading ? (
                 <div className="py-8 text-center text-gray-500">
