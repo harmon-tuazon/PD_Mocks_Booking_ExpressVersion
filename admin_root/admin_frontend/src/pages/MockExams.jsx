@@ -5,6 +5,7 @@ import { mockExamsApi } from '../services/adminApi';
 import TimeSlotBuilder from '../components/admin/TimeSlotBuilder';
 import MockExamPreview from '../components/admin/MockExamPreview';
 import { ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
 import {
   Select,
   SelectContent,
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/date-picker';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { convertTorontoToUTC, formatTorontoDateTime } from '../utils/dateTimeUtils';
@@ -52,15 +54,14 @@ function MockExams() {
   });
   const [capacityMode, setCapacityMode] = useState('global'); // 'global' or 'per-slot'
   const [timeSlots, setTimeSlots] = useState([{ start_time: '', end_time: '', capacity: 15 }]);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
 
   // Mutation for single creation
   const createSingleMutation = useMutation({
     mutationFn: (data) => mockExamsApi.createSingle(data),
     onSuccess: (data) => {
-      setSuccessMessage(`Successfully created mock exam (ID: ${data.mockExam.id})`);
-      setErrorMessage('');
+      toast.success(`Successfully created mock exam (ID: ${data.mockExam.id})`, {
+        duration: 4000
+      });
       setShowPreview(false);
       resetForm();
 
@@ -70,8 +71,9 @@ function MockExams() {
       queryClient.invalidateQueries({ queryKey: ['mockExamsMetrics'] });
     },
     onError: (error) => {
-      setErrorMessage(error.message || 'Failed to create mock exam');
-      setSuccessMessage('');
+      toast.error(error.message || 'Failed to create mock exam', {
+        duration: 6000
+      });
     }
   });
 
@@ -80,10 +82,10 @@ function MockExams() {
     mutationFn: ({ commonProperties, timeSlots, capacityMode }) =>
       mockExamsApi.createBulk(commonProperties, timeSlots, capacityMode),
     onSuccess: (data) => {
-      setSuccessMessage(
-        `Successfully created ${data.created_count} mock exam${data.created_count > 1 ? 's' : ''}`
+      toast.success(
+        `Successfully created ${data.created_count} mock exam${data.created_count > 1 ? 's' : ''}`,
+        { duration: 4000 }
       );
-      setErrorMessage('');
       setShowPreview(false);
       resetForm();
 
@@ -93,8 +95,9 @@ function MockExams() {
       queryClient.invalidateQueries({ queryKey: ['mockExamsMetrics'] });
     },
     onError: (error) => {
-      setErrorMessage(error.message || 'Failed to create mock exams');
-      setSuccessMessage('');
+      toast.error(error.message || 'Failed to create mock exams', {
+        duration: 6000
+      });
     }
   });
 
@@ -195,51 +198,6 @@ function MockExams() {
           <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">Create single or multiple mock exam sessions</p>
         </div>
 
-        {/* Success/Error Messages */}
-        {successMessage && (
-          <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-400 dark:text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-green-800 dark:text-green-200">{successMessage}</p>
-              </div>
-              <div className="ml-auto pl-3">
-                <button onClick={() => setSuccessMessage('')} className="text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300">
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {errorMessage && (
-          <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400 dark:text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-red-800 dark:text-red-200">{errorMessage}</p>
-              </div>
-              <div className="ml-auto pl-3">
-                <button onClick={() => setErrorMessage('')} className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Form Container with max-width */}
         <div className="max-w-4xl mx-auto">
           <div className="space-y-6">
@@ -306,61 +264,7 @@ function MockExams() {
               </div>
             </div>
 
-            {/* Capacity Settings Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Capacity Settings</h3>
-              <div>
-                <Label className="text-gray-700 dark:text-gray-300">
-                  Capacity <span className="text-red-500">*</span>
-                </Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={formData.capacity}
-                    onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-                    required
-                    disabled={capacityMode === 'per-slot'}
-                    className={capacityMode === 'per-slot' ? 'opacity-50 cursor-not-allowed' : ''}
-                  />
-
-                  {/* Helper text - moved directly under capacity input */}
-                  {capacityMode === 'global' && (
-                    <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      This capacity will be applied to all time slots
-                    </p>
-                  )}
-                  {capacityMode === 'per-slot' && (
-                    <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      Set individual capacity for each time slot below
-                    </p>
-                  )}
-
-                  {/* Capacity mode checkbox */}
-                  <div className="flex items-center space-x-2 mt-3">
-                    <Checkbox
-                      id="per-slot-capacity"
-                      checked={capacityMode === 'per-slot'}
-                      onCheckedChange={(checked) => {
-                        setCapacityMode(checked ? 'per-slot' : 'global');
-                        if (checked) {
-                          // Clear global capacity when switching to per-slot mode
-                          setFormData({ ...formData, capacity: '' });
-                        }
-                      }}
-                    />
-                    <label
-                      htmlFor="per-slot-capacity"
-                      className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
-                    >
-                      Set capacity per time slot
-                    </label>
-                  </div>
-
-                </div>
-              </div>
-
-            {/* Activation Mode Section */}
+            {/* Activation Settings Section - Moved above Capacity */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Activation Settings</h3>
 
@@ -423,17 +327,17 @@ function MockExams() {
                   <Label htmlFor="scheduled_activation_datetime" className="text-gray-700 dark:text-gray-300">
                     Activation Date & Time <span className="text-red-500">*</span>
                   </Label>
-                  <input
-                    type="datetime-local"
+                  <DateTimePicker
                     id="scheduled_activation_datetime"
                     value={formData.scheduled_activation_datetime || ''}
-                    min={new Date().toISOString().slice(0, 16)} // Prevent past dates
-                    onChange={(e) => setFormData({
+                    minDateTime={new Date().toISOString().slice(0, 16)} // Prevent past dates
+                    onChange={(value) => setFormData({
                       ...formData,
-                      scheduled_activation_datetime: e.target.value
+                      scheduled_activation_datetime: value
                     })}
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                    required={formData.activation_mode === 'scheduled'}
+                    placeholder="Select activation date and time"
+                    className="mt-1 w-full"
+                    disabled={false}
                   />
                   <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
                     <ClockIcon className="h-4 w-4 mr-1" />
@@ -447,19 +351,92 @@ function MockExams() {
                 </div>
               )}
 
-              {/* Active status checkbox - only show if immediate mode */}
+              {/* Active status dropdown - only show if immediate mode */}
               {formData.activation_mode === 'immediate' && (
-                <div className="flex items-center space-x-2 mt-6">
-                  <Checkbox
-                    id="is_active"
-                    checked={formData.is_active}
-                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                  />
-                  <label htmlFor="is_active" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                    Active (available for booking immediately)
-                  </label>
+                <div className="mt-6">
+                  <Label htmlFor="is_active" className="text-gray-700 dark:text-gray-300">
+                    Status <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={formData.is_active ? 'active' : 'inactive'}
+                    onValueChange={(value) => setFormData({ ...formData, is_active: value === 'active' })}
+                  >
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                          Active
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="inactive">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                          Inactive
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    Active sessions are available for booking immediately
+                  </p>
                 </div>
               )}
+            </div>
+
+            {/* Capacity Settings Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Capacity Settings</h3>
+              <div>
+                <Label className="text-gray-700 dark:text-gray-300">
+                  Capacity <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={formData.capacity}
+                  onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
+                  required
+                  disabled={capacityMode === 'per-slot'}
+                  className={capacityMode === 'per-slot' ? 'opacity-50 cursor-not-allowed' : ''}
+                />
+
+                {/* Helper text - moved directly under capacity input */}
+                {capacityMode === 'global' && (
+                  <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    This capacity will be applied to all time slots
+                  </p>
+                )}
+                {capacityMode === 'per-slot' && (
+                  <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    Set individual capacity for each time slot below
+                  </p>
+                )}
+
+                {/* Capacity mode checkbox */}
+                <div className="flex items-center space-x-2 mt-3">
+                  <Checkbox
+                    id="per-slot-capacity"
+                    checked={capacityMode === 'per-slot'}
+                    onCheckedChange={(checked) => {
+                      setCapacityMode(checked ? 'per-slot' : 'global');
+                      if (checked) {
+                        // Clear global capacity when switching to per-slot mode
+                        setFormData({ ...formData, capacity: '' });
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="per-slot-capacity"
+                    className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
+                  >
+                    Set capacity per time slot
+                  </label>
+                </div>
+              </div>
             </div>
 
             {/* Sessions Information Section */}
