@@ -7,8 +7,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useMockExamsData, useMockExamsMetrics } from '../hooks/useMockExamsData';
 import { useTableFilters } from '../hooks/useTableFilters';
 import { useFetchAggregates } from '../hooks/useFetchAggregates';
+import useBulkSelection from '../hooks/useBulkSelection';
 import DashboardMetrics from '../components/admin/DashboardMetrics';
 import FilterBar from '../components/admin/FilterBar';
+import MockExamsSelectionToolbar from '../components/admin/MockExamsSelectionToolbar';
 import MockExamsTable from '../components/admin/MockExamsTable';
 import { useMemo, useState } from 'react';
 
@@ -146,6 +148,26 @@ function MockExamsDashboard() {
     return Math.ceil(sortedAggregates.length / itemsPerPage);
   }, [sortedAggregates, itemsPerPage]);
 
+  // Initialize bulk selection
+  // Use the current view's data for selection tracking
+  const currentSessions = useMemo(() => {
+    if (viewMode === 'aggregate') {
+      // For aggregate view, flatten all sessions from aggregates
+      const allSessions = [];
+      paginatedAggregates.forEach(aggregate => {
+        if (aggregate.sessions && Array.isArray(aggregate.sessions)) {
+          allSessions.push(...aggregate.sessions);
+        }
+      });
+      return allSessions;
+    } else {
+      // For list view, use the mock exams data directly
+      return mockExamsData;
+    }
+  }, [viewMode, paginatedAggregates, mockExamsData]);
+
+  const bulkSelection = useBulkSelection(currentSessions);
+
   // Fetch metrics data (only pass non-empty date filters)
   const metricsFilters = useMemo(() => {
     const params = {};
@@ -249,18 +271,27 @@ function MockExamsDashboard() {
           />
         </div>
 
-        {/* Filter Bar */}
-        <FilterBar
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onReset={handleResetFilters}
-          activeFilterCount={activeFilterCount}
-          viewMode={viewMode}
-          onViewModeChange={(newMode) => {
-            setViewMode(newMode);
-            setCurrentPage(1); // Reset to first page when view mode changes
-          }}
-        />
+        {/* Filter Bar or Selection Toolbar */}
+        {!bulkSelection.isSelectionMode ? (
+          <FilterBar
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onReset={handleResetFilters}
+            activeFilterCount={activeFilterCount}
+            viewMode={viewMode}
+            onViewModeChange={(newMode) => {
+              setViewMode(newMode);
+              setCurrentPage(1); // Reset to first page when view mode changes
+            }}
+          />
+        ) : (
+          <MockExamsSelectionToolbar
+            selectedCount={bulkSelection.selectedCount}
+            totalCount={bulkSelection.totalCount}
+            onClearAll={bulkSelection.clearAll}
+            onExitMode={bulkSelection.exitToView}
+          />
+        )}
 
         {/* Error Message */}
         {examsError && (
@@ -297,6 +328,10 @@ function MockExamsDashboard() {
           totalPages={viewMode === 'aggregate' ? aggregatesTotalPages : paginationInfo.total_pages}
           totalItems={viewMode === 'aggregate' ? sortedAggregates.length : paginationInfo.total_records}
           onPageChange={handlePageChange}
+          // Bulk selection props
+          isSelectionMode={bulkSelection.isSelectionMode}
+          onToggleSelection={bulkSelection.toggleSelection}
+          isSelected={bulkSelection.isSelected}
         />
       </div>
     </div>

@@ -20,7 +20,11 @@ const MockExamsTable = ({
   currentPage,
   totalPages,
   totalItems,
-  onPageChange
+  onPageChange,
+  // Bulk selection props
+  isSelectionMode = false,
+  onToggleSelection,
+  isSelected
 }) => {
   const navigate = useNavigate();
 
@@ -124,6 +128,9 @@ const MockExamsTable = ({
                   key={aggregate.aggregate_key}
                   aggregate={aggregate}
                   onView={(session) => navigate(`/mock-exams/${session.id}`)}
+                  isSelectionMode={isSelectionMode}
+                  onToggleSelection={onToggleSelection}
+                  isSelected={isSelected}
                 />
               ))}
             </tbody>
@@ -241,6 +248,9 @@ const MockExamsTable = ({
                 session={exam}
                 nested={false}
                 onView={(session) => navigate(`/mock-exams/${session.id}`)}
+                isSelectionMode={isSelectionMode}
+                onToggleSelection={onToggleSelection}
+                isSelected={isSelected ? isSelected(exam.id) : false}
               />
             ))}
           </tbody>

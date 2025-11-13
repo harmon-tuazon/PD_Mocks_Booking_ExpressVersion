@@ -2,7 +2,14 @@ import React from 'react';
 import { EyeIcon, ClockIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { formatDateShort } from '../../utils/dateUtils';
 
-const SessionRow = ({ session, nested = false, onView }) => {
+const SessionRow = ({
+  session,
+  nested = false,
+  onView,
+  isSelectionMode = false,
+  onToggleSelection,
+  isSelected = false
+}) => {
 
   // Format ISO timestamp to readable time (e.g., "2:00 PM")
   const formatTime = (timeString) => {
@@ -30,14 +37,31 @@ const SessionRow = ({ session, nested = false, onView }) => {
     }
   };
 
+  // Handle row click for selection
+  const handleRowClick = (e) => {
+    if (isSelectionMode) {
+      // Don't toggle if clicking the View button
+      if (e.target.closest('button[aria-label="View exam details"]')) {
+        e.stopPropagation();
+        return;
+      }
+      onToggleSelection?.(session.id);
+    }
+  };
+
+  // Build row classes with selection styling
   const rowClasses = nested
-    ? "border-b border-gray-100 dark:border-gray-800 hover:bg-white dark:hover:bg-gray-800"
-    : "border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800";
+    ? `border-b border-gray-100 dark:border-gray-800 hover:bg-white dark:hover:bg-gray-800
+       ${isSelectionMode ? 'cursor-pointer' : ''}
+       ${isSelected ? 'border-2 !border-primary-600 dark:!border-primary-400 bg-primary-50 dark:bg-primary-900/20' : ''}`
+    : `border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800
+       ${isSelectionMode ? 'cursor-pointer' : ''}
+       ${isSelected ? 'border-2 !border-primary-600 dark:!border-primary-400 bg-primary-50 dark:bg-primary-900/20' : ''}`;
 
   // If nested (inside aggregate), show simplified view
   if (nested) {
     return (
-      <tr className={rowClasses}>
+      <tr className={rowClasses} onClick={handleRowClick}>
         {/* Empty column for alignment with aggregate Type column */}
         <td className="px-6 py-3">
           <div className="pl-8">
@@ -118,7 +142,7 @@ const SessionRow = ({ session, nested = false, onView }) => {
 
   // Regular list view (not nested)
   return (
-    <tr className={rowClasses}>
+    <tr className={rowClasses} onClick={handleRowClick}>
       {/* Type Column */}
       <td className="px-6 py-3">
         <div className="flex items-center gap-2">

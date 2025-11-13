@@ -4,7 +4,13 @@ import SessionRow from './SessionRow';
 import { useFetchAggregateSessions } from '../../hooks/useFetchAggregateSessions';
 import { formatDateLong } from '../../utils/dateUtils';
 
-const AggregateRow = ({ aggregate, onView }) => {
+const AggregateRow = ({
+  aggregate,
+  onView,
+  isSelectionMode = false,
+  onToggleSelection,
+  isSelected
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Check if sessions are preloaded in the aggregate data
@@ -132,6 +138,9 @@ const AggregateRow = ({ aggregate, onView }) => {
                         session={session}
                         nested={true}
                         onView={onView}
+                        isSelectionMode={isSelectionMode}
+                        onToggleSelection={onToggleSelection}
+                        isSelected={isSelected ? isSelected(session.id) : false}
                       />
                     ))}
                   </tbody>
