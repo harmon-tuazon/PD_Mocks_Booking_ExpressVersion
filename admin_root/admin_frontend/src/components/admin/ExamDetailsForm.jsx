@@ -6,10 +6,11 @@
 import StatusBadge from './StatusBadge';
 import PrerequisiteExamSelector from './PrerequisiteExamSelector';
 import PrerequisiteExamsList from './PrerequisiteExamsList';
-import { ExclamationCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { ExclamationCircleIcon, InformationCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { fieldInfoMessages } from '../../utils/examValidation';
 import { formatTime } from '../../utils/timeFormatters';
 import { formatDateLong } from '../../utils/dateUtils';
+import { formatTorontoDateTime, convertUTCToToronto, convertTorontoToUTC } from '../../utils/dateTimeUtils';
 import {
   Select,
   SelectContent,
@@ -18,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { TimePickerSelect } from '@/components/ui/time-picker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -121,36 +123,35 @@ const ExamDetailsForm = ({
             <div>
               <Label>Status</Label>
               {isEditing ? (
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="is_active"
+                <div>
+                  <Select
                     name="is_active"
-                    checked={displayData.is_active === 'active' || displayData.is_active === true}
-                    onCheckedChange={(checked) => {
-                      // Convert checkbox to string status - only toggle between active/inactive
-                      // If it's scheduled, don't allow checkbox editing
-                      if (displayData.is_active !== 'scheduled') {
-                        onFieldChange('is_active', checked ? 'active' : 'inactive');
-                        onFieldBlur('is_active');
+                    value={displayData.is_active || 'inactive'}
+                    onValueChange={(value) => {
+                      onFieldChange('is_active', value);
+                      // Clear scheduled datetime if changing away from scheduled
+                      if (value !== 'scheduled' && displayData.scheduled_activation_datetime) {
+                        onFieldChange('scheduled_activation_datetime', null);
                       }
+                      onFieldBlur('is_active');
                     }}
-                    disabled={isSaving || displayData.is_active === 'scheduled'}
-                  />
-                  <label htmlFor="is_active" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                    <span className={
-                      displayData.is_active === 'active' || displayData.is_active === true
-                        ? 'text-green-600 dark:text-green-400 font-medium'
-                        : displayData.is_active === 'scheduled'
-                        ? 'text-blue-600 dark:text-blue-400 font-medium'
-                        : 'text-gray-500 dark:text-gray-400'
-                    }>
-                      {displayData.is_active === 'active' || displayData.is_active === true
-                        ? 'Active'
-                        : displayData.is_active === 'scheduled'
-                        ? 'Scheduled'
-                        : 'Inactive'}
-                    </span>
-                  </label>
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger className={getErrorClass('is_active')}>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="scheduled">Scheduled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {getFieldError('is_active') && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                      <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                      {getFieldError('is_active')}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div>
@@ -159,6 +160,13 @@ const ExamDetailsForm = ({
                     (displayData.is_active === 'active' || displayData.is_active === true ? 'active' :
                      displayData.is_active === 'scheduled' ? 'scheduled' : 'inactive')
                   } />
+                  {/* Show scheduled datetime when status is scheduled */}
+                  {displayData.is_active === 'scheduled' && displayData.scheduled_activation_datetime && (
+                    <div className="mt-1 text-sm text-blue-600 dark:text-blue-400 flex items-center">
+                      <ClockIcon className="h-4 w-4 mr-1" />
+                      Activates: {formatTorontoDateTime(displayData.scheduled_activation_datetime)}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -338,6 +346,51 @@ const ExamDetailsForm = ({
                 {displayData.id || 'N/A'}
               </div>
             </div>
+
+            {/* Scheduled Activation DateTime - Only when status is scheduled */}
+            {displayData.is_active === 'scheduled' && (
+              <div className="col-span-2">
+                <Label>Scheduled Activation DateTime</Label>
+                {isEditing ? (
+                  <div>
+                    <DateTimePicker
+                      id="scheduled_activation_datetime"
+                      name="scheduled_activation_datetime"
+                      value={displayData.scheduled_activation_datetime
+                        ? convertUTCToToronto(displayData.scheduled_activation_datetime)
+                        : ''}
+                      onChange={(value) => {
+                        // Convert to UTC for backend
+                        const utcValue = value ? convertTorontoToUTC(value) : null;
+                        onFieldChange('scheduled_activation_datetime', utcValue);
+                        onFieldBlur('scheduled_activation_datetime');
+                      }}
+                      placeholder="Select activation date and time"
+                      disabled={isSaving}
+                      minDateTime={new Date().toISOString()}
+                      className={getErrorClass('scheduled_activation_datetime')}
+                    />
+                    {getFieldError('scheduled_activation_datetime') && (
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                        <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                        {getFieldError('scheduled_activation_datetime')}
+                      </p>
+                    )}
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 flex items-center">
+                      <InformationCircleIcon className="h-4 w-4 mr-1" />
+                      The exam will automatically activate at this time
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-gray-900 dark:text-gray-100 font-medium flex items-center">
+                    <ClockIcon className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+                    {displayData.scheduled_activation_datetime
+                      ? formatTorontoDateTime(displayData.scheduled_activation_datetime)
+                      : 'Not set'}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Prerequisite Exams - Only for Mock Discussion */}
             {displayData.mock_type === 'Mock Discussion' && (

@@ -595,6 +595,20 @@ const schemas = {
         'any.only': 'is_active must be one of: active, inactive, or scheduled',
         'string.base': 'is_active must be a string value'
       }),
+    scheduled_activation_datetime: Joi.date()
+      .iso()
+      .greater('now')
+      .when('is_active', {
+        is: 'scheduled',
+        then: Joi.required(),
+        otherwise: Joi.optional().allow(null)
+      })
+      .messages({
+        'date.base': 'Scheduled activation datetime must be a valid date',
+        'date.format': 'Scheduled activation datetime must be in ISO format',
+        'date.greater': 'Scheduled activation datetime must be in the future',
+        'any.required': 'Scheduled activation datetime is required when status is scheduled'
+      }),
     start_time: Joi.string()
       .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
       .optional()
@@ -620,10 +634,22 @@ const schemas = {
       }
     }
 
+    // Custom validation: if is_active is scheduled, scheduled_activation_datetime is required
+    if (value.is_active === 'scheduled' && !value.scheduled_activation_datetime) {
+      return helpers.error('custom.scheduledDateRequired');
+    }
+
+    // Custom validation: if is_active is not scheduled, scheduled_activation_datetime should not be provided
+    if (value.is_active && value.is_active !== 'scheduled' && value.scheduled_activation_datetime) {
+      return helpers.error('custom.scheduledDateNotAllowed');
+    }
+
     return value;
   }, 'time validation').messages({
     'object.min': 'At least one property must be provided for update',
-    'custom.endTimeBeforeStart': 'End time must be after start time'
+    'custom.endTimeBeforeStart': 'End time must be after start time',
+    'custom.scheduledDateRequired': 'Scheduled activation datetime is required when status is scheduled',
+    'custom.scheduledDateNotAllowed': 'Scheduled activation datetime should not be provided when status is not scheduled'
   }),
 
   // Schema for metrics filters (Admin Dashboard)

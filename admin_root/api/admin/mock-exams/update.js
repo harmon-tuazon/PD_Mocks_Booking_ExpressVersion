@@ -155,14 +155,31 @@ module.exports = async (req, res) => {
     // Handle is_active as string (three-state: "active", "inactive", "scheduled")
     if (updateData.is_active !== undefined) {
       properties.is_active = String(updateData.is_active);
+
+      // If changing from scheduled to something else, clear the scheduled_activation_datetime
+      if (updateData.is_active !== 'scheduled') {
+        properties.scheduled_activation_datetime = '';
+      }
     }
+
+    // Handle scheduled_activation_datetime
+    if (updateData.scheduled_activation_datetime !== undefined) {
+      if (updateData.scheduled_activation_datetime === null || updateData.scheduled_activation_datetime === '') {
+        properties.scheduled_activation_datetime = '';
+      } else {
+        // Convert ISO string to Unix timestamp (milliseconds) for HubSpot
+        const dateObj = new Date(updateData.scheduled_activation_datetime);
+        properties.scheduled_activation_datetime = dateObj.getTime().toString();
+      }
+    }
+
     if (updateData.capacity !== undefined) {
       properties.capacity = updateData.capacity.toString();
     }
 
     // Track changes between old and new values
     const changes = {};
-    const fieldsToTrack = ['mock_type', 'exam_date', 'start_time', 'end_time', 'location', 'capacity', 'is_active', 'mock_exam_name'];
+    const fieldsToTrack = ['mock_type', 'exam_date', 'start_time', 'end_time', 'location', 'capacity', 'is_active', 'scheduled_activation_datetime', 'mock_exam_name'];
 
     fieldsToTrack.forEach(field => {
       if (properties[field] !== undefined) {

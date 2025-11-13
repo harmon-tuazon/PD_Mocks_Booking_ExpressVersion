@@ -94,6 +94,7 @@ export function useExamEdit(examData) {
         location: examData.location || '',
         address: examData.address || '',
         is_active: examData.is_active !== undefined ? examData.is_active : 'active',
+        scheduled_activation_datetime: examData.scheduled_activation_datetime || null,
         // Keep track of booking count for validation
         booked_count: examData.booked_count || examData.total_bookings || 0,
         total_bookings: examData.total_bookings || examData.booked_count || 0,
@@ -144,6 +145,11 @@ export function useExamEdit(examData) {
         }
         if (updatedProperties.end_time) {
           updatedFormData.end_time = convertToTimeInput(updatedProperties.end_time);
+        }
+
+        // Preserve scheduled activation datetime
+        if (updatedProperties.scheduled_activation_datetime) {
+          updatedFormData.scheduled_activation_datetime = updatedProperties.scheduled_activation_datetime;
         }
 
         // Preserve prerequisite data if available
@@ -202,6 +208,12 @@ export function useExamEdit(examData) {
   const updateField = useCallback((fieldName, value) => {
     setFormData(prev => {
       const updated = { ...prev, [fieldName]: value };
+
+      // Special handling for is_active changes
+      if (fieldName === 'is_active' && value !== 'scheduled') {
+        // Clear scheduled_activation_datetime when changing away from scheduled
+        updated.scheduled_activation_datetime = null;
+      }
 
       // Check if form is dirty
       const hasChanges = hasFormChanges(originalDataRef.current, updated);
