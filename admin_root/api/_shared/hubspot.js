@@ -1931,20 +1931,21 @@ class HubSpotService {
       
       if (filters.filter_status) {
         // Map frontend status to HubSpot filters
+        // CRITICAL FIX: is_active stores string values ('active', 'inactive', 'scheduled'), not boolean strings
         if (filters.filter_status === 'scheduled') {
-          // For scheduled: is_active=false AND scheduled_activation_datetime HAS_PROPERTY
+          // For scheduled: is_active='scheduled' AND scheduled_activation_datetime HAS_PROPERTY
           searchFilters.push({
             propertyName: 'is_active',
             operator: 'EQ',
-            value: 'false'
+            value: 'scheduled'  // ← FIX: Search for the actual string value
           });
           searchFilters.push({
             propertyName: 'scheduled_activation_datetime',
             operator: 'HAS_PROPERTY'
           });
         } else {
-          // For active/inactive: just check is_active
-          const isActiveValue = filters.filter_status === 'active' ? 'true' : 'false';
+          // For active/inactive: check is_active for the actual string value
+          const isActiveValue = filters.filter_status === 'active' ? 'active' : 'inactive';  // ← FIX: Use actual string values
           searchFilters.push({
             propertyName: 'is_active',
             operator: 'EQ',
