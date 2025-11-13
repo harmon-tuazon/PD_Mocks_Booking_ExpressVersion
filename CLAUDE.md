@@ -373,7 +373,9 @@ async function requireAdmin(req) {
 ```
 [automation-name]/
 ├── /features/                 # Feature requirements (start here!)
-├── /PRDs/                    # Generated comprehensive plans
+├── /PRDs/                    # Product Requirements Documents (COMMITTED TO GIT)
+│   ├── /admin/              # Admin app PRDs (admin_root/)
+│   └── /user/               # User app PRDs (user_root/)
 ├── /planning/                # Development specifications
 │   ├── /current/            # Active development
 │   └── /archive/            # Completed features
@@ -384,6 +386,43 @@ async function requireAdmin(req) {
 ├── vercel.json              # Deployment configuration
 └── checkpoints/             # Development snapshots
 ```
+
+### PRD Organization Guidelines
+
+**IMPORTANT:** All PRDs MUST be placed in the `/PRDs/` directory and MUST be committed to git.
+
+**Folder Structure:**
+```
+PRDs/
+├── admin/                    # PRDs for admin app features (admin_root/)
+│   ├── feature-name.md      # Use kebab-case for file names
+│   └── another-feature.md   # Descriptive names for easy identification
+└── user/                     # PRDs for user app features (user_root/)
+    ├── feature-name.md
+    └── another-feature.md
+```
+
+**Examples:**
+```
+PRDs/
+├── admin/
+│   ├── bulk-selection-toolbar.md
+│   ├── attendance-tracking-feature.md
+│   ├── batch-booking-cancellation.md
+│   ├── mock-exam-deletion.md
+│   └── trainee-dashboard.md
+└── user/
+    ├── booking-race-condition-redis-locking.md
+    ├── time-conflict-detection.md
+    └── frontend-api-performance-optimization.md
+```
+
+**Rules:**
+1. **ALWAYS** place PRDs in either `/PRDs/admin/` or `/PRDs/user/` based on which app the feature belongs to
+2. **NEVER** place PRDs in ignored directories (features/, documentation/, etc.)
+3. Use kebab-case for file names
+4. PRDs are version-controlled documentation - they must be in git
+5. Only two folders exist: `admin/` and `user/` - no other subfolders
 
 ## Essential Commands
 

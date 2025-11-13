@@ -97,7 +97,6 @@ documentation/
 features/
 improvements/
 screenshots/
-PRDs/
 CLAUDE.node_modules
 
 # CSV data files (migration data, do not commit)
