@@ -35,8 +35,8 @@ async function createMockExamHandler(req, res) {
         admin_user: req.user?.email
       });
     } else {
-      // For immediate activation, set status to true (boolean)
-      validatedData.is_active = true;
+      // For immediate activation, set status to 'true' (string)
+      validatedData.is_active = 'true';
       // Clear any scheduled activation datetime
       validatedData.scheduled_activation_datetime = null;
 

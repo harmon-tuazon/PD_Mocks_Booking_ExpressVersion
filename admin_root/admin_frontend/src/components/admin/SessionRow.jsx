@@ -91,7 +91,7 @@ const SessionRow = ({
                     </span>
                   </div>
                 </>
-              ) : (session.is_active === true || session.is_active === 'true') ? (
+              ) : session.is_active === 'true' ? (
                 <>
                   <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
                   <span className="text-xs font-medium text-green-700 dark:text-green-400">
@@ -195,7 +195,7 @@ const SessionRow = ({
           {/* Status indicator - handle three states: active, inactive, scheduled */}
           {session.is_active === 'scheduled' ? (
             <ClockIcon className="h-4 w-4 text-blue-500" title={`Scheduled: ${formatTorontoDateTime(session.scheduled_activation_datetime)}`} />
-          ) : (session.is_active === true || session.is_active === 'true') ? (
+          ) : session.is_active === 'true' ? (
             <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
           ) : (
             <div className="h-2.5 w-2.5 rounded-full bg-gray-400" />

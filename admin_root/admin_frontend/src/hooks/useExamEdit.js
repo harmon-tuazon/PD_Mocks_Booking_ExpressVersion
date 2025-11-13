@@ -93,7 +93,7 @@ export function useExamEdit(examData) {
         capacity: examData.capacity || 0,
         location: examData.location || '',
         address: examData.address || '',
-        is_active: examData.is_active !== undefined ? examData.is_active : 'active',
+        is_active: examData.is_active !== undefined ? examData.is_active : 'true',
         scheduled_activation_datetime: examData.scheduled_activation_datetime || null,
         // Keep track of booking count for validation
         booked_count: examData.booked_count || examData.total_bookings || 0,

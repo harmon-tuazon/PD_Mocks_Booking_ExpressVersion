@@ -125,33 +125,23 @@ module.exports = async (req, res) => {
       const currentState = session.properties.is_active;
       let newState;
 
-      // Toggle logic for HubSpot's actual values
-      // HubSpot stores: true (boolean) for active, false (boolean) for inactive, "scheduled" (string) for scheduled
-      if (currentState === true || currentState === 'true') {
+      // Toggle logic - HubSpot stores ALL values as STRINGS: 'true', 'false', or 'scheduled'
+      if (currentState === 'true') {
         // Currently active → deactivate
-        newState = false;
+        newState = 'false';  // String 'false'
         summary.deactivated++;
-      } else if (currentState === false || currentState === 'false') {
+      } else if (currentState === 'false') {
         // Currently inactive → activate
-        newState = true;
+        newState = 'true';  // String 'true'
         summary.activated++;
-      } else if (currentState === 'scheduled' || currentState === "scheduled") {
+      } else if (currentState === 'scheduled') {
         // Currently scheduled → activate immediately
-        newState = true;
+        newState = 'true';  // String 'true'
         summary.activated++;
       } else {
-        // Handle legacy string values if they exist
-        if (currentState === 'active') {
-          newState = false; // Deactivate
-          summary.deactivated++;
-        } else if (currentState === 'inactive') {
-          newState = true; // Activate
-          summary.activated++;
-        } else {
-          // Default: assume inactive and activate
-          newState = true;
-          summary.activated++;
-        }
+        // Handle legacy or unexpected values - default to activate
+        newState = 'true';  // String 'true'
+        summary.activated++;
       }
 
       // Prepare update
@@ -183,8 +173,9 @@ module.exports = async (req, res) => {
           sessionId: result.id,
           previousState: originalUpdate.metadata.previousState,
           newState: originalUpdate.metadata.newState,
-          message: originalUpdate.metadata.newState === true ? 'Activated' :
-                  originalUpdate.metadata.newState === false ? 'Deactivated' :
+          message: originalUpdate.metadata.newState === 'true' ? 'Activated' :
+                  originalUpdate.metadata.newState === 'false' ? 'Deactivated' :
+                  originalUpdate.metadata.newState === 'scheduled' ? 'Scheduled' :
                   `Changed to ${originalUpdate.metadata.newState}`
         });
         summary.updated++;
@@ -194,9 +185,9 @@ module.exports = async (req, res) => {
         // Find and adjust summary counts
         const originalUpdate = updates.find(u => u.id === error.id);
         if (originalUpdate) {
-          if (originalUpdate.metadata.newState === true) {
+          if (originalUpdate.metadata.newState === 'true') {
             summary.activated--;
-          } else if (originalUpdate.metadata.newState === false) {
+          } else if (originalUpdate.metadata.newState === 'false') {
             summary.deactivated--;
           }
         }

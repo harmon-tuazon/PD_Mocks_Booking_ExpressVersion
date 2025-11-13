@@ -28,14 +28,15 @@ const BulkToggleActiveModal = ({
     }
 
     // Count sessions that will be activated (inactive -> active)
+    // HubSpot stores all values as strings
     const toActivate = selectedSessions.filter(session =>
-      session.is_active === 'inactive' || session.is_active === false || session.is_active === 'false'
+      session.is_active === 'false'
     ).length;
 
     // Count sessions that will be deactivated (active -> inactive)
     // Note: "scheduled" sessions are not toggled - they maintain their scheduled state
     const toDeactivate = selectedSessions.filter(session =>
-      session.is_active === 'active' || session.is_active === true || session.is_active === 'true'
+      session.is_active === 'true'
     ).length;
 
     return {

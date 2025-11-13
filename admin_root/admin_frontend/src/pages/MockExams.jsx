@@ -48,7 +48,7 @@ function MockExams() {
     exam_date: '',
     capacity: 15,
     location: 'Mississauga',
-    is_active: true, // Changed to boolean: true | false | "scheduled"
+    is_active: 'true', // String values: 'true' | 'false' | 'scheduled' (matching HubSpot)
     activation_mode: 'immediate', // NEW: 'immediate' | 'scheduled'
     scheduled_activation_datetime: null // NEW: ISO datetime string in UTC
   });
@@ -150,7 +150,7 @@ function MockExams() {
       exam_date: '',
       capacity: 15,
       location: 'Mississauga',
-      is_active: true, // Changed to boolean
+      is_active: 'true', // String value matching HubSpot
       activation_mode: 'immediate',
       scheduled_activation_datetime: null
     });
@@ -280,7 +280,7 @@ function MockExams() {
                     onChange={(e) => setFormData({
                       ...formData,
                       activation_mode: 'immediate',
-                      is_active: true, // Set to boolean true
+                      is_active: 'true', // String value for HubSpot
                       scheduled_activation_datetime: null
                     })}
                     className="mt-1 h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
@@ -358,8 +358,8 @@ function MockExams() {
                     Status <span className="text-red-500">*</span>
                   </Label>
                   <Select
-                    value={formData.is_active ? "true" : "false"} // Convert boolean to string for Select component
-                    onValueChange={(value) => setFormData({ ...formData, is_active: value === "true" })} // Convert back to boolean
+                    value={formData.is_active} // Already a string ('true' or 'false')
+                    onValueChange={(value) => setFormData({ ...formData, is_active: value })} // Keep as string
                   >
                     <SelectTrigger className="w-full mt-1">
                       <SelectValue placeholder="Select status" />

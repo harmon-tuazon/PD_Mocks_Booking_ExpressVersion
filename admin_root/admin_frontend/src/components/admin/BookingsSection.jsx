@@ -169,7 +169,7 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
       if (filters.status !== 'All') {
         // Map booking status to filter values
         let bookingStatus = 'Active';
-        if (booking.is_active === false || booking.is_cancelled === true) {
+        if (booking.is_active === 'false' || booking.is_cancelled === true || booking.is_cancelled === 'true') {
           bookingStatus = 'Cancelled';
         } else if (booking.exam_date) {
           // Check if exam date is in the past

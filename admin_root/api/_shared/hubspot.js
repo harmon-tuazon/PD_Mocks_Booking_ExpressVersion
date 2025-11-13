@@ -1036,8 +1036,8 @@ class HubSpotService {
         location: mockExamData.location,
         capacity: mockExamData.capacity,
         total_bookings: mockExamData.total_bookings || 0,
-        // HubSpot stores: true (boolean) for active, false (boolean) for inactive, "scheduled" (string) for scheduled
-        is_active: mockExamData.is_active !== undefined ? mockExamData.is_active : true,
+        // HubSpot stores ALL values as STRINGS: 'true', 'false', or 'scheduled'
+        is_active: mockExamData.is_active !== undefined ? mockExamData.is_active : 'true',
         mock_exam_id: newIndex,  // Using internal HubSpot property name
         mock_exam_name: mockExamName  // Format: {mock_type}-{location}-{exam_date}
       };

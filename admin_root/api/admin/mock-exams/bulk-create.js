@@ -47,8 +47,8 @@ async function bulkCreateMockExamsHandler(req, res) {
         admin_user: req.user?.email
       });
     } else {
-      // For immediate activation, set status to true (boolean)
-      commonProperties.is_active = true;
+      // For immediate activation, set status to 'true' (string)
+      commonProperties.is_active = 'true';
       // Clear any scheduled activation datetime
       commonProperties.scheduled_activation_datetime = null;
 

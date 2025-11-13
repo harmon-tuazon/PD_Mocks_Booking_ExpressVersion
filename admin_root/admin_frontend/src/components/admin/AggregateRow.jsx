@@ -9,13 +9,14 @@ import { formatDateLong } from '../../utils/dateUtils';
  * @param {Array} sessions - Array of session objects
  * @returns {Object|null} Status object with type, label, and color
  */
-const const determineAggregateStatus = (sessions) => {
+const determineAggregateStatus = (sessions) => {
   if (!sessions || sessions.length === 0) return null;
 
   // Normalize statuses to a common format for comparison
+  // HubSpot stores all values as strings
   const normalizeStatus = (status) => {
-    if (status === true || status === 'true') return 'active';
-    if (status === false || status === 'false') return 'inactive';
+    if (status === 'true') return 'active';
+    if (status === 'false') return 'inactive';
     if (status === 'scheduled') return 'scheduled';
     // Fallback to inactive for undefined/null
     return 'inactive';

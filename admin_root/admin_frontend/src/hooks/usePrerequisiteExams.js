@@ -22,7 +22,7 @@ export function usePrerequisiteExams(mockExamId, discussionExamDate, options = {
       // Build query parameters
       const params = {
         mock_type: ['Clinical Skills', 'Situational Judgment'],
-        is_active: true,
+        is_active: 'true', // String value for HubSpot
         exam_date_from: today,
         exam_date_to: discussionExamDate,
         sort_by: 'exam_date',
