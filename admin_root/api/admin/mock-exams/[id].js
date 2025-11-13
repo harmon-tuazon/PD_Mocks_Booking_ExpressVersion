@@ -42,8 +42,8 @@ async function handlePatchRequest(req, res) {
     const user = await requireAdmin(req);
     const adminEmail = user?.email || 'admin@prepdoctors.ca';
 
-    // Extract exam ID from query params
-    const mockExamId = req.query.id;
+    // Extract exam ID from path params
+    const mockExamId = req.params.id;
 
     // Validate ID format
     if (!mockExamId) {
@@ -325,8 +325,8 @@ async function handleGetRequest(req, res) {
     // Verify admin authentication
     const user = await requireAdmin(req);
 
-    // Extract exam ID from query params
-    const mockExamId = req.query.id;
+    // Extract exam ID from path params
+    const mockExamId = req.params.id;
 
     // Validate ID format
     if (!mockExamId) {

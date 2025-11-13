@@ -25,9 +25,9 @@ module.exports = async (req, res) => {
     const user = await requireAdmin(req);
     const adminEmail = user?.email || 'admin@prepdoctors.ca';
 
-    // Extract IDs from query params
-    const mockExamId = req.query.id;
-    const prerequisiteId = req.query.prerequisiteId;
+    // Extract IDs from path params
+    const mockExamId = req.params.id;
+    const prerequisiteId = req.params.prerequisiteId;
 
     // Validate ID formats
     if (!mockExamId || !/^\d+$/.test(mockExamId)) {

@@ -58,7 +58,7 @@ module.exports = async (req, res) => {
     const adminEmail = user?.email || 'admin@prepdoctors.com';
 
     // Extract mock exam ID from path parameter
-    const mockExamId = req.query.id;
+    const mockExamId = req.params.id;
 
     // Validate mock exam ID
     if (!mockExamId) {

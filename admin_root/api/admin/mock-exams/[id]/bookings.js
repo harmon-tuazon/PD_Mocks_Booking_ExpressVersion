@@ -33,7 +33,7 @@ module.exports = async (req, res) => {
     const user = await requireAdmin(req);
 
     // Extract mock exam ID from URL path parameter
-    const mockExamId = req.query.id;
+    const mockExamId = req.params.id;
 
     if (!mockExamId) {
       return res.status(400).json({
