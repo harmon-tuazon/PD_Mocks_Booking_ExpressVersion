@@ -64,8 +64,16 @@ const SessionRow = ({
         {/* Empty column for alignment with aggregate Type column */}
         <td className="px-6 py-3">
           <div className="pl-8">
-            {/* Active/Inactive Indicator */}
-            <div className="flex items-center gap-2">
+            {/* Active/Inactive Indicator with Checkbox */}
+            <div className="flex items-center gap-3">
+              {/* Checkbox */}
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={() => {}} // Controlled by row click
+                onClick={(e) => e.stopPropagation()} // Prevent double toggle
+                className="h-4 w-4 text-primary-600 bg-white border-gray-300 rounded focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+              />
               <div className={`h-2.5 w-2.5 rounded-full ${session.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
               <span className={`text-xs font-medium ${session.is_active ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
                 {session.is_active ? 'Active' : 'Inactive'}
@@ -144,7 +152,15 @@ const SessionRow = ({
     <tr className={rowClasses} onClick={handleRowClick}>
       {/* Type Column */}
       <td className="px-6 py-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Checkbox */}
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => {}} // Controlled by row click
+            onClick={(e) => e.stopPropagation()} // Prevent double toggle
+            className="h-4 w-4 text-primary-600 bg-white border-gray-300 rounded focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+          />
           <div className={`h-2.5 w-2.5 rounded-full ${session.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
           <div className="text-sm font-medium text-gray-900 dark:text-white">
             {session.mock_type}
