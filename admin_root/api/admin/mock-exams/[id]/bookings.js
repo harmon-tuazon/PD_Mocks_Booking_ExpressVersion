@@ -33,8 +33,8 @@ module.exports = async (req, res) => {
     const user = await requireAdmin(req);
 
     // Extract mock exam ID from URL path parameter
-    // Vercel dynamic routes provide the parameter in req.query
-    const mockExamId = req.query.id;
+    // Vercel dynamic routes provide parameters in req.params
+    const mockExamId = req.params.id;
 
     if (!mockExamId) {
       return res.status(400).json({

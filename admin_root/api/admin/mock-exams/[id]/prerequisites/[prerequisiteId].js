@@ -25,9 +25,9 @@ module.exports = async (req, res) => {
     const user = await requireAdmin(req);
     const adminEmail = user?.email || 'admin@prepdoctors.ca';
 
-    // In Vercel serverless functions, dynamic route params come through req.query
-    const mockExamId = req.query.id;
-    const prerequisiteId = req.query.prerequisiteId;
+    // Vercel dynamic routes provide parameters in req.params
+    const mockExamId = req.params.id;
+    const prerequisiteId = req.params.prerequisiteId;
 
     // Validate ID formats
     if (!mockExamId || !/^\d+$/.test(mockExamId)) {
