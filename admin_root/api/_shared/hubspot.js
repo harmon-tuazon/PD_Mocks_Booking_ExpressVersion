@@ -1036,7 +1036,8 @@ class HubSpotService {
         location: mockExamData.location,
         capacity: mockExamData.capacity,
         total_bookings: mockExamData.total_bookings || 0,
-        is_active: mockExamData.is_active !== undefined ? String(mockExamData.is_active) : 'active',
+        // HubSpot stores: true (boolean) for active, false (boolean) for inactive, "scheduled" (string) for scheduled
+        is_active: mockExamData.is_active !== undefined ? mockExamData.is_active : true,
         mock_exam_id: newIndex,  // Using internal HubSpot property name
         mock_exam_name: mockExamName  // Format: {mock_type}-{location}-{exam_date}
       };
@@ -1931,21 +1932,21 @@ class HubSpotService {
       
       if (filters.filter_status) {
         // Map frontend status to HubSpot filters
-        // CRITICAL FIX: is_active stores string values ('active', 'inactive', 'scheduled'), not boolean strings
+        // HubSpot stores: true (boolean) for active, false (boolean) for inactive, "scheduled" (string) for scheduled
         if (filters.filter_status === 'scheduled') {
-          // For scheduled: is_active='scheduled' AND scheduled_activation_datetime HAS_PROPERTY
+          // For scheduled: is_active="scheduled" (string) AND scheduled_activation_datetime HAS_PROPERTY
           searchFilters.push({
             propertyName: 'is_active',
             operator: 'EQ',
-            value: 'scheduled'  // ← FIX: Search for the actual string value
+            value: 'scheduled'  // String value for scheduled
           });
           searchFilters.push({
             propertyName: 'scheduled_activation_datetime',
             operator: 'HAS_PROPERTY'
           });
         } else {
-          // For active/inactive: check is_active for the actual string value
-          const isActiveValue = filters.filter_status === 'active' ? 'active' : 'inactive';  // ← FIX: Use actual string values
+          // For active/inactive: check is_active for boolean values
+          const isActiveValue = filters.filter_status === 'active' ? 'true' : 'false';  // HubSpot API expects string representation of boolean
           searchFilters.push({
             propertyName: 'is_active',
             operator: 'EQ',

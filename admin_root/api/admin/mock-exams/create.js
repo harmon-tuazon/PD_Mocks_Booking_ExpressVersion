@@ -21,7 +21,7 @@ async function createMockExamHandler(req, res) {
 
     // Handle scheduled activation mode
     if (validatedData.activation_mode === 'scheduled') {
-      // Set status to "scheduled" when scheduling activation
+      // Set status to "scheduled" (string) when scheduling activation
       validatedData.is_active = "scheduled";
 
       console.log('📝 Creating SCHEDULED mock exam:', {
@@ -35,8 +35,8 @@ async function createMockExamHandler(req, res) {
         admin_user: req.user?.email
       });
     } else {
-      // For immediate activation, set status to "active"
-      validatedData.is_active = "active";
+      // For immediate activation, set status to true (boolean)
+      validatedData.is_active = true;
       // Clear any scheduled activation datetime
       validatedData.scheduled_activation_datetime = null;
 

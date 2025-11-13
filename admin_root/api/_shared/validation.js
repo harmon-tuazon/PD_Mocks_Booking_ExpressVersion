@@ -254,17 +254,21 @@ const schemas = {
       .messages({
         'any.only': 'Activation mode must be either "immediate" or "scheduled"'
       }),
-    is_active: Joi.string()
-      .valid('active', 'inactive', 'scheduled')
+    // HubSpot stores: true (boolean) for active, false (boolean) for inactive, "scheduled" (string) for scheduled
+    is_active: Joi.alternatives()
+      .try(
+        Joi.boolean(),
+        Joi.string().valid('scheduled')
+      )
       .optional()
       .when('activation_mode', {
         is: 'scheduled',
-        then: Joi.string().valid('scheduled').default('scheduled'),  // Force 'scheduled' when using scheduled activation mode
-        otherwise: Joi.string().valid('active', 'inactive').default('active')
+        then: Joi.string().valid('scheduled').default('scheduled'),  // Force 'scheduled' (string) when using scheduled activation mode
+        otherwise: Joi.boolean().default(true)  // Default to true (active) for immediate activation
       })
       .messages({
-        'any.only': 'is_active must be one of: active, inactive, or scheduled',
-        'string.base': 'is_active must be a string value'
+        'any.only': 'is_active must be boolean (true/false) or "scheduled"',
+        'alternatives.match': 'is_active must be boolean (true/false) or "scheduled"'
       }),
     // Scheduled activation datetime - required when activation_mode is 'scheduled'
     scheduled_activation_datetime: Joi.date()
@@ -357,17 +361,21 @@ const schemas = {
         .messages({
           'any.only': 'Activation mode must be either "immediate" or "scheduled"'
         }),
-      is_active: Joi.string()
-        .valid('active', 'inactive', 'scheduled')
+      // HubSpot stores: true (boolean) for active, false (boolean) for inactive, "scheduled" (string) for scheduled
+      is_active: Joi.alternatives()
+        .try(
+          Joi.boolean(),
+          Joi.string().valid('scheduled')
+        )
         .optional()
         .when('activation_mode', {
           is: 'scheduled',
-          then: Joi.string().valid('scheduled').default('scheduled'),  // Force 'scheduled' when using scheduled activation mode
-          otherwise: Joi.string().valid('active', 'inactive').default('active')
+          then: Joi.string().valid('scheduled').default('scheduled'),  // Force 'scheduled' (string) when using scheduled activation mode
+          otherwise: Joi.boolean().default(true)  // Default to true (active) for immediate activation
         })
         .messages({
-          'any.only': 'is_active must be one of: active, inactive, or scheduled',
-          'string.base': 'is_active must be a string value'
+          'any.only': 'is_active must be boolean (true/false) or "scheduled"',
+          'alternatives.match': 'is_active must be boolean (true/false) or "scheduled"'
         }),
       // Scheduled activation datetime for bulk creation
       scheduled_activation_datetime: Joi.date()
@@ -588,12 +596,17 @@ const schemas = {
       .messages({
         'any.only': 'Location must be one of: Mississauga, Mississauga - B9, Mississauga - Lab D, Calgary, Vancouver, Montreal, Richmond Hill, or Online'
       }),
-    is_active: Joi.string()
-      .valid('active', 'inactive', 'scheduled')
+    // HubSpot stores: true (boolean) for active, false (boolean) for inactive, "scheduled" (string) for scheduled
+    // But we also accept string values 'active', 'inactive', 'scheduled' from frontend for compatibility
+    is_active: Joi.alternatives()
+      .try(
+        Joi.boolean(),
+        Joi.string().valid('active', 'inactive', 'scheduled')
+      )
       .optional()
       .messages({
-        'any.only': 'is_active must be one of: active, inactive, or scheduled',
-        'string.base': 'is_active must be a string value'
+        'any.only': 'is_active must be boolean (true/false) or one of: "active", "inactive", "scheduled"',
+        'alternatives.match': 'is_active must be boolean (true/false) or one of: "active", "inactive", "scheduled"'
       }),
     scheduled_activation_datetime: Joi.date()
       .iso()

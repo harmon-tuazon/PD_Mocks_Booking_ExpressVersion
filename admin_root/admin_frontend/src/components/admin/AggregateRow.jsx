@@ -9,15 +9,25 @@ import { formatDateLong } from '../../utils/dateUtils';
  * @param {Array} sessions - Array of session objects
  * @returns {Object|null} Status object with type, label, and color
  */
-const determineAggregateStatus = (sessions) => {
+const const determineAggregateStatus = (sessions) => {
   if (!sessions || sessions.length === 0) return null;
 
-  // Collect all unique statuses
-  const statuses = new Set(sessions.map(s => s.is_active));
+  // Normalize statuses to a common format for comparison
+  const normalizeStatus = (status) => {
+    if (status === true || status === 'true') return 'active';
+    if (status === false || status === 'false') return 'inactive';
+    if (status === 'scheduled') return 'scheduled';
+    // Fallback to inactive for undefined/null
+    return 'inactive';
+  };
+
+  // Collect all unique normalized statuses
+  const normalizedStatuses = sessions.map(s => normalizeStatus(s.is_active));
+  const uniqueStatuses = new Set(normalizedStatuses);
 
   // If all sessions have the same status
-  if (statuses.size === 1) {
-    const status = sessions[0].is_active;
+  if (uniqueStatuses.size === 1) {
+    const status = normalizedStatuses[0];
     if (status === 'active') {
       return { type: 'all_active', label: 'All Active', color: 'green' };
     } else if (status === 'inactive') {

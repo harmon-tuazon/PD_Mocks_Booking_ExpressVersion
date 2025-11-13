@@ -33,7 +33,7 @@ async function bulkCreateMockExamsHandler(req, res) {
 
     // Handle scheduled activation mode for bulk creation
     if (commonProperties.activation_mode === 'scheduled') {
-      // Set status to "scheduled" when scheduling activation
+      // Set status to "scheduled" (string) when scheduling activation
       commonProperties.is_active = "scheduled";
 
       console.log('📝 [BULK-CREATE] Bulk creating SCHEDULED mock exams:', {
@@ -47,8 +47,8 @@ async function bulkCreateMockExamsHandler(req, res) {
         admin_user: req.user?.email
       });
     } else {
-      // For immediate activation, set status to "active"
-      commonProperties.is_active = "active";
+      // For immediate activation, set status to true (boolean)
+      commonProperties.is_active = true;
       // Clear any scheduled activation datetime
       commonProperties.scheduled_activation_datetime = null;
 

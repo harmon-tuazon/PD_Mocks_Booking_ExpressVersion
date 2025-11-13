@@ -121,34 +121,37 @@ module.exports = async (req, res) => {
         continue;
       }
 
-      // Get current active state (handle three-state string values)
+      // Get current active state (handle boolean true/false or string "scheduled")
       const currentState = session.properties.is_active;
       let newState;
 
-      // Toggle logic for three-state status
-      switch (currentState) {
-        case 'active':
-          newState = 'inactive';
+      // Toggle logic for HubSpot's actual values
+      // HubSpot stores: true (boolean) for active, false (boolean) for inactive, "scheduled" (string) for scheduled
+      if (currentState === true || currentState === 'true') {
+        // Currently active → deactivate
+        newState = false;
+        summary.deactivated++;
+      } else if (currentState === false || currentState === 'false') {
+        // Currently inactive → activate
+        newState = true;
+        summary.activated++;
+      } else if (currentState === 'scheduled' || currentState === "scheduled") {
+        // Currently scheduled → activate immediately
+        newState = true;
+        summary.activated++;
+      } else {
+        // Handle legacy string values if they exist
+        if (currentState === 'active') {
+          newState = false; // Deactivate
           summary.deactivated++;
-          break;
-        case 'inactive':
-          newState = 'active';
+        } else if (currentState === 'inactive') {
+          newState = true; // Activate
           summary.activated++;
-          break;
-        case 'scheduled':
-          // If scheduled, activate it immediately
-          newState = 'active';
+        } else {
+          // Default: assume inactive and activate
+          newState = true;
           summary.activated++;
-          break;
-        default:
-          // Handle legacy boolean values or undefined
-          const isCurrentlyActive = currentState === 'true' || currentState === true;
-          newState = isCurrentlyActive ? 'inactive' : 'active';
-          if (newState === 'active') {
-            summary.activated++;
-          } else {
-            summary.deactivated++;
-          }
+        }
       }
 
       // Prepare update
@@ -180,8 +183,8 @@ module.exports = async (req, res) => {
           sessionId: result.id,
           previousState: originalUpdate.metadata.previousState,
           newState: originalUpdate.metadata.newState,
-          message: originalUpdate.metadata.newState === 'active' ? 'Activated' :
-                  originalUpdate.metadata.newState === 'inactive' ? 'Deactivated' :
+          message: originalUpdate.metadata.newState === true ? 'Activated' :
+                  originalUpdate.metadata.newState === false ? 'Deactivated' :
                   `Changed to ${originalUpdate.metadata.newState}`
         });
         summary.updated++;
@@ -191,9 +194,9 @@ module.exports = async (req, res) => {
         // Find and adjust summary counts
         const originalUpdate = updates.find(u => u.id === error.id);
         if (originalUpdate) {
-          if (originalUpdate.metadata.newState === 'active') {
+          if (originalUpdate.metadata.newState === true) {
             summary.activated--;
-          } else if (originalUpdate.metadata.newState === 'inactive') {
+          } else if (originalUpdate.metadata.newState === false) {
             summary.deactivated--;
           }
         }

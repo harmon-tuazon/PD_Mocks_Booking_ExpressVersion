@@ -126,9 +126,22 @@ const ExamDetailsForm = ({
                 <div>
                   <Select
                     name="is_active"
-                    value={displayData.is_active || 'inactive'}
+                    value={
+                      displayData.is_active === true || displayData.is_active === 'true' ? 'true' :
+                      displayData.is_active === false || displayData.is_active === 'false' ? 'false' :
+                      displayData.is_active === 'scheduled' ? 'scheduled' : 'false'
+                    }
                     onValueChange={(value) => {
-                      onFieldChange('is_active', value);
+                      // Convert string values to appropriate types
+                      let newValue;
+                      if (value === 'true') {
+                        newValue = true;
+                      } else if (value === 'false') {
+                        newValue = false;
+                      } else if (value === 'scheduled') {
+                        newValue = 'scheduled';
+                      }
+                      onFieldChange('is_active', newValue);
                       // Clear scheduled datetime if changing away from scheduled
                       if (value !== 'scheduled' && displayData.scheduled_activation_datetime) {
                         onFieldChange('scheduled_activation_datetime', null);
@@ -141,8 +154,8 @@ const ExamDetailsForm = ({
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="true">Active</SelectItem>
+                      <SelectItem value="false">Inactive</SelectItem>
                       <SelectItem value="scheduled">Scheduled</SelectItem>
                     </SelectContent>
                   </Select>
@@ -157,7 +170,7 @@ const ExamDetailsForm = ({
                 <div>
                   <StatusBadge status={
                     displayData.status ||
-                    (displayData.is_active === 'active' || displayData.is_active === true ? 'active' :
+                    (displayData.is_active === true || displayData.is_active === 'true' ? 'active' :
                      displayData.is_active === 'scheduled' ? 'scheduled' : 'inactive')
                   } />
                   {/* Show scheduled datetime when status is scheduled */}

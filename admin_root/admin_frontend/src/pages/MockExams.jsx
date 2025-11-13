@@ -48,7 +48,7 @@ function MockExams() {
     exam_date: '',
     capacity: 15,
     location: 'Mississauga',
-    is_active: 'active', // Changed from boolean to string: 'active' | 'inactive' | 'scheduled'
+    is_active: true, // Changed to boolean: true | false | "scheduled"
     activation_mode: 'immediate', // NEW: 'immediate' | 'scheduled'
     scheduled_activation_datetime: null // NEW: ISO datetime string in UTC
   });
@@ -150,7 +150,7 @@ function MockExams() {
       exam_date: '',
       capacity: 15,
       location: 'Mississauga',
-      is_active: 'active', // Changed from boolean to string
+      is_active: true, // Changed to boolean
       activation_mode: 'immediate',
       scheduled_activation_datetime: null
     });
@@ -280,7 +280,7 @@ function MockExams() {
                     onChange={(e) => setFormData({
                       ...formData,
                       activation_mode: 'immediate',
-                      is_active: 'active', // Changed from boolean to string
+                      is_active: true, // Set to boolean true
                       scheduled_activation_datetime: null
                     })}
                     className="mt-1 h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
@@ -305,7 +305,7 @@ function MockExams() {
                     onChange={(e) => setFormData({
                       ...formData,
                       activation_mode: 'scheduled',
-                      is_active: 'scheduled', // Changed to 'scheduled' string
+                      is_active: 'scheduled', // Keep as 'scheduled' string for scheduled mode
                       scheduled_activation_datetime: null
                     })}
                     className="mt-1 h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
@@ -358,20 +358,20 @@ function MockExams() {
                     Status <span className="text-red-500">*</span>
                   </Label>
                   <Select
-                    value={formData.is_active} // Now directly using the string value
-                    onValueChange={(value) => setFormData({ ...formData, is_active: value })}
+                    value={formData.is_active ? "true" : "false"} // Convert boolean to string for Select component
+                    onValueChange={(value) => setFormData({ ...formData, is_active: value === "true" })} // Convert back to boolean
                   >
                     <SelectTrigger className="w-full mt-1">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">
+                      <SelectItem value="true">
                         <span className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-green-500"></span>
                           Active
                         </span>
                       </SelectItem>
-                      <SelectItem value="inactive">
+                      <SelectItem value="false">
                         <span className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-gray-400"></span>
                           Inactive

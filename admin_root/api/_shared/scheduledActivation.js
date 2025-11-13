@@ -136,10 +136,11 @@ async function batchActivateSessions(sessions) {
   };
 
   // Prepare batch updates
+  // HubSpot stores: true (boolean) for active
   const updates = sessions.map(session => ({
     id: session.id,
     properties: {
-      is_active: 'active'
+      is_active: true  // Set to boolean true for active
     }
   }));
 

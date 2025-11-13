@@ -152,12 +152,22 @@ module.exports = async (req, res) => {
       console.log('✅ [UPDATE] New mock_exam_name:', properties.mock_exam_name);
     }
 
-    // Handle is_active as string (three-state: "active", "inactive", "scheduled")
+    // Handle is_active (boolean true/false or string "scheduled")
     if (updateData.is_active !== undefined) {
-      properties.is_active = String(updateData.is_active);
+      // HubSpot stores: true (boolean) for active, false (boolean) for inactive, "scheduled" (string) for scheduled
+      if (updateData.is_active === 'active') {
+        properties.is_active = true;
+      } else if (updateData.is_active === 'inactive') {
+        properties.is_active = false;
+      } else if (updateData.is_active === 'scheduled') {
+        properties.is_active = "scheduled";
+      } else {
+        // Pass through as-is if already in correct format
+        properties.is_active = updateData.is_active;
+      }
 
       // If changing from scheduled to something else, clear the scheduled_activation_datetime
-      if (updateData.is_active !== 'scheduled') {
+      if (updateData.is_active !== 'scheduled' && updateData.is_active !== "scheduled") {
         properties.scheduled_activation_datetime = '';
       }
     }
