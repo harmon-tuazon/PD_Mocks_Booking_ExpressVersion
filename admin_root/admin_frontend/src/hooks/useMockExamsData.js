@@ -15,8 +15,9 @@ export function useMockExamsData(params = {}, options = {}) {
   return useQuery({
     queryKey: ['mockExams', JSON.stringify(params)],
     queryFn: () => mockExamsApi.list(params),
-    staleTime: 0, // Always refetch on invalidation for immediate updates
+    staleTime: 5000, // 5 seconds - balance between freshness and API efficiency
     refetchInterval: 60000, // Refetch every minute
+    refetchOnWindowFocus: false, // Prevent refetch on tab focus to reduce API calls
     ...options
   });
 }
@@ -31,8 +32,9 @@ export function useMockExamsMetrics(filters = {}, options = {}) {
   return useQuery({
     queryKey: ['mockExamsMetrics', JSON.stringify(filters)],
     queryFn: () => mockExamsApi.getMetrics(filters),
-    staleTime: 0, // Always refetch on invalidation for immediate updates
+    staleTime: 5000, // 5 seconds - balance between freshness and API efficiency
     refetchInterval: 60000, // Refetch every minute
+    refetchOnWindowFocus: false, // Prevent refetch on tab focus to reduce API calls
     ...options
   });
 }
