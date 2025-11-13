@@ -15,7 +15,7 @@ export function useMockExamsData(params = {}, options = {}) {
   return useQuery({
     queryKey: ['mockExams', JSON.stringify(params)],
     queryFn: () => mockExamsApi.list(params),
-    staleTime: 30000, // 30 seconds
+    staleTime: 0, // Always refetch on invalidation for immediate updates
     refetchInterval: 60000, // Refetch every minute
     ...options
   });
@@ -31,7 +31,7 @@ export function useMockExamsMetrics(filters = {}, options = {}) {
   return useQuery({
     queryKey: ['mockExamsMetrics', JSON.stringify(filters)],
     queryFn: () => mockExamsApi.getMetrics(filters),
-    staleTime: 30000, // 30 seconds
+    staleTime: 0, // Always refetch on invalidation for immediate updates
     refetchInterval: 60000, // Refetch every minute
     ...options
   });
