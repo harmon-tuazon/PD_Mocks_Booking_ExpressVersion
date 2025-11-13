@@ -1136,7 +1136,7 @@ class HubSpotService {
         page = 1,
         limit = 20,
         sortBy = 'date',
-        sortOrder = 'ascending'
+        sortOrder = 'descending'
       } = options;
 
       // Build filters
@@ -1916,7 +1916,7 @@ class HubSpotService {
         limit: 200,  // HubSpot max limit per request
         sorts: [{
           propertyName: 'exam_date',
-          direction: 'ASCENDING'
+          direction: 'DESCENDING'
         }]
       };
 
@@ -2062,9 +2062,9 @@ class HubSpotService {
         aggregates[key].total_bookings += parseInt(properties.total_bookings || 0); // Now uses accurate Active-only count
       });
       
-      // Convert to array and sort by date
+      // Convert to array and sort by date (descending - latest first)
       return Object.values(aggregates).sort((a, b) => {
-        return new Date(a.exam_date) - new Date(b.exam_date);
+        return new Date(b.exam_date) - new Date(a.exam_date);
       });
       
     } catch (error) {
