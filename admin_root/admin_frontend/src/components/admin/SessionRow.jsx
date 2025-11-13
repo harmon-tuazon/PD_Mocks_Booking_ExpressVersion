@@ -34,12 +34,98 @@ const SessionRow = ({ session, nested = false, onView }) => {
     ? "border-b border-gray-100 dark:border-gray-800 hover:bg-white dark:hover:bg-gray-800"
     : "border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800";
 
+  // If nested (inside aggregate), show simplified view
+  if (nested) {
+    return (
+      <tr className={rowClasses}>
+        {/* Empty column for alignment with aggregate Type column */}
+        <td className="px-6 py-3">
+          <div className="pl-8">
+            {/* Active/Inactive Indicator */}
+            <div className="flex items-center gap-2">
+              <div className={`h-2.5 w-2.5 rounded-full ${session.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
+              <span className={`text-xs font-medium ${session.is_active ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                {session.is_active ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+          </div>
+        </td>
+
+        {/* Empty column for alignment with aggregate Location column */}
+        <td className="px-6 py-3">
+          {/* Time slot */}
+          <div className="flex items-center gap-2">
+            <ClockIcon className="w-4 h-4 text-gray-400" />
+            <div className="text-sm text-gray-900 dark:text-white font-medium">
+              {formatTime(session.start_time)} - {formatTime(session.end_time)}
+            </div>
+          </div>
+        </td>
+
+        {/* Empty column for alignment with aggregate Date column */}
+        <td className="px-6 py-3">
+          {/* Capacity */}
+          <div className="flex items-center gap-2">
+            <UsersIcon className="w-4 h-4 text-gray-400" />
+            <div className="text-sm">
+              <span className="font-medium text-gray-900 dark:text-white">
+                {session.total_bookings || 0}
+              </span>
+              <span className="text-gray-500 dark:text-gray-400">
+                /{session.capacity || 0}
+              </span>
+            </div>
+          </div>
+        </td>
+
+        {/* Sessions Count column becomes Utilization for nested rows */}
+        <td className="px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center flex-1 mr-4">
+              <div className="w-full max-w-[100px] bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                <div
+                  className={`h-2.5 rounded-full ${session.utilization_rate >= 80
+                      ? 'bg-red-500'
+                      : session.utilization_rate >= 50
+                        ? 'bg-yellow-500'
+                        : 'bg-green-500'
+                    }`}
+                  style={{ width: `${session.utilization_rate || 0}%` }}
+                ></div>
+              </div>
+              <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                {session.utilization_rate || 0}%
+              </span>
+            </div>
+
+            {/* Actions */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onView?.(session);
+              }}
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/30 rounded-md transition-colors"
+              aria-label="View exam details"
+            >
+              <EyeIcon className="h-4 w-4 mr-1" />
+              View
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  // Regular list view (not nested)
   return (
     <tr className={rowClasses}>
       {/* Type Column */}
-      <td className={`px-6 py-3 ${nested ? 'pl-12' : ''}`}>
-        <div className="text-sm font-medium text-gray-900 dark:text-white">
-          {session.mock_type}
+      <td className="px-6 py-3">
+        <div className="flex items-center gap-2">
+          <div className={`h-2.5 w-2.5 rounded-full ${session.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
+          <div className="text-sm font-medium text-gray-900 dark:text-white">
+            {session.mock_type}
+          </div>
         </div>
       </td>
 
