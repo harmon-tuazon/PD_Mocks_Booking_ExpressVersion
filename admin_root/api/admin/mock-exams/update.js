@@ -152,9 +152,9 @@ module.exports = async (req, res) => {
       console.log('✅ [UPDATE] New mock_exam_name:', properties.mock_exam_name);
     }
 
-    // Convert boolean and number fields to strings for HubSpot
+    // Handle is_active as string (three-state: "active", "inactive", "scheduled")
     if (updateData.is_active !== undefined) {
-      properties.is_active = updateData.is_active.toString();
+      properties.is_active = String(updateData.is_active);
     }
     if (updateData.capacity !== undefined) {
       properties.capacity = updateData.capacity.toString();

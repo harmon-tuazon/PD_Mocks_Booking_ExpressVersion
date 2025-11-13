@@ -78,8 +78,8 @@ const SessionRow = ({
                 />
               )}
 
-              {/* Status indicator - show scheduled status if applicable */}
-              {!session.is_active && session.scheduled_activation_datetime ? (
+              {/* Status indicator - handle three states: active, inactive, scheduled */}
+              {session.is_active === 'scheduled' ? (
                 <>
                   <ClockIcon className="h-4 w-4 text-blue-500" />
                   <div className="flex flex-col">
@@ -91,11 +91,18 @@ const SessionRow = ({
                     </span>
                   </div>
                 </>
+              ) : session.is_active === 'active' ? (
+                <>
+                  <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
+                  <span className="text-xs font-medium text-green-700 dark:text-green-400">
+                    Active
+                  </span>
+                </>
               ) : (
                 <>
-                  <div className={`h-2.5 w-2.5 rounded-full ${session.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
-                  <span className={`text-xs font-medium ${session.is_active ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                    {session.is_active ? 'Active' : 'Inactive'}
+                  <div className="h-2.5 w-2.5 rounded-full bg-gray-400" />
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    Inactive
                   </span>
                 </>
               )}
@@ -185,18 +192,20 @@ const SessionRow = ({
             />
           )}
 
-          {/* Status indicator */}
-          {!session.is_active && session.scheduled_activation_datetime ? (
+          {/* Status indicator - handle three states: active, inactive, scheduled */}
+          {session.is_active === 'scheduled' ? (
             <ClockIcon className="h-4 w-4 text-blue-500" title={`Scheduled: ${formatTorontoDateTime(session.scheduled_activation_datetime)}`} />
+          ) : session.is_active === 'active' ? (
+            <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
           ) : (
-            <div className={`h-2.5 w-2.5 rounded-full ${session.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
+            <div className="h-2.5 w-2.5 rounded-full bg-gray-400" />
           )}
 
           <div>
             <div className="text-sm font-medium text-gray-900 dark:text-white">
               {session.mock_type}
             </div>
-            {!session.is_active && session.scheduled_activation_datetime && (
+            {session.is_active === 'scheduled' && session.scheduled_activation_datetime && (
               <div className="text-xs text-blue-600 dark:text-blue-400">
                 Activates: {formatTorontoDateTime(session.scheduled_activation_datetime)}
               </div>

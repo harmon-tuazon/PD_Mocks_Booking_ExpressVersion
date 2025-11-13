@@ -29,10 +29,10 @@ const CreateBookingButton = ({ mockExam, onSuccess }) => {
     }
   }, [mockExam]);
 
-  // Disable button if mock exam is not loaded or is inactive
-  // Handle both string 'true' and boolean true for is_active
+  // Disable button if mock exam is not loaded or is not active
+  // Handle both new string format and legacy boolean format for is_active
   const isDisabled = !mockExam ||
-    (mockExam.is_active !== 'true' && mockExam.is_active !== true);
+    (mockExam.is_active !== 'active' && mockExam.is_active !== true && mockExam.is_active !== 'true');
 
   const handleOpenModal = () => {
     if (!isDisabled) {

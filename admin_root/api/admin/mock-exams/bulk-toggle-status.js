@@ -121,12 +121,35 @@ module.exports = async (req, res) => {
         continue;
       }
 
-      // Get current active state (handle string/boolean conversion)
-      const currentState = session.properties.is_active === 'true' ||
-                          session.properties.is_active === true;
+      // Get current active state (handle three-state string values)
+      const currentState = session.properties.is_active;
+      let newState;
 
-      // Toggle the state
-      const newState = !currentState;
+      // Toggle logic for three-state status
+      switch (currentState) {
+        case 'active':
+          newState = 'inactive';
+          summary.deactivated++;
+          break;
+        case 'inactive':
+          newState = 'active';
+          summary.activated++;
+          break;
+        case 'scheduled':
+          // If scheduled, activate it immediately
+          newState = 'active';
+          summary.activated++;
+          break;
+        default:
+          // Handle legacy boolean values or undefined
+          const isCurrentlyActive = currentState === 'true' || currentState === true;
+          newState = isCurrentlyActive ? 'inactive' : 'active';
+          if (newState === 'active') {
+            summary.activated++;
+          } else {
+            summary.deactivated++;
+          }
+      }
 
       // Prepare update
       updates.push({
@@ -139,13 +162,6 @@ module.exports = async (req, res) => {
           newState: newState
         }
       });
-
-      // Track for summary (will be adjusted if update fails)
-      if (newState) {
-        summary.activated++;
-      } else {
-        summary.deactivated++;
-      }
     }
 
     // Process updates in batches
@@ -164,7 +180,9 @@ module.exports = async (req, res) => {
           sessionId: result.id,
           previousState: originalUpdate.metadata.previousState,
           newState: originalUpdate.metadata.newState,
-          message: originalUpdate.metadata.newState ? 'Activated' : 'Deactivated'
+          message: originalUpdate.metadata.newState === 'active' ? 'Activated' :
+                  originalUpdate.metadata.newState === 'inactive' ? 'Deactivated' :
+                  `Changed to ${originalUpdate.metadata.newState}`
         });
         summary.updated++;
       }
@@ -173,9 +191,9 @@ module.exports = async (req, res) => {
         // Find and adjust summary counts
         const originalUpdate = updates.find(u => u.id === error.id);
         if (originalUpdate) {
-          if (originalUpdate.metadata.newState) {
+          if (originalUpdate.metadata.newState === 'active') {
             summary.activated--;
-          } else {
+          } else if (originalUpdate.metadata.newState === 'inactive') {
             summary.deactivated--;
           }
         }

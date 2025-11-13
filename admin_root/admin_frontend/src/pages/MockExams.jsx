@@ -48,7 +48,7 @@ function MockExams() {
     exam_date: '',
     capacity: 15,
     location: 'Mississauga',
-    is_active: true,
+    is_active: 'active', // Changed from boolean to string: 'active' | 'inactive' | 'scheduled'
     activation_mode: 'immediate', // NEW: 'immediate' | 'scheduled'
     scheduled_activation_datetime: null // NEW: ISO datetime string in UTC
   });
@@ -119,8 +119,8 @@ function MockExams() {
         start_time: timeSlots[0].start_time,
         end_time: timeSlots[0].end_time,
         capacity: capacityMode === 'per-slot' ? timeSlots[0].capacity : formData.capacity,
-        // Override is_active if scheduling
-        is_active: formData.activation_mode === 'scheduled' ? false : formData.is_active,
+        // Set is_active based on activation mode
+        is_active: formData.activation_mode === 'scheduled' ? 'scheduled' : formData.is_active,
         // Include scheduled datetime if applicable
         scheduled_activation_datetime: scheduledDateTime
       };
@@ -131,7 +131,7 @@ function MockExams() {
         mock_type: formData.mock_type,
         exam_date: formData.exam_date,
         location: formData.location,
-        is_active: formData.activation_mode === 'scheduled' ? false : formData.is_active,
+        is_active: formData.activation_mode === 'scheduled' ? 'scheduled' : formData.is_active,
         scheduled_activation_datetime: scheduledDateTime,
         // Only include capacity in commonProperties if global mode
         ...(capacityMode === 'global' && { capacity: formData.capacity })
@@ -150,7 +150,7 @@ function MockExams() {
       exam_date: '',
       capacity: 15,
       location: 'Mississauga',
-      is_active: true,
+      is_active: 'active', // Changed from boolean to string
       activation_mode: 'immediate',
       scheduled_activation_datetime: null
     });
@@ -280,7 +280,7 @@ function MockExams() {
                     onChange={(e) => setFormData({
                       ...formData,
                       activation_mode: 'immediate',
-                      is_active: true,
+                      is_active: 'active', // Changed from boolean to string
                       scheduled_activation_datetime: null
                     })}
                     className="mt-1 h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
@@ -305,7 +305,7 @@ function MockExams() {
                     onChange={(e) => setFormData({
                       ...formData,
                       activation_mode: 'scheduled',
-                      is_active: false,
+                      is_active: 'scheduled', // Changed to 'scheduled' string
                       scheduled_activation_datetime: null
                     })}
                     className="mt-1 h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
@@ -358,8 +358,8 @@ function MockExams() {
                     Status <span className="text-red-500">*</span>
                   </Label>
                   <Select
-                    value={formData.is_active ? 'active' : 'inactive'}
-                    onValueChange={(value) => setFormData({ ...formData, is_active: value === 'active' })}
+                    value={formData.is_active} // Now directly using the string value
+                    onValueChange={(value) => setFormData({ ...formData, is_active: value })}
                   >
                     <SelectTrigger className="w-full mt-1">
                       <SelectValue placeholder="Select status" />

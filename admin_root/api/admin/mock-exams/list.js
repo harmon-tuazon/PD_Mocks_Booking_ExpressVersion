@@ -140,15 +140,20 @@ module.exports = async (req, res) => {
       const capacity = parseInt(properties.capacity) || 0;
       const totalBookings = parseInt(properties.total_bookings) || 0;
       const examDate = properties.exam_date;
-      const isActive = properties.is_active === 'true';
+      // Handle three-state string values and legacy boolean values
+      const isActiveValue = properties.is_active;
+      const isActive = isActiveValue === 'active' || isActiveValue === 'true' || isActiveValue === true;
+      const isScheduled = isActiveValue === 'scheduled';
       const today = new Date().toISOString().split('T')[0];
 
       // Calculate utilization rate
       const utilizationRate = capacity > 0 ? Math.round((totalBookings / capacity) * 100) : 0;
 
-      // Determine status
+      // Determine display status based on the three-state system
       let status = 'upcoming';
-      if (!isActive) {
+      if (isScheduled) {
+        status = 'scheduled';
+      } else if (!isActive) {
         status = 'inactive';
       } else if (totalBookings >= capacity) {
         status = 'full';
@@ -170,7 +175,7 @@ module.exports = async (req, res) => {
         total_bookings: totalBookings,
         utilization_rate: utilizationRate,
         location: properties.location || '',
-        is_active: isActive,
+        is_active: isActiveValue,  // Return the raw string value
         status,
         created_at: properties.hs_createdate || '',
         updated_at: properties.hs_lastmodifieddate || ''

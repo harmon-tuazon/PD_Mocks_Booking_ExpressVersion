@@ -27,12 +27,15 @@ const BulkToggleActiveModal = ({
       return { toActivate: 0, toDeactivate: 0, total: 0 };
     }
 
+    // Count sessions that will be activated (inactive -> active)
     const toActivate = selectedSessions.filter(session =>
-      session.is_active === false || session.is_active === 'false'
+      session.is_active === 'inactive' || session.is_active === false || session.is_active === 'false'
     ).length;
 
+    // Count sessions that will be deactivated (active -> inactive)
+    // Note: "scheduled" sessions are not toggled - they maintain their scheduled state
     const toDeactivate = selectedSessions.filter(session =>
-      session.is_active === true || session.is_active === 'true'
+      session.is_active === 'active' || session.is_active === true || session.is_active === 'true'
     ).length;
 
     return {

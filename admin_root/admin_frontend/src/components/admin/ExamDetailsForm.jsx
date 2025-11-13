@@ -125,22 +125,40 @@ const ExamDetailsForm = ({
                   <Checkbox
                     id="is_active"
                     name="is_active"
-                    checked={displayData.is_active || false}
+                    checked={displayData.is_active === 'active' || displayData.is_active === true}
                     onCheckedChange={(checked) => {
-                      onFieldChange('is_active', checked);
-                      onFieldBlur('is_active');
+                      // Convert checkbox to string status - only toggle between active/inactive
+                      // If it's scheduled, don't allow checkbox editing
+                      if (displayData.is_active !== 'scheduled') {
+                        onFieldChange('is_active', checked ? 'active' : 'inactive');
+                        onFieldBlur('is_active');
+                      }
                     }}
-                    disabled={isSaving}
+                    disabled={isSaving || displayData.is_active === 'scheduled'}
                   />
                   <label htmlFor="is_active" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                    <span className={displayData.is_active ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'}>
-                      {displayData.is_active ? 'Active' : 'Inactive'}
+                    <span className={
+                      displayData.is_active === 'active' || displayData.is_active === true
+                        ? 'text-green-600 dark:text-green-400 font-medium'
+                        : displayData.is_active === 'scheduled'
+                        ? 'text-blue-600 dark:text-blue-400 font-medium'
+                        : 'text-gray-500 dark:text-gray-400'
+                    }>
+                      {displayData.is_active === 'active' || displayData.is_active === true
+                        ? 'Active'
+                        : displayData.is_active === 'scheduled'
+                        ? 'Scheduled'
+                        : 'Inactive'}
                     </span>
                   </label>
                 </div>
               ) : (
                 <div>
-                  <StatusBadge status={displayData.status || (displayData.is_active ? 'active' : 'inactive')} />
+                  <StatusBadge status={
+                    displayData.status ||
+                    (displayData.is_active === 'active' || displayData.is_active === true ? 'active' :
+                     displayData.is_active === 'scheduled' ? 'scheduled' : 'inactive')
+                  } />
                 </div>
               )}
             </div>

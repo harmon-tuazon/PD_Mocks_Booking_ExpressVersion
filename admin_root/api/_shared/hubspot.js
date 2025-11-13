@@ -1036,7 +1036,7 @@ class HubSpotService {
         location: mockExamData.location,
         capacity: mockExamData.capacity,
         total_bookings: mockExamData.total_bookings || 0,
-        is_active: mockExamData.is_active !== undefined ? mockExamData.is_active : 'true',
+        is_active: mockExamData.is_active !== undefined ? String(mockExamData.is_active) : 'active',
         mock_exam_id: newIndex,  // Using internal HubSpot property name
         mock_exam_name: mockExamName  // Format: {mock_type}-{location}-{exam_date}
       };
@@ -1104,7 +1104,7 @@ class HubSpotService {
           location: commonProperties.location,
           capacity: capacity,  // Dynamic based on capacity mode
           total_bookings: 0,
-          is_active: commonProperties.is_active !== undefined ? commonProperties.is_active : 'true',
+          is_active: commonProperties.is_active !== undefined ? String(commonProperties.is_active) : 'active',
           mock_exam_id: mockExamIndex,  // Using internal HubSpot property name
           mock_exam_name: mockExamName  // Format: {mock_type}-{location}-{exam_date}
         };
@@ -1168,35 +1168,29 @@ class HubSpotService {
       if (status) {
         // Map frontend status values to HubSpot filters
         // Frontend sends: "active", "inactive", or "scheduled"
-        // HubSpot expects: "true" or "false" (as strings) for is_active
+        // HubSpot now uses three-state string values: "active", "inactive", "scheduled"
 
         if (status === 'scheduled') {
-          // For scheduled: is_active=false AND scheduled_activation_datetime HAS_PROPERTY
+          // For scheduled: is_active='scheduled'
           filters.push({
             propertyName: 'is_active',
             operator: 'EQ',
-            value: 'false'
+            value: 'scheduled'
           });
-          filters.push({
-            propertyName: 'scheduled_activation_datetime',
-            operator: 'HAS_PROPERTY'
-          });
-        } else {
-          // For active/inactive: just check is_active
-          const isActiveValue = status === 'active' ? 'true' : 'false';
+        } else if (status === 'active') {
+          // For active: is_active='active'
           filters.push({
             propertyName: 'is_active',
             operator: 'EQ',
-            value: isActiveValue
+            value: 'active'
           });
-
-          // For inactive status, exclude scheduled sessions
-          if (status === 'inactive') {
-            filters.push({
-              propertyName: 'scheduled_activation_datetime',
-              operator: 'NOT_HAS_PROPERTY'
-            });
-          }
+        } else if (status === 'inactive') {
+          // For inactive: is_active='inactive'
+          filters.push({
+            propertyName: 'is_active',
+            operator: 'EQ',
+            value: 'inactive'
+          });
         }
       }
 

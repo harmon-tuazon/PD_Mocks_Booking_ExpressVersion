@@ -248,10 +248,9 @@ export function formatFormDataForApi(formData) {
     }
   });
 
-  // Ensure boolean values are properly formatted
-  if (formatted.is_active !== undefined) {
-    formatted.is_active = Boolean(formatted.is_active);
-  }
+  // Handle is_active status (now a string: 'active', 'inactive', 'scheduled')
+  // Keep the original value as-is since it's now a string
+  // No conversion needed
 
   // Ensure capacity is a number
   if (formatted.capacity !== undefined) {

@@ -254,16 +254,17 @@ const schemas = {
       .messages({
         'any.only': 'Activation mode must be either "immediate" or "scheduled"'
       }),
-    is_active: Joi.boolean()
+    is_active: Joi.string()
+      .valid('active', 'inactive', 'scheduled')
       .optional()
       .when('activation_mode', {
         is: 'scheduled',
-        then: Joi.boolean().valid(false).default(false),  // Force false when scheduled
-        otherwise: Joi.boolean().default(true)
+        then: Joi.string().valid('scheduled').default('scheduled'),  // Force 'scheduled' when using scheduled activation mode
+        otherwise: Joi.string().valid('active', 'inactive').default('active')
       })
       .messages({
-        'boolean.base': 'is_active must be a boolean value',
-        'any.only': 'is_active must be false when using scheduled activation mode'
+        'any.only': 'is_active must be one of: active, inactive, or scheduled',
+        'string.base': 'is_active must be a string value'
       }),
     // Scheduled activation datetime - required when activation_mode is 'scheduled'
     scheduled_activation_datetime: Joi.date()
@@ -356,16 +357,17 @@ const schemas = {
         .messages({
           'any.only': 'Activation mode must be either "immediate" or "scheduled"'
         }),
-      is_active: Joi.boolean()
+      is_active: Joi.string()
+        .valid('active', 'inactive', 'scheduled')
         .optional()
         .when('activation_mode', {
           is: 'scheduled',
-          then: Joi.boolean().valid(false).default(false),  // Force false when scheduled
-          otherwise: Joi.boolean().default(true)
+          then: Joi.string().valid('scheduled').default('scheduled'),  // Force 'scheduled' when using scheduled activation mode
+          otherwise: Joi.string().valid('active', 'inactive').default('active')
         })
         .messages({
-          'boolean.base': 'is_active must be a boolean value',
-          'any.only': 'is_active must be false when using scheduled activation mode'
+          'any.only': 'is_active must be one of: active, inactive, or scheduled',
+          'string.base': 'is_active must be a string value'
         }),
       // Scheduled activation datetime for bulk creation
       scheduled_activation_datetime: Joi.date()
@@ -586,10 +588,12 @@ const schemas = {
       .messages({
         'any.only': 'Location must be one of: Mississauga, Mississauga - B9, Mississauga - Lab D, Calgary, Vancouver, Montreal, Richmond Hill, or Online'
       }),
-    is_active: Joi.boolean()
+    is_active: Joi.string()
+      .valid('active', 'inactive', 'scheduled')
       .optional()
       .messages({
-        'boolean.base': 'is_active must be a boolean value'
+        'any.only': 'is_active must be one of: active, inactive, or scheduled',
+        'string.base': 'is_active must be a string value'
       }),
     start_time: Joi.string()
       .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)

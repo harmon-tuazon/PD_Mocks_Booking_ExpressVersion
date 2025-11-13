@@ -84,7 +84,7 @@ async function findOverdueSessions() {
         {
           propertyName: 'is_active',
           operator: 'EQ',
-          value: 'false'
+          value: 'scheduled'
         },
         {
           propertyName: 'scheduled_activation_datetime',
@@ -139,7 +139,7 @@ async function batchActivateSessions(sessions) {
   const updates = sessions.map(session => ({
     id: session.id,
     properties: {
-      is_active: true
+      is_active: 'active'
     }
   }));
 
