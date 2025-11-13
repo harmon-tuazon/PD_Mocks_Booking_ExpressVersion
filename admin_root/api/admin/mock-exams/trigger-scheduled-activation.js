@@ -11,8 +11,8 @@
  * Security: Requires admin authentication (not CRON_SECRET)
  */
 
-const { requireAdmin } = require('../../middleware/requireAdmin');
-const { activateScheduledSessions } = require('../../../_shared/scheduledActivation');
+const { requireAdmin } = require('../middleware/requireAdmin');
+const { activateScheduledSessions } = require('../../_shared/scheduledActivation');
 
 module.exports = async (req, res) => {
   try {
