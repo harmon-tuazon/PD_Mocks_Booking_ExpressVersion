@@ -126,16 +126,18 @@ const MockExamsTable = ({
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
-              {data.map((aggregate) => (
-                <AggregateRow
-                  key={aggregate.aggregate_key}
-                  aggregate={aggregate}
-                  onView={(session) => navigate(`/mock-exams/${session.id}`)}
-                  isSelectionMode={isSelectionMode}
-                  onToggleSelection={onToggleSelection}
-                  isSelected={isSelected}
-                />
-              ))}
+              {data
+                .filter(aggregate => aggregate != null) // Filter out null/undefined items
+                .map((aggregate) => (
+                  <AggregateRow
+                    key={aggregate.aggregate_key}
+                    aggregate={aggregate}
+                    onView={(session) => navigate(`/mock-exams/${session.id}`)}
+                    isSelectionMode={isSelectionMode}
+                    onToggleSelection={onToggleSelection}
+                    isSelected={isSelected}
+                  />
+                ))}
             </tbody>
           </table>
         </div>
@@ -245,17 +247,19 @@ const MockExamsTable = ({
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
-            {data.map((exam) => (
-              <SessionRow
-                key={exam.id}
-                session={exam}
-                nested={false}
-                onView={(session) => navigate(`/mock-exams/${session.id}`)}
-                isSelectionMode={isSelectionMode}
-                onToggleSelection={onToggleSelection}
-                isSelected={isSelected ? isSelected(exam.id) : false}
-              />
-            ))}
+            {data
+              .filter(exam => exam != null) // Filter out null/undefined items
+              .map((exam) => (
+                <SessionRow
+                  key={exam.id}
+                  session={exam}
+                  nested={false}
+                  onView={(session) => navigate(`/mock-exams/${session.id}`)}
+                  isSelectionMode={isSelectionMode}
+                  onToggleSelection={onToggleSelection}
+                  isSelected={isSelected ? isSelected(exam.id) : false}
+                />
+              ))}
           </tbody>
         </table>
       </div>
