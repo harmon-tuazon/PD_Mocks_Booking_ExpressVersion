@@ -39,23 +39,22 @@ const SessionRow = ({
 
   // Handle row click for selection
   const handleRowClick = (e) => {
-    if (isSelectionMode) {
-      // Don't toggle if clicking the View button
-      if (e.target.closest('button[aria-label="View exam details"]')) {
-        e.stopPropagation();
-        return;
-      }
-      onToggleSelection?.(session.id);
+    // Don't toggle if clicking the View button
+    if (e.target.closest('button[aria-label="View exam details"]')) {
+      e.stopPropagation();
+      return;
     }
+
+    // Always allow selection (not gated by isSelectionMode)
+    // The hook will handle entering selection mode on first selection
+    onToggleSelection?.(session.id);
   };
 
   // Build row classes with selection styling
   const rowClasses = nested
-    ? `border-b border-gray-100 dark:border-gray-800 hover:bg-white dark:hover:bg-gray-800
-       ${isSelectionMode ? 'cursor-pointer' : ''}
+    ? `border-b border-gray-100 dark:border-gray-800 hover:bg-white dark:hover:bg-gray-800 cursor-pointer
        ${isSelected ? 'border-2 !border-primary-600 dark:!border-primary-400 bg-primary-50 dark:bg-primary-900/20' : ''}`
-    : `border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800
-       ${isSelectionMode ? 'cursor-pointer' : ''}
+    : `border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer
        ${isSelected ? 'border-2 !border-primary-600 dark:!border-primary-400 bg-primary-50 dark:bg-primary-900/20' : ''}`;
 
   // If nested (inside aggregate), show simplified view

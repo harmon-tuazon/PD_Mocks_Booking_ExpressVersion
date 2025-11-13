@@ -146,7 +146,7 @@ const FilterBar = ({
             onClick={() => onViewModeChange('list')}
             className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
               viewMode === 'list'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm border border-gray-300 dark:border-gray-600'
+                ? 'bg-primary-600 dark:bg-primary-500 text-white shadow-sm'
                 : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}
             title="List View"
