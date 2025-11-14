@@ -168,8 +168,8 @@ const BulkEditModal = ({
     if (formData.exam_date) updates.exam_date = formData.exam_date;
     if (formData.is_active && formData.is_active !== KEEP_CURRENT) updates.is_active = formData.is_active;
 
-    // Handle scheduled activation datetime
-    if (formData.is_active === 'scheduled' && formData.scheduled_activation_datetime) {
+    // Handle scheduled activation datetime - can be set independently
+    if (formData.scheduled_activation_datetime) {
       // Convert to UTC for backend
       updates.scheduled_activation_datetime = convertTorontoToUTC(formData.scheduled_activation_datetime);
     }
@@ -458,25 +458,23 @@ const BulkEditModal = ({
                                 </Select>
                               </div>
 
-                              {/* Scheduled Activation DateTime - conditional */}
-                              {formData.is_active === 'scheduled' && (
-                                <div>
-                                  <Label htmlFor="scheduled_activation">Scheduled Activation</Label>
-                                  <DateTimePicker
-                                    id="scheduled_activation"
-                                    value={formData.scheduled_activation_datetime}
-                                    onChange={(value) => handleFieldChange('scheduled_activation_datetime', value)}
-                                    placeholder="Select date and time"
-                                    disabled={editMutation.isPending}
-                                    minDateTime={new Date().toISOString()}
-                                  />
-                                  {validationErrors.scheduled_activation_datetime && (
-                                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                                      {validationErrors.scheduled_activation_datetime}
-                                    </p>
-                                  )}
-                                </div>
-                              )}
+                              {/* Scheduled Activation DateTime - always visible */}
+                              <div>
+                                <Label htmlFor="scheduled_activation">Scheduled Activation</Label>
+                                <DateTimePicker
+                                  id="scheduled_activation"
+                                  value={formData.scheduled_activation_datetime}
+                                  onChange={(value) => handleFieldChange('scheduled_activation_datetime', value)}
+                                  placeholder="Keep current"
+                                  disabled={editMutation.isPending}
+                                  minDateTime={new Date().toISOString()}
+                                />
+                                {validationErrors.scheduled_activation_datetime && (
+                                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                                    {validationErrors.scheduled_activation_datetime}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </div>
 
