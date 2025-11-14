@@ -296,15 +296,6 @@ const MassDeleteModal = ({
                       {/* Numeric confirmation input */}
                       {sessionBreakdown.deletableCount > 0 && (
                         <div className="space-y-2">
-                          <label
-                            htmlFor="confirmation-input"
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                          >
-                            To confirm, type the number of sessions to delete:{' '}
-                            <span className="font-bold text-red-600 dark:text-red-400">
-                              {sessionBreakdown.deletableCount}
-                            </span>
-                          </label>
                           <input
                             id="confirmation-input"
                             type="text"
@@ -312,17 +303,14 @@ const MassDeleteModal = ({
                             value={confirmationInput}
                             onChange={(e) => setConfirmationInput(e.target.value)}
                             disabled={deleteMutation.isPending}
-                            className={`block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-red-500 focus:ring-red-500 dark:bg-gray-700 dark:text-gray-100 sm:text-sm ${
-                              confirmationInput && !isConfirmationValid
-                                ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
-                                : ''
-                            }`}
-                            placeholder={`Type ${sessionBreakdown.deletableCount}`}
+                            placeholder={`Type ${sessionBreakdown.deletableCount} to confirm`}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-center text-lg font-mono bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
                             autoComplete="off"
+                            aria-label="Confirmation input"
                           />
                           {confirmationInput && !isConfirmationValid && (
-                            <p className="text-xs text-red-600 dark:text-red-400">
-                              Please enter exactly {sessionBreakdown.deletableCount} to confirm
+                            <p className="mt-2 text-sm text-red-600 dark:text-red-400 text-center">
+                              Please type {sessionBreakdown.deletableCount} to confirm
                             </p>
                           )}
                         </div>
