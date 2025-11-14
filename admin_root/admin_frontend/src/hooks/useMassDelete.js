@@ -101,6 +101,11 @@ const useMassDelete = () => {
           queryClient.removeQueries({ queryKey: ['mockExamDetails', sessionId] });
         });
       }
+
+      // CRITICAL: Force immediate refetch of active queries
+      // Without this, invalidated queries won't refetch until window focus/remount
+      // This ensures the UI updates immediately after deletion
+      queryClient.refetchQueries({ active: true });
     },
 
     /**
