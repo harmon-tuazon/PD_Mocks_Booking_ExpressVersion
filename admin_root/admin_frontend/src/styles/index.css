@@ -93,9 +93,9 @@
     --accent-foreground: 209 94% 15%;
     --destructive: 4 86% 63%;            /* #F45E56 - PrepDoctors Coral */
     --destructive-foreground: 0 0% 98%;
-    --border: 213 100% 90%;              /* Light blue border */
-    --input: 213 100% 90%;               /* Light blue input border */
-    --ring: 209 94% 36%;                 /* Primary blue focus ring */
+    --border: 209 50% 70%;               /* Darker blue border for better contrast (WCAG AA) */
+    --input: 209 50% 70%;                /* Darker blue input border for better contrast (WCAG AA) */
+    --ring: 209 94% 40%;                 /* Slightly darker primary blue focus ring for better contrast */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
@@ -120,9 +120,9 @@
     --accent-foreground: 0 0% 98%;
     --destructive: 4 86% 63%;            /* PrepDoctors Coral */
     --destructive-foreground: 0 0% 98%;
-    --border: 209 60% 25%;               /* Darker blue border for dark mode */
-    --input: 209 60% 25%;                /* Darker blue input border */
-    --ring: 209 94% 50%;                 /* Lighter primary blue ring */
+    --border: 209 70% 35%;               /* Brighter blue border for dark mode (better contrast against dark bg) */
+    --input: 209 70% 35%;                /* Brighter blue input border for dark mode */
+    --ring: 209 94% 55%;                 /* Brighter primary blue ring for dark mode visibility */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -588,13 +588,21 @@
     appearance: none !important;
   }
 
-  /* Focus states for ALL form elements */
+  /* Focus states for ALL form elements - WCAG AA compliant */
   input:focus,
   select:focus,
   textarea:focus {
     outline: none !important;
-    border-color: #0660B2 !important;
-    box-shadow: 0 0 0 3px rgba(6, 96, 178, 0.1) !important;
+    border-color: #054E91 !important; /* Darker blue for better contrast */
+    box-shadow: 0 0 0 3px rgba(5, 78, 145, 0.25) !important; /* Increased opacity for better visibility */
+  }
+
+  /* Dark mode focus states - WCAG AA compliant */
+  .dark input:focus,
+  .dark select:focus,
+  .dark textarea:focus {
+    border-color: #4799ff !important; /* Brighter blue for dark mode contrast */
+    box-shadow: 0 0 0 3px rgba(71, 153, 255, 0.35) !important; /* Higher opacity for dark mode visibility */
   }
 
   /* Brand color for native controls */
