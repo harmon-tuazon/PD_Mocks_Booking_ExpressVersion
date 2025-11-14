@@ -5,7 +5,8 @@
  * Features:
  * - Positioned in mock exam details header (right-aligned)
  * - Opens CreateBookingModal when clicked
- * - Disabled if mock exam is inactive
+ * - Enabled for both active and scheduled mock exams
+ * - Disabled only for inactive mock exams
  * - Visual feedback on hover/disabled states
  */
 
@@ -29,10 +30,13 @@ const CreateBookingButton = ({ mockExam, onSuccess }) => {
     }
   }, [mockExam]);
 
-  // Disable button if mock exam is not loaded or is not active
-  // Handle both new string format and legacy boolean format for is_active
+  // Disable button if mock exam is not loaded or is inactive
+  // Allow bookings for both 'active' and 'scheduled' status
+  // Only disable for 'false' (inactive) or 'inactive' status
   const isDisabled = !mockExam ||
-    (mockExam.is_active !== 'active' && mockExam.is_active !== true && mockExam.is_active !== 'true');
+    mockExam.is_active === 'false' ||
+    mockExam.is_active === false ||
+    mockExam.is_active === 'inactive';
 
   const handleOpenModal = () => {
     if (!isDisabled) {
@@ -61,7 +65,7 @@ const CreateBookingButton = ({ mockExam, onSuccess }) => {
             ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed opacity-50'
             : 'bg-primary-600 hover:bg-primary-700 text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
         }`}
-        title={isDisabled ? 'Cannot create booking for inactive mock exam' : 'Create booking for a trainee'}
+        title={isDisabled ? 'Cannot create booking for inactive mock exam' : 'Create booking for a trainee (available for active and scheduled exams)'}
       >
         <PlusCircleIcon className="h-5 w-5 mr-2" />
         Create Booking
