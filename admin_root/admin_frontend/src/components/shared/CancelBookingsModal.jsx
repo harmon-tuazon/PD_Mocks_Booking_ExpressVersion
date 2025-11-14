@@ -170,7 +170,7 @@ const CancelBookingsModal = ({
                       value={confirmationInput}
                       onChange={(e) => setConfirmationInput(e.target.value)}
                       placeholder={`Type ${selectedBookings.length} to confirm`}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-center text-lg font-mono bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-center bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
                       disabled={isLoading}
                       autoComplete="off"
                       aria-label="Confirmation input"
