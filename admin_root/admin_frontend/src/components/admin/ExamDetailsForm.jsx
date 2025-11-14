@@ -143,13 +143,6 @@ function ExamDetailsForm({
                   (displayData.is_active === 'true' ? 'active' :
                    displayData.is_active === 'scheduled' ? 'scheduled' : 'inactive')
                 } />
-                {/* Show scheduled datetime when status is scheduled */}
-                {displayData.is_active === 'scheduled' && displayData.scheduled_activation_datetime && (
-                  <div className="mt-1 text-sm text-blue-600 dark:text-blue-400 flex items-center">
-                    <ClockIcon className="h-4 w-4 mr-1" />
-                    Activates: {formatTorontoDateTime(displayData.scheduled_activation_datetime)}
-                  </div>
-                )}
               </div>
             )}
           </div>
