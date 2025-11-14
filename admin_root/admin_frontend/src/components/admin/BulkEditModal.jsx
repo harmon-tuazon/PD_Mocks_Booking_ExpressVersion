@@ -64,13 +64,13 @@ const BulkEditModal = ({
   selectedSessions,
   onSuccess
 }) => {
-  // Form state - empty values mean "don't update this field"
+  // Form state - sentinel values for selects, empty for inputs
   const [formData, setFormData] = useState({
-    location: '',
-    mock_type: '',
+    location: '__keep_current__',
+    mock_type: '__keep_current__',
     capacity: '',
     exam_date: '',
-    is_active: '',
+    is_active: '__keep_current__',
     scheduled_activation_datetime: ''
   });
   const [confirmationInput, setConfirmationInput] = useState('');
@@ -159,11 +159,14 @@ const BulkEditModal = ({
   const prepareUpdates = () => {
     const updates = {};
 
-    if (formData.location) updates.location = formData.location;
-    if (formData.mock_type) updates.mock_type = formData.mock_type;
+    // Sentinel value for "keep current" option in selects
+    const KEEP_CURRENT = '__keep_current__';
+
+    if (formData.location && formData.location !== KEEP_CURRENT) updates.location = formData.location;
+    if (formData.mock_type && formData.mock_type !== KEEP_CURRENT) updates.mock_type = formData.mock_type;
     if (formData.capacity) updates.capacity = parseInt(formData.capacity);
     if (formData.exam_date) updates.exam_date = formData.exam_date;
-    if (formData.is_active) updates.is_active = formData.is_active;
+    if (formData.is_active && formData.is_active !== KEEP_CURRENT) updates.is_active = formData.is_active;
 
     // Handle scheduled activation datetime
     if (formData.is_active === 'scheduled' && formData.scheduled_activation_datetime) {
@@ -368,7 +371,7 @@ const BulkEditModal = ({
                                     <SelectValue placeholder="Keep current" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="">Keep current</SelectItem>
+                                    <SelectItem value="__keep_current__">Keep current</SelectItem>
                                     <SelectItem value="Mississauga">Mississauga</SelectItem>
                                     <SelectItem value="Mississauga - B9">Mississauga - B9</SelectItem>
                                     <SelectItem value="Mississauga - Lab D">Mississauga - Lab D</SelectItem>
@@ -393,7 +396,7 @@ const BulkEditModal = ({
                                     <SelectValue placeholder="Keep current" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="">Keep current</SelectItem>
+                                    <SelectItem value="__keep_current__">Keep current</SelectItem>
                                     <SelectItem value="Situational Judgment">Situational Judgment</SelectItem>
                                     <SelectItem value="Clinical Skills">Clinical Skills</SelectItem>
                                     <SelectItem value="Mock Discussion">Mock Discussion</SelectItem>
@@ -447,7 +450,7 @@ const BulkEditModal = ({
                                     <SelectValue placeholder="Keep current" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="">Keep current</SelectItem>
+                                    <SelectItem value="__keep_current__">Keep current</SelectItem>
                                     <SelectItem value="true">Active</SelectItem>
                                     <SelectItem value="false">Inactive</SelectItem>
                                     <SelectItem value="scheduled">Scheduled</SelectItem>
