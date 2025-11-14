@@ -179,9 +179,10 @@ function MockExamsDashboard() {
   const totalSessionCount = useMemo(() => {
     if (viewMode === 'aggregate') {
       // For aggregate view, sum session counts from all aggregates (not just paginated)
-      return sortedAggregates.reduce((total, aggregate) => {
+      const aggregateTotal = sortedAggregates.reduce((total, aggregate) => {
         return total + (aggregate.session_count || 0);
       }, 0);
+      return aggregateTotal;
     } else {
       // For list view, use backend pagination total
       return paginationInfo.total_records;

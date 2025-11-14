@@ -43,7 +43,8 @@
       "Bash(npm run:*)",
       "mcp__serena__edit_memory",
       "mcp__serena__write_memory",
-      "mcp__serena__think_about_task_adherence"
+      "mcp__serena__think_about_task_adherence",
+      "mcp__vercel__list_deployments"
     ],
     "deny": [],
     "ask": []

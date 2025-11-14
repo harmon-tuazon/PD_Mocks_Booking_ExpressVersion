@@ -1208,9 +1208,6 @@ class HubSpotService {
         });
       }
 
-      // Calculate offset for pagination
-      const after = page > 1 ? ((page - 1) * limit) : 0;
-
       // Build search request - now includes associations to fetch bookings
       const searchRequest = {
         properties: [
@@ -1226,7 +1223,7 @@ class HubSpotService {
           'hs_lastmodifieddate'
         ],
         associations: [HUBSPOT_OBJECTS.bookings], // Fetch booking associations
-        limit,
+        limit: 200, // Fetch max per request, we'll paginate client-side
         sorts: [{
           propertyName: sortBy === 'date' ? 'exam_date' : sortBy,
           direction: sortOrder.toUpperCase()
@@ -1238,18 +1235,38 @@ class HubSpotService {
         searchRequest.filterGroups = [{ filters }];
       }
 
-      // Add pagination if needed
-      if (after > 0) {
-        searchRequest.after = after;
-      }
+      // Fetch ALL results from HubSpot (with pagination loop) when date filters are present
+      // This ensures we get an accurate total count after date filtering
+      const allResults = [];
+      let after = undefined;
 
-      const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, searchRequest);
+      do {
+        // Add pagination token if available
+        if (after) {
+          searchRequest.after = after;
+        }
 
-      // Apply date filtering in application code
-      let results = response.results || [];
+        const response = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`, searchRequest);
+
+        // Add results to collection
+        if (response.results) {
+          allResults.push(...response.results);
+        }
+
+        // Get next page token
+        after = response.paging?.next?.after;
+
+        // Log pagination progress
+        console.log(`[listMockExams] Fetched ${response.results?.length || 0} exams, total so far: ${allResults.length}, has more: ${!!after}`);
+
+      } while (after); // Continue while there are more pages
+
+      // Apply date filtering in application code to ALL results
+      let filteredResults = allResults;
 
       if (dateFilters.startDate || dateFilters.endDate) {
-        results = results.filter(exam => {
+        const beforeFilter = filteredResults.length;
+        filteredResults = allResults.filter(exam => {
           const examDate = exam.properties.exam_date;
 
           if (dateFilters.startDate && examDate < dateFilters.startDate) {
@@ -1262,8 +1279,19 @@ class HubSpotService {
           return true;
         });
 
-        console.log(`Date filtering applied: ${response.results?.length || 0} -> ${results.length} exams`);
+        console.log(`[listMockExams] Date filtering applied: ${beforeFilter} -> ${filteredResults.length} exams`);
       }
+
+      // Calculate accurate total after filtering
+      const accurateTotal = filteredResults.length;
+
+      // Apply client-side pagination to the filtered results
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      let results = filteredResults.slice(startIndex, endIndex);
+
+      console.log(`[listMockExams] Paginating: page ${page}, showing ${results.length} of ${accurateTotal} total exams`);
+
 
       // OPTIMIZED: Batch fetch associations for all exams instead of individual calls
       // This reduces N API calls to 1 batch call
@@ -1363,15 +1391,20 @@ class HubSpotService {
       }
 
       // Format response with pagination info
+      // Use accurateTotal which reflects the count after date filtering
+      const totalPages = Math.ceil(accurateTotal / limit);
+      const hasMore = page < totalPages;
+
       return {
         results: enrichedResults,
         pagination: {
           page,
           limit,
-          total: response.total || 0,
-          hasMore: response.paging?.next ? true : false,
-          nextPage: response.paging?.next ? page + 1 : null
-        }
+          total: accurateTotal, // Use accurate count after filtering
+          hasMore: hasMore,
+          nextPage: hasMore ? page + 1 : null
+        },
+        total: accurateTotal // Add top-level total for backwards compatibility
       };
     } catch (error) {
       console.error('Error listing mock exams:', error);
