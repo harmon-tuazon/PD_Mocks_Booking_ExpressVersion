@@ -80,17 +80,26 @@ const SessionRow = ({
 
               {/* Status indicator - handle three states: active, inactive, scheduled */}
               {session.is_active === 'scheduled' ? (
-                <>
+                <div className="group relative inline-flex items-center gap-2">
                   <ClockIcon className="h-4 w-4 text-blue-500" />
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-blue-700 dark:text-blue-400">
-                      Scheduled
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatTorontoDateTime(session.scheduled_activation_datetime)}
-                    </span>
-                  </div>
-                </>
+                  <span className="text-xs font-medium text-blue-700 dark:text-blue-400">
+                    Scheduled
+                  </span>
+
+                  {/* Tooltip - shows on hover */}
+                  {session.scheduled_activation_datetime && (
+                    <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover:block">
+                      <div className="bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-md py-1.5 px-3 shadow-lg whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          <ClockIcon className="h-3 w-3" />
+                          <span>Activates: {formatTorontoDateTime(session.scheduled_activation_datetime)}</span>
+                        </div>
+                        {/* Tooltip arrow */}
+                        <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 dark:bg-gray-700 transform rotate-45"></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : session.is_active === 'true' ? (
                 <>
                   <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
@@ -194,7 +203,23 @@ const SessionRow = ({
 
           {/* Status indicator - handle three states: active, inactive, scheduled */}
           {session.is_active === 'scheduled' ? (
-            <ClockIcon className="h-4 w-4 text-blue-500" title={`Scheduled: ${formatTorontoDateTime(session.scheduled_activation_datetime)}`} />
+            <div className="group relative">
+              <ClockIcon className="h-4 w-4 text-blue-500" />
+
+              {/* Tooltip - shows on hover */}
+              {session.scheduled_activation_datetime && (
+                <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover:block">
+                  <div className="bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-md py-1.5 px-3 shadow-lg whitespace-nowrap">
+                    <div className="flex items-center gap-1">
+                      <ClockIcon className="h-3 w-3" />
+                      <span>Activates: {formatTorontoDateTime(session.scheduled_activation_datetime)}</span>
+                    </div>
+                    {/* Tooltip arrow */}
+                    <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 dark:bg-gray-700 transform rotate-45"></div>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : session.is_active === 'true' ? (
             <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
           ) : (
@@ -205,11 +230,6 @@ const SessionRow = ({
             <div className="text-sm font-medium text-gray-900 dark:text-white">
               {session.mock_type}
             </div>
-            {session.is_active === 'scheduled' && session.scheduled_activation_datetime && (
-              <div className="text-xs text-blue-600 dark:text-blue-400">
-                Activates: {formatTorontoDateTime(session.scheduled_activation_datetime)}
-              </div>
-            )}
           </div>
         </div>
       </td>
