@@ -132,9 +132,42 @@ export const validationRules = {
   is_active: {
     required: false,
     validate: (value) => {
-      return typeof value === 'boolean';
+      // Accept string values: 'true', 'false', or 'scheduled'
+      return ['true', 'false', 'scheduled'].includes(value);
     },
-    errorMessage: 'Status must be active or inactive'
+    errorMessage: 'Status must be active, inactive, or scheduled'
+  },
+
+  scheduled_activation_datetime: {
+    required: false,
+    validate: (value, formData) => {
+      // Only validate if is_active is 'scheduled'
+      if (formData?.is_active === 'scheduled') {
+        if (!value) {
+          return 'Scheduled activation date/time is required when status is scheduled';
+        }
+
+        try {
+          const date = typeof value === 'string' ? parseISO(value) : value;
+          if (!isValid(date)) {
+            return 'Please enter a valid date/time';
+          }
+
+          // Must be in the future
+          const now = new Date();
+          if (isBefore(date, now)) {
+            return 'Scheduled activation must be in the future';
+          }
+
+          return true;
+        } catch {
+          return 'Please enter a valid date/time';
+        }
+      }
+
+      return true;
+    },
+    errorMessage: 'Please enter a valid scheduled activation date/time'
   }
 };
 
