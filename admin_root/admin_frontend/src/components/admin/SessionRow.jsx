@@ -64,19 +64,22 @@ const SessionRow = ({
       <tr className={rowClasses} onClick={handleRowClick}>
         {/* Empty column for alignment with aggregate Type column */}
         <td className="px-6 py-3">
-          <div className="pl-8">
-            {/* Active/Inactive/Scheduled Indicator with Checkbox */}
-            <div className="flex items-center gap-3">
-              {/* Checkbox - only visible when selected */}
+          <div className="pl-8 flex items-center gap-6">
+            {/* Checkbox - positioned at the far left with more spacing */}
+            <div className="flex-shrink-0">
               {isSelected && (
                 <input
                   type="checkbox"
                   checked={isSelected}
                   onChange={() => {}} // Controlled by row click
                   onClick={(e) => e.stopPropagation()} // Prevent double toggle
-                  className="h-4 w-4 text-primary-600 bg-white border-gray-300 rounded focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                  className="h-5 w-5 text-primary-600 bg-white border-2 border-gray-300 rounded-full focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 dark:bg-gray-700 dark:border-gray-500 cursor-pointer appearance-none checked:bg-primary-600 checked:border-primary-600 relative checked:after:content-['✓'] checked:after:absolute checked:after:left-1/2 checked:after:top-1/2 checked:after:-translate-x-1/2 checked:after:-translate-y-1/2 checked:after:text-white checked:after:text-xs checked:after:font-bold transition-all duration-200 hover:border-primary-400"
                 />
               )}
+            </div>
+
+            {/* Status indicator with more spacing from checkbox */}
+            <div className="flex items-center gap-3">
 
               {/* Status indicator - handle three states: active, inactive, scheduled */}
               {session.is_active === 'scheduled' ? (
@@ -189,17 +192,22 @@ const SessionRow = ({
     <tr className={rowClasses} onClick={handleRowClick}>
       {/* Type Column */}
       <td className="px-6 py-3">
-        <div className="flex items-center gap-3">
-          {/* Checkbox - only visible when selected */}
-          {isSelected && (
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => {}} // Controlled by row click
-              onClick={(e) => e.stopPropagation()} // Prevent double toggle
-              className="h-4 w-4 text-primary-600 bg-white border-gray-300 rounded focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-            />
-          )}
+        <div className="flex items-center gap-6">
+          {/* Checkbox - positioned at the far left with more spacing */}
+          <div className="flex-shrink-0">
+            {isSelected && (
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={() => {}} // Controlled by row click
+                onClick={(e) => e.stopPropagation()} // Prevent double toggle
+                className="h-5 w-5 text-primary-600 bg-white border-2 border-gray-300 rounded-full focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 dark:bg-gray-700 dark:border-gray-500 cursor-pointer appearance-none checked:bg-primary-600 checked:border-primary-600 relative checked:after:content-['✓'] checked:after:absolute checked:after:left-1/2 checked:after:top-1/2 checked:after:-translate-x-1/2 checked:after:-translate-y-1/2 checked:after:text-white checked:after:text-xs checked:after:font-bold transition-all duration-200 hover:border-primary-400"
+              />
+            )}
+          </div>
+
+          {/* Status and content wrapper with more spacing from checkbox */}
+          <div className="flex items-center gap-3">
 
           {/* Status indicator - handle three states: active, inactive, scheduled */}
           {session.is_active === 'scheduled' ? (
@@ -230,6 +238,7 @@ const SessionRow = ({
             <div className="text-sm font-medium text-gray-900 dark:text-white">
               {session.mock_type}
             </div>
+          </div>
           </div>
         </div>
       </td>
