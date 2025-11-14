@@ -15,7 +15,7 @@
 import { Fragment, useState, useEffect, useMemo } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { format } from 'date-fns';
+import { formatDateShort } from '../../utils/dateUtils';
 import useMassDelete from '../../hooks/useMassDelete';
 
 const MassDeleteModal = ({
@@ -106,15 +106,6 @@ const MassDeleteModal = ({
     } catch (error) {
       // Error is already handled by the mutation's onError
       console.error('Delete operation failed:', error);
-    }
-  };
-
-  // Format date for display
-  const formatDate = (dateString) => {
-    try {
-      return format(new Date(dateString), 'MMM d, yyyy');
-    } catch (error) {
-      return dateString || 'N/A';
     }
   };
 
@@ -255,7 +246,7 @@ const MassDeleteModal = ({
                                       {session.mock_type || 'N/A'}
                                     </td>
                                     <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
-                                      {formatDate(session.exam_date)}
+                                      {formatDateShort(session.exam_date)}
                                     </td>
                                     <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
                                       {session.location || 'N/A'}
