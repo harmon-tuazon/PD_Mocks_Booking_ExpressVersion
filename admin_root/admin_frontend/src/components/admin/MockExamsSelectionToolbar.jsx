@@ -63,20 +63,30 @@ const MockExamsSelectionToolbar = ({
             </button>
           )}
 
-          {/* Exit selection mode button */}
-          <button
-            onClick={onExitMode}
-            className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md
-                       text-gray-700 bg-white border-2 border-gray-500
-                       hover:bg-gray-50 hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500
-                       dark:text-gray-200 dark:bg-gray-800 dark:border-gray-400
-                       dark:hover:bg-gray-700 dark:hover:border-gray-300 dark:focus:ring-offset-gray-900
-                       transition-colors"
-            aria-label="Exit selection mode"
-          >
-            <XMarkIcon className="h-4 w-4 mr-1" />
-            Exit Selection Mode
-          </button>
+          {/* Exit selection mode button - Icon only with tooltip */}
+          <div className="group relative">
+            <button
+              onClick={onExitMode}
+              className="inline-flex items-center justify-center p-2 text-sm font-medium rounded-md
+                         text-gray-700 bg-white border-2 border-gray-500
+                         hover:bg-gray-50 hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500
+                         dark:text-gray-200 dark:bg-gray-800 dark:border-gray-400
+                         dark:hover:bg-gray-700 dark:hover:border-gray-300 dark:focus:ring-offset-gray-900
+                         transition-colors"
+              aria-label="Exit selection mode"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+
+            {/* Tooltip */}
+            <div className="absolute right-0 top-full mt-2 z-50 hidden group-hover:block">
+              <div className="bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-md py-1.5 px-3 shadow-lg whitespace-nowrap">
+                Exit Selection Mode
+                {/* Tooltip arrow */}
+                <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-900 dark:bg-gray-700 transform rotate-45"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
