@@ -66,7 +66,7 @@ const SessionRow = ({
         <td className="px-6 py-3">
           <div className="pl-8 flex items-center gap-6">
             {/* Checkbox - positioned at the far left with more spacing */}
-            <div className="flex-shrink-0">
+            <div className="flex items-center flex-shrink-0">
               {isSelected && (
                 <input
                   type="checkbox"
@@ -194,7 +194,7 @@ const SessionRow = ({
       <td className="px-6 py-3">
         <div className="flex items-center gap-6">
           {/* Checkbox - positioned at the far left with more spacing */}
-          <div className="flex-shrink-0">
+          <div className="flex items-center flex-shrink-0">
             {isSelected && (
               <input
                 type="checkbox"
