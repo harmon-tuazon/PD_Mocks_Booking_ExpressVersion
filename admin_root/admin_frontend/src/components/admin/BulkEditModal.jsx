@@ -566,12 +566,9 @@ const BulkEditModal = ({
                             </>
                           )}
 
-                          {/* Confirmation input */}
+                          {/* Numeric confirmation input */}
                           <div className="space-y-2">
-                            <Label htmlFor="confirmation-input">
-                              Type <span className="font-bold">{editableSessions.length}</span> to confirm bulk edit
-                            </Label>
-                            <Input
+                            <input
                               id="confirmation-input"
                               type="text"
                               inputMode="numeric"
@@ -579,11 +576,12 @@ const BulkEditModal = ({
                               onChange={(e) => setConfirmationInput(e.target.value)}
                               disabled={editMutation.isPending}
                               placeholder={`Type ${editableSessions.length} to confirm`}
-                              className="text-center"
+                              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-center bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               autoComplete="off"
+                              aria-label="Confirmation input"
                             />
                             {confirmationInput && !isConfirmationValid && (
-                              <p className="text-sm text-red-600 dark:text-red-400 text-center">
+                              <p className="mt-2 text-sm text-red-600 dark:text-red-400 text-center">
                                 Please type {editableSessions.length} to confirm
                               </p>
                             )}
