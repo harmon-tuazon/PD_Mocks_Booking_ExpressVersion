@@ -17,7 +17,7 @@ Enable administrators to efficiently edit properties of multiple mock exam sessi
 Currently, administrators must individually navigate to each mock exam session's detail page to make property updates. When managing dozens of sessions (e.g., changing location for all sessions in a date range, increasing capacity for multiple sessions), this process is time-consuming and error-prone.
 
 ### Solution
-Implement a bulk edit modal that allows administrators to select multiple sessions from the dashboard and update shared properties (location, mock type, capacity, exam date, start time, end time, scheduled activation datetime) in a single operation using HubSpot's Batch Update API.
+Implement a bulk edit modal that allows administrators to select multiple sessions from the dashboard and update shared properties (location, mock type, capacity, exam date, scheduled activation datetime) in a single operation using HubSpot's Batch Update API. Sessions with existing bookings will be automatically filtered out and cannot be edited via bulk edit.
 
 ### Success Metrics
 - **Time Savings**: 85% reduction in time to update 10+ sessions (from ~5 minutes to <45 seconds)
@@ -46,10 +46,10 @@ Implement a bulk edit modal that allows administrators to select multiple sessio
 - **Current**: Navigate to each session, update capacity field, save
 - **With Feature**: Filter by Mini-mock + date range, select all, increase capacity to 12, confirm
 
-#### Scenario 3: Time Standardization
-> "All online sessions should start at 9:00 AM instead of varying times for consistency."
+#### Scenario 3: Status Change
+> "All future sessions need to be set to 'Scheduled' status with specific activation dates."
 - **Current**: Edit each session individually
-- **With Feature**: Filter by Online location, select sessions, change start_time to "09:00", confirm
+- **With Feature**: Filter by future dates, select sessions without bookings, set status to "Scheduled", confirm
 
 #### Scenario 4: Scheduled Activation
 > "I need to schedule 20 future sessions to automatically activate on specific dates."
@@ -93,28 +93,26 @@ Implement a bulk edit modal that allows administrators to select multiple sessio
 | `mock_type` | Select Dropdown | Optional | One of valid types | Empty (unchanged) |
 | `capacity` | Number Input | Optional | Integer 1-100, cannot be less than any session's `total_bookings` | Empty (unchanged) |
 | `exam_date` | Date Picker | Optional | YYYY-MM-DD format, valid date | Empty (unchanged) |
-| `start_time` | Time Picker | Optional | HH:MM (24-hour), must be before `end_time` | Empty (unchanged) |
-| `end_time` | Time Picker | Optional | HH:MM (24-hour), must be after `start_time` | Empty (unchanged) |
 | `is_active` | Select Dropdown | Optional | 'active', 'inactive', 'scheduled' | Empty (unchanged) |
 | `scheduled_activation_datetime` | DateTime Picker | Conditional | Required if `is_active='scheduled'`, must be future | Empty (unchanged) |
 
 **Field Behavior**:
 - **Empty/Blank fields**: Do NOT update that property (leave unchanged)
-- **Populated fields**: Update property to new value for ALL selected sessions
+- **Populated fields**: Update property to new value for ALL selected editable sessions
 - **Conditional fields**: `scheduled_activation_datetime` only shown/required when `is_active='scheduled'`
+- **Read-only fields**: `start_time` and `end_time` are NOT editable via bulk edit (only via individual session edit)
 
 ### 3.4 Validation Requirements
 
 | ID | Requirement | Priority | Validation Rule |
 |----|-------------|----------|-----------------|
 | FR-4.1 | At least ONE field must be populated | MUST | Error: "Please update at least one field" |
-| FR-4.2 | `end_time` must be after `start_time` when both provided | MUST | Error: "End time must be after start time" |
+| FR-4.2 | Sessions with `total_bookings > 0` cannot be bulk edited | MUST | Auto-filter and show in blocked list |
 | FR-4.3 | `capacity` must be ≥ `total_bookings` for each session | MUST | Show count of sessions that will fail |
 | FR-4.4 | `scheduled_activation_datetime` required when `is_active='scheduled'` | MUST | Error: "Scheduled activation required" |
 | FR-4.5 | `scheduled_activation_datetime` must be in future | MUST | Error: "Must be a future date" |
 | FR-4.6 | `exam_date` must be valid calendar date | MUST | Standard date validation |
-| FR-4.7 | Time fields must match `HH:MM` format (24-hour) | MUST | Standard time validation |
-| FR-4.8 | Confirmation input must equal selected session count | MUST | Disable confirm button until valid |
+| FR-4.7 | Confirmation input must equal editable session count | MUST | Disable confirm button until valid |
 
 ### 3.5 Backend Requirements
 
@@ -122,13 +120,13 @@ Implement a bulk edit modal that allows administrators to select multiple sessio
 |----|-------------|----------|---------|
 | FR-5.1 | Create `POST /api/admin/mock-exams/bulk-update` endpoint | MUST | Accept `sessionIds` + property updates |
 | FR-5.2 | Use HubSpot Batch Read API to fetch current state | MUST | `POST /crm/v3/objects/{objectType}/batch/read` |
-| FR-5.3 | Validate each session against business rules | MUST | Capacity ≥ bookings, time logic |
-| FR-5.4 | Auto-regenerate `mock_exam_name` when components change | MUST | If `mock_type`, `location`, or `exam_date` updated |
-| FR-5.5 | Handle timestamp conversion for time fields | MUST | Reuse `convertToTimestamp()` from `hubspot.js` |
+| FR-5.3 | Filter out sessions with `total_bookings > 0` | MUST | Only allow editing sessions with no bookings |
+| FR-5.4 | Validate each session against business rules | MUST | Capacity ≥ bookings (should be 0 after filtering) |
+| FR-5.5 | Auto-regenerate `mock_exam_name` when components change | MUST | If `mock_type`, `location`, or `exam_date` updated |
 | FR-5.6 | Use HubSpot Batch Update API in chunks of 100 | MUST | `POST /crm/v3/objects/{objectType}/batch/update` |
 | FR-5.7 | Handle partial failures gracefully | MUST | Return successful + failed session IDs with reasons |
 | FR-5.8 | Create audit trail notes for updated sessions | SHOULD | Non-blocking async operation |
-| FR-5.9 | Invalidate all relevant cache patterns | MUST | List, aggregates, details, metrics |
+| FR-5.9 | Invalidate all relevant cache patterns | MUST | List, aggregates, details, metrics, bookings |
 | FR-5.10 | Respond within 55 seconds (Vercel timeout buffer) | MUST | Handle timeouts gracefully |
 
 ---
@@ -158,13 +156,21 @@ const [formData, setFormData] = useState({
   mock_type: '',
   capacity: '',
   exam_date: '',
-  start_time: '',
-  end_time: '',
   is_active: '',
   scheduled_activation_datetime: ''
 });
+const [editableSessions, setEditableSessions] = useState([]);
+const [blockedSessions, setBlockedSessions] = useState([]);
 const [confirmationInput, setConfirmationInput] = useState('');
 const [validationErrors, setValidationErrors] = useState({});
+
+// Filter sessions on mount/update
+useEffect(() => {
+  const editable = selectedSessions.filter(s => (parseInt(s.total_bookings) || 0) === 0);
+  const blocked = selectedSessions.filter(s => (parseInt(s.total_bookings) || 0) > 0);
+  setEditableSessions(editable);
+  setBlockedSessions(blocked);
+}, [selectedSessions]);
 ```
 
 **Component Structure**:
@@ -174,48 +180,62 @@ const [validationErrors, setValidationErrors] = useState({});
     {/* Header */}
     <ModalHeader icon={PencilSquareIcon} title="Bulk Edit Sessions" />
 
-    {/* Session Count */}
-    <SessionCount count={selectedSessions.length} />
-
-    {/* Edit Form */}
-    <EditForm>
-      <SelectField name="location" options={LOCATIONS} />
-      <SelectField name="mock_type" options={MOCK_TYPES} />
-      <NumberField name="capacity" min={1} max={100} />
-      <DateField name="exam_date" />
-      <TimeField name="start_time" />
-      <TimeField name="end_time" />
-      <SelectField name="is_active" options={ACTIVE_STATES} />
-      {formData.is_active === 'scheduled' && (
-        <DateTimeField name="scheduled_activation_datetime" />
-      )}
-    </EditForm>
-
-    {/* Validation Warnings */}
-    <ValidationWarnings sessions={sessionsFailingValidation} />
-
-    {/* Session Preview Table */}
-    <SessionPreviewTable sessions={selectedSessions.slice(0, 10)} />
-
-    {/* Info Message */}
-    <InfoBox message="Fields left blank will not be updated" />
-
-    {/* Confirmation Input */}
-    <ConfirmationInput
-      value={confirmationInput}
-      requiredValue={validSessionCount}
-      onChange={setConfirmationInput}
+    {/* Session Breakdown */}
+    <SessionBreakdown
+      editableCount={editableSessions.length}
+      blockedCount={blockedSessions.length}
+      totalCount={selectedSessions.length}
     />
 
-    {/* Actions */}
-    <ModalActions>
-      <CancelButton onClick={onClose} disabled={isSubmitting} />
-      <ConfirmButton
-        onClick={handleSubmit}
-        disabled={!isConfirmationValid || isSubmitting}
-        text={isSubmitting ? "Updating..." : `Update ${validSessionCount} Sessions`}
+    {blockedSessions.length > 0 && (
+      <WarningBanner
+        message={`${blockedSessions.length} session(s) cannot be edited because they have existing bookings`}
       />
-    </ModalActions>
+    )}
+
+    {editableSessions.length === 0 ? (
+      <EmptyState message="No sessions available for bulk edit. All selected sessions have existing bookings." />
+    ) : (
+      <>
+        {/* Edit Form */}
+        <EditForm>
+          <SelectField name="location" options={LOCATIONS} />
+          <SelectField name="mock_type" options={MOCK_TYPES} />
+          <NumberField name="capacity" min={1} max={100} />
+          <DateField name="exam_date" />
+          <SelectField name="is_active" options={ACTIVE_STATES} />
+          {formData.is_active === 'scheduled' && (
+            <DateTimeField name="scheduled_activation_datetime" />
+          )}
+        </EditForm>
+
+        {/* Session Preview Table */}
+        <SessionPreviewTable
+          editableSessions={editableSessions.slice(0, 10)}
+          blockedSessions={blockedSessions.slice(0, 5)}
+        />
+
+        {/* Info Message */}
+        <InfoBox message="Fields left blank will not be updated" />
+
+        {/* Confirmation Input */}
+        <ConfirmationInput
+          value={confirmationInput}
+          requiredValue={editableSessions.length}
+          onChange={setConfirmationInput}
+        />
+
+        {/* Actions */}
+        <ModalActions>
+          <CancelButton onClick={onClose} disabled={isSubmitting} />
+          <ConfirmButton
+            onClick={handleSubmit}
+            disabled={!isConfirmationValid || isSubmitting}
+            text={isSubmitting ? "Updating..." : `Update ${editableSessions.length} Sessions`}
+          />
+        </ModalActions>
+      </>
+    )}
   </Dialog.Panel>
 </BulkEditModal>
 ```
@@ -257,12 +277,16 @@ const useBulkEdit = () => {
         );
       }
 
-      // Invalidate queries
+      // Invalidate queries - ensure dashboard refreshes with updated data
       queryClient.invalidateQueries(['mock-exams']);
       queryClient.invalidateQueries(['mock-exams-list']);
       queryClient.invalidateQueries(['mock-exam-aggregates']);
       queryClient.invalidateQueries(['aggregates']);
       queryClient.invalidateQueries(['metrics']);
+      queryClient.invalidateQueries(['bookings']); // Invalidate booking-related queries if they exist
+
+      // Trigger dashboard refresh
+      queryClient.refetchQueries(['mock-exams'], { active: true });
     },
 
     onError: (error) => {
@@ -365,28 +389,12 @@ bulkUpdate: Joi.object({
 
     exam_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional().allow(''),
 
-    start_time: Joi.string().pattern(/^([0-1][0-9]|2[0-3]):([0-5][0-9])$/).optional().allow(''),
-
-    end_time: Joi.string().pattern(/^([0-1][0-9]|2[0-3]):([0-5][0-9])$/).optional().allow(''),
-
     is_active: Joi.string().valid('active', 'inactive', 'scheduled').optional().allow(''),
 
     scheduled_activation_datetime: Joi.date().iso().optional().allow('')
   })
     .min(1)  // At least one field must be present
     .custom((value, helpers) => {
-      // Validate end_time > start_time when both provided
-      if (value.start_time && value.end_time) {
-        const [startH, startM] = value.start_time.split(':').map(Number);
-        const [endH, endM] = value.end_time.split(':').map(Number);
-        const startMinutes = startH * 60 + startM;
-        const endMinutes = endH * 60 + endM;
-
-        if (endMinutes <= startMinutes) {
-          return helpers.error('custom.endTimeBeforeStart');
-        }
-      }
-
       // Validate scheduled_activation_datetime when is_active='scheduled'
       if (value.is_active === 'scheduled') {
         if (!value.scheduled_activation_datetime) {
@@ -427,17 +435,26 @@ module.exports = async (req, res) => {
     console.log(`[Bulk Update] Fetching ${sessionIds.length} sessions from HubSpot...`);
     const sessions = await hubspot.batchFetchMockExams(sessionIds);
 
-    // 4. Validate and prepare updates
+    // 4. Filter out sessions with bookings and prepare updates
     const validUpdates = [];
     const invalidSessions = [];
 
     for (const session of sessions) {
       const currentProps = session.properties;
       const sessionId = session.id;
+      const totalBookings = parseInt(currentProps.total_bookings) || 0;
 
-      // Check capacity constraint
+      // Block sessions with existing bookings
+      if (totalBookings > 0) {
+        invalidSessions.push({
+          id: sessionId,
+          reason: `Session has ${totalBookings} existing booking(s) and cannot be bulk edited`
+        });
+        continue;
+      }
+
+      // Check capacity constraint (should always pass since bookings = 0)
       if (updates.capacity) {
-        const totalBookings = parseInt(currentProps.total_bookings) || 0;
         if (updates.capacity < totalBookings) {
           invalidSessions.push({
             id: sessionId,
@@ -456,27 +473,6 @@ module.exports = async (req, res) => {
           properties[key] = updates[key];
         }
       });
-
-      // Handle timestamp conversion for time fields
-      if (updates.start_time || updates.end_time) {
-        const examDate = updates.exam_date || currentProps.exam_date;
-
-        if (updates.start_time) {
-          properties.start_time = hubspot.convertToTimestamp(examDate, updates.start_time);
-        } else if (updates.exam_date && currentProps.start_time) {
-          // Recalculate existing start_time with new date
-          const existingTime = hubspot.extractTimeFromTimestamp(currentProps.start_time);
-          properties.start_time = hubspot.convertToTimestamp(examDate, existingTime);
-        }
-
-        if (updates.end_time) {
-          properties.end_time = hubspot.convertToTimestamp(examDate, updates.end_time);
-        } else if (updates.exam_date && currentProps.end_time) {
-          // Recalculate existing end_time with new date
-          const existingTime = hubspot.extractTimeFromTimestamp(currentProps.end_time);
-          properties.end_time = hubspot.convertToTimestamp(examDate, existingTime);
-        }
-      }
 
       // Auto-regenerate mock_exam_name if components changed
       if (updates.mock_type || updates.location || updates.exam_date) {
@@ -530,13 +526,14 @@ module.exports = async (req, res) => {
       console.error('[Bulk Update] Audit trail creation failed:', err);
     });
 
-    // 7. Invalidate caches
+    // 7. Invalidate caches - ensure UI refreshes with updated data
     const cache = getCache();
     await cache.deletePattern('admin:mock-exams:list:*');
     await cache.deletePattern('admin:mock-exams:aggregates:*');
     await cache.deletePattern('admin:aggregate:sessions:*');
     await cache.deletePattern('admin:metrics:*');
     await cache.deletePattern('admin:mock-exam:*');
+    await cache.deletePattern('admin:bookings:*'); // Invalidate booking caches if they exist
 
     // 8. Build response
     const summary = {
@@ -649,40 +646,42 @@ async function createAuditTrails(sessionIds, updates, user) {
    - Title: "Bulk Edit Sessions"
    - Close button (right)
 
-2. **Session Count Bar** (40px)
-   - "Editing X sessions" with blue badge
+2. **Session Breakdown Bar** (50px)
+   - "X sessions can be edited"
+   - "Y sessions have bookings (cannot edit)" (if Y > 0)
+   - Visual indicators: green badge for editable, red badge for blocked
 
-3. **Form Section** (scrollable)
+3. **Warning Banner** (conditional, 60px)
+   - Yellow/red background if blocked sessions exist
+   - Icon + message explaining booking constraint
+
+4. **Form Section** (scrollable)
    - 2-column grid layout on desktop
    - Stack on mobile
    - Fields grouped logically:
      - Row 1: Location, Mock Type
      - Row 2: Capacity, Exam Date
-     - Row 3: Start Time, End Time
-     - Row 4: Status (is_active)
-     - Row 5: Scheduled Activation (conditional)
+     - Row 3: Status (is_active)
+     - Row 4: Scheduled Activation (conditional)
+   - Note: start_time and end_time removed (not editable)
 
-4. **Info Banner** (auto-height)
+5. **Info Banner** (auto-height)
    - Blue background
    - Icon + "Fields left blank will not be updated"
 
-5. **Validation Warnings** (conditional, auto-height)
-   - Red/yellow background
-   - Show sessions that will fail validation
-   - Example: "2 sessions cannot be updated (capacity constraint)"
-
 6. **Session Preview Table** (max-h-60, scrollable)
-   - Show first 10 sessions
-   - Columns: Type, Date, Location, Current Capacity, Current Status
-   - Grayed out if will fail validation
+   - Show first 10 editable sessions (green/normal background)
+   - Show first 5 blocked sessions (red background, grayed out)
+   - Columns: Type, Date, Location, Current Capacity, Total Bookings, Status
+   - Visual separator between editable and blocked sections
 
 7. **Confirmation Input** (60px)
    - Center-aligned
-   - Placeholder: "Type X to confirm"
+   - Placeholder: "Type X to confirm" (where X = count of editable sessions only)
 
 8. **Action Buttons** (60px fixed)
    - Cancel (left)
-   - Confirm (right, blue)
+   - Confirm (right, blue) - text shows "Update X Sessions" where X = editable count
 
 ### 5.2 Form Field Styles
 
@@ -713,17 +712,6 @@ async function createAuditTrails(sessionIds, updates, user) {
   dateFormat="yyyy-MM-dd"
   placeholderText="Select date..."
   className="w-full px-3 py-2 border rounded-md"
-/>
-```
-
-**Time Picker**:
-```jsx
-<TimePickerSelect
-  value={formData.start_time}
-  onChange={(time) => updateField('start_time', time)}
-  minuteStep={15}
-  placeholder="Select time..."
-  className="w-full"
 />
 ```
 
@@ -811,17 +799,18 @@ toast.error('✗ Bulk update failed: Invalid field values', { duration: 6000 });
 | Error Code | Message | User Action |
 |-----------|---------|-------------|
 | `NO_FIELDS_UPDATED` | "Please update at least one field" | Populate at least one field |
-| `END_TIME_BEFORE_START` | "End time must be after start time" | Adjust time values |
-| `CAPACITY_TOO_LOW` | "Capacity cannot be less than existing bookings for X session(s)" | Increase capacity or deselect sessions |
+| `SESSIONS_HAVE_BOOKINGS` | "X session(s) cannot be edited because they have existing bookings" | Remove blocked sessions or proceed with editable ones |
+| `ALL_SESSIONS_BLOCKED` | "Cannot bulk edit. All selected sessions have existing bookings" | Select different sessions |
+| `CAPACITY_TOO_LOW` | "Capacity cannot be less than existing bookings for X session(s)" | Increase capacity (should not occur if booking filter works) |
 | `SCHEDULED_DATE_REQUIRED` | "Scheduled activation datetime is required when status is 'Scheduled'" | Provide datetime or change status |
 | `SCHEDULED_DATE_PAST` | "Scheduled activation must be a future date" | Choose future datetime |
 | `INVALID_DATE_FORMAT` | "Date must be in YYYY-MM-DD format" | Correct date format |
-| `INVALID_TIME_FORMAT` | "Time must be in HH:MM format (24-hour)" | Correct time format |
 
 ### 6.2 API Errors
 
 | Scenario | Response | User Experience |
 |----------|----------|-----------------|
+| All sessions have bookings | Return error before processing | Show "Cannot bulk edit. All selected sessions have existing bookings" |
 | HubSpot rate limit (429) | Retry with exponential backoff | Show "Retrying... (attempt X)" |
 | HubSpot API error (500) | Return failed session IDs | Show partial success toast with count |
 | Timeout (>55s) | Return sessions processed so far | Show "Timed out. X sessions updated, Y pending" |
@@ -834,9 +823,9 @@ toast.error('✗ Bulk update failed: Invalid field values', { duration: 6000 });
 |-----------|----------|
 | User closes modal during submission | Show "Updating in background" toast, allow viewing results later |
 | Session deleted by another admin during update | Mark as failed with reason "Session not found" |
-| Capacity increased but bookings added meanwhile | Allow update (new capacity > old bookings) |
+| Session gains bookings between selection and submission | Backend filters it out, shows in failed list |
+| All selected sessions have bookings | Show empty state with message, disable form |
 | `exam_date` changed to past date | Allow update (admin may be fixing historical data) |
-| All selected sessions fail validation | Show error, prevent submission, highlight issues |
 | User changes `is_active` to 'scheduled' without datetime | Show inline error, disable confirm button |
 
 ---
@@ -846,14 +835,16 @@ toast.error('✗ Bulk update failed: Invalid field values', { duration: 6000 });
 ### 7.1 Functional Success
 
 - [ ] Bulk edit button appears in toolbar when 1+ sessions selected
-- [ ] Modal opens with all 8 fields editable
+- [ ] Modal opens with 6 editable fields (location, mock_type, capacity, exam_date, is_active, scheduled_activation_datetime)
+- [ ] Sessions with bookings automatically filtered out and shown separately
 - [ ] Empty fields do NOT update corresponding properties
-- [ ] Populated fields update ALL selected sessions
+- [ ] Populated fields update ALL editable sessions only
 - [ ] `mock_exam_name` auto-regenerates when components change
-- [ ] Validation prevents invalid updates (capacity, times, dates)
-- [ ] Confirmation input required before submission
+- [ ] Validation prevents invalid updates (capacity, dates, scheduled activation)
+- [ ] Confirmation input required (count matches editable sessions only)
 - [ ] Partial failures handled gracefully with clear feedback
-- [ ] Cache invalidation triggers UI refresh
+- [ ] Cache and React Query invalidation triggers UI refresh
+- [ ] Booking-related queries invalidated if they exist
 - [ ] Audit trail created for successful updates
 
 ### 7.2 Performance Success
@@ -891,34 +882,35 @@ toast.error('✗ Bulk update failed: Invalid field values', { duration: 6000 });
 ### Phase 1: Backend Foundation (Days 1-2)
 
 **Tasks**:
-1. Create validation schema `bulkUpdate` in `validation.js`
+1. Create validation schema `bulkUpdate` in `validation.js` (remove start_time/end_time fields)
 2. Implement `POST /api/admin/mock-exams/bulk-update` endpoint
-3. Add helper method `extractTimeFromTimestamp()` to `hubspot.js` if not exists
+3. Add session filtering logic to exclude sessions with `total_bookings > 0`
 4. Implement batch update logic with chunking (100 per batch)
 5. Add `mock_exam_name` regeneration logic
-6. Implement cache invalidation patterns
+6. Implement cache invalidation patterns (including booking caches)
 7. Add audit trail creation (non-blocking)
-8. Write unit tests for validation rules
+8. Write unit tests for validation rules and booking constraint
 9. Write integration tests for bulk update endpoint
 
 **Files Created/Modified**:
-- `admin_root/api/_shared/validation.js` (add schema)
-- `admin_root/api/admin/mock-exams/bulk-update.js` (new)
-- `admin_root/api/_shared/hubspot.js` (add helper method)
-- `tests/integration/bulk-update.test.js` (new)
+- `admin_root/api/_shared/validation.js` (add schema, remove time fields)
+- `admin_root/api/admin/mock-exams/bulk-update.js` (new, with booking filtering)
+- `tests/integration/bulk-update.test.js` (new, with booking constraint tests)
 
 ### Phase 2: Frontend Hook & Modal (Days 3-4)
 
 **Tasks**:
-1. Create `useBulkEdit` hook with React Query mutation
+1. Create `useBulkEdit` hook with React Query mutation (add booking query invalidation)
 2. Create `BulkEditModal` component
-3. Implement form state management
-4. Implement client-side validation
-5. Add session preview table
-6. Add confirmation input logic
-7. Integrate with `useBulkEdit` hook
-8. Add loading and error states
-9. Style with Tailwind (match existing modals)
+3. Implement session filtering logic (editable vs blocked based on total_bookings)
+4. Implement form state management (6 fields only, no time fields)
+5. Add session breakdown display (X editable, Y blocked)
+6. Add warning banner for blocked sessions
+7. Add session preview table with visual indicators (green/red backgrounds)
+8. Add confirmation input logic (count matches editable sessions)
+9. Integrate with `useBulkEdit` hook
+10. Add loading and error states
+11. Style with Tailwind (match existing modals)
 
 **Files Created/Modified**:
 - `admin_root/admin_frontend/src/hooks/useBulkEdit.js` (new)
@@ -944,13 +936,15 @@ toast.error('✗ Bulk update failed: Invalid field values', { duration: 6000 });
 1. Manual testing of all validation rules
 2. Test with 1, 10, 50, 100 sessions
 3. Test partial failures (mix of valid/invalid)
-4. Test all field combinations
-5. Test timezone handling
-6. Test concurrent edit scenarios
-7. Test cache invalidation
-8. Test UI responsiveness (mobile, tablet, desktop)
-9. Fix bugs and edge cases
-10. Performance profiling and optimization
+4. Test booking constraint (sessions with bookings are blocked)
+5. Test all field combinations (6 fields)
+6. Test session filtering (editable vs blocked)
+7. Test concurrent edit scenarios
+8. Test cache invalidation (including booking caches)
+9. Test React Query refetch behavior
+10. Test UI responsiveness (mobile, tablet, desktop)
+11. Fix bugs and edge cases
+12. Performance profiling and optimization
 
 ### Phase 5: Documentation & Deployment (Day 8)
 
@@ -988,12 +982,12 @@ describe('Bulk Update Validation', () => {
     expect(result.error).toBeUndefined();
   });
 
-  test('rejects end_time before start_time', async () => {
+  test('rejects start_time and end_time fields', async () => {
     const result = validate({
       sessionIds: ['123'],
-      updates: { start_time: '14:00', end_time: '12:00' }
+      updates: { start_time: '14:00', end_time: '16:00' }
     });
-    expect(result.error.message).toContain('end time');
+    expect(result.error).toBeDefined(); // These fields should not exist in schema
   });
 
   test('requires scheduled_activation_datetime when is_active=scheduled', () => {
@@ -1072,7 +1066,8 @@ describe('BulkEditModal Validation', () => {
 **Backend** (`tests/integration/bulk-update-api.test.js`):
 ```javascript
 describe('POST /api/admin/mock-exams/bulk-update', () => {
-  test('updates location for multiple sessions', async () => {
+  test('updates location for multiple sessions without bookings', async () => {
+    // Sessions with 0 bookings
     const response = await request(app)
       .post('/api/admin/mock-exams/bulk-update')
       .send({
@@ -1086,21 +1081,36 @@ describe('POST /api/admin/mock-exams/bulk-update', () => {
     expect(response.body.results.successful).toHaveLength(2);
   });
 
-  test('handles partial failures gracefully', async () => {
-    // Session 1: valid (capacity 10, bookings 5)
-    // Session 2: invalid (capacity 5, bookings 8)
+  test('filters out sessions with bookings', async () => {
+    // Session 1: 0 bookings (editable)
+    // Session 2: 5 bookings (blocked)
     const response = await request(app)
       .post('/api/admin/mock-exams/bulk-update')
       .send({
         sessionIds: ['123456', '123457'],
-        updates: { capacity: 6 }
+        updates: { location: 'Calgary' }
       })
       .set('Authorization', `Bearer ${adminToken}`);
 
     expect(response.status).toBe(200);
     expect(response.body.summary.updated).toBe(1);
     expect(response.body.summary.failed).toBe(1);
-    expect(response.body.results.failed[0].reason).toContain('bookings');
+    expect(response.body.results.failed[0].reason).toContain('existing booking');
+  });
+
+  test('rejects all sessions when all have bookings', async () => {
+    // All sessions have bookings
+    const response = await request(app)
+      .post('/api/admin/mock-exams/bulk-update')
+      .send({
+        sessionIds: ['123456', '123457'],
+        updates: { location: 'Calgary' }
+      })
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.summary.updated).toBe(0);
+    expect(response.body.summary.failed).toBe(2);
   });
 
   test('regenerates mock_exam_name when components change', async () => {
@@ -1123,25 +1133,21 @@ describe('POST /api/admin/mock-exams/bulk-update', () => {
     expect(session.properties.mock_exam_name).toBe('Clinical Skills-Calgary-2025-03-15');
   });
 
-  test('converts times to timestamps correctly', async () => {
+  test('does not accept start_time or end_time fields', async () => {
     const response = await request(app)
       .post('/api/admin/mock-exams/bulk-update')
       .send({
         sessionIds: ['123456'],
         updates: {
           exam_date: '2025-03-15',
-          start_time: '09:00',
-          end_time: '11:00'
+          start_time: '09:00', // Should be rejected
+          end_time: '11:00'    // Should be rejected
         }
       })
       .set('Authorization', `Bearer ${adminToken}`);
 
-    expect(response.status).toBe(200);
-
-    // Verify timestamps are Unix milliseconds
-    const session = await hubspot.getMockExam('123456');
-    expect(typeof session.properties.start_time).toBe('number');
-    expect(typeof session.properties.end_time).toBe('number');
+    // Validation should strip unknown fields or reject request
+    expect(response.status).toBe(400);
   });
 });
 ```
@@ -1150,15 +1156,16 @@ describe('POST /api/admin/mock-exams/bulk-update', () => {
 
 | Test Case | Steps | Expected Result |
 |-----------|-------|-----------------|
-| **Basic Update** | 1. Select 5 sessions<br>2. Click "Bulk Edit"<br>3. Change location to "Calgary"<br>4. Type "5" to confirm<br>5. Click "Update" | All 5 sessions updated, toast shows success |
-| **Multiple Fields** | 1. Select 10 sessions<br>2. Update location, capacity, and exam_date<br>3. Confirm and submit | All fields updated, `mock_exam_name` regenerated |
-| **Capacity Constraint** | 1. Select session with 8 bookings<br>2. Try to set capacity to 5<br>3. Attempt to submit | Validation error shown, confirm button disabled |
-| **Time Validation** | 1. Set start_time to "14:00"<br>2. Set end_time to "12:00"<br>3. Attempt to submit | Inline error shown, confirm button disabled |
+| **Basic Update** | 1. Select 5 sessions (0 bookings)<br>2. Click "Bulk Edit"<br>3. Change location to "Calgary"<br>4. Type "5" to confirm<br>5. Click "Update" | All 5 sessions updated, toast shows success |
+| **Sessions With Bookings** | 1. Select 10 sessions (5 with bookings, 5 without)<br>2. Click "Bulk Edit"<br>3. Modal shows "5 can be edited, 5 blocked" | Only 5 editable shown in form, 5 blocked shown in red in preview |
+| **All Sessions Have Bookings** | 1. Select 5 sessions (all have bookings)<br>2. Click "Bulk Edit"<br>3. Modal opens | Empty state shown: "No sessions available for bulk edit" |
+| **Multiple Fields** | 1. Select 10 sessions (no bookings)<br>2. Update location, capacity, and exam_date<br>3. Confirm and submit | All fields updated, `mock_exam_name` regenerated |
 | **Scheduled Activation** | 1. Set is_active to "Scheduled"<br>2. Leave scheduled_activation_datetime empty<br>3. Attempt to submit | Error shown, datetime picker highlighted |
-| **Partial Failure** | 1. Select 10 sessions (5 valid, 5 invalid for capacity)<br>2. Update capacity<br>3. Submit | 5 updated, 5 failed, toast shows partial success |
+| **Partial Failure** | 1. Select 10 sessions (3 with bookings, 7 without)<br>2. Update location<br>3. Submit | 7 updated, 3 blocked, toast shows "Updated 7 of 10" |
 | **Empty Form** | 1. Select sessions<br>2. Open modal<br>3. Leave all fields empty<br>4. Attempt to submit | Error: "Update at least one field", button disabled |
 | **Modal Close During Submit** | 1. Start bulk update<br>2. Press ESC during API call | Modal stays open, operation continues |
 | **Max Session Limit** | 1. Select 101 sessions<br>2. Attempt to open modal | Error: "Cannot edit more than 100 sessions at once" |
+| **Confirmation Count** | 1. Select 10 sessions (3 with bookings)<br>2. Modal shows "7 editable"<br>3. Type "7" to confirm | Confirmation valid, can submit |
 
 ---
 
@@ -1294,22 +1301,26 @@ console.error(`[Bulk Update] Error: ${error.message}`, { sessionIds, updates });
 
 - [ ] Admin can select 1-100 sessions from dashboard
 - [ ] "Bulk Edit" button appears in toolbar
-- [ ] Modal displays with 8 editable fields
+- [ ] Modal displays with 6 editable fields (no start_time/end_time)
+- [ ] Sessions with bookings automatically filtered and shown separately
+- [ ] Modal shows breakdown: "X editable, Y blocked"
 - [ ] Empty fields do not trigger updates
-- [ ] All validation rules enforced (capacity, times, dates)
+- [ ] All validation rules enforced (capacity, dates, scheduled activation)
 - [ ] `mock_exam_name` auto-regenerates correctly
-- [ ] Confirmation input required before submission
+- [ ] Confirmation input required (matches editable count only)
 - [ ] Success toast shows updated count
 - [ ] Partial failures handled with clear feedback
-- [ ] Cache and React Query invalidated after updates
+- [ ] Cache and React Query invalidated after updates (including booking caches)
+- [ ] Dashboard refreshes with updated data
 - [ ] Audit trail created for successful updates
 - [ ] Updates complete in <20 seconds for 100 sessions
 - [ ] No Vercel timeout errors
 
 ### 14.2 Should Have
 
-- [ ] Session preview table shows first 10 sessions
-- [ ] Validation warnings shown before submission
+- [ ] Session preview table shows editable and blocked sessions separately
+- [ ] Visual indicators (green/red backgrounds) for session status
+- [ ] Warning banner explaining booking constraint
 - [ ] Progress indicator for operations >3 seconds
 - [ ] ESC key closes modal (when not submitting)
 - [ ] Form field tooltips with helpful hints
