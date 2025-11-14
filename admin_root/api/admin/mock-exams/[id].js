@@ -102,8 +102,13 @@ async function handlePatchRequest(req, res) {
         .max(500)
         .optional()
         .allow('', null),
-      is_active: Joi.boolean()
+      is_active: Joi.string()
+        .valid('true', 'false', 'scheduled')
+        .optional(),
+      scheduled_activation_datetime: Joi.string()
+        .isoDate()
         .optional()
+        .allow('', null)
     })
     .min(1)
     .custom((value, helpers) => {
@@ -226,7 +231,12 @@ async function handlePatchRequest(req, res) {
     }
 
     if (updateData.is_active !== undefined) {
-      propertiesToUpdate.is_active = updateData.is_active ? 'true' : 'false';
+      // Keep as string: 'true', 'false', or 'scheduled'
+      propertiesToUpdate.is_active = updateData.is_active;
+    }
+
+    if (updateData.scheduled_activation_datetime !== undefined) {
+      propertiesToUpdate.scheduled_activation_datetime = updateData.scheduled_activation_datetime;
     }
 
     // Track which fields were actually changed
@@ -372,9 +382,9 @@ async function handleGetRequest(req, res) {
     // Fetch mock exam from HubSpot with all required properties
     let mockExam;
     try {
-      // Fetch with extended properties including timestamps and address
+      // Fetch with extended properties including timestamps, address, and scheduled activation
       const response = await hubspot.apiCall('GET',
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?properties=mock_type,exam_date,start_time,end_time,location,address,capacity,total_bookings,is_active,status,hs_createdate,hs_lastmodifieddate`
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?properties=mock_type,exam_date,start_time,end_time,location,address,capacity,total_bookings,is_active,scheduled_activation_datetime,status,hs_createdate,hs_lastmodifieddate`
       );
       mockExam = response;
     } catch (error) {
@@ -558,20 +568,27 @@ function formatMockExamResponse(mockExam) {
     };
 
   // Determine status from is_active if status property not available
-  let status = properties.status || 'active';
-  if (!properties.status) {
-    // Derive status from is_active and exam date
-    const isActive = properties.is_active === 'true';
-    if (!isActive) {
-      status = 'inactive';
-    } else if (properties.exam_date) {
-      const examDate = new Date(properties.exam_date);
-      const now = new Date();
-      if (examDate < now) {
-        status = 'completed';
+  // Handle three-state is_active: 'true', 'false', 'scheduled'
+  let status = properties.status;
+  if (!status) {
+    // Derive status from is_active property
+    if (properties.is_active === 'scheduled') {
+      status = 'scheduled';
+    } else if (properties.is_active === 'true') {
+      // Check if exam date has passed
+      if (properties.exam_date) {
+        const examDate = new Date(properties.exam_date);
+        const now = new Date();
+        if (examDate < now) {
+          status = 'completed';
+        } else {
+          status = 'active';
+        }
       } else {
         status = 'active';
       }
+    } else {
+      status = 'inactive';
     }
   }
 
@@ -589,7 +606,8 @@ function formatMockExamResponse(mockExam) {
       available_slots: availableSlots,
       location: properties.location || null,
       address: properties.address || null,
-      is_active: properties.is_active === 'true',
+      is_active: properties.is_active || 'false', // Keep as string: 'true', 'false', or 'scheduled'
+      scheduled_activation_datetime: properties.scheduled_activation_datetime || null,
       status: status,
       created_at: formatTimestamp(properties.hs_createdate),
       updated_at: formatTimestamp(properties.hs_lastmodifieddate)
