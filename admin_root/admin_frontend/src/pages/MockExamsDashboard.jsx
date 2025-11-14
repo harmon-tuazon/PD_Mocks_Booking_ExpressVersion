@@ -13,6 +13,7 @@ import FilterBar from '../components/admin/FilterBar';
 import MockExamsSelectionToolbar from '../components/admin/MockExamsSelectionToolbar';
 import MockExamsTable from '../components/admin/MockExamsTable';
 import BulkToggleActiveModal from '../components/admin/BulkToggleActiveModal';
+import MassDeleteModal from '../components/admin/MassDeleteModal';
 import { useMemo, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 
@@ -28,6 +29,9 @@ function MockExamsDashboard() {
 
   // State for bulk toggle modal
   const [isBulkToggleModalOpen, setIsBulkToggleModalOpen] = useState(false);
+
+  // State for mass delete modal
+  const [isMassDeleteModalOpen, setIsMassDeleteModalOpen] = useState(false);
 
   // Initialize filter management
   const {
@@ -248,6 +252,18 @@ function MockExamsDashboard() {
     setIsBulkToggleModalOpen(true);
   }, []);
 
+  // Handler for opening mass delete modal
+  const handleDeleteSessions = useCallback(() => {
+    setIsMassDeleteModalOpen(true);
+  }, []);
+
+  // Handler for successful mass delete
+  const handleMassDeleteSuccess = useCallback(() => {
+    setIsMassDeleteModalOpen(false);
+    bulkSelection.exitToView();
+    // Toast notification is handled by the modal/hook
+  }, [bulkSelection]);
+
   // Handler for confirming bulk toggle operation
   const handleConfirmToggle = useCallback(async () => {
     try {
@@ -351,6 +367,7 @@ function MockExamsDashboard() {
             onClearAll={bulkSelection.clearAll}
             onExitMode={bulkSelection.exitToView}
             onToggleActiveStatus={handleToggleActiveStatus}
+            onDeleteSessions={handleDeleteSessions}
             selectedSessions={bulkSelection.selectedSessions}
             isSubmitting={bulkSelection.isSubmitting}
           />
@@ -404,6 +421,14 @@ function MockExamsDashboard() {
           onConfirm={handleConfirmToggle}
           selectedSessions={bulkSelection.selectedSessions}
           isSubmitting={bulkSelection.isSubmitting}
+        />
+
+        {/* Mass Delete Modal */}
+        <MassDeleteModal
+          isOpen={isMassDeleteModalOpen}
+          onClose={() => setIsMassDeleteModalOpen(false)}
+          selectedSessions={bulkSelection.selectedSessions}
+          onSuccess={handleMassDeleteSuccess}
         />
       </div>
     </div>
