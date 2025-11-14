@@ -45,9 +45,12 @@ const useMassDelete = () => {
      * @param {Object} data - Response data from batch delete API
      */
     onSuccess: (data) => {
-      const { summary } = data;
+      const { summary, deleted, failed, errors } = data;
 
       console.log('✅ [MASS DELETE] Deletion successful:', summary);
+      console.log('✅ [MASS DELETE] Deleted IDs:', deleted);
+      console.log('❌ [MASS DELETE] Failed IDs:', failed);
+      console.log('❌ [MASS DELETE] Errors:', errors);
 
       // Show success message
       if (summary.deleted > 0) {
@@ -58,36 +61,44 @@ const useMassDelete = () => {
       }
 
       // Show warning for sessions with bookings that couldn't be deleted
-      if (summary.hasBookings > 0) {
+      if (summary.withBookings > 0) {
         toast.error(
-          `⚠️ ${summary.hasBookings} session${summary.hasBookings !== 1 ? 's' : ''} could not be deleted (has bookings)`,
+          `⚠️ ${summary.withBookings} session${summary.withBookings !== 1 ? 's' : ''} could not be deleted (has bookings)`,
           { duration: 8000 }
         );
       }
 
-      // Show error for failed deletions
-      if (summary.failed > 0) {
+      // Show warning for sessions not found
+      if (summary.notFound > 0) {
         toast.error(
-          `❌ ${summary.failed} session${summary.failed !== 1 ? 's' : ''} failed to delete`,
+          `⚠️ ${summary.notFound} session${summary.notFound !== 1 ? 's' : ''} not found (may have been already deleted)`,
           { duration: 8000 }
         );
-        console.error('❌ [MASS DELETE] Failed deletions:', data.details?.failed);
+      }
+
+      // Show error for other failed deletions
+      if (summary.errors > 0) {
+        toast.error(
+          `❌ ${summary.errors} session${summary.errors !== 1 ? 's' : ''} failed to delete due to errors`,
+          { duration: 8000 }
+        );
+        console.error('❌ [MASS DELETE] Failed deletions:', errors);
       }
 
       // Invalidate all related queries to trigger refetch
       // This ensures the dashboard and all lists are updated
-      queryClient.invalidateQueries(['mockExams']);
-      queryClient.invalidateQueries(['mock-exams']);
-      queryClient.invalidateQueries(['mock-exams-list']);
-      queryClient.invalidateQueries(['mockExamsMetrics']);
-      queryClient.invalidateQueries(['mock-exam-aggregates']);
-      queryClient.invalidateQueries(['aggregates']);
-      queryClient.invalidateQueries(['metrics']);
+      queryClient.invalidateQueries({ queryKey: ['mockExams'] });
+      queryClient.invalidateQueries({ queryKey: ['mockExamsMetrics'] });
+      queryClient.invalidateQueries({ queryKey: ['mock-exam-aggregates'] });
+      queryClient.invalidateQueries({ queryKey: ['aggregate-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['mockExamsInfinite'] });
+      queryClient.invalidateQueries({ queryKey: ['mockExamDetails'] });
 
       // Remove deleted exams from cache
-      if (data.details?.deleted) {
-        data.details.deleted.forEach(sessionId => {
-          queryClient.removeQueries(['mockExam', sessionId]);
+      if (deleted && deleted.length > 0) {
+        deleted.forEach(sessionId => {
+          queryClient.removeQueries({ queryKey: ['mockExam', sessionId] });
+          queryClient.removeQueries({ queryKey: ['mockExamDetails', sessionId] });
         });
       }
     },
