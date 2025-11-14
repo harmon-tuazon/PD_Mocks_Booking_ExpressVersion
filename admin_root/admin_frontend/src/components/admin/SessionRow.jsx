@@ -73,7 +73,7 @@ const SessionRow = ({
                   checked={isSelected}
                   onChange={() => {}} // Controlled by row click
                   onClick={(e) => e.stopPropagation()} // Prevent double toggle
-                  className="h-5 w-5 text-primary-600 bg-white border-2 border-gray-300 rounded-full focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 dark:bg-gray-700 dark:border-gray-500 cursor-pointer appearance-none checked:bg-primary-600 checked:border-primary-600 relative checked:after:content-['✓'] checked:after:absolute checked:after:left-1/2 checked:after:top-1/2 checked:after:-translate-x-1/2 checked:after:-translate-y-1/2 checked:after:text-white checked:after:text-xs checked:after:font-bold transition-all duration-200 hover:border-primary-400"
+                  className="h-4 w-4 text-primary-600 bg-white border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 dark:bg-gray-700 dark:border-gray-500 cursor-pointer appearance-none checked:bg-primary-600 checked:border-primary-600 relative checked:after:content-['✓'] checked:after:absolute checked:after:left-1/2 checked:after:top-1/2 checked:after:-translate-x-1/2 checked:after:-translate-y-1/2 checked:after:text-white checked:after:text-[10px] checked:after:font-bold transition-all duration-200 hover:border-primary-400"
                 />
               )}
             </div>
@@ -201,7 +201,7 @@ const SessionRow = ({
                 checked={isSelected}
                 onChange={() => {}} // Controlled by row click
                 onClick={(e) => e.stopPropagation()} // Prevent double toggle
-                className="h-5 w-5 text-primary-600 bg-white border-2 border-gray-300 rounded-full focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 dark:bg-gray-700 dark:border-gray-500 cursor-pointer appearance-none checked:bg-primary-600 checked:border-primary-600 relative checked:after:content-['✓'] checked:after:absolute checked:after:left-1/2 checked:after:top-1/2 checked:after:-translate-x-1/2 checked:after:-translate-y-1/2 checked:after:text-white checked:after:text-xs checked:after:font-bold transition-all duration-200 hover:border-primary-400"
+                className="h-4 w-4 text-primary-600 bg-white border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 dark:bg-gray-700 dark:border-gray-500 cursor-pointer appearance-none checked:bg-primary-600 checked:border-primary-600 relative checked:after:content-['✓'] checked:after:absolute checked:after:left-1/2 checked:after:top-1/2 checked:after:-translate-x-1/2 checked:after:-translate-y-1/2 checked:after:text-white checked:after:text-[10px] checked:after:font-bold transition-all duration-200 hover:border-primary-400"
               />
             )}
           </div>
