@@ -13,6 +13,7 @@ import FilterBar from '../components/admin/FilterBar';
 import MockExamsSelectionToolbar from '../components/admin/MockExamsSelectionToolbar';
 import MockExamsTable from '../components/admin/MockExamsTable';
 import BulkToggleActiveModal from '../components/admin/BulkToggleActiveModal';
+import BulkEditModal from '../components/admin/BulkEditModal';
 import MassDeleteModal from '../components/admin/MassDeleteModal';
 import { useMemo, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
@@ -29,6 +30,9 @@ function MockExamsDashboard() {
 
   // State for bulk toggle modal
   const [isBulkToggleModalOpen, setIsBulkToggleModalOpen] = useState(false);
+
+  // State for bulk edit modal
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
 
   // State for mass delete modal
   const [isMassDeleteModalOpen, setIsMassDeleteModalOpen] = useState(false);
@@ -253,10 +257,22 @@ function MockExamsDashboard() {
     setIsBulkToggleModalOpen(true);
   }, []);
 
+  // Handler for opening bulk edit modal
+  const handleBulkEdit = useCallback(() => {
+    setIsBulkEditModalOpen(true);
+  }, []);
+
   // Handler for opening mass delete modal
   const handleDeleteSessions = useCallback(() => {
     setIsMassDeleteModalOpen(true);
   }, []);
+
+  // Handler for successful bulk edit
+  const handleBulkEditSuccess = useCallback(() => {
+    setIsBulkEditModalOpen(false);
+    bulkSelection.exitToView();
+    // Toast notification is handled by the modal/hook
+  }, [bulkSelection]);
 
   // Handler for successful mass delete
   const handleMassDeleteSuccess = useCallback(() => {
@@ -368,6 +384,7 @@ function MockExamsDashboard() {
             onClearAll={bulkSelection.clearAll}
             onExitMode={bulkSelection.exitToView}
             onToggleActiveStatus={handleToggleActiveStatus}
+            onBulkEdit={handleBulkEdit}
             onDeleteSessions={handleDeleteSessions}
             selectedSessions={bulkSelection.selectedSessions}
             isSubmitting={bulkSelection.isSubmitting}
@@ -422,6 +439,14 @@ function MockExamsDashboard() {
           onConfirm={handleConfirmToggle}
           selectedSessions={bulkSelection.selectedSessions}
           isSubmitting={bulkSelection.isSubmitting}
+        />
+
+        {/* Bulk Edit Modal */}
+        <BulkEditModal
+          isOpen={isBulkEditModalOpen}
+          onClose={() => setIsBulkEditModalOpen(false)}
+          selectedSessions={bulkSelection.selectedSessions}
+          onSuccess={handleBulkEditSuccess}
         />
 
         {/* Mass Delete Modal */}

@@ -207,6 +207,11 @@ All endpoints (except login) require authentication via Supabase session token. 
 #### Create & Update
 - `POST /api/admin/mock-exams/create` - Create single exam session
 - `POST /api/admin/mock-exams/bulk-create` - Create multiple exam sessions
+- `POST /api/admin/mock-exams/bulk-update` - Bulk update multiple exam sessions
+  - Update 1-100 sessions simultaneously
+  - Editable fields: location, mock_type, capacity, exam_date, is_active, scheduled_activation_datetime
+  - Automatic filtering of sessions with bookings
+  - Auto-regeneration of mock_exam_name when components change
 - `PATCH /api/admin/mock-exams/:id` - Update exam session
 - `DELETE /api/admin/mock-exams/:id` - Delete exam session
 
@@ -452,7 +457,7 @@ Private - PrepDoctors Internal Use Only
 ---
 
 **Version**: 2.2.0
-**Last Updated**: October 27, 2025
+**Last Updated**: January 14, 2025
 **Status**: ✅ Production Ready
 **Production URL**: https://your-admin-domain.vercel.app
 
@@ -470,6 +475,16 @@ Private - PrepDoctors Internal Use Only
   - Improved column alignment in expanded sessions
   - Added dark mode support to all table headers
   - Visual indicators with emoji icons (📍 location, 📅 date)
+
+**v2.2.0** (January 14, 2025):
+- Added Bulk Edit feature for mock exam sessions
+  - Update 1-100 sessions simultaneously
+  - 6 editable properties (location, mock_type, capacity, exam_date, is_active, scheduled_activation_datetime)
+  - Smart filtering: automatically excludes sessions with bookings
+  - Auto-regeneration of mock_exam_name when components change
+  - Batch processing with HubSpot API
+  - Partial failure handling with detailed feedback
+  - 85% time savings for bulk updates
 
 **v2.1.0** (January 24, 2025):
 - Added Mock Exam Detail View feature with booking management

@@ -688,6 +688,114 @@ const schemas = {
       })
   }),
 
+  // Schema for bulk update mock exams (Admin)
+  bulkUpdate: Joi.object({
+    sessionIds: Joi.array()
+      .items(Joi.string().pattern(/^\d+$/))
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one session ID is required',
+        'array.max': 'Cannot update more than 100 sessions at once',
+        'string.pattern.base': 'Invalid session ID format',
+        'any.required': 'Session IDs are required'
+      }),
+
+    updates: Joi.object({
+      location: Joi.string()
+        .valid('Mississauga', 'Mississauga - B9', 'Mississauga - Lab D',
+               'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill', 'Online')
+        .optional()
+        .allow('')
+        .messages({
+          'any.only': 'Invalid location specified'
+        }),
+
+      mock_type: Joi.string()
+        .valid('Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion')
+        .optional()
+        .allow('')
+        .messages({
+          'any.only': 'Invalid mock type specified'
+        }),
+
+      capacity: Joi.number()
+        .integer()
+        .min(1)
+        .max(100)
+        .optional()
+        .allow('')
+        .messages({
+          'number.base': 'Capacity must be a number',
+          'number.integer': 'Capacity must be an integer',
+          'number.min': 'Capacity must be at least 1',
+          'number.max': 'Capacity cannot exceed 100'
+        }),
+
+      exam_date: Joi.string()
+        .pattern(/^\d{4}-\d{2}-\d{2}$/)
+        .optional()
+        .allow('')
+        .messages({
+          'string.pattern.base': 'Exam date must be in YYYY-MM-DD format'
+        }),
+
+      is_active: Joi.string()
+        .valid('active', 'inactive', 'scheduled')
+        .optional()
+        .allow('')
+        .messages({
+          'any.only': 'Status must be one of: active, inactive, or scheduled'
+        }),
+
+      scheduled_activation_datetime: Joi.date()
+        .iso()
+        .optional()
+        .allow('')
+        .messages({
+          'date.base': 'Scheduled activation datetime must be a valid date',
+          'date.format': 'Scheduled activation datetime must be in ISO format'
+        })
+    })
+      .min(1)  // At least one field must be present
+      .custom((value, helpers) => {
+        // Remove empty string values for validation
+        const nonEmptyUpdates = Object.entries(value).reduce((acc, [key, val]) => {
+          if (val !== '' && val !== null && val !== undefined) {
+            acc[key] = val;
+          }
+          return acc;
+        }, {});
+
+        // Check that at least one non-empty update field is provided
+        if (Object.keys(nonEmptyUpdates).length === 0) {
+          return helpers.error('custom.noUpdatesProvided');
+        }
+
+        // Validate scheduled_activation_datetime when is_active='scheduled'
+        if (nonEmptyUpdates.is_active === 'scheduled') {
+          if (!nonEmptyUpdates.scheduled_activation_datetime) {
+            return helpers.error('custom.scheduledDateRequired');
+          }
+
+          const scheduledDate = new Date(nonEmptyUpdates.scheduled_activation_datetime);
+          if (scheduledDate <= new Date()) {
+            return helpers.error('custom.scheduledDatePast');
+          }
+        }
+
+        return value;
+      })
+      .required()
+      .messages({
+        'object.min': 'At least one update field must be provided',
+        'custom.noUpdatesProvided': 'Please update at least one field',
+        'custom.scheduledDateRequired': 'Scheduled activation datetime is required when status is scheduled',
+        'custom.scheduledDatePast': 'Scheduled activation datetime must be in the future'
+      })
+  }).options({ stripUnknown: true }),
+
   // Schema for batch delete sessions (Admin)
   batchDeleteSessions: Joi.object({
     sessionIds: Joi.array()
