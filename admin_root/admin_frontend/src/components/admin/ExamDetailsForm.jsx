@@ -39,11 +39,28 @@ function ExamDetailsForm({
     return getFieldError(fieldName) ? 'border-red-500' : '';
   };
 
+  // Get mock type badge color
+  const getMockTypeBadgeColor = (type) => {
+    const typeColors = {
+      'Situational Judgment': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+      'Clinical Skills': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+      'Mini-mock': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+      'Mock Discussion': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
+    };
+    return typeColors[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Session Information Grid */}
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+    <div>
+      {/* Exam Information Card - Compact All-in-One */}
+      <div className="bg-white dark:bg-dark-card shadow-sm dark:shadow-gray-900/50 rounded-lg">
+        <div className="p-5">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            Exam Information
+          </h3>
+
+          {/* 2-Column Grid Layout - Compact */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
           {/* Mock Type */}
           <div>
             <Label>Mock Type</Label>
@@ -76,8 +93,10 @@ function ExamDetailsForm({
                 )}
               </div>
             ) : (
-              <div className="text-gray-900 dark:text-gray-100 font-medium">
-                {displayData.mock_type || 'N/A'}
+              <div>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMockTypeBadgeColor(displayData.mock_type)}`}>
+                  {displayData.mock_type || 'N/A'}
+                </span>
               </div>
             )}
           </div>
@@ -379,6 +398,7 @@ function ExamDetailsForm({
               )}
             </div>
           )}
+          </div>
         </div>
       </div>
 
