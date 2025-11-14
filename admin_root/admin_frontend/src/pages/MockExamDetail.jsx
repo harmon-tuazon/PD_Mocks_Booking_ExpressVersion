@@ -320,12 +320,14 @@ function MockExamDetail() {
         <div className="mb-8">
           <ExamDetailsForm
             exam={exam}
+            examData={exam}
+            displayData={examEdit.formData}
             isEditing={examEdit.isEditing}
-            formData={examEdit.formData}
             errors={examEdit.errors}
             touched={examEdit.touched}
             onFieldChange={examEdit.updateField}
             onFieldBlur={examEdit.handleFieldBlur}
+            getFieldError={(fieldName) => examEdit.errors[fieldName]}
             isSaving={examEdit.isSaving}
           />
         </div>
