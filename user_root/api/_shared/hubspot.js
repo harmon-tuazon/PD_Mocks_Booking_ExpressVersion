@@ -20,7 +20,7 @@ class HubSpotService {
   constructor() {
     this.token = process.env.HS_PRIVATE_APP_TOKEN;
     this.baseURL = 'https://api.hubapi.com';
-    this.retryDelay = 1000;
+    this.retryDelay = 5000; // PHASE 1: Increased from 1000ms to 5000ms for better rate limit handling
     this.maxRetries = 3;
 
     if (!this.token) {
@@ -74,12 +74,39 @@ class HubSpotService {
           'Content-Type': 'application/json'
         }
       });
+
+      // PHASE 2: Monitor rate limit headers after successful response
+      const rateLimitHeaders = response.headers || {};
+      const secondlyRemaining = rateLimitHeaders['x-hubspot-ratelimit-secondly-remaining'];
+      const dailyRemaining = rateLimitHeaders['x-hubspot-ratelimit-daily-remaining'];
+
+      // Log warnings when approaching limits
+      if (secondlyRemaining && parseInt(secondlyRemaining) < 10) {
+        console.warn(`⚠️ Approaching SECONDLY rate limit: ${secondlyRemaining} requests remaining`);
+      }
+
+      if (dailyRemaining && parseInt(dailyRemaining) < 1000) {
+        console.warn(`⚠️ Approaching DAILY rate limit: ${dailyRemaining} requests remaining`);
+      }
+
+      // Preemptive throttle if very close to limit
+      if (secondlyRemaining && parseInt(secondlyRemaining) < 5) {
+        console.log(`🛑 Preemptive throttle: waiting 1000ms (${secondlyRemaining} requests remaining)`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
       return response.data;
     } catch (error) {
-      // Handle rate limiting with exponential backoff
+      // PHASE 1: Improved retry logic with Retry-After header support
       if (error.response?.status === 429 && currentAttempt < this.maxRetries) {
-        const delay = this.retryDelay * Math.pow(2, currentAttempt - 1);
-        console.log(`Rate limited, retrying after ${delay}ms (attempt ${currentAttempt + 1}/${this.maxRetries})`);
+        // Read Retry-After header if available
+        const retryAfter = error.response?.headers?.['retry-after'];
+        const baseDelay = retryAfter ? parseInt(retryAfter) * 1000 : this.retryDelay;
+        const delay = baseDelay * Math.pow(2, currentAttempt - 1);
+        
+        console.log(`⚠️ Rate limited, retrying after ${delay}ms (attempt ${currentAttempt + 1}/${this.maxRetries})`);
+        console.log(`   Policy: ${error.response?.data?.policyName || 'unknown'}`);
+        
         await new Promise(r => setTimeout(r, delay));
 
         // Retry with incremented attempt

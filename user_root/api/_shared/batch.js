@@ -29,14 +29,26 @@ class HubSpotBatchService {
 
     console.log(`📦 Batch reading ${ids.length} ${objectType} objects in ${chunks.length} chunk(s)...`);
 
-    const results = await Promise.allSettled(
-      chunks.map(chunk =>
-        this.hubspot.apiCall('POST', `/crm/v3/objects/${objectType}/batch/read`, {
-          inputs: chunk.map(id => ({ id })),
+    // PHASE 3: Sequential processing with throttling instead of parallel
+    const results = [];
+    for (let i = 0; i < chunks.length; i++) {
+      // Add delay before subsequent chunks to prevent rate limit errors
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 150));
+        console.log(`⏳ Throttle delay: 150ms between batch chunks (${i}/${chunks.length})`);
+      }
+      
+      try {
+        const response = await this.hubspot.apiCall('POST', `/crm/v3/objects/${objectType}/batch/read`, {
+          inputs: chunks[i].map(id => ({ id })),
           properties: properties || []
-        })
-      )
-    );
+        });
+        results.push({ status: 'fulfilled', value: response });
+      } catch (error) {
+        console.error(`Batch chunk ${i + 1}/${chunks.length} failed:`, error.message);
+        results.push({ status: 'rejected', reason: error });
+      }
+    }
 
     return this.extractSuccessfulResults(results);
   }
@@ -56,15 +68,27 @@ class HubSpotBatchService {
 
     console.log(`🔗 Batch reading associations from ${fromIds.length} ${fromObjectType} to ${toObjectType} in ${chunks.length} chunk(s)...`);
 
-    const results = await Promise.allSettled(
-      chunks.map(chunk =>
-        this.hubspot.apiCall(
+    // PHASE 3: Sequential processing with throttling instead of parallel
+    const results = [];
+    for (let i = 0; i < chunks.length; i++) {
+      // Add delay before subsequent chunks to prevent rate limit errors
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 150));
+        console.log(`⏳ Throttle delay: 150ms between batch chunks (${i}/${chunks.length})`);
+      }
+      
+      try {
+        const response = await this.hubspot.apiCall(
           'POST',
           `/crm/v4/associations/${fromObjectType}/${toObjectType}/batch/read`,
-          { inputs: chunk.map(id => ({ id })) }
-        )
-      )
-    );
+          { inputs: chunks[i].map(id => ({ id })) }
+        );
+        results.push({ status: 'fulfilled', value: response });
+      } catch (error) {
+        console.error(`Batch chunk ${i + 1}/${chunks.length} failed:`, error.message);
+        results.push({ status: 'rejected', reason: error });
+      }
+    }
 
     // FIX: extractSuccessfulResults already returns the flattened results array
     // Each result has structure: { from: {id}, to: [{toObjectId, associationTypes}] }
