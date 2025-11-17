@@ -93,13 +93,21 @@ const MockDiscussions = () => {
           }
         });
 
+        // Filter out full sessions (available_slots <= 0)
+        const availableDiscussions = upcomingDiscussions.filter(discussion => discussion.available_slots > 0);
+
         // Log filtering statistics for debugging
-        const filteredCount = (result.data || []).length - upcomingDiscussions.length;
-        if (filteredCount > 0) {
-          console.log(`Filtered out ${filteredCount} past discussion(s) from ${(result.data || []).length} total discussion(s)`);
+        const pastDiscussionsCount = (result.data || []).length - upcomingDiscussions.length;
+        const fullSessionsCount = upcomingDiscussions.length - availableDiscussions.length;
+
+        if (pastDiscussionsCount > 0) {
+          console.log(`Filtered out ${pastDiscussionsCount} past discussion(s) from ${(result.data || []).length} total discussion(s)`);
+        }
+        if (fullSessionsCount > 0) {
+          console.log(`Filtered out ${fullSessionsCount} full session(s) from ${upcomingDiscussions.length} upcoming discussion(s)`);
         }
 
-        setDiscussions(upcomingDiscussions);
+        setDiscussions(availableDiscussions);
       } else {
         throw new Error(result.error || 'Failed to fetch mock discussions');
       }

@@ -84,13 +84,21 @@ const ExamSessionsList = () => {
           }
         });
 
+        // Filter out full sessions (available_slots <= 0)
+        const availableSessions = upcomingExams.filter(exam => exam.available_slots > 0);
+
         // Log filtering statistics for debugging
-        const filteredCount = (result.data || []).length - upcomingExams.length;
-        if (filteredCount > 0) {
-          console.log(`Filtered out ${filteredCount} past exam(s) from ${(result.data || []).length} total exam(s)}`);
+        const pastExamsCount = (result.data || []).length - upcomingExams.length;
+        const fullSessionsCount = upcomingExams.length - availableSessions.length;
+
+        if (pastExamsCount > 0) {
+          console.log(`Filtered out ${pastExamsCount} past exam(s) from ${(result.data || []).length} total exam(s)`);
+        }
+        if (fullSessionsCount > 0) {
+          console.log(`Filtered out ${fullSessionsCount} full session(s) from ${upcomingExams.length} upcoming exam(s)`);
         }
 
-        setExams(upcomingExams);
+        setExams(availableSessions);
       } else {
         throw new Error(result.error || 'Failed to fetch exams');
       }
