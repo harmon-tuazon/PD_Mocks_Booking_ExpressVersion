@@ -569,8 +569,11 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
         if (currentCount <= 0) {
           console.warn(`⚠️ [REDIS] Counter is already at ${currentCount}, cannot decrement. Setting to 0.`);
           console.warn(`⚠️ [REDIS] This indicates counter drift - reconciliation cron will fix this.`);
-          await redis.set(counterKey, 0);
-          console.log(`✅ Redis counter reset to 0 for exam ${mockExamId}`);
+
+          // Preserve TTL when resetting to 0
+          const TTL_90_DAYS = 90 * 24 * 60 * 60; // 7,776,000 seconds
+          await redis.setex(counterKey, TTL_90_DAYS, 0);
+          console.log(`✅ Redis counter reset to 0 for exam ${mockExamId} (TTL preserved: 90 days)`);
         } else {
           const newCount = await redis.decr(counterKey);
           console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);

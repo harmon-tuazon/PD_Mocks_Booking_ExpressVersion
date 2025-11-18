@@ -274,9 +274,12 @@ module.exports = async (req, res) => {
               let newCount;
               if (currentCount <= 0) {
                 console.warn(`⚠️ [REDIS] Counter is already at ${currentCount}, resetting to 0 (drift detected)`);
-                await redis.set(counterKey, 0);
+
+                // Preserve TTL when resetting to 0
+                const TTL_90_DAYS = 90 * 24 * 60 * 60; // 7,776,000 seconds
+                await redis.setex(counterKey, TTL_90_DAYS, 0);
                 newCount = 0;
-                console.log(`✅ [REDIS] Counter reset to 0 for exam ${mockExamId}`);
+                console.log(`✅ [REDIS] Counter reset to 0 for exam ${mockExamId} (TTL: 90 days)`);
               } else {
                 newCount = await redis.decr(counterKey);
                 console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);

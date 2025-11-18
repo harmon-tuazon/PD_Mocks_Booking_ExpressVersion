@@ -362,9 +362,10 @@ module.exports = module.exports = module.exports = async function handler(req, r
     // TIER 2: Fallback to HubSpot if Redis doesn't have it yet
     if (totalBookings === null) {
       totalBookings = parseInt(mockExam.properties.total_bookings) || 0;
-      // Seed Redis with current HubSpot value (no TTL - persist forever)
-      await redis.set(`exam:${mock_exam_id}:bookings`, totalBookings);
-      console.log(`📊 Redis cache seeded: exam:${mock_exam_id}:bookings = ${totalBookings}`);
+      // Seed Redis with current HubSpot value (TTL: 90 days / 3 months)
+      const TTL_90_DAYS = 90 * 24 * 60 * 60; // 7,776,000 seconds
+      await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_90_DAYS, totalBookings);
+      console.log(`📊 Redis cache seeded: exam:${mock_exam_id}:bookings = ${totalBookings} (TTL: 90 days)`);
     } else {
       totalBookings = parseInt(totalBookings);
       console.log(`📊 Redis cache hit: exam:${mock_exam_id}:bookings = ${totalBookings}`);

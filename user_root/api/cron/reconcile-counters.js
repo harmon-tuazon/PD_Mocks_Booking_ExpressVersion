@@ -139,8 +139,9 @@ module.exports = async (req, res) => {
       if (redisCount !== actualCount) {
         console.warn(`🔄 Counter drift detected for exam ${examId}: Redis=${redisCount}, Actual=${actualCount}`);
 
-        // Reconcile: Update BOTH Redis and HubSpot to actual count
-        await redis.set(key, actualCount);
+        // Reconcile: Update BOTH Redis and HubSpot to actual count (preserve 90-day TTL)
+        const TTL_90_DAYS = 90 * 24 * 60 * 60; // 7,776,000 seconds
+        await redis.setex(key, TTL_90_DAYS, actualCount);
 
         try {
           await hubspot.apiCall('PATCH', `/crm/v3/objects/2-50158913/${examId}`, {
