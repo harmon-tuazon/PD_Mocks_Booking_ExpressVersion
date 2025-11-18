@@ -240,6 +240,8 @@ module.exports = async (req, res) => {
         console.log(`🔍 [REDIS DEBUG] Redis instance exists: ${!!redis}`);
         console.log(`🔍 [REDIS DEBUG] Mock Exam ID: ${mockExamId}`);
 
+        let finalExamCount = null;  // Track final count after all decrements
+
         for (const result of results.successful) {
           const bookingData = bookingDataMap.get(result.bookingId);
 
@@ -285,6 +287,9 @@ module.exports = async (req, res) => {
                 console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);
               }
 
+              // Track final count for webhook trigger
+              finalExamCount = newCount;
+
               if (keyExistsAfter === null) {
                 console.log(`✅ [REDIS] Successfully cleared cache for contact ${bookingData.contact_id} on ${bookingData.exam_date}`);
                 console.log(`✅ [REDIS] Updated exam counter: ${counterBefore} → ${newCount}`);
@@ -307,6 +312,26 @@ module.exports = async (req, res) => {
               bookingData
             });
           }
+        }
+
+        // Trigger HubSpot workflow via webhook with final count after all decrements
+        if (finalExamCount !== null) {
+          const { HubSpotWebhookService } = require('../../../_shared/hubspot-webhook');
+
+          process.nextTick(async () => {
+            const webhookResult = await HubSpotWebhookService.syncWithRetry(
+              mockExamId,
+              finalExamCount,
+              3 // 3 retries with exponential backoff
+            );
+
+            if (webhookResult.success) {
+              console.log(`✅ [WEBHOOK] HubSpot workflow triggered after batch mock exam cancellation: ${webhookResult.message}`);
+            } else {
+              console.error(`❌ [WEBHOOK] All retry attempts failed: ${webhookResult.message}`);
+              console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
+            }
+          });
         }
       }
     }

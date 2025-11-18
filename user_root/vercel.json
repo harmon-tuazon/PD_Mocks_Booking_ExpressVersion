@@ -8,8 +8,8 @@
   },
   "crons": [
     {
-      "path": "/api/cron/reconcile-counters",
-      "schedule": "*/5 * * * *"
+      "path": "/api/mock-exams/sync-capacity",
+      "schedule": "0 * * * *"
     }
   ],
   "headers": [

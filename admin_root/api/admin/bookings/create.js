@@ -19,13 +19,17 @@ const { requireAdmin } = require('../middleware/requireAdmin');
 const { HubSpotService, HUBSPOT_OBJECTS } = require('../../_shared/hubspot');
 const { validateInput } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
+const RedisLockService = require('../../_shared/redis');
 
 module.exports = async (req, res) => {
   let bookingCreated = false;
   let createdBookingId = null;
   let hubspot = null;
+  let redis = null;
 
   try {
+    // Initialize Redis for counter management
+    redis = new RedisLockService();
     // ========================================================================
     // STEP 1: Admin Authentication
     // ========================================================================
@@ -95,7 +99,19 @@ module.exports = async (req, res) => {
 
     // WARNING ONLY - Don't block for capacity (admin override)
     const capacity = parseInt(mockExam.properties.capacity) || 0;
-    const totalBookings = parseInt(mockExam.properties.total_bookings) || 0;
+
+    // Use Redis for current booking count (authoritative source)
+    let totalBookings = await redis.get(`exam:${mock_exam_id}:bookings`);
+
+    if (totalBookings === null) {
+      // Seed from HubSpot if not in Redis
+      totalBookings = parseInt(mockExam.properties.total_bookings) || 0;
+      const TTL_90_DAYS = 90 * 24 * 60 * 60;
+      await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_90_DAYS, totalBookings);
+      console.log(`📊 [ADMIN BOOKING] Seeded Redis counter from HubSpot: ${totalBookings}`);
+    } else {
+      totalBookings = parseInt(totalBookings);
+    }
 
     if (totalBookings >= capacity) {
       console.warn(`⚠️ [ADMIN OVERRIDE] Creating booking beyond capacity:`, {
@@ -219,14 +235,31 @@ module.exports = async (req, res) => {
     }
 
     // ========================================================================
-    // STEP 8: Update total_bookings Counter
+    // STEP 8: Update total_bookings Counter via Redis + Webhook
     // ========================================================================
     console.log(`🔢 [ADMIN BOOKING] Updating total_bookings counter...`);
 
-    const newTotalBookings = totalBookings + 1;
-    await hubspot.updateMockExamBookings(mock_exam_id, newTotalBookings);
+    // Increment Redis counter immediately (real-time)
+    const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
+    console.log(`✅ [ADMIN BOOKING] Redis counter incremented: ${totalBookings} → ${newTotalBookings}`);
 
-    console.log(`✅ [ADMIN BOOKING] Updated total_bookings: ${totalBookings} → ${newTotalBookings}`);
+    // Trigger HubSpot workflow via webhook (async, non-blocking)
+    const { HubSpotWebhookService } = require('../../_shared/hubspot-webhook');
+
+    process.nextTick(async () => {
+      const result = await HubSpotWebhookService.syncWithRetry(
+        mock_exam_id,
+        newTotalBookings,
+        3 // 3 retries with exponential backoff
+      );
+
+      if (result.success) {
+        console.log(`✅ [WEBHOOK] HubSpot workflow triggered for admin booking: ${result.message}`);
+      } else {
+        console.error(`❌ [WEBHOOK] All retry attempts failed: ${result.message}`);
+        console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
+      }
+    });
 
     // ========================================================================
     // STEP 9: Create Comprehensive Audit Note (3 associations)
@@ -419,5 +452,10 @@ module.exports = async (req, res) => {
         ...(error.details && { details: error.details })
       }
     });
+  } finally {
+    // Close Redis connection
+    if (redis) {
+      await redis.close();
+    }
   }
 };

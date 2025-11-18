@@ -556,17 +556,22 @@ module.exports = module.exports = module.exports = async function handler(req, r
     const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
     console.log(`✅ Redis counter incremented: exam:${mock_exam_id}:bookings = ${newTotalBookings}`);
 
-    // Background sync to HubSpot (async, non-blocking)
+    // Trigger HubSpot workflow via webhook (async, non-blocking)
     // This runs AFTER response is sent to user - doesn't block booking completion
+    const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
+
     process.nextTick(async () => {
-      try {
-        const hubspotService = new HubSpotService();
-        await hubspotService.updateMockExamBookings(mock_exam_id, newTotalBookings);
-        console.log(`✅ Background sync: HubSpot counter updated to ${newTotalBookings} for exam ${mock_exam_id}`);
-      } catch (error) {
-        console.error(`❌ Background counter sync failed for exam ${mock_exam_id}:`, error.message);
-        // Error is logged but doesn't affect user experience
-        // Reconciliation cron job will fix any drift
+      const result = await HubSpotWebhookService.syncWithRetry(
+        mock_exam_id,
+        newTotalBookings,
+        3 // 3 retries with exponential backoff
+      );
+
+      if (result.success) {
+        console.log(`✅ [WEBHOOK] HubSpot workflow triggered: ${result.message}`);
+      } else {
+        console.error(`❌ [WEBHOOK] All retry attempts failed: ${result.message}`);
+        console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
       }
     });
 

@@ -24,6 +24,7 @@
 require('dotenv').config();
 const Joi = require('joi');
 const { HubSpotService, HUBSPOT_OBJECTS } = require('../_shared/hubspot');
+const RedisLockService = require('../_shared/redis');
 const {
   setCorsHeaders,
   handleOptionsRequest,
@@ -201,23 +202,52 @@ async function cancelSingleBooking(hubspot, bookingData) {
       }
     }
 
-    // Step 8: Decrement Mock Exam total_bookings if associated
+    // Step 8: Decrement Redis counter and trigger webhook sync
     let bookingsDecremented = false;
     if (mockExamId) {
       try {
-        const currentTotal = parseInt(mockExamDetails?.total_bookings) || 0;
+        const redis = new RedisLockService();
+        const counterKey = `exam:${mockExamId}:bookings`;
+        const counterBefore = await redis.get(counterKey);
+        const currentCount = parseInt(counterBefore) || 0;
 
-        if (currentTotal > 0) {
-          const newTotal = currentTotal - 1;
-          await hubspot.updateMockExamBookings(mockExamId, newTotal);
-          console.log(`✅ Decremented Mock Exam ${mockExamId} total_bookings from ${currentTotal} to ${newTotal}`);
-          bookingsDecremented = true;
-          result.actions_completed.bookings_decremented = true;
+        let newCount;
+        // Safety check: Don't decrement below 0
+        if (currentCount <= 0) {
+          console.warn(`⚠️ [REDIS] Counter is already at ${currentCount}, resetting to 0 (drift detected)`);
+
+          // Preserve TTL when resetting to 0
+          const TTL_90_DAYS = 90 * 24 * 60 * 60;
+          await redis.setex(counterKey, TTL_90_DAYS, 0);
+          newCount = 0;
         } else {
-          console.log(`⚠️ Mock Exam ${mockExamId} total_bookings is already 0, skipping decrement`);
+          newCount = await redis.decr(counterKey);
+          console.log(`✅ Redis counter decremented for exam ${mockExamId}: ${counterBefore} → ${newCount}`);
         }
+
+        // Trigger HubSpot workflow via webhook (async, non-blocking)
+        const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
+
+        process.nextTick(async () => {
+          const webhookResult = await HubSpotWebhookService.syncWithRetry(
+            mockExamId,
+            newCount,
+            3 // 3 retries with exponential backoff
+          );
+
+          if (webhookResult.success) {
+            console.log(`✅ [WEBHOOK] HubSpot workflow triggered after user batch cancellation: ${webhookResult.message}`);
+          } else {
+            console.error(`❌ [WEBHOOK] All retry attempts failed: ${webhookResult.message}`);
+            console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
+          }
+        });
+
+        await redis.close();
+        bookingsDecremented = true;
+        result.actions_completed.bookings_decremented = true;
       } catch (decrementError) {
-        console.error(`❌ Failed to decrement Mock Exam total_bookings: ${decrementError.message}`);
+        console.error(`❌ Failed to decrement Redis counter: ${decrementError.message}`);
       }
     }
 

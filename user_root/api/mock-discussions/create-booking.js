@@ -338,10 +338,24 @@ module.exports = async function handler(req, res) {
       throw error;
     }
 
-    // Check capacity
+    // Check capacity using Redis (authoritative source)
     const capacity = parseInt(mockDiscussion.properties.capacity) || 0;
-    const totalBookings = parseInt(mockDiscussion.properties.total_bookings) || 0;
 
+    // TIER 1: Try Redis first (real-time, authoritative source)
+    let totalBookings = await redis.get(`exam:${mock_exam_id}:bookings`);
+
+    // TIER 2: Fallback to HubSpot if Redis doesn't have it yet
+    if (totalBookings === null) {
+      totalBookings = parseInt(mockDiscussion.properties.total_bookings) || 0;
+      // Seed Redis with current HubSpot value (TTL: 90 days / 3 months)
+      const TTL_90_DAYS = 90 * 24 * 60 * 60;
+      await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_90_DAYS, totalBookings);
+      console.log(`📊 Seeded Redis counter from HubSpot: exam:${mock_exam_id}:bookings = ${totalBookings}`);
+    } else {
+      totalBookings = parseInt(totalBookings);
+    }
+
+    // CRITICAL: This check now uses real-time Redis data to prevent overbooking
     if (totalBookings >= capacity) {
       const error = new Error('This Mock Discussion session is now full');
       error.status = 400;
@@ -431,9 +445,29 @@ module.exports = async function handler(req, res) {
     const contactAssocSuccess = associationResults.find(r => r.type === 'contact')?.success || false;
     const mockDiscussionAssocSuccess = associationResults.find(r => r.type === 'mock_discussion')?.success || false;
 
-    // Step 5: Update total bookings counter
-    const newTotalBookings = totalBookings + 1;
-    await hubspot.updateMockExamBookings(mock_exam_id, newTotalBookings);
+    // Step 5: Update total bookings counter - CRITICAL: Use Redis for real-time accuracy
+    // Increment Redis counter immediately (non-blocking, real-time)
+    const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
+    console.log(`✅ Redis counter incremented: exam:${mock_exam_id}:bookings = ${newTotalBookings}`);
+
+    // Trigger HubSpot workflow via webhook (async, non-blocking)
+    // This runs AFTER response is sent to user - doesn't block booking completion
+    const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
+
+    process.nextTick(async () => {
+      const result = await HubSpotWebhookService.syncWithRetry(
+        mock_exam_id,
+        newTotalBookings,
+        3 // 3 retries with exponential backoff
+      );
+
+      if (result.success) {
+        console.log(`✅ [WEBHOOK] HubSpot workflow triggered: ${result.message}`);
+      } else {
+        console.error(`❌ [WEBHOOK] All retry attempts failed: ${result.message}`);
+        console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
+      }
+    });
 
     // ========================================================================
     // REDIS LOCK RELEASE - Release both locks after booking is confirmed

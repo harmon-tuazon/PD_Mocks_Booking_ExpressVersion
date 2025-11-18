@@ -39,18 +39,33 @@ module.exports = async (req, res) => {
     // Verify environment variables
     verifyEnvironmentVariables();
 
-    // Apply rate limiting
-    const rateLimiter = rateLimitMiddleware({
-      maxRequests: 5, // Limited to prevent abuse
-      windowMs: 60000 // 1 minute
-    });
+    // Check if this is a cron job invocation
+    const authHeader = req.headers.authorization;
+    const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
+    const isCronJob = authHeader === expectedAuth;
 
-    if (await rateLimiter(req, res)) {
-      return; // Request was rate limited
+    if (isCronJob) {
+      console.log('🔒 Authenticated cron job invocation - bypassing rate limits');
+    } else {
+      // Apply rate limiting for manual invocations
+      const rateLimiter = rateLimitMiddleware({
+        maxRequests: 5, // Limited to prevent abuse
+        windowMs: 60000 // 1 minute
+      });
+
+      if (await rateLimiter(req, res)) {
+        return; // Request was rate limited
+      }
     }
 
     // Parse request body
-    const { mock_exam_ids, dry_run = false } = req.body || {};
+    let { mock_exam_ids, dry_run = false } = req.body || {};
+
+    // IMPORTANT: Cron jobs should never run in dry-run mode
+    if (isCronJob && dry_run) {
+      console.warn('⚠️ [CRON] Ignoring dry_run flag for cron job - forcing actual sync');
+      dry_run = false;
+    }
 
     // Initialize HubSpot service
     const hubspot = new HubSpotService();
@@ -58,8 +73,8 @@ module.exports = async (req, res) => {
     let examsToSync = [];
 
     if (mock_exam_ids && Array.isArray(mock_exam_ids) && mock_exam_ids.length > 0) {
-      // Sync specific exams
-      console.log(`Syncing capacity for ${mock_exam_ids.length} specific mock exams`);
+      // Sync specific exams (manual invocation)
+      console.log(`📋 [MANUAL] Syncing capacity for ${mock_exam_ids.length} specific mock exams`);
 
       // Limit to 20 exams per request to prevent timeout
       if (mock_exam_ids.length > 20) {
@@ -71,8 +86,12 @@ module.exports = async (req, res) => {
 
       examsToSync = mock_exam_ids;
     } else {
-      // Sync all active mock exams
-      console.log('Syncing capacity for all active mock exams');
+      // Sync all active mock exams (typically cron job)
+      if (isCronJob) {
+        console.log('⏰ [CRON] Syncing capacity for all active mock exams (scheduled reconciliation)');
+      } else {
+        console.log('📋 [MANUAL] Syncing capacity for all active mock exams');
+      }
 
       // Fetch all active mock exams
       const searchPayload = {
@@ -128,9 +147,31 @@ module.exports = async (req, res) => {
 
           // Update if needed and not a dry run
           if (result.needsUpdate && !dry_run) {
-            await hubspot.updateMockExamBookings(examId, actualCount);
+            // CRITICAL: Update Redis first (authoritative source), then trigger webhook
+            const RedisLockService = require('../_shared/redis');
+            const redis = new RedisLockService();
+
+            // Update Redis with actual count from HubSpot associations
+            const TTL_90_DAYS = 90 * 24 * 60 * 60;
+            await redis.setex(`exam:${examId}:bookings`, TTL_90_DAYS, actualCount);
+            console.log(`✅ Updated Redis counter for exam ${examId}: ${currentCount} → ${actualCount}`);
+
+            // Trigger HubSpot workflow via webhook to sync total_bookings property
+            const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
+            const webhookResult = await HubSpotWebhookService.syncWithRetry(
+              examId,
+              actualCount,
+              3 // 3 retries with exponential backoff
+            );
+
+            if (webhookResult.success) {
+              console.log(`✅ [WEBHOOK] HubSpot sync triggered for exam ${examId}: ${webhookResult.message}`);
+            } else {
+              console.error(`❌ [WEBHOOK] All retry attempts failed for exam ${examId}: ${webhookResult.message}`);
+            }
+
+            await redis.close();
             result.updated = true;
-            console.log(`✅ Updated mock exam ${examId}: ${currentCount} → ${actualCount}`);
           } else if (result.needsUpdate) {
             result.updated = false;
             console.log(`🔍 DRY RUN: Would update mock exam ${examId}: ${currentCount} → ${actualCount}`);
@@ -178,6 +219,7 @@ module.exports = async (req, res) => {
         totalCorrections: dry_run ? 0 : totalCorrections
       },
       mode: dry_run ? 'dry_run' : 'live',
+      invocation_type: isCronJob ? 'cron' : 'manual',
       results: {
         updated: dry_run ? [] : updated,
         wouldUpdate: dry_run ? wouldUpdate : [],
@@ -191,13 +233,18 @@ module.exports = async (req, res) => {
       }
     };
 
-    console.log('Capacity sync complete:', response.summary);
+    const logPrefix = isCronJob ? '⏰ [CRON]' : '📋 [MANUAL]';
+    console.log(`${logPrefix} Capacity sync complete:`, response.summary);
+
+    const successMessage = isCronJob
+      ? `⏰ Scheduled sync complete: ${updated.length} exams updated`
+      : dry_run
+        ? `Dry run complete: ${wouldUpdate.length} exams would be updated`
+        : `Sync complete: ${updated.length} exams updated`;
 
     res.status(200).json(createSuccessResponse(
       response,
-      dry_run
-        ? `Dry run complete: ${wouldUpdate.length} exams would be updated`
-        : `Sync complete: ${updated.length} exams updated`
+      successMessage
     ));
 
   } catch (error) {
