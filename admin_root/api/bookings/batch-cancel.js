@@ -28,6 +28,7 @@ require('dotenv').config();
 const Joi = require('joi');
 const { HubSpotService, HUBSPOT_OBJECTS } = require('../_shared/hubspot');
 const { requireAdmin } = require('../admin/middleware/requireAdmin');
+const RedisLockService = require('../_shared/redis');
 
 // Validation schema for batch cancellation
 const batchCancelSchema = Joi.object({
@@ -69,7 +70,7 @@ const batchCancelSchema = Joi.object({
 /**
  * Process single booking cancellation (admin version - no authentication per booking)
  */
-async function cancelSingleBooking(hubspot, bookingData) {
+async function cancelSingleBooking(hubspot, bookingData, redis) {
   const { id: bookingId, reason } = bookingData;
   const result = {
     booking_id: bookingId,
@@ -79,7 +80,8 @@ async function cancelSingleBooking(hubspot, bookingData) {
       soft_delete: false,
       note_created: false,
       bookings_decremented: false,
-      credits_restored: false
+      credits_restored: false,
+      redis_cache_cleared: false
     }
   };
 
@@ -235,6 +237,65 @@ async function cancelSingleBooking(hubspot, bookingData) {
       return result;
     }
 
+    // Step 10: Clear Redis duplicate detection cache (ENHANCED LOGGING)
+    console.log(`🔍 [REDIS DEBUG] Starting cache invalidation for booking ${bookingId}`);
+    console.log(`🔍 [REDIS DEBUG] - Redis instance exists: ${!!redis}`);
+    console.log(`🔍 [REDIS DEBUG] - contactId: ${contactId}`);
+    console.log(`🔍 [REDIS DEBUG] - exam_date: ${cancellationData.exam_date}`);
+    console.log(`🔍 [REDIS DEBUG] - mockExamId: ${mockExamId}`);
+
+    if (redis && contactId && cancellationData.exam_date) {
+      try {
+        const redisKey = `booking:${contactId}:${cancellationData.exam_date}`;
+        console.log(`🔍 [REDIS DEBUG] Attempting to delete cache key: "${redisKey}"`);
+
+        // Check if key exists before deletion
+        const keyExistsBefore = await redis.get(redisKey);
+        console.log(`🔍 [REDIS DEBUG] Cache key exists before deletion: ${keyExistsBefore !== null} (value: ${keyExistsBefore})`);
+
+        // Delete the cache key
+        const deletedCount = await redis.del(redisKey);
+        console.log(`🔍 [REDIS DEBUG] redis.del() returned: ${deletedCount} (1 = deleted, 0 = key didn't exist)`);
+
+        // Verify deletion
+        const keyExistsAfter = await redis.get(redisKey);
+        console.log(`🔍 [REDIS DEBUG] Cache key exists after deletion: ${keyExistsAfter !== null} (should be false)`);
+
+        if (keyExistsAfter === null) {
+          console.log(`✅ [REDIS] Successfully cleared duplicate detection cache for contact ${contactId} on ${cancellationData.exam_date}`);
+        } else {
+          console.error(`❌ [REDIS] CRITICAL: Cache key still exists after deletion! Value: ${keyExistsAfter}`);
+        }
+
+        // Decrement exam booking counter
+        if (mockExamId) {
+          const counterKey = `exam:${mockExamId}:bookings`;
+          const counterBefore = await redis.get(counterKey);
+          console.log(`🔍 [REDIS DEBUG] Counter before decrement: ${counterBefore}`);
+
+          const newCount = await redis.decr(counterKey);
+          console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);
+          console.log(`✅ [REDIS] Decremented exam counter for ${mockExamId}: ${counterBefore} → ${newCount}`);
+        }
+
+        result.actions_completed.redis_cache_cleared = true;
+      } catch (redisError) {
+        console.error(`❌ [REDIS] Cache clearing FAILED:`, {
+          error: redisError.message,
+          stack: redisError.stack,
+          contactId,
+          exam_date: cancellationData.exam_date,
+          mockExamId
+        });
+      }
+    } else {
+      console.warn(`⚠️ [REDIS] Cannot clear cache - missing required data:`, {
+        hasRedis: !!redis,
+        hasContactId: !!contactId,
+        hasExamDate: !!cancellationData.exam_date
+      });
+    }
+
     // Success!
     result.success = true;
     result.status = 'cancelled';
@@ -297,8 +358,9 @@ async function handler(req, res) {
 
     console.log(`✅ [VALIDATION SUCCESS] Processing ${validatedData.bookings.length} booking(s)`);
 
-    // Initialize HubSpot service
+    // Initialize HubSpot service and Redis
     const hubspot = new HubSpotService();
+    const redis = new RedisLockService();
 
     // Process each booking cancellation
     const results = [];
@@ -306,7 +368,7 @@ async function handler(req, res) {
     let failedCount = 0;
 
     for (const booking of validatedData.bookings) {
-      const result = await cancelSingleBooking(hubspot, booking);
+      const result = await cancelSingleBooking(hubspot, booking, redis);
 
       if (result.success) {
         successCount++;

@@ -39,6 +39,7 @@ const { requireAdmin } = require('../../middleware/requireAdmin');
 const { validationMiddleware } = require('../../../_shared/validation');
 const { getCache } = require('../../../_shared/cache');
 const hubspot = require('../../../_shared/hubspot');
+const RedisLockService = require('../../../_shared/redis');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -116,32 +117,39 @@ module.exports = async (req, res) => {
     console.log(`🗑️ [CANCEL] Total bookings to process: ${bookings.length}`);
     console.log(`🔄 [CANCEL] Token refunds enabled: ${refundTokens}`);
 
-    // Lightweight validation: Fetch only is_active status from HubSpot
-    console.log(`🔍 [CANCEL] Fetching booking status from HubSpot (lightweight)...`);
-    const statusMap = new Map();
+    // Initialize Redis for cache clearing
+    const redis = new RedisLockService();
 
-    // Fetch only is_active property (lightweight check)
+    // Lightweight validation: Fetch is_active, contact_id, exam_date for cache clearing
+    console.log(`🔍 [CANCEL] Fetching booking data from HubSpot...`);
+    const bookingDataMap = new Map();
+
+    // Fetch is_active, contact_id, exam_date (needed for Redis cache clearing)
     for (let i = 0; i < bookingIds.length; i += HUBSPOT_BATCH_SIZE) {
       const chunk = bookingIds.slice(i, i + HUBSPOT_BATCH_SIZE);
 
       try {
         const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
-          properties: ['is_active'],  // ONLY critical property for validation
+          properties: ['is_active', 'contact_id', 'exam_date'],  // Properties for validation + cache clearing
           inputs: chunk.map(id => ({ id }))
         });
 
         if (response.results) {
           for (const booking of response.results) {
-            statusMap.set(booking.id, booking.properties.is_active);
+            bookingDataMap.set(booking.id, {
+              is_active: booking.properties.is_active,
+              contact_id: booking.properties.contact_id,
+              exam_date: booking.properties.exam_date
+            });
           }
         }
       } catch (error) {
-        console.error(`❌ [CANCEL] Error fetching booking status batch:`, error);
+        console.error(`❌ [CANCEL] Error fetching booking data batch:`, error);
         // Continue processing other batches
       }
     }
 
-    console.log(`✅ [CANCEL] Fetched status for ${statusMap.size} bookings from HubSpot`);
+    console.log(`✅ [CANCEL] Fetched data for ${bookingDataMap.size} bookings from HubSpot`);
 
     // Initialize result tracking
     const results = {
@@ -155,10 +163,10 @@ module.exports = async (req, res) => {
     const bookingDetailsForAudit = [];
 
     for (const booking of bookings) {
-      const currentStatus = statusMap.get(booking.id);
+      const bookingData = bookingDataMap.get(booking.id);
 
       // Check if booking exists
-      if (!currentStatus) {
+      if (!bookingData) {
         results.failed.push({
           bookingId: booking.id,
           error: 'Booking not found',
@@ -168,7 +176,7 @@ module.exports = async (req, res) => {
       }
 
       // Check if already cancelled (idempotent)
-      if (currentStatus === 'Cancelled') {
+      if (bookingData.is_active === 'Cancelled') {
         results.skipped.push({
           bookingId: booking.id,
           reason: 'Already cancelled',
@@ -214,6 +222,69 @@ module.exports = async (req, res) => {
           error: error.message || 'Failed to cancel booking',
           code: 'UPDATE_FAILED'
         });
+      }
+
+      // Clear Redis duplicate detection cache for successfully cancelled bookings (ENHANCED LOGGING)
+      if (results.successful.length > 0) {
+        console.log(`🗑️ [REDIS] Clearing duplicate detection cache for ${results.successful.length} cancelled bookings...`);
+        console.log(`🔍 [REDIS DEBUG] Redis instance exists: ${!!redis}`);
+        console.log(`🔍 [REDIS DEBUG] Mock Exam ID: ${mockExamId}`);
+
+        for (const result of results.successful) {
+          const bookingData = bookingDataMap.get(result.bookingId);
+
+          console.log(`🔍 [REDIS DEBUG] Processing booking ${result.bookingId}:`);
+          console.log(`🔍 [REDIS DEBUG] - contact_id: ${bookingData?.contact_id}`);
+          console.log(`🔍 [REDIS DEBUG] - exam_date: ${bookingData?.exam_date}`);
+
+          if (bookingData?.contact_id && bookingData?.exam_date) {
+            const redisKey = `booking:${bookingData.contact_id}:${bookingData.exam_date}`;
+            console.log(`🔍 [REDIS DEBUG] Attempting to delete cache key: "${redisKey}"`);
+
+            try {
+              // Check if key exists before deletion
+              const keyExistsBefore = await redis.get(redisKey);
+              console.log(`🔍 [REDIS DEBUG] Cache key exists before deletion: ${keyExistsBefore !== null} (value: ${keyExistsBefore})`);
+
+              // Delete the cache key using wrapper method
+              const deletedCount = await redis.del(redisKey);
+              console.log(`🔍 [REDIS DEBUG] redis.del() returned: ${deletedCount} (1 = deleted, 0 = key didn't exist)`);
+
+              // Verify deletion
+              const keyExistsAfter = await redis.get(redisKey);
+              console.log(`🔍 [REDIS DEBUG] Cache key exists after deletion: ${keyExistsAfter !== null} (should be false)`);
+
+              // Decrement exam booking counter
+              const counterKey = `exam:${mockExamId}:bookings`;
+              const counterBefore = await redis.get(counterKey);
+              console.log(`🔍 [REDIS DEBUG] Counter before decrement: ${counterBefore}`);
+
+              const newCount = await redis.decr(counterKey);
+              console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);
+
+              if (keyExistsAfter === null) {
+                console.log(`✅ [REDIS] Successfully cleared cache for contact ${bookingData.contact_id} on ${bookingData.exam_date}`);
+                console.log(`✅ [REDIS] Decremented exam counter: ${counterBefore} → ${newCount}`);
+              } else {
+                console.error(`❌ [REDIS] CRITICAL: Cache key still exists after deletion! Value: ${keyExistsAfter}`);
+              }
+            } catch (redisError) {
+              console.error(`❌ [REDIS] Cache clearing FAILED for booking ${result.bookingId}:`, {
+                error: redisError.message,
+                stack: redisError.stack,
+                contact_id: bookingData.contact_id,
+                exam_date: bookingData.exam_date
+              });
+              // Don't fail the cancellation if Redis clearing fails
+            }
+          } else {
+            console.warn(`⚠️ [REDIS] Missing contact_id or exam_date for booking ${result.bookingId}:`, {
+              hasContactId: !!bookingData?.contact_id,
+              hasExamDate: !!bookingData?.exam_date,
+              bookingData
+            });
+          }
+        }
       }
     }
 
