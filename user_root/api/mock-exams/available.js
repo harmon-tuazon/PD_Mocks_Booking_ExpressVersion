@@ -190,10 +190,25 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Process exams for response
-    const processedExams = searchResult.results.map(exam => {
+    // Process exams for response - Read from Redis for real-time availability
+    const RedisLockService = require('../_shared/redis');
+    const redis = new RedisLockService();
+
+    const processedExams = await Promise.all(searchResult.results.map(async (exam) => {
       const capacity = parseInt(exam.properties.capacity) || 0;
-      const totalBookings = parseInt(exam.properties.total_bookings) || 0;
+
+      // TIER 1: Try Redis first (real-time count - authoritative source)
+      let totalBookings = await redis.get(`exam:${exam.id}:bookings`);
+
+      // TIER 2: Fallback to HubSpot if Redis doesn't have it
+      if (totalBookings === null) {
+        totalBookings = parseInt(exam.properties.total_bookings) || 0;
+        // Seed Redis with HubSpot value (no TTL - persist forever)
+        await redis.set(`exam:${exam.id}:bookings`, totalBookings);
+      } else {
+        totalBookings = parseInt(totalBookings);
+      }
+
       const availableSlots = Math.max(0, capacity - totalBookings);
 
       // Generate fallback times if missing from HubSpot
@@ -242,7 +257,10 @@ module.exports = async (req, res) => {
         status: availableSlots === 0 ? 'full' :
                  availableSlots <= 3 ? 'limited' : 'available'
       };
-    });
+    }));
+
+    // Close Redis connection
+    await redis.close();
 
     // Filter out full exams unless specifically requested
     const filteredExams = include_capacity

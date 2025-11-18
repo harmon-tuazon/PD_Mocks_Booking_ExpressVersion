@@ -6,6 +6,16 @@
       "maxDuration": 60
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/sync-counters",
+      "schedule": "*/1 * * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-counters",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",

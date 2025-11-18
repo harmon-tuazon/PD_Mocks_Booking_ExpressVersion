@@ -128,14 +128,8 @@ module.exports = async (req, res) => {
     // Calculate available credits
     const creditInfo = calculateCredits(contact, mock_type);
 
-    // Search for active enrollment (if needed)
+    // Enrollment ID not required for booking (optimized - removed unnecessary API call)
     let enrollmentId = null;
-    try {
-      const enrollment = await hubspot.searchEnrollments(contact.id, 'Registered');
-      enrollmentId = enrollment?.id || null;
-    } catch (enrollmentError) {
-      console.log('No active enrollment found, continuing without it');
-    }
 
     // Prepare response data
     const responseData = {

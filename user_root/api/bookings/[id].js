@@ -216,8 +216,7 @@ async function handleGetRequest(req, res, hubspot, bookingId, contactId, contact
         ],
         associations: [
           HUBSPOT_OBJECTS.contacts,
-          HUBSPOT_OBJECTS.mock_exams,
-          HUBSPOT_OBJECTS.enrollments
+          HUBSPOT_OBJECTS.mock_exams
         ]
       }
     });
@@ -335,38 +334,8 @@ async function handleGetRequest(req, res, hubspot, bookingId, contactId, contact
       }
     }
 
-    // Step 5: Get associated Enrollment details
+    // Enrollment details not required for booking display (optimized - removed unnecessary API call)
     let enrollmentDetails = null;
-    const enrollmentAssociations = booking.associations?.[HUBSPOT_OBJECTS.enrollments]?.results || [];
-
-    if (enrollmentAssociations.length > 0) {
-      const enrollmentId = enrollmentAssociations[0].id;
-      try {
-        const enrollmentResponse = await hubspot.apiCall({
-          method: 'GET',
-          url: `/crm/v3/objects/${HUBSPOT_OBJECTS.enrollments}/${enrollmentId}`,
-          params: {
-            properties: [
-              'enrollment_id',
-              'course_id',
-              'enrollment_status'
-            ]
-          }
-        });
-
-        if (enrollmentResponse && enrollmentResponse.data) {
-          const enrollData = enrollmentResponse.data.properties;
-          enrollmentDetails = {
-            id: enrollmentResponse.data.id,
-            enrollment_id: enrollData.enrollment_id || '',
-            course_id: enrollData.course_id || '',
-            enrollment_status: enrollData.enrollment_status || ''
-          };
-        }
-      } catch (enrollError) {
-        console.warn('⚠️ Failed to fetch enrollment details:', enrollError.message);
-      }
-    }
 
     // Step 6: Prepare response data
     const responseData = {
@@ -576,6 +545,33 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       softDeleteError.status = 500;
       softDeleteError.code = 'SOFT_DELETE_FAILED';
       throw softDeleteError;
+    }
+
+    // Step 7.5: Update Redis counters and invalidate cache (CRITICAL for eventual consistency)
+    const RedisLockService = require('../_shared/redis');
+    const redis = new RedisLockService();
+
+    try {
+      // 1. Decrement Redis counter immediately (real-time availability update)
+      if (mockExamId) {
+        await redis.decr(`exam:${mockExamId}:bookings`);
+        console.log(`✅ Redis counter decremented for exam ${mockExamId}`);
+      }
+
+      // 2. Invalidate duplicate detection cache (CRITICAL for rebooking)
+      // This allows the user to immediately book the same date again
+      const exam_date = mockExamDetails?.exam_date || bookingProperties.exam_date;
+      if (contactId && exam_date) {
+        const redisKey = `booking:${contactId}:${exam_date}`;
+        await redis.del(redisKey);
+        console.log(`✅ Duplicate cache invalidated: ${redisKey}`);
+      }
+
+      await redis.close();
+    } catch (redisError) {
+      console.error('❌ Redis update failed (non-critical):', redisError.message);
+      // Continue - Redis failure shouldn't block cancellation
+      // Reconciliation cron job will fix any drift
     }
 
     // Step 8: Return success response with detailed actions

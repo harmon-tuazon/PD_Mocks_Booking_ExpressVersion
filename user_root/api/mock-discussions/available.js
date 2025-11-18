@@ -228,10 +228,25 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Process discussions for response
-    const processedDiscussions = searchResult.results.map(discussion => {
+    // Process discussions for response - Read from Redis for real-time availability
+    const RedisLockService = require('../_shared/redis');
+    const redis = new RedisLockService();
+
+    const processedDiscussions = await Promise.all(searchResult.results.map(async (discussion) => {
       const capacity = parseInt(discussion.properties.capacity) || 0;
-      const totalBookings = parseInt(discussion.properties.total_bookings) || 0;
+
+      // TIER 1: Try Redis first (real-time count - authoritative source)
+      let totalBookings = await redis.get(`exam:${discussion.id}:bookings`);
+
+      // TIER 2: Fallback to HubSpot if Redis doesn't have it
+      if (totalBookings === null) {
+        totalBookings = parseInt(discussion.properties.total_bookings) || 0;
+        // Seed Redis with HubSpot value (no TTL - persist forever)
+        await redis.set(`exam:${discussion.id}:bookings`, totalBookings);
+      } else {
+        totalBookings = parseInt(totalBookings);
+      }
+
       const availableSlots = Math.max(0, capacity - totalBookings);
 
       // Generate fallback times if missing from HubSpot
@@ -274,7 +289,10 @@ module.exports = async (req, res) => {
                  availableSlots <= 3 ? 'limited' : 'available',
         prerequisite_exam_ids: prerequisiteMap.get(discussion.id) || []
       };
-    });
+    }));
+
+    // Close Redis connection
+    await redis.close();
 
     // Filter out full discussions unless specifically requested
     const filteredDiscussions = include_capacity
