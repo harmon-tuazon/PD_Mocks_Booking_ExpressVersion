@@ -547,29 +547,73 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       throw softDeleteError;
     }
 
-    // Step 7.5: Update Redis counters and invalidate cache (CRITICAL for eventual consistency)
+    // Step 7.5: Update Redis counters and invalidate cache (CRITICAL for eventual consistency + ENHANCED LOGGING)
+    console.log(`🔍 [REDIS DEBUG] Starting user cancellation cache invalidation for booking ${bookingId}`);
+    console.log(`🔍 [REDIS DEBUG] - contactId: ${contactId}`);
+    console.log(`🔍 [REDIS DEBUG] - mockExamId: ${mockExamId}`);
+
     const RedisLockService = require('../_shared/redis');
     const redis = new RedisLockService();
 
     try {
+      console.log(`🔍 [REDIS DEBUG] Redis instance created successfully`);
+
       // 1. Decrement Redis counter immediately (real-time availability update)
       if (mockExamId) {
-        await redis.decr(`exam:${mockExamId}:bookings`);
-        console.log(`✅ Redis counter decremented for exam ${mockExamId}`);
+        const counterKey = `exam:${mockExamId}:bookings`;
+        const counterBefore = await redis.get(counterKey);
+        console.log(`🔍 [REDIS DEBUG] Counter before decrement: ${counterBefore}`);
+
+        const newCount = await redis.decr(counterKey);
+        console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);
+        console.log(`✅ Redis counter decremented for exam ${mockExamId}: ${counterBefore} → ${newCount}`);
+      } else {
+        console.warn(`⚠️ [REDIS DEBUG] No mockExamId found, skipping counter decrement`);
       }
 
       // 2. Invalidate duplicate detection cache (CRITICAL for rebooking)
       // This allows the user to immediately book the same date again
       const exam_date = mockExamDetails?.exam_date || bookingProperties.exam_date;
+      console.log(`🔍 [REDIS DEBUG] - exam_date: ${exam_date}`);
+
       if (contactId && exam_date) {
         const redisKey = `booking:${contactId}:${exam_date}`;
-        await redis.del(redisKey);
-        console.log(`✅ Duplicate cache invalidated: ${redisKey}`);
+        console.log(`🔍 [REDIS DEBUG] Attempting to delete cache key: "${redisKey}"`);
+
+        // Check if key exists before deletion
+        const keyExistsBefore = await redis.get(redisKey);
+        console.log(`🔍 [REDIS DEBUG] Cache key exists before deletion: ${keyExistsBefore !== null} (value: ${keyExistsBefore})`);
+
+        // Delete the cache key
+        const deletedCount = await redis.del(redisKey);
+        console.log(`🔍 [REDIS DEBUG] redis.del() returned: ${deletedCount} (1 = deleted, 0 = key didn't exist)`);
+
+        // Verify deletion
+        const keyExistsAfter = await redis.get(redisKey);
+        console.log(`🔍 [REDIS DEBUG] Cache key exists after deletion: ${keyExistsAfter !== null} (should be false)`);
+
+        if (keyExistsAfter === null) {
+          console.log(`✅ [REDIS] Successfully invalidated duplicate cache: ${redisKey}`);
+        } else {
+          console.error(`❌ [REDIS] CRITICAL: Cache key still exists after deletion! Value: ${keyExistsAfter}`);
+        }
+      } else {
+        console.warn(`⚠️ [REDIS DEBUG] Cannot invalidate cache - missing data:`, {
+          hasContactId: !!contactId,
+          hasExamDate: !!exam_date
+        });
       }
 
       await redis.close();
+      console.log(`🔍 [REDIS DEBUG] Redis connection closed successfully`);
     } catch (redisError) {
-      console.error('❌ Redis update failed (non-critical):', redisError.message);
+      console.error('❌ [REDIS] Cache invalidation FAILED:', {
+        error: redisError.message,
+        stack: redisError.stack,
+        contactId,
+        mockExamId,
+        exam_date: mockExamDetails?.exam_date || bookingProperties.exam_date
+      });
       // Continue - Redis failure shouldn't block cancellation
       // Reconciliation cron job will fix any drift
     }
