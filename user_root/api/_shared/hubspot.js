@@ -1216,6 +1216,7 @@ class HubSpotService {
             'status',
             'is_active',
             'token_used',
+            'exam_date',  // CRITICAL: Required for Redis cache invalidation on cancellation
             'createdate',
             'hs_lastmodifieddate'
           ]
