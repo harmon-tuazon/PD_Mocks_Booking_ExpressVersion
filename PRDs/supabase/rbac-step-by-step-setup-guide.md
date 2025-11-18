@@ -888,6 +888,358 @@ ORDER BY ur.role, au.email;
 
 ---
 
+## STEP 9: Assign Roles to Existing Users (5 minutes)
+
+**Scenario**: You already have users in Supabase Auth (they've been logging in with your authentication-only system) and now you need to assign them roles for RBAC.
+
+### 9.1: Find Existing Users Without Roles
+
+First, let's see who already has accounts but no roles:
+
+```sql
+-- Find all users who don't have roles assigned yet
+SELECT
+  u.id,
+  u.email,
+  u.created_at,
+  u.last_sign_in_at,
+  CASE
+    WHEN ur.role IS NULL THEN '❌ NO ROLE'
+    ELSE ur.role::TEXT
+  END as current_role
+FROM auth.users u
+LEFT JOIN public.user_roles ur ON ur.user_id = u.id
+WHERE ur.role IS NULL
+ORDER BY u.created_at DESC;
+```
+
+**Expected output:**
+```
+id                                   | email                  | created_at          | current_role
+-------------------------------------|------------------------|---------------------|-------------
+123e4567-e89b-12d3-a456-426614174000 | john@prepdoctors.com   | 2024-12-01 10:00:00 | ❌ NO ROLE
+234e5678-e89b-12d3-a456-426614174001 | jane@prepdoctors.com   | 2024-11-15 14:30:00 | ❌ NO ROLE
+345e6789-e89b-12d3-a456-426614174002 | bob@prepdoctors.com    | 2024-10-20 09:15:00 | ❌ NO ROLE
+```
+
+### 9.2: Assign Roles to Existing Users (Individual)
+
+**Option A: Assign role to specific user by email**
+
+```sql
+-- Assign 'admin' role to specific existing user
+INSERT INTO public.user_roles (user_id, role, granted_by, notes)
+SELECT
+  id,                                -- user_id
+  'admin'::app_role,                 -- role to assign
+  (SELECT id FROM auth.users WHERE email = 'YOUR_EMAIL@prepdoctors.com'), -- granted_by (you!)
+  'Migrated from authentication-only system'  -- notes
+FROM auth.users
+WHERE email = 'john@prepdoctors.com';  -- ⚠️ Change this to target user's email
+
+-- Verify it worked
+SELECT u.email, ur.role, ur.granted_at
+FROM auth.users u
+JOIN public.user_roles ur ON ur.user_id = u.id
+WHERE u.email = 'john@prepdoctors.com';
+```
+
+**Expected output:**
+```
+email                | role  | granted_at
+---------------------|-------|-------------------------
+john@prepdoctors.com | admin | 2025-01-18 11:00:00
+```
+
+**Option B: Assign role using user ID (if you have it)**
+
+```sql
+-- If you know the user's ID
+INSERT INTO public.user_roles (user_id, role, granted_by, notes)
+VALUES (
+  '123e4567-e89b-12d3-a456-426614174000',  -- ⚠️ Change to actual user ID
+  'admin',
+  auth.uid(),  -- You (the current super_admin)
+  'Migration: Existing admin user'
+);
+```
+
+### 9.3: Bulk Assign Roles to Multiple Existing Users
+
+**Scenario 1: Assign same role to multiple users**
+
+```sql
+-- Assign 'admin' role to all users from @prepdoctors.com domain
+INSERT INTO public.user_roles (user_id, role, granted_by, notes)
+SELECT
+  u.id,
+  'admin'::app_role,
+  (SELECT id FROM auth.users WHERE email = 'YOUR_EMAIL@prepdoctors.com'),
+  'Bulk migration: Internal staff members'
+FROM auth.users u
+WHERE u.email LIKE '%@prepdoctors.com'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.user_roles ur WHERE ur.user_id = u.id
+  );
+
+-- Check how many were assigned
+SELECT COUNT(*) as users_assigned
+FROM public.user_roles
+WHERE notes LIKE '%Bulk migration%';
+```
+
+**Scenario 2: Pattern-based role assignment**
+
+```sql
+-- Smart bulk assignment based on email patterns
+INSERT INTO public.user_roles (user_id, role, granted_by, notes)
+SELECT
+  u.id,
+  CASE
+    -- Internal staff = admin
+    WHEN u.email LIKE '%@prepdoctors.com' THEN 'admin'::app_role
+    -- External stakeholders = viewer
+    WHEN u.email LIKE '%@client.com' THEN 'viewer'::app_role
+    -- Coordinators (if you have naming convention)
+    WHEN u.email LIKE 'coordinator%' THEN 'coordinator'::app_role
+    -- Default to viewer for safety
+    ELSE 'viewer'::app_role
+  END,
+  (SELECT id FROM auth.users WHERE email = 'YOUR_EMAIL@prepdoctors.com'),
+  CASE
+    WHEN u.email LIKE '%@prepdoctors.com' THEN 'Internal staff'
+    WHEN u.email LIKE '%@client.com' THEN 'External stakeholder'
+    ELSE 'Default assignment'
+  END
+FROM auth.users u
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.user_roles ur WHERE ur.user_id = u.id
+);
+
+-- Verify the assignments
+SELECT
+  CASE
+    WHEN u.email LIKE '%@prepdoctors.com' THEN 'Internal'
+    WHEN u.email LIKE '%@client.com' THEN 'External'
+    ELSE 'Other'
+  END as user_type,
+  ur.role,
+  COUNT(*) as count
+FROM auth.users u
+JOIN public.user_roles ur ON ur.user_id = u.id
+GROUP BY user_type, ur.role
+ORDER BY user_type, ur.role;
+```
+
+**Expected output:**
+```
+user_type | role        | count
+----------|-------------|------
+Internal  | admin       | 5
+Internal  | super_admin | 2
+External  | viewer      | 3
+Other     | viewer      | 1
+```
+
+**Scenario 3: Assign specific roles to specific users**
+
+```sql
+-- Create temporary table with user-role mappings
+CREATE TEMP TABLE role_assignments (
+  email TEXT,
+  role app_role
+);
+
+-- Insert your mappings
+INSERT INTO role_assignments (email, role) VALUES
+  ('john@prepdoctors.com', 'admin'),
+  ('jane@prepdoctors.com', 'admin'),
+  ('coordinator1@prepdoctors.com', 'coordinator'),
+  ('coordinator2@prepdoctors.com', 'coordinator'),
+  ('stakeholder@client.com', 'viewer'),
+  ('observer@partner.com', 'viewer');
+
+-- Bulk assign based on mapping table
+INSERT INTO public.user_roles (user_id, role, granted_by, notes)
+SELECT
+  u.id,
+  ra.role,
+  (SELECT id FROM auth.users WHERE email = 'YOUR_EMAIL@prepdoctors.com'),
+  'Bulk assignment from migration list'
+FROM auth.users u
+JOIN role_assignments ra ON ra.email = u.email
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.user_roles ur WHERE ur.user_id = u.id
+);
+
+-- Verify all assignments
+SELECT u.email, ur.role
+FROM auth.users u
+JOIN public.user_roles ur ON ur.user_id = u.id
+WHERE u.email IN (
+  SELECT email FROM role_assignments
+)
+ORDER BY ur.role, u.email;
+
+-- Clean up temp table
+DROP TABLE role_assignments;
+```
+
+### 9.4: Add Metadata for Existing Users
+
+After assigning roles, add metadata to `admin_users` table:
+
+```sql
+-- Bulk insert metadata for all users with roles
+INSERT INTO public.admin_users (id, email, full_name, is_active)
+SELECT
+  u.id,
+  u.email,
+  -- Extract name from email if no metadata available
+  INITCAP(SPLIT_PART(u.email, '@', 1)),  -- "john.doe@email.com" → "John.Doe"
+  true
+FROM auth.users u
+JOIN public.user_roles ur ON ur.user_id = u.id
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.admin_users au WHERE au.id = u.id
+);
+
+-- Update with proper names if you have them
+UPDATE public.admin_users
+SET full_name = 'John Smith'
+WHERE email = 'john@prepdoctors.com';
+
+UPDATE public.admin_users
+SET full_name = 'Jane Doe'
+WHERE email = 'jane@prepdoctors.com';
+
+-- Add departments
+UPDATE public.admin_users
+SET department = 'Engineering'
+WHERE email LIKE '%engineer%' OR email LIKE '%dev%';
+
+UPDATE public.admin_users
+SET department = 'Operations'
+WHERE email LIKE '%coordinator%' OR email LIKE '%ops%';
+```
+
+### 9.5: Verify All Users Have Roles
+
+```sql
+-- Final verification: Show all users and their roles
+SELECT
+  u.email,
+  COALESCE(ur.role::TEXT, '❌ NO ROLE') as role,
+  au.full_name,
+  au.department,
+  u.created_at::DATE as account_created,
+  u.last_sign_in_at::DATE as last_login
+FROM auth.users u
+LEFT JOIN public.user_roles ur ON ur.user_id = u.id
+LEFT JOIN public.admin_users au ON au.id = u.id
+ORDER BY
+  CASE
+    WHEN ur.role IS NULL THEN 0  -- NO ROLE users first (needs attention)
+    ELSE 1
+  END,
+  ur.role,
+  u.email;
+```
+
+**Expected output (all users should have roles):**
+```
+email                    | role        | full_name  | department  | account_created | last_login
+-------------------------|-------------|------------|-------------|-----------------|------------
+admin@prepdoctors.com    | super_admin | Admin User | Leadership  | 2025-01-18      | 2025-01-18
+backup@prepdoctors.com   | super_admin | Backup     | Leadership  | 2025-01-18      | 2025-01-18
+john@prepdoctors.com     | admin       | John Smith | Engineering | 2024-12-01      | 2025-01-15
+jane@prepdoctors.com     | admin       | Jane Doe   | Operations  | 2024-11-15      | 2025-01-16
+coordinator@example.com  | coordinator | Bob Jones  | Operations  | 2024-10-20      | 2025-01-10
+stakeholder@client.com   | viewer      | Client User| External    | 2024-09-05      | 2024-12-20
+```
+
+**If you see "❌ NO ROLE" users:**
+- These users will default to 'viewer' role (per auth hook)
+- Assign them proper roles using queries from 9.2 or 9.3
+
+### 9.6: Important: Existing Users Must Refresh Their Tokens
+
+⚠️ **CRITICAL**: Users who were already logged in won't see their new roles until they:
+
+**Option 1: Log out and back in (Easiest)**
+```
+User action required:
+1. Log out of admin app
+2. Log back in
+3. New JWT will contain role
+```
+
+**Option 2: Force token refresh (No logout needed)**
+```javascript
+// Add this to your app (run once per user)
+const { data, error } = await supabase.auth.refreshSession();
+
+if (data.session) {
+  console.log('✅ Token refreshed! New role:', jwtDecode(data.session.access_token).user_role);
+  // Reload the page or update UI
+  window.location.reload();
+}
+```
+
+**Option 3: Auto-refresh on next page load**
+```javascript
+// Add to your app initialization
+useEffect(() => {
+  async function checkAndRefreshToken() {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session) {
+      const decoded = jwtDecode(session.access_token);
+
+      // If no role in token but we expect one, force refresh
+      if (!decoded.user_role) {
+        console.log('🔄 No role in token, refreshing...');
+        await supabase.auth.refreshSession();
+        window.location.reload();
+      }
+    }
+  }
+
+  checkAndRefreshToken();
+}, []);
+```
+
+### 9.7: View Migration Summary
+
+```sql
+-- Summary of role assignments
+SELECT
+  ur.role,
+  COUNT(*) as user_count,
+  COUNT(*) FILTER (WHERE u.last_sign_in_at > NOW() - INTERVAL '7 days') as active_last_week,
+  COUNT(*) FILTER (WHERE u.last_sign_in_at > NOW() - INTERVAL '30 days') as active_last_month,
+  MIN(ur.granted_at)::DATE as first_assigned,
+  MAX(ur.granted_at)::DATE as last_assigned
+FROM public.user_roles ur
+JOIN auth.users u ON u.id = ur.user_id
+GROUP BY ur.role
+ORDER BY ur.role;
+```
+
+**Expected output:**
+```
+role        | user_count | active_last_week | active_last_month | first_assigned | last_assigned
+------------|------------|------------------|-------------------|----------------|---------------
+super_admin | 2          | 2                | 2                 | 2025-01-18     | 2025-01-18
+admin       | 5          | 4                | 5                 | 2025-01-18     | 2025-01-18
+coordinator | 3          | 2                | 3                 | 2025-01-18     | 2025-01-18
+viewer      | 4          | 1                | 3                 | 2025-01-18     | 2025-01-18
+```
+
+**✅ Checkpoint**: All existing users now have roles assigned!
+
+---
+
 ## Troubleshooting
 
 ### Problem: Auth hook not working (JWT doesn't have custom claims)
