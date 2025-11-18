@@ -264,17 +264,27 @@ module.exports = async (req, res) => {
               const keyExistsAfter = await redis.get(redisKey);
               console.log(`🔍 [REDIS DEBUG] Cache key exists after deletion: ${keyExistsAfter !== null} (should be false)`);
 
-              // Decrement exam booking counter
+              // Decrement exam booking counter (with safety check)
               const counterKey = `exam:${mockExamId}:bookings`;
               const counterBefore = await redis.get(counterKey);
+              const currentCount = parseInt(counterBefore) || 0;
               console.log(`🔍 [REDIS DEBUG] Counter before decrement: ${counterBefore}`);
 
-              const newCount = await redis.decr(counterKey);
-              console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);
+              // Safety check: Don't decrement below 0
+              let newCount;
+              if (currentCount <= 0) {
+                console.warn(`⚠️ [REDIS] Counter is already at ${currentCount}, resetting to 0 (drift detected)`);
+                await redis.set(counterKey, 0);
+                newCount = 0;
+                console.log(`✅ [REDIS] Counter reset to 0 for exam ${mockExamId}`);
+              } else {
+                newCount = await redis.decr(counterKey);
+                console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);
+              }
 
               if (keyExistsAfter === null) {
                 console.log(`✅ [REDIS] Successfully cleared cache for contact ${bookingData.contact_id} on ${bookingData.exam_date}`);
-                console.log(`✅ [REDIS] Decremented exam counter: ${counterBefore} → ${newCount}`);
+                console.log(`✅ [REDIS] Updated exam counter: ${counterBefore} → ${newCount}`);
               } else {
                 console.error(`❌ [REDIS] CRITICAL: Cache key still exists after deletion! Value: ${keyExistsAfter}`);
               }

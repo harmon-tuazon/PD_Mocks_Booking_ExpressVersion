@@ -562,11 +562,20 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       if (mockExamId) {
         const counterKey = `exam:${mockExamId}:bookings`;
         const counterBefore = await redis.get(counterKey);
+        const currentCount = parseInt(counterBefore) || 0;
         console.log(`🔍 [REDIS DEBUG] Counter before decrement: ${counterBefore}`);
 
-        const newCount = await redis.decr(counterKey);
-        console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);
-        console.log(`✅ Redis counter decremented for exam ${mockExamId}: ${counterBefore} → ${newCount}`);
+        // Safety check: Don't decrement below 0 (indicates counter drift)
+        if (currentCount <= 0) {
+          console.warn(`⚠️ [REDIS] Counter is already at ${currentCount}, cannot decrement. Setting to 0.`);
+          console.warn(`⚠️ [REDIS] This indicates counter drift - reconciliation cron will fix this.`);
+          await redis.set(counterKey, 0);
+          console.log(`✅ Redis counter reset to 0 for exam ${mockExamId}`);
+        } else {
+          const newCount = await redis.decr(counterKey);
+          console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);
+          console.log(`✅ Redis counter decremented for exam ${mockExamId}: ${counterBefore} → ${newCount}`);
+        }
       } else {
         console.warn(`⚠️ [REDIS DEBUG] No mockExamId found, skipping counter decrement`);
       }

@@ -283,15 +283,23 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
           console.error(`❌ [REDIS] CRITICAL: Cache key still exists after deletion! Value: ${keyExistsAfter}`);
         }
 
-        // Decrement exam booking counter
+        // Decrement exam booking counter (with safety check)
         if (mockExamId) {
           const counterKey = `exam:${mockExamId}:bookings`;
           const counterBefore = await redis.get(counterKey);
+          const currentCount = parseInt(counterBefore) || 0;
           console.log(`🔍 [REDIS DEBUG] Counter before decrement: ${counterBefore}`);
 
-          const newCount = await redis.decr(counterKey);
-          console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);
-          console.log(`✅ [REDIS] Decremented exam counter for ${mockExamId}: ${counterBefore} → ${newCount}`);
+          // Safety check: Don't decrement below 0
+          if (currentCount <= 0) {
+            console.warn(`⚠️ [REDIS] Counter is already at ${currentCount}, resetting to 0 (drift detected)`);
+            await redis.set(counterKey, 0);
+            console.log(`✅ [REDIS] Counter reset to 0 for exam ${mockExamId}`);
+          } else {
+            const newCount = await redis.decr(counterKey);
+            console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);
+            console.log(`✅ [REDIS] Decremented exam counter for ${mockExamId}: ${counterBefore} → ${newCount}`);
+          }
         }
 
         result.actions_completed.redis_cache_cleared = true;
