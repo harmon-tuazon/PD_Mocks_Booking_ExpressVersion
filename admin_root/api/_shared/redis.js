@@ -360,6 +360,126 @@ class RedisLockService {
     }
   }
 
+  /**
+   * ========================================================================
+   * RAW REDIS METHODS (for counters and duplicate detection)
+   * No JSON serialization, no cache prefix
+   * ========================================================================
+   */
+
+  /**
+   * Get raw value from Redis (no JSON parsing)
+   * @param {string} key - Redis key
+   * @returns {Promise<string|null>} Value or null if not found
+   */
+  async get(key) {
+    try {
+      return await this.redis.get(key);
+    } catch (error) {
+      console.error(`❌ Redis get error for key "${key}":`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Set raw value in Redis (no JSON stringification)
+   * @param {string} key - Redis key
+   * @param {string|number} value - Value to set
+   * @returns {Promise<boolean>} True if successful
+   */
+  async set(key, value) {
+    try {
+      await this.redis.set(key, value);
+      return true;
+    } catch (error) {
+      console.error(`❌ Redis set error for key "${key}":`, error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Set raw value with expiration (no JSON stringification)
+   * @param {string} key - Redis key
+   * @param {number} ttlSeconds - Time to live in seconds
+   * @param {string|number} value - Value to set
+   * @returns {Promise<boolean>} True if successful
+   */
+  async setex(key, ttlSeconds, value) {
+    try {
+      await this.redis.setex(key, ttlSeconds, value);
+      return true;
+    } catch (error) {
+      console.error(`❌ Redis setex error for key "${key}":`, error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Increment counter
+   * @param {string} key - Redis key
+   * @returns {Promise<number>} New value after increment
+   */
+  async incr(key) {
+    try {
+      return await this.redis.incr(key);
+    } catch (error) {
+      console.error(`❌ Redis incr error for key "${key}":`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Decrement counter
+   * @param {string} key - Redis key
+   * @returns {Promise<number>} New value after decrement
+   */
+  async decr(key) {
+    try {
+      return await this.redis.decr(key);
+    } catch (error) {
+      console.error(`❌ Redis decr error for key "${key}":`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete key (no cache prefix)
+   * @param {string} key - Redis key
+   * @returns {Promise<number>} Number of keys deleted
+   */
+  async del(key) {
+    try {
+      return await this.redis.del(key);
+    } catch (error) {
+      console.error(`❌ Redis del error for key "${key}":`, error.message);
+      return 0;
+    }
+  }
+
+  /**
+   * Get all keys matching pattern (no cache prefix)
+   * @param {string} pattern - Pattern to match (e.g., "exam:*:bookings")
+   * @returns {Promise<string[]>} Array of matching keys
+   */
+  async keys(pattern) {
+    try {
+      let cursor = '0';
+      let allKeys = [];
+
+      do {
+        const result = await this.redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+        cursor = result[0];
+        const keys = result[1];
+        allKeys = allKeys.concat(keys);
+      } while (cursor !== '0');
+
+      return allKeys;
+    } catch (error) {
+      console.error(`❌ Redis keys error for pattern "${pattern}":`, error.message);
+      return [];
+    }
+  }
+
   async close() {
     try {
       await this.redis.quit();
