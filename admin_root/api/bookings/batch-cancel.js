@@ -135,6 +135,22 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
       }
     }
 
+    // Fallback: Use associated_contact_id from frontend if association lookup failed
+    if (!contactId && bookingData.associated_contact_id) {
+      contactId = bookingData.associated_contact_id;
+      console.log(`📞 Using Contact ID from frontend data: ${contactId}`);
+
+      // Try to fetch contact details with fallback ID
+      try {
+        const contactResponse = await hubspot.apiCall('GET', `/crm/v3/objects/contacts/${contactId}`, null, {
+          properties: ['firstname', 'lastname', 'email', 'sj_credits', 'cs_credits', 'sjmini_credits', 'shared_mock_credits']
+        });
+        contact = contactResponse;
+      } catch (contactError) {
+        console.warn(`⚠️ Failed to fetch Contact details with fallback ID: ${contactError.message}`);
+      }
+    }
+
     // Step 4: Get Mock Exam details if associated
     let mockExamId = null;
     let mockExamDetails = null;

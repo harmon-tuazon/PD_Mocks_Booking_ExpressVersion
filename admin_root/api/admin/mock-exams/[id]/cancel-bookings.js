@@ -120,17 +120,18 @@ module.exports = async (req, res) => {
     // Initialize Redis for cache clearing
     const redis = new RedisLockService();
 
-    // Lightweight validation: Fetch is_active, contact_id, exam_date for cache clearing
+    // Lightweight validation: Fetch is_active and exam_date for cache clearing
+    // Note: contact_id comes from frontend (associated_contact_id) since it's not stored as a booking property
     console.log(`🔍 [CANCEL] Fetching booking data from HubSpot...`);
     const bookingDataMap = new Map();
 
-    // Fetch is_active, contact_id, exam_date (needed for Redis cache clearing)
+    // Fetch is_active and exam_date (needed for Redis cache clearing)
     for (let i = 0; i < bookingIds.length; i += HUBSPOT_BATCH_SIZE) {
       const chunk = bookingIds.slice(i, i + HUBSPOT_BATCH_SIZE);
 
       try {
         const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
-          properties: ['is_active', 'contact_id', 'exam_date'],  // Properties for validation + cache clearing
+          properties: ['is_active', 'exam_date'],  // Properties for validation + cache clearing
           inputs: chunk.map(id => ({ id }))
         });
 
@@ -138,14 +139,23 @@ module.exports = async (req, res) => {
           for (const booking of response.results) {
             bookingDataMap.set(booking.id, {
               is_active: booking.properties.is_active,
-              contact_id: booking.properties.contact_id,
               exam_date: booking.properties.exam_date
+              // Note: contact_id will be added from frontend data below
             });
           }
         }
       } catch (error) {
         console.error(`❌ [CANCEL] Error fetching booking data batch:`, error);
         // Continue processing other batches
+      }
+    }
+
+    // Merge frontend contact_id into bookingDataMap
+    // Frontend provides associated_contact_id which is more reliable than HubSpot property
+    for (const booking of bookings) {
+      const hubspotData = bookingDataMap.get(booking.id);
+      if (hubspotData && booking.associated_contact_id) {
+        hubspotData.contact_id = booking.associated_contact_id;
       }
     }
 
