@@ -8,7 +8,16 @@
 
 ## Executive Summary
 
-This document explores migrating from the current **authentication-only** model (any authenticated user = full admin access) to a **role-based access control (RBAC)** system using Supabase's custom claims and Row Level Security (RLS) policies.
+This document explores migrating from the current **authentication-only** model (any authenticated user = full admin access) to a **role-based access control (RBAC)** system using Supabase's custom claims and JWT-based middleware authorization.
+
+### Architecture Overview
+
+**IMPORTANT**: This system uses a HubSpot-centric architecture:
+- **Supabase PostgreSQL**: Authentication + RBAC tables ONLY (no business data)
+- **HubSpot CRM**: All business data (mock exams, bookings, contacts)
+- **Redis**: Caching and distributed locking
+
+This means **RLS policies are only needed for RBAC tables**, not for business data (which lives in HubSpot).
 
 ### Current State
 - ✅ Authentication via Supabase (JWT tokens)
@@ -19,7 +28,8 @@ This document explores migrating from the current **authentication-only** model 
 ### Target State
 - ✅ Role-based authentication (super_admin, admin, viewer, etc.)
 - ✅ Permission-level access control (create, delete, view)
-- ✅ Database-enforced security via RLS
+- ✅ JWT claims checked by API middleware before HubSpot queries
+- ✅ RLS only on RBAC tables (user_roles, permissions)
 - ✅ Backward compatible migration path
 
 ---
@@ -124,15 +134,15 @@ authorization. This means:
 - Query role from database
 - Inject custom claims into JWT
 
-**3. Row Level Security (RLS)** (Database Enforcement)
+**3. Row Level Security (RLS)** (RBAC Tables Only)
 - Postgres policies enforced at row level
-- Uses JWT claims for authorization
-- Cannot be bypassed by client code
+- Used ONLY on `user_roles` and `role_permissions` tables
+- Business data (mock exams, bookings) lives in HubSpot, NOT PostgreSQL
 
-**4. Authorization Functions** (Permission Checks)
-- Reusable SQL functions
-- Check role → permission mappings
-- Used in RLS policies and API middleware
+**4. API Middleware** (Permission Enforcement)
+- Decodes JWT to extract `user_role` and `permissions`
+- Checks permissions before querying HubSpot
+- This is your primary security enforcement layer
 
 ---
 
@@ -485,92 +495,19 @@ $$;
 
 ## Row Level Security (RLS) Policies
 
-### Enable RLS on Admin Tables
+### Important: RLS Only on RBAC Tables
+
+**Since business data (mock exams, bookings) lives in HubSpot, NOT PostgreSQL, you only need RLS on RBAC management tables:**
 
 ```sql
--- Enable RLS on Supabase tables (if using Supabase for admin data)
-ALTER TABLE mock_exams ENABLE ROW LEVEL SECURITY;
-ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+-- =====================================================
+-- RBAC TABLES ONLY - No business data in PostgreSQL!
+-- =====================================================
+
+-- Enable RLS on RBAC tables
+ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE role_permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
-```
-
-### Example RLS Policies
-
-```sql
--- =====================================================
--- BOOKINGS TABLE POLICIES
--- =====================================================
-
--- Policy: View bookings (all roles)
-CREATE POLICY "Allow viewing bookings"
-  ON bookings
-  FOR SELECT
-  USING (authorize('bookings.view'));
-
--- Policy: Create bookings (admin, coordinator)
-CREATE POLICY "Allow creating bookings"
-  ON bookings
-  FOR INSERT
-  WITH CHECK (authorize('bookings.create'));
-
--- Policy: Cancel bookings (super_admin, admin only)
-CREATE POLICY "Allow canceling bookings"
-  ON bookings
-  FOR UPDATE
-  USING (authorize('bookings.cancel'))
-  WITH CHECK (authorize('bookings.cancel'));
-
--- Policy: Delete bookings (super_admin only)
-CREATE POLICY "Allow deleting bookings"
-  ON bookings
-  FOR DELETE
-  USING (has_role('super_admin'));
-
--- =====================================================
--- MOCK EXAMS TABLE POLICIES
--- =====================================================
-
--- Policy: View exams (all roles)
-CREATE POLICY "Allow viewing exams"
-  ON mock_exams
-  FOR SELECT
-  USING (authorize('exams.view'));
-
--- Policy: Create exams (super_admin, admin)
-CREATE POLICY "Allow creating exams"
-  ON mock_exams
-  FOR INSERT
-  WITH CHECK (authorize('exams.create'));
-
--- Policy: Edit exams (super_admin, admin)
-CREATE POLICY "Allow editing exams"
-  ON mock_exams
-  FOR UPDATE
-  USING (authorize('exams.edit'))
-  WITH CHECK (authorize('exams.edit'));
-
--- Policy: Delete exams (super_admin only)
-CREATE POLICY "Allow deleting exams"
-  ON mock_exams
-  FOR DELETE
-  USING (authorize('exams.delete'));
-
--- =====================================================
--- ADMIN USERS TABLE POLICIES
--- =====================================================
-
--- Policy: View users (super_admin, admin)
-CREATE POLICY "Allow viewing admin users"
-  ON admin_users
-  FOR SELECT
-  USING (authorize('users.view'));
-
--- Policy: Modify users (super_admin only)
-CREATE POLICY "Allow modifying admin users"
-  ON admin_users
-  FOR ALL
-  USING (has_role('super_admin'))
-  WITH CHECK (has_role('super_admin'));
 
 -- =====================================================
 -- USER ROLES TABLE POLICIES (Critical!)
@@ -594,6 +531,65 @@ CREATE POLICY "Super admin can manage roles"
   FOR ALL
   USING (has_role('super_admin'))
   WITH CHECK (has_role('super_admin'));
+
+-- =====================================================
+-- ROLE PERMISSIONS TABLE POLICIES
+-- =====================================================
+
+-- Policy: Anyone can read permissions (needed for checks)
+CREATE POLICY "Anyone can read permissions"
+  ON role_permissions
+  FOR SELECT
+  USING (true);
+
+-- Policy: Only super admins can modify permissions
+CREATE POLICY "Super admins can modify permissions"
+  ON role_permissions
+  FOR ALL
+  USING (has_role('super_admin'))
+  WITH CHECK (has_role('super_admin'));
+
+-- =====================================================
+-- ADMIN USERS TABLE POLICIES
+-- =====================================================
+
+-- Policy: View own metadata
+CREATE POLICY "Users can view own metadata"
+  ON admin_users
+  FOR SELECT
+  USING (auth.uid() = id);
+
+-- Policy: Super admins can manage all admin users
+CREATE POLICY "Super admins can manage admin users"
+  ON admin_users
+  FOR ALL
+  USING (has_role('super_admin'))
+  WITH CHECK (has_role('super_admin'));
+```
+
+### Business Data Security (HubSpot)
+
+**Since mock exams, bookings, and contacts live in HubSpot:**
+
+1. **API Middleware** checks JWT claims before querying HubSpot
+2. **HubSpot Private App Scopes** limit what the API can access
+3. **No RLS needed** for business data (it's not in PostgreSQL)
+
+```javascript
+// Example: Security enforced in API middleware, then query HubSpot
+module.exports = async (req, res) => {
+  // 1. Check JWT role (this is your security layer)
+  await requireRole(['admin', 'coordinator'])(req, res, async () => {
+
+    // 2. Query HubSpot (not PostgreSQL)
+    const bookings = await hubspot.crm.objects.basicApi.getPage(
+      '2-50158943', // Bookings object type ID
+      { properties: ['booking_date', 'contact_id', 'status'] }
+    );
+
+    return res.json({ success: true, data: bookings });
+  });
+};
 ```
 
 ---
@@ -981,14 +977,17 @@ CREATE FUNCTION custom_access_token_hook ...
 // Test with different roles
 ```
 
-### Phase 4: RLS Policies (Week 2-3)
+### Phase 4: RLS on RBAC Tables (Week 2)
 
 ```sql
--- Enable RLS on tables
-ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+-- Enable RLS on RBAC tables only (not business tables!)
+ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE role_permissions ENABLE ROW LEVEL SECURITY;
 
--- Add policies gradually
-CREATE POLICY "Allow viewing bookings" ...
+-- Add policies for role management
+CREATE POLICY "Super admins can manage roles" ...
+
+-- NOTE: No RLS needed for mock_exams/bookings - they're in HubSpot!
 ```
 
 ### Phase 5: Frontend Updates (Week 3)
@@ -1053,38 +1052,52 @@ describe('requireRole middleware', () => {
 });
 ```
 
-### Integration Tests for RLS
+### Integration Tests for API Middleware
 
 ```javascript
-// tests/integration/rls-bookings.test.js
-describe('RLS Policies - Bookings', () => {
-  it('viewer should be able to read bookings', async () => {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { token: VIEWER_JWT }
+// tests/integration/api-role-check.test.js
+describe('API Role-Based Access - HubSpot Operations', () => {
+  it('viewer should be able to read bookings via API', async () => {
+    const response = await fetch('/api/admin/bookings/list', {
+      headers: {
+        'Authorization': `Bearer ${VIEWER_JWT}`
+      }
     });
 
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*');
-
-    expect(error).toBeNull();
-    expect(data.length).toBeGreaterThan(0);
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.success).toBe(true);
   });
 
   it('viewer should NOT be able to delete bookings', async () => {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { token: VIEWER_JWT }
+    const response = await fetch(`/api/admin/bookings/${TEST_BOOKING_ID}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${VIEWER_JWT}`
+      }
     });
 
-    const { error } = await supabase
-      .from('bookings')
-      .delete()
-      .eq('id', TEST_BOOKING_ID);
+    expect(response.status).toBe(403);
+    const data = await response.json();
+    expect(data.error.code).toBe('FORBIDDEN');
+  });
 
-    expect(error).not.toBeNull();
-    expect(error.message).toContain('permission denied');
+  it('admin should be able to cancel bookings', async () => {
+    const response = await fetch('/api/admin/bookings/cancel', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${ADMIN_JWT}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ bookingIds: [TEST_BOOKING_ID] })
+    });
+
+    expect(response.status).toBe(200);
   });
 });
+
+// Note: These tests verify API middleware role checks
+// The actual booking data is fetched from HubSpot, not PostgreSQL
 ```
 
 ---
@@ -1296,14 +1309,21 @@ FOR EACH ROW EXECUTE FUNCTION log_admin_action();
 
 ## Conclusion
 
-Supabase RBAC provides a robust, database-enforced authorization system that scales from simple role checks to complex permission matrices. The combination of:
+This HubSpot-centric RBAC implementation provides a secure authorization system optimized for your architecture:
 
 - **Custom JWT Claims** (no DB queries per request)
 - **Auth Hooks** (role injection at login)
-- **RLS Policies** (database-level enforcement)
-- **Authorization Functions** (reusable permission checks)
+- **API Middleware** (primary security enforcement before HubSpot queries)
+- **RLS Policies** (only on RBAC tables - user_roles, permissions)
 
-...creates a secure, performant, and maintainable RBAC system suitable for PrepDoctors' admin application.
+### Key Architecture Points
+
+| Component | Used For | NOT Used For |
+|-----------|----------|--------------|
+| **Supabase PostgreSQL** | ✅ User authentication<br>✅ Role storage (`user_roles`)<br>✅ Permission definitions | ❌ Mock exams<br>❌ Bookings<br>❌ Business data |
+| **RLS Policies** | ✅ Protect `user_roles` table<br>✅ Protect `permissions` table | ❌ Business data (none in PostgreSQL) |
+| **JWT Claims** | ✅ Carry role & permissions<br>✅ Used by API middleware | ❌ Direct database queries |
+| **HubSpot** | ✅ ALL business data<br>✅ Mock exams, bookings, contacts | ❌ User authentication |
 
 **Recommended Approach:**
 Start with **2 roles** (admin, viewer) and expand as needed. This provides immediate value (read-only stakeholder access) without overwhelming complexity.

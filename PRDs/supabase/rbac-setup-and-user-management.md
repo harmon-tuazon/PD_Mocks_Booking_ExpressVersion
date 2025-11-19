@@ -13,7 +13,15 @@ This document provides the **operational playbook** for:
 2. Provisioning admin users
 3. Assigning roles and permissions
 4. Managing user lifecycle (onboarding, role changes, offboarding)
-5. Integration with existing systems (HubSpot users if applicable)
+
+### Architecture Note
+
+**IMPORTANT**: This system uses a HubSpot-centric architecture:
+- **Supabase PostgreSQL**: Authentication + RBAC tables ONLY (no business data)
+- **HubSpot CRM**: All business data (mock exams, bookings, contacts)
+- **Redis**: Caching and distributed locking
+
+This means RLS policies are only applied to RBAC tables (`user_roles`, `role_permissions`), not business data tables.
 
 ---
 
@@ -25,9 +33,8 @@ This document provides the **operational playbook** for:
 4. [Auth Hook Configuration](#auth-hook-configuration)
 5. [Initial User Provisioning](#initial-user-provisioning)
 6. [User Management Workflows](#user-management-workflows)
-7. [HubSpot Integration (Optional)](#hubspot-integration-optional)
-8. [Emergency Access Procedures](#emergency-access-procedures)
-9. [Monitoring & Auditing](#monitoring--auditing)
+7. [Emergency Access Procedures](#emergency-access-procedures)
+8. [Monitoring & Auditing](#monitoring--auditing)
 
 ---
 
@@ -59,11 +66,12 @@ Team Member B → coordinator
 Stakeholder X → viewer
 ```
 
-**Question 3: HubSpot User Integration**
-- Do HubSpot Contact records map to admin users?
-- Or are admin users completely separate from HubSpot?
+**Question 3: Admin Users Separate from HubSpot**
+- Admin users are stored in Supabase PostgreSQL
+- Business data (contacts, bookings, mock exams) is in HubSpot
+- These are completely separate - no sync required
 
-**Recommendation**: Keep admin users separate from HubSpot Contacts (cleaner separation of concerns)
+**Architecture**: Admin users → Supabase Auth | Business data → HubSpot CRM
 
 ---
 
@@ -811,110 +819,7 @@ ORDER BY ur.role, u.email;
 
 ---
 
-## 7. HubSpot Integration (Optional)
-
-### Scenario A: No Integration (Recommended)
-
-**Approach**: Admin users are completely separate from HubSpot Contacts
-
-**Pros:**
-- ✅ Clean separation of concerns
-- ✅ No sync complexity
-- ✅ Easier to manage
-
-**Implementation:**
-- Nothing to do! Just use Supabase Auth standalone
-
-### Scenario B: Sync Admin Users to HubSpot Contacts
-
-**Use Case**: Track admin users in HubSpot CRM for reporting
-
-**Approach**: One-way sync (Supabase → HubSpot)
-
-```javascript
-// api/admin/sync-users-to-hubspot.js
-const { requireRole } = require('../middleware/requireRole');
-const { HubSpotService } = require('../../_shared/hubspot');
-const { createClient } = require('@supabase/supabase-js');
-
-module.exports = async (req, res) => {
-  // Only super_admins can sync
-  await requireRole(['super_admin'])(req, res, async () => {
-
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    // Fetch all admin users
-    const { data: adminUsers } = await supabase
-      .from('admin_users')
-      .select('*, user_roles(role)')
-      .eq('is_active', true);
-
-    const hubspot = new HubSpotService();
-
-    for (const user of adminUsers) {
-      try {
-        // Check if contact exists in HubSpot
-        const existingContact = await hubspot.searchContacts(null, user.email, null);
-
-        if (existingContact) {
-          // Update existing
-          await hubspot.apiCall('PATCH', `/crm/v3/objects/contacts/${existingContact.id}`, {
-            properties: {
-              firstname: user.full_name?.split(' ')[0],
-              lastname: user.full_name?.split(' ').slice(1).join(' '),
-              email: user.email,
-              admin_role: user.user_roles?.role,
-              is_admin_user: true,
-              department: user.department
-            }
-          });
-        } else {
-          // Create new
-          await hubspot.apiCall('POST', '/crm/v3/objects/contacts', {
-            properties: {
-              firstname: user.full_name?.split(' ')[0],
-              lastname: user.full_name?.split(' ').slice(1).join(' '),
-              email: user.email,
-              admin_role: user.user_roles?.role,
-              is_admin_user: true,
-              department: user.department
-            }
-          });
-        }
-
-        console.log(`✅ Synced admin user to HubSpot: ${user.email}`);
-
-      } catch (error) {
-        console.error(`❌ Failed to sync ${user.email}:`, error.message);
-      }
-    }
-
-    return res.status(200).json({
-      success: true,
-      synced: adminUsers.length
-    });
-  });
-};
-```
-
-### Scenario C: HubSpot as Source of Truth (Not Recommended)
-
-**Why Not Recommended:**
-- HubSpot is optimized for CRM, not user management
-- Supabase Auth is purpose-built for authentication
-- Adds unnecessary complexity
-
-**If You Must:**
-1. Create HubSpot custom object: `Admin Users`
-2. Sync to Supabase via webhook or polling
-3. Map HubSpot records to Supabase Auth users
-
----
-
-## 8. Emergency Access Procedures
+## 7. Emergency Access Procedures
 
 ### Scenario 1: Lost Super Admin Access
 
@@ -1007,7 +912,7 @@ SELECT public.custom_access_token_hook(
 
 ---
 
-## 9. Monitoring & Auditing
+## 8. Monitoring & Auditing
 
 ### Audit Log Queries
 

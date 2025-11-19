@@ -7,6 +7,20 @@
 
 ---
 
+## Architecture Overview
+
+**IMPORTANT**: This system uses a HubSpot-centric architecture:
+- **Supabase PostgreSQL**: Authentication + RBAC tables ONLY (no business data)
+- **HubSpot CRM**: All business data (mock exams, bookings, contacts)
+- **Redis**: Caching and distributed locking
+
+This means:
+- ✅ RLS policies on RBAC tables only (`user_roles`, `role_permissions`)
+- ✅ JWT claims checked by API middleware before HubSpot queries
+- ❌ No RLS on business data tables (they don't exist in PostgreSQL)
+
+---
+
 ## Overview: What We're Building
 
 ```
@@ -16,8 +30,11 @@ Before:
 After:
 - super_admin = Full control + user management
 - admin = Standard admin operations
-- coordinator = Limited write access
+- coordinator = Limited write access (optional)
 - viewer = Read-only access
+
+Security Flow:
+User Login → JWT with role claims → API Middleware checks role → Query HubSpot
 ```
 
 ---
@@ -115,10 +132,11 @@ BEGIN;
 -- STEP 1: CREATE ENUM TYPES
 -- =====================================================
 
--- App roles (4 roles for now, can add more later)
+-- App roles (start with 2, add more as needed)
 CREATE TYPE app_role AS ENUM (
   'super_admin',  -- Full access, user management
-  'admin',        -- Standard admin operations
+  'admin'         -- Standard admin operations
+  -- Can add 'coordinator' and 'viewer' later if needed
 );
 
 -- App permissions (granular access control)
@@ -1301,19 +1319,21 @@ WHERE email = 'YOUR_EMAIL@prepdoctors.com';
 
 ```
 ✅ Infrastructure Complete
-   - Database schema deployed
+   - Database schema deployed (RBAC tables only)
    - Auth hook configured
-   - RLS policies enabled
+   - RLS policies on RBAC tables enabled
 
 ✅ User Management Ready
    - Super admin(s) created
    - Role assignment working
-   - JWT claims injecting correctly
+   - JWT claims injecting correctly (user_role, permissions)
 
 ✅ Ready for Code Implementation
    - Can now build requireRole middleware
-   - Can add RLS policies to app tables
+   - Middleware checks JWT before querying HubSpot
    - Can build user management UI
+
+⚠️ Remember: Business data (mock exams, bookings) stays in HubSpot!
 ```
 
 ---
@@ -1325,10 +1345,12 @@ WHERE email = 'YOUR_EMAIL@prepdoctors.com';
 1. **Implement API Middleware** (from RBAC research doc)
    - `requireRole(['super_admin', 'admin'])`
    - `requirePermission('bookings.create')`
+   - Middleware checks JWT before querying HubSpot
 
-2. **Add RLS Policies to App Tables** (if using Supabase for data)
-   - `bookings` table policies
-   - `mock_exams` table policies
+2. **Update Existing Endpoints** to use role checks
+   - Delete operations → `super_admin` only
+   - Write operations → `admin` or higher
+   - Read operations → all roles
 
 3. **Update Frontend** (from RBAC research doc)
    - `useUserRole()` hook
@@ -1339,6 +1361,8 @@ WHERE email = 'YOUR_EMAIL@prepdoctors.com';
    - List all admin users
    - Assign/change roles
    - View audit log
+
+**Note**: No RLS needed for business data - it's all in HubSpot!
 
 ---
 
