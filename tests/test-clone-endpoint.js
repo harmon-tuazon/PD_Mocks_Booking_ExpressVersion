@@ -16,6 +16,9 @@ require('dotenv').config();
 const testCloneValidation = () => {
   console.log('\n🧪 Testing Clone Validation Logic\n');
 
+  // Simulate max mock_exam_id (would be fetched from HubSpot in real scenario)
+  const maxMockExamId = 1234;
+
   // Simulate validation scenarios
   const testCases = [
     {
@@ -109,7 +112,7 @@ const testCloneValidation = () => {
 
     // Simulate property merging
     const { cloneSources, overrides } = testCase.data;
-    const clonedSessions = cloneSources.map(source => {
+    const clonedSessions = cloneSources.map((source, i) => {
       const sourceProps = source.sourceProperties;
 
       // Check date validation
@@ -117,6 +120,9 @@ const testCloneValidation = () => {
         console.log('❌ Validation Error: New date must be different from original');
         return null;
       }
+
+      // Generate new unique mock_exam_id
+      const newMockExamId = maxMockExamId + i + 1;
 
       // Merge properties
       const clonedProps = {
@@ -128,6 +134,7 @@ const testCloneValidation = () => {
         ...(overrides.start_time && { start_time: overrides.start_time }),
         ...(overrides.end_time && { end_time: overrides.end_time }),
         ...(overrides.is_active && { is_active: overrides.is_active }),
+        mock_exam_id: newMockExamId.toString(),  // NEW: Required by HubSpot
         total_bookings: '0',
         mock_exam_name: `${overrides.mock_type || sourceProps.mock_type}-${overrides.location || sourceProps.location}-${overrides.exam_date}`
       };

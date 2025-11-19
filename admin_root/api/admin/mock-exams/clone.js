@@ -96,11 +96,17 @@ module.exports = async (req, res) => {
 
     console.log(`📋 [CLONE] Processing ${cloneSources.length} clone requests with provided source data...`);
 
-    // Step 3: Build properties for cloned sessions using provided source data
+    // Step 3: Get max mock_exam_id for auto-incrementing new IDs
+    console.log(`🔢 [CLONE] Fetching max mock_exam_id for ID generation...`);
+    const maxMockExamId = await hubspot.getMaxMockExamIndex();
+    console.log(`🔢 [CLONE] Current max mock_exam_id: ${maxMockExamId}, will assign starting from ${maxMockExamId + 1}`);
+
+    // Step 4: Build properties for cloned sessions using provided source data
     const clonedSessionInputs = [];
     const validationErrors = [];
 
-    for (const source of cloneSources) {
+    for (let i = 0; i < cloneSources.length; i++) {
+      const source = cloneSources[i];
       const sourceProps = source.sourceProperties;
       const sessionId = source.sourceSessionId;
 
@@ -112,6 +118,9 @@ module.exports = async (req, res) => {
         });
         continue;
       }
+
+      // Generate new unique mock_exam_id for this clone
+      const newMockExamId = maxMockExamId + i + 1;
 
       // Build cloned properties by merging source + overrides
       const clonedProperties = {
@@ -129,6 +138,9 @@ module.exports = async (req, res) => {
         ...(overrides.scheduled_activation_datetime && {
           scheduled_activation_datetime: overrides.scheduled_activation_datetime
         }),
+
+        // CRITICAL: Generate new unique mock_exam_id (required by HubSpot)
+        mock_exam_id: newMockExamId.toString(),
 
         // Reset booking count to 0
         total_bookings: '0',
@@ -154,7 +166,7 @@ module.exports = async (req, res) => {
 
     console.log(`📋 [CLONE] Creating ${clonedSessionInputs.length} cloned sessions (${validationErrors.length} skipped)...`);
 
-    // Step 4: Create cloned sessions using batch API (chunks of 100)
+    // Step 5: Create cloned sessions using batch API (chunks of 100)
     const results = {
       successful: [],
       failed: []
@@ -195,7 +207,7 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Step 5: Create audit trail notes for source sessions (non-blocking)
+    // Step 6: Create audit trail notes for source sessions (non-blocking)
     if (results.successful.length > 0) {
       const sourceSessionIds = cloneSources.map(s => s.sourceSessionId);
       createCloneAuditTrails(sourceSessionIds, results.successful.length, user).catch(err => {
@@ -203,7 +215,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Step 6: Invalidate caches - ensure UI shows new cloned sessions
+    // Step 7: Invalidate caches - ensure UI shows new cloned sessions
     console.log(`🗑️ [CLONE] Invalidating caches...`);
     const cache = getCache();
 
@@ -218,7 +230,7 @@ module.exports = async (req, res) => {
       // Don't fail the request if cache invalidation fails
     });
 
-    // Step 7: Build response
+    // Step 8: Build response
     const summary = {
       total: cloneSources.length,
       created: results.successful.length,
