@@ -40,6 +40,9 @@ const ACTIVE_STATES = [
   { value: 'scheduled', label: 'Scheduled' }
 ];
 
+// Special value for "Keep original" - can't use empty string with shadcn Select
+const KEEP_ORIGINAL = '__KEEP_ORIGINAL__';
+
 /**
  * Modal for cloning mock exam sessions
  *
@@ -62,12 +65,12 @@ const CloneMockExamsModal = ({
   // Form state
   const [formData, setFormData] = useState({
     exam_date: '',
-    location: '',
-    mock_type: '',
+    location: KEEP_ORIGINAL,
+    mock_type: KEEP_ORIGINAL,
     capacity: '',
     start_time: '',
     end_time: '',
-    is_active: '',
+    is_active: KEEP_ORIGINAL,
     scheduled_activation_datetime: ''
   });
   const [validationErrors, setValidationErrors] = useState({});
@@ -85,24 +88,24 @@ const CloneMockExamsModal = ({
 
       setFormData({
         exam_date: sourceDate.toISOString().split('T')[0],
-        location: source.location || '',
-        mock_type: source.mock_type || '',
+        location: source.location || KEEP_ORIGINAL,
+        mock_type: source.mock_type || KEEP_ORIGINAL,
         capacity: source.capacity || '',
         start_time: source.start_time || '',
         end_time: source.end_time || '',
-        is_active: source.is_active || '',
+        is_active: source.is_active || KEEP_ORIGINAL,
         scheduled_activation_datetime: source.scheduled_activation_datetime || ''
       });
     } else {
       // Multiple sessions - start with blank form
       setFormData({
         exam_date: '',
-        location: '',
-        mock_type: '',
+        location: KEEP_ORIGINAL,
+        mock_type: KEEP_ORIGINAL,
         capacity: '',
         start_time: '',
         end_time: '',
-        is_active: '',
+        is_active: KEEP_ORIGINAL,
         scheduled_activation_datetime: ''
       });
     }
@@ -204,12 +207,19 @@ const CloneMockExamsModal = ({
       exam_date: formData.exam_date // Always required
     };
 
-    if (formData.location) overrides.location = formData.location;
-    if (formData.mock_type) overrides.mock_type = formData.mock_type;
+    // Convert KEEP_ORIGINAL back to empty string, or use the actual value
+    if (formData.location && formData.location !== KEEP_ORIGINAL) {
+      overrides.location = formData.location;
+    }
+    if (formData.mock_type && formData.mock_type !== KEEP_ORIGINAL) {
+      overrides.mock_type = formData.mock_type;
+    }
     if (formData.capacity) overrides.capacity = parseInt(formData.capacity);
     if (formData.start_time) overrides.start_time = formData.start_time;
     if (formData.end_time) overrides.end_time = formData.end_time;
-    if (formData.is_active) overrides.is_active = formData.is_active;
+    if (formData.is_active && formData.is_active !== KEEP_ORIGINAL) {
+      overrides.is_active = formData.is_active;
+    }
 
     // IMPORTANT: Convert Toronto time to UTC for scheduled activation
     if (formData.scheduled_activation_datetime) {
@@ -355,7 +365,7 @@ const CloneMockExamsModal = ({
                                 <SelectValue placeholder="Keep original" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">Keep original</SelectItem>
+                                <SelectItem value={KEEP_ORIGINAL}>Keep original</SelectItem>
                                 {LOCATIONS.map(loc => (
                                   <SelectItem key={loc} value={loc}>{loc}</SelectItem>
                                 ))}
@@ -377,7 +387,7 @@ const CloneMockExamsModal = ({
                                 <SelectValue placeholder="Keep original" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">Keep original</SelectItem>
+                                <SelectItem value={KEEP_ORIGINAL}>Keep original</SelectItem>
                                 {MOCK_TYPES.map(type => (
                                   <SelectItem key={type} value={type}>{type}</SelectItem>
                                 ))}
@@ -459,7 +469,7 @@ const CloneMockExamsModal = ({
                                 <SelectValue placeholder="Keep original" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">Keep original</SelectItem>
+                                <SelectItem value={KEEP_ORIGINAL}>Keep original</SelectItem>
                                 {ACTIVE_STATES.map(state => (
                                   <SelectItem key={state.value} value={state.value}>{state.label}</SelectItem>
                                 ))}
