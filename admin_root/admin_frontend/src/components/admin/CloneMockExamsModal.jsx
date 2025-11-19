@@ -288,7 +288,7 @@ const CloneMockExamsModal = ({
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-3xl sm:p-6 max-h-[90vh] flex flex-col">
+              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl sm:p-6 max-h-[90vh] flex flex-col">
                 {/* Close button */}
                 <div className="absolute right-0 top-0 pr-4 pt-4 sm:block">
                   <button
@@ -312,24 +312,37 @@ const CloneMockExamsModal = ({
 
                     {/* Content */}
                     <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
-                      <Dialog.Title as="h3" className="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
+                      <Dialog.Title as="h3" className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100">
                         Clone {selectedSessions.length} Session{selectedSessions.length !== 1 ? 's' : ''}
                       </Dialog.Title>
 
-                      <div className="mt-4 space-y-4">
+                      <div className="mt-4 space-y-6">
                         {/* Info Banner */}
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
-                          <p className="text-sm text-blue-800 dark:text-blue-300">
-                            {selectedSessions.length === 1 ? (
-                              <>Form pre-populated with source session values. Change any field to override.</>
-                            ) : (
-                              <>Empty fields will use each source session's original value. Fill fields to override for all clones.</>
-                            )}
-                          </p>
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                          <div className="flex">
+                            <div className="flex-shrink-0">
+                              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm text-blue-800 dark:text-blue-300">
+                                {selectedSessions.length === 1 ? (
+                                  <>Form pre-populated with source session values. Change any field to override.</>
+                                ) : (
+                                  <>Empty fields will use each source session's original value. Fill fields to override for all clones.</>
+                                )}
+                              </p>
+                            </div>
+                          </div>
                         </div>
 
-                        {/* Clone Form */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Section: Basic Information */}
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                            Basic Information
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                           {/* Exam Date - Required */}
                           <div className="sm:col-span-2">
                             <Label htmlFor="exam_date" className="text-gray-700 dark:text-gray-300">
@@ -500,14 +513,15 @@ const CloneMockExamsModal = ({
                               )}
                             </div>
                           )}
+                          </div>
                         </div>
 
                         {/* Session Preview Table */}
-                        <div className="mt-4">
-                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Selected Sessions
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                            Selected Sessions ({selectedSessions.length})
                           </h4>
-                          <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-md">
+                          <div className="mt-4 max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                               <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
                                 <tr>
@@ -543,7 +557,8 @@ const CloneMockExamsModal = ({
                 </div>
 
                 {/* Action Buttons - Fixed at bottom */}
-                <div className="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse gap-3">
+                <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 mt-6 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6">
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                   {/* Clone Button */}
                   <button
                     type="button"
@@ -573,10 +588,11 @@ const CloneMockExamsModal = ({
                     type="button"
                     onClick={onClose}
                     disabled={cloneMutation.isPending}
-                    className="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
+                  </div>
                 </div>
               </Dialog.Panel>
             </Transition.Child>
