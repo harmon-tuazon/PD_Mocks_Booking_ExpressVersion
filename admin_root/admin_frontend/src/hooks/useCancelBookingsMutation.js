@@ -1,14 +1,17 @@
 /**
  * useCancelBookingsMutation Hook
- * Handles API calls for batch booking cancellation
+ * Handles API calls for batch booking cancellation with optimistic UI updates
  *
  * Features:
  * - React Query mutation for cancelling bookings
- * - Optimistic UI updates
- * - Automatic cache invalidation
+ * - Optimistic UI updates (instant feedback)
+ * - Error rollback on failure
+ * - Minimal cache invalidation (preserves API rate limits)
  * - Toast notifications for success/error/partial results
  * - Detailed error handling
  * - Support for partial failures
+ *
+ * Performance: Uses optimistic updates with minimal invalidation for instant UI feedback
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -104,10 +107,10 @@ const useCancelBookingsMutation = (mockExamId) => {
         }
       }
 
-      // Invalidate queries
+      // Only invalidate mock exam detail query to update capacity counts
+      // The bookings list was already optimistically updated in onMutate
+      // This minimizes API calls while keeping capacity/booking counts accurate
       await queryClient.invalidateQueries(['mockExam', mockExamId]);
-      await queryClient.invalidateQueries(['bookings', mockExamId]);
-      await queryClient.invalidateQueries(['mockExams']);
     },
 
     onError: (error, variables, context) => {
@@ -142,8 +145,9 @@ const useCancelBookingsMutation = (mockExamId) => {
     },
 
     onSettled: () => {
-      // Always refetch to ensure data consistency
-      queryClient.invalidateQueries(['bookings', mockExamId]);
+      console.log('🏁 [CANCEL] Mutation settled');
+      // Note: We don't refetch bookings here since onMutate already updated optimistically
+      // and onError rolls back on failure. This saves an unnecessary API call.
     }
   });
 };

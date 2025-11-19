@@ -119,8 +119,6 @@ BEGIN;
 CREATE TYPE app_role AS ENUM (
   'super_admin',  -- Full access, user management
   'admin',        -- Standard admin operations
-  'coordinator',  -- Limited write access
-  'viewer'        -- Read-only access
 );
 
 -- App permissions (granular access control)
@@ -138,15 +136,6 @@ CREATE TYPE app_permission AS ENUM (
   'exams.activate',
   'exams.view',
 
-  -- Analytics
-  'analytics.view',
-  'analytics.export',
-  'analytics.audit_logs',
-
-  -- User Management
-  'users.grant_roles',
-  'users.revoke_roles',
-  'users.view'
 );
 
 -- =====================================================
@@ -218,13 +207,7 @@ INSERT INTO public.role_permissions (role, permission) VALUES
   ('super_admin', 'exams.delete'),
   ('super_admin', 'exams.activate'),
   ('super_admin', 'exams.view'),
-  ('super_admin', 'analytics.view'),
-  ('super_admin', 'analytics.export'),
-  ('super_admin', 'analytics.audit_logs'),
-  ('super_admin', 'users.grant_roles'),
-  ('super_admin', 'users.revoke_roles'),
-  ('super_admin', 'users.view'),
-
+  
   -- ADMIN (11 permissions - no delete, no user management)
   ('admin', 'bookings.create'),
   ('admin', 'bookings.cancel'),
@@ -234,21 +217,7 @@ INSERT INTO public.role_permissions (role, permission) VALUES
   ('admin', 'exams.edit'),
   ('admin', 'exams.activate'),
   ('admin', 'exams.view'),
-  ('admin', 'analytics.view'),
-  ('admin', 'analytics.export'),
-  ('admin', 'users.view'),
 
-  -- COORDINATOR (5 permissions - limited write)
-  ('coordinator', 'bookings.create'),
-  ('coordinator', 'bookings.view'),
-  ('coordinator', 'exams.view'),
-  ('coordinator', 'analytics.view'),
-  ('coordinator', 'analytics.export'),
-
-  -- VIEWER (3 permissions - read-only)
-  ('viewer', 'bookings.view'),
-  ('viewer', 'exams.view'),
-  ('viewer', 'analytics.view');
 
 -- =====================================================
 -- STEP 4: GRANT PERMISSIONS TO AUTH ADMIN

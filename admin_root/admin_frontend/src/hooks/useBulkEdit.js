@@ -1,14 +1,16 @@
 /**
  * useBulkEdit Hook
- * Handles bulk editing of mock exam sessions with React Query mutation
- * Includes automatic cache invalidation and error handling
+ * Handles bulk editing of mock exam sessions with optimistic UI updates
+ * Includes automatic cache updates and error handling
  *
  * Features:
  * - React Query mutation for bulk updates
- * - Automatic cache invalidation for all related queries
+ * - Optimistic cache updates (no refetch needed)
  * - Support for partial updates (empty fields not sent)
  * - Detailed success/warning/error handling
- * - Refetch active queries to refresh dashboard
+ * - Only invalidates metrics queries that need server calculation
+ *
+ * Performance: Uses optimistic updates instead of cache invalidation for instant UI feedback
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -50,11 +52,13 @@ const useBulkEdit = () => {
     },
 
     /**
-     * Success handler - invalidate queries and show success/warning toasts
+     * Success handler - optimistically update cache and show success/warning toasts
      * @param {Object} data - Response data from bulk update API
+     * @param {Object} variables - The mutation variables (sessionIds and updates)
      */
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       const { summary } = data;
+      const { updates } = variables;
 
       console.log('✅ [BULK EDIT] Update successful:', summary);
 
@@ -83,26 +87,40 @@ const useBulkEdit = () => {
         console.error('❌ [BULK EDIT] Failed updates:', data.details?.failed);
       }
 
-      // Invalidate all related queries to trigger refetch
-      // This ensures the dashboard and all lists are updated
-      queryClient.invalidateQueries(['mockExams']);
-      queryClient.invalidateQueries(['mock-exams']);
-      queryClient.invalidateQueries(['mock-exams-list']);
-      queryClient.invalidateQueries(['mockExamsMetrics']);
-      queryClient.invalidateQueries(['mock-exam-aggregates']);
-      queryClient.invalidateQueries(['aggregates']);
-      queryClient.invalidateQueries(['metrics']);
-      queryClient.invalidateQueries(['bookings']);
+      // Optimistically update the cache with edited sessions
+      if (data.details?.updated && data.details.updated.length > 0) {
+        // Update mock-exams-list cache by applying the updates to specific sessions
+        queryClient.setQueriesData(['mock-exams-list'], (oldData) => {
+          if (!oldData) return oldData;
 
-      // Invalidate specific exam queries for updated sessions
-      if (data.details?.updated) {
-        data.details.updated.forEach(sessionId => {
-          queryClient.invalidateQueries(['mockExam', sessionId]);
+          console.log('🔄 [BULK EDIT] Updating mock-exams-list cache with edited sessions');
+
+          const updatedSessionIds = new Set(data.details.updated);
+
+          // Apply updates to sessions that were successfully updated
+          const updatedMockExams = oldData.mockExams.map(session => {
+            if (updatedSessionIds.has(session.id)) {
+              return {
+                ...session,
+                ...updates // Apply the updates directly
+              };
+            }
+            return session;
+          });
+
+          return {
+            ...oldData,
+            mockExams: updatedMockExams
+          };
         });
+
+        console.log(`✨ [BULK EDIT] Cache updated with ${data.details.updated.length} edited sessions`);
       }
 
-      // Refetch all active queries to immediately update the UI
-      queryClient.refetchQueries({ active: true });
+      // Only invalidate metrics queries (which need server calculation)
+      // This is more efficient than invalidating everything
+      queryClient.invalidateQueries(['mockExamsMetrics']);
+      queryClient.invalidateQueries(['metrics']);
     },
 
     /**

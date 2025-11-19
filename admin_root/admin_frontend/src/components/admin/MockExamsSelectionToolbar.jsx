@@ -74,7 +74,7 @@ const MockExamsSelectionToolbar = ({
               className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md border-2 transition-colors ${
                 isSubmitting
                   ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500 dark:border-gray-500'
-                  : 'text-blue-600 bg-white border-blue-600 hover:bg-blue-50 hover:border-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:text-blue-400 dark:bg-gray-800 dark:border-blue-500 dark:hover:bg-gray-700 dark:hover:border-blue-400 dark:focus:ring-offset-gray-900'
+                  : 'text-gray-700 bg-white border-gray-500 hover:bg-gray-50 hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:text-gray-200 dark:bg-gray-800 dark:border-gray-400 dark:hover:bg-gray-700 dark:hover:border-gray-300 dark:focus:ring-offset-gray-900'
               }`}
               aria-label="Bulk edit selected sessions"
             >
@@ -98,7 +98,7 @@ const MockExamsSelectionToolbar = ({
               className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md border-2 transition-colors ${
                 isSubmitting
                   ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500 dark:border-gray-500'
-                  : 'text-blue-600 bg-white border-blue-600 hover:bg-blue-50 hover:border-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:text-blue-400 dark:bg-gray-800 dark:border-blue-500 dark:hover:bg-gray-700 dark:hover:border-blue-400 dark:focus:ring-offset-gray-900'
+                  : 'text-gray-700 bg-white border-gray-500 hover:bg-gray-50 hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:text-gray-200 dark:bg-gray-800 dark:border-gray-400 dark:hover:bg-gray-700 dark:hover:border-gray-300 dark:focus:ring-offset-gray-900'
               }`}
               aria-label="Clone selected sessions"
             >
