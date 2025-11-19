@@ -2,6 +2,18 @@ import React, { Fragment, useState, useEffect, useMemo } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, DocumentDuplicateIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import useCloneSessions from '../../hooks/useCloneSessions';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
+import { Label } from '@/components/ui/label';
+import { convertTorontoToUTC } from '../../utils/dateTimeUtils';
 
 // Valid options for form selects
 const LOCATIONS = [
@@ -198,8 +210,10 @@ const CloneMockExamsModal = ({
     if (formData.start_time) overrides.start_time = formData.start_time;
     if (formData.end_time) overrides.end_time = formData.end_time;
     if (formData.is_active) overrides.is_active = formData.is_active;
+
+    // IMPORTANT: Convert Toronto time to UTC for scheduled activation
     if (formData.scheduled_activation_datetime) {
-      overrides.scheduled_activation_datetime = formData.scheduled_activation_datetime;
+      overrides.scheduled_activation_datetime = convertTorontoToUTC(formData.scheduled_activation_datetime);
     }
 
     try {
@@ -308,16 +322,16 @@ const CloneMockExamsModal = ({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {/* Exam Date - Required */}
                           <div className="sm:col-span-2">
-                            <label htmlFor="exam_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <Label htmlFor="exam_date" className="text-gray-700 dark:text-gray-300">
                               New Exam Date <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="date"
-                              id="exam_date"
+                            </Label>
+                            <DatePicker
                               value={formData.exam_date}
-                              onChange={(e) => handleFieldChange('exam_date', e.target.value)}
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                              onChange={(value) => handleFieldChange('exam_date', value)}
+                              placeholder="Select new date"
+                              required
                               disabled={cloneMutation.isPending}
+                              className="mt-1"
                             />
                             {validationErrors.exam_date && (
                               <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
@@ -329,48 +343,54 @@ const CloneMockExamsModal = ({
 
                           {/* Location */}
                           <div>
-                            <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <Label htmlFor="location" className="text-gray-700 dark:text-gray-300">
                               Location (optional)
-                            </label>
-                            <select
-                              id="location"
+                            </Label>
+                            <Select
                               value={formData.location}
-                              onChange={(e) => handleFieldChange('location', e.target.value)}
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                              onValueChange={(value) => handleFieldChange('location', value)}
                               disabled={cloneMutation.isPending}
                             >
-                              <option value="">Keep original</option>
-                              {LOCATIONS.map(loc => (
-                                <option key={loc} value={loc}>{loc}</option>
-                              ))}
-                            </select>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Keep original" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">Keep original</SelectItem>
+                                {LOCATIONS.map(loc => (
+                                  <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
 
                           {/* Mock Type */}
                           <div>
-                            <label htmlFor="mock_type" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <Label htmlFor="mock_type" className="text-gray-700 dark:text-gray-300">
                               Mock Type (optional)
-                            </label>
-                            <select
-                              id="mock_type"
+                            </Label>
+                            <Select
                               value={formData.mock_type}
-                              onChange={(e) => handleFieldChange('mock_type', e.target.value)}
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                              onValueChange={(value) => handleFieldChange('mock_type', value)}
                               disabled={cloneMutation.isPending}
                             >
-                              <option value="">Keep original</option>
-                              {MOCK_TYPES.map(type => (
-                                <option key={type} value={type}>{type}</option>
-                              ))}
-                            </select>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Keep original" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">Keep original</SelectItem>
+                                {MOCK_TYPES.map(type => (
+                                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
 
                           {/* Capacity */}
                           <div>
-                            <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <Label htmlFor="capacity" className="text-gray-700 dark:text-gray-300">
                               Capacity (optional)
-                            </label>
-                            <input
+                            </Label>
+                            <Input
                               type="number"
                               id="capacity"
                               min="1"
@@ -378,7 +398,7 @@ const CloneMockExamsModal = ({
                               value={formData.capacity}
                               onChange={(e) => handleFieldChange('capacity', e.target.value)}
                               placeholder="Keep original"
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                              className="mt-1"
                               disabled={cloneMutation.isPending}
                             />
                             {validationErrors.capacity && (
@@ -390,16 +410,16 @@ const CloneMockExamsModal = ({
 
                           {/* Start Time */}
                           <div>
-                            <label htmlFor="start_time" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <Label htmlFor="start_time" className="text-gray-700 dark:text-gray-300">
                               Start Time (optional)
-                            </label>
-                            <input
+                            </Label>
+                            <Input
                               type="time"
                               id="start_time"
                               value={formData.start_time}
                               onChange={(e) => handleFieldChange('start_time', e.target.value)}
                               placeholder="Keep original"
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                              className="mt-1"
                               disabled={cloneMutation.isPending}
                             />
                             {validationErrors.start_time && (
@@ -411,52 +431,56 @@ const CloneMockExamsModal = ({
 
                           {/* End Time */}
                           <div>
-                            <label htmlFor="end_time" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <Label htmlFor="end_time" className="text-gray-700 dark:text-gray-300">
                               End Time (optional)
-                            </label>
-                            <input
+                            </Label>
+                            <Input
                               type="time"
                               id="end_time"
                               value={formData.end_time}
                               onChange={(e) => handleFieldChange('end_time', e.target.value)}
                               placeholder="Keep original"
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                              className="mt-1"
                               disabled={cloneMutation.isPending}
                             />
                           </div>
 
                           {/* Status */}
                           <div className="sm:col-span-2">
-                            <label htmlFor="is_active" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <Label htmlFor="is_active" className="text-gray-700 dark:text-gray-300">
                               Status (optional)
-                            </label>
-                            <select
-                              id="is_active"
+                            </Label>
+                            <Select
                               value={formData.is_active}
-                              onChange={(e) => handleFieldChange('is_active', e.target.value)}
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                              onValueChange={(value) => handleFieldChange('is_active', value)}
                               disabled={cloneMutation.isPending}
                             >
-                              <option value="">Keep original</option>
-                              {ACTIVE_STATES.map(state => (
-                                <option key={state.value} value={state.value}>{state.label}</option>
-                              ))}
-                            </select>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Keep original" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">Keep original</SelectItem>
+                                {ACTIVE_STATES.map(state => (
+                                  <SelectItem key={state.value} value={state.value}>{state.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
 
                           {/* Scheduled Activation DateTime - Conditional */}
                           {formData.is_active === 'scheduled' && (
                             <div className="sm:col-span-2">
-                              <label htmlFor="scheduled_activation_datetime" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              <Label htmlFor="scheduled_activation_datetime" className="text-gray-700 dark:text-gray-300">
                                 Scheduled Activation <span className="text-red-500">*</span>
-                              </label>
-                              <input
-                                type="datetime-local"
+                              </Label>
+                              <DateTimePicker
                                 id="scheduled_activation_datetime"
-                                value={formData.scheduled_activation_datetime}
-                                onChange={(e) => handleFieldChange('scheduled_activation_datetime', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                                value={formData.scheduled_activation_datetime || ''}
+                                onChange={(value) => handleFieldChange('scheduled_activation_datetime', value)}
+                                placeholder="Select activation date and time"
+                                className="mt-1 w-full"
                                 disabled={cloneMutation.isPending}
+                                minDateTime={new Date().toISOString().slice(0, 16)}
                               />
                               {validationErrors.scheduled_activation_datetime && (
                                 <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
