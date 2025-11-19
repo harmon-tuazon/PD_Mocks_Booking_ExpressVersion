@@ -14,6 +14,7 @@ import MockExamsSelectionToolbar from '../components/admin/MockExamsSelectionToo
 import MockExamsTable from '../components/admin/MockExamsTable';
 import BulkToggleActiveModal from '../components/admin/BulkToggleActiveModal';
 import BulkEditModal from '../components/admin/BulkEditModal';
+import CloneMockExamsModal from '../components/admin/CloneMockExamsModal';
 import MassDeleteModal from '../components/admin/MassDeleteModal';
 import { useMemo, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
@@ -33,6 +34,9 @@ function MockExamsDashboard() {
 
   // State for bulk edit modal
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
+
+  // State for clone modal
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
 
   // State for mass delete modal
   const [isMassDeleteModalOpen, setIsMassDeleteModalOpen] = useState(false);
@@ -262,6 +266,11 @@ function MockExamsDashboard() {
     setIsBulkEditModalOpen(true);
   }, []);
 
+  // Handler for opening clone modal
+  const handleClone = useCallback(() => {
+    setIsCloneModalOpen(true);
+  }, []);
+
   // Handler for opening mass delete modal
   const handleDeleteSessions = useCallback(() => {
     setIsMassDeleteModalOpen(true);
@@ -270,6 +279,13 @@ function MockExamsDashboard() {
   // Handler for successful bulk edit
   const handleBulkEditSuccess = useCallback(() => {
     setIsBulkEditModalOpen(false);
+    bulkSelection.exitToView();
+    // Toast notification is handled by the modal/hook
+  }, [bulkSelection]);
+
+  // Handler for successful clone
+  const handleCloneSuccess = useCallback(() => {
+    setIsCloneModalOpen(false);
     bulkSelection.exitToView();
     // Toast notification is handled by the modal/hook
   }, [bulkSelection]);
@@ -385,6 +401,7 @@ function MockExamsDashboard() {
             onExitMode={bulkSelection.exitToView}
             onToggleActiveStatus={handleToggleActiveStatus}
             onBulkEdit={handleBulkEdit}
+            onClone={handleClone}
             onDeleteSessions={handleDeleteSessions}
             selectedSessions={bulkSelection.selectedSessions}
             isSubmitting={bulkSelection.isSubmitting}
@@ -447,6 +464,14 @@ function MockExamsDashboard() {
           onClose={() => setIsBulkEditModalOpen(false)}
           selectedSessions={bulkSelection.selectedSessions}
           onSuccess={handleBulkEditSuccess}
+        />
+
+        {/* Clone Modal */}
+        <CloneMockExamsModal
+          isOpen={isCloneModalOpen}
+          onClose={() => setIsCloneModalOpen(false)}
+          selectedSessions={bulkSelection.selectedSessions}
+          onSuccess={handleCloneSuccess}
         />
 
         {/* Mass Delete Modal */}

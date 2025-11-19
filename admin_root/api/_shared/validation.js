@@ -811,6 +811,90 @@ const schemas = {
       })
   }),
 
+  // Schema for clone mock exam sessions (Admin)
+  clone: Joi.object({
+    cloneSources: Joi.array()
+      .items(Joi.object({
+        sourceSessionId: Joi.string().pattern(/^\d+$/).required(),
+        sourceProperties: Joi.object({
+          mock_type: Joi.string().required(),
+          location: Joi.string().required(),
+          exam_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+          capacity: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
+          start_time: Joi.string().required(),
+          end_time: Joi.string().required(),
+          is_active: Joi.string().valid('active', 'inactive', 'scheduled', 'true', 'false').required(),
+          scheduled_activation_datetime: Joi.string().allow('', null).optional()
+        }).required()
+      }))
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one session is required',
+        'array.max': 'Cannot clone more than 100 sessions at once'
+      }),
+
+    overrides: Joi.object({
+      exam_date: Joi.string()
+        .pattern(/^\d{4}-\d{2}-\d{2}$/)
+        .required()
+        .messages({
+          'string.pattern.base': 'Date must be in YYYY-MM-DD format',
+          'any.required': 'New exam date is required for cloning'
+        }),
+
+      location: Joi.string().valid(
+        'Mississauga', 'Mississauga - B9', 'Mississauga - Lab D',
+        'Calgary', 'Vancouver', 'Montreal', 'Richmond Hill', 'Online'
+      ).optional().allow(''),
+
+      mock_type: Joi.string().valid(
+        'Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion'
+      ).optional().allow(''),
+
+      capacity: Joi.number().integer().min(1).max(100).optional().allow(''),
+
+      start_time: Joi.string().pattern(/^\d{2}:\d{2}$/).optional().allow(''),
+
+      end_time: Joi.string().pattern(/^\d{2}:\d{2}$/).optional().allow(''),
+
+      is_active: Joi.string().valid('active', 'inactive', 'scheduled').optional().allow(''),
+
+      scheduled_activation_datetime: Joi.date().iso().optional().allow('')
+    })
+      .custom((value, helpers) => {
+        // Validate time range
+        if (value.start_time && value.end_time) {
+          const start = new Date(`2000-01-01T${value.start_time}`);
+          const end = new Date(`2000-01-01T${value.end_time}`);
+          if (start >= end) {
+            return helpers.error('custom.timeRange');
+          }
+        }
+
+        // Validate scheduled_activation_datetime when is_active='scheduled'
+        if (value.is_active === 'scheduled') {
+          if (!value.scheduled_activation_datetime) {
+            return helpers.error('custom.scheduledDateRequired');
+          }
+
+          const scheduledDate = new Date(value.scheduled_activation_datetime);
+          if (scheduledDate <= new Date()) {
+            return helpers.error('custom.scheduledDatePast');
+          }
+        }
+
+        return value;
+      })
+      .required()
+      .messages({
+        'custom.timeRange': 'Start time must be before end time',
+        'custom.scheduledDateRequired': 'Scheduled activation datetime is required when status is scheduled',
+        'custom.scheduledDatePast': 'Scheduled activation datetime must be in the future'
+      })
+  }).options({ stripUnknown: true }),
+
   // Schema for batch attendance update (Admin)
   batchAttendanceUpdate: Joi.object({
     bookings: Joi.array()
