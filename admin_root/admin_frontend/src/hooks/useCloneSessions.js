@@ -3,14 +3,17 @@ import { adminApi } from '../services/adminApi';
 import toast from 'react-hot-toast';
 
 /**
- * Custom hook for cloning mock exam sessions
+ * Custom hook for cloning mock exam sessions with optimistic UI updates
  *
  * This hook provides a mutation function to clone multiple sessions with modified properties.
  * It handles:
  * - Transforming selected sessions into cloneSources format
  * - Sending clone request to backend with overrides
  * - Showing success/error toasts
- * - Invalidating and refetching affected queries
+ * - Optimistically updating cache with new sessions (no refetch needed)
+ * - Only invalidating metrics queries that need server-side calculation
+ *
+ * Performance: Uses optimistic updates instead of cache invalidation for instant UI feedback
  *
  * Usage:
  * ```javascript
@@ -74,13 +77,14 @@ const useCloneSessions = () => {
     },
 
     /**
-     * Success handler - invalidate queries and show success/warning toasts
+     * Success handler - optimistically update cache and show success/warning toasts
      * @param {Object} data - Response data from clone API
      */
     onSuccess: (data) => {
-      const { summary } = data;
+      const { summary, results } = data;
 
       console.log('✅ [CLONE] Clone successful:', summary);
+      console.log('📋 [CLONE] Cloned sessions:', results.successful);
 
       // Show success toast for cloned sessions
       if (summary.created > 0) {
@@ -98,18 +102,58 @@ const useCloneSessions = () => {
         );
       }
 
-      // Invalidate all related queries to trigger refetch
-      // This ensures the dashboard and all lists show the newly cloned sessions
-      queryClient.invalidateQueries(['mockExams']);
-      queryClient.invalidateQueries(['mock-exams']);
-      queryClient.invalidateQueries(['mock-exams-list']);
-      queryClient.invalidateQueries(['mockExamsMetrics']);
-      queryClient.invalidateQueries(['mock-exam-aggregates']);
-      queryClient.invalidateQueries(['aggregates']);
-      queryClient.invalidateQueries(['metrics']);
+      // Optimistically update the cache with new cloned sessions
+      if (results.successful && results.successful.length > 0) {
+        // Update mock-exams-list cache by adding new sessions
+        queryClient.setQueriesData(['mock-exams-list'], (oldData) => {
+          if (!oldData) return oldData;
 
-      // Refetch all active queries to immediately update the UI
-      queryClient.refetchQueries({ active: true });
+          console.log('🔄 [CLONE] Updating mock-exams-list cache with new sessions');
+
+          // Transform API response to match frontend data structure
+          const newSessions = results.successful.map(session => ({
+            id: session.id,
+            ...session.properties,
+            // Ensure all required fields exist
+            mock_exam_id: session.properties.mock_exam_id || session.id,
+            exam_date: session.properties.exam_date || '',
+            location: session.properties.location || '',
+            mock_type: session.properties.mock_type || '',
+            capacity: session.properties.capacity || '0',
+            current_bookings: '0', // New sessions start with 0 bookings
+            start_time: session.properties.start_time || '',
+            end_time: session.properties.end_time || '',
+            is_active: session.properties.is_active || 'active',
+            scheduled_activation_datetime: session.properties.scheduled_activation_datetime || ''
+          }));
+
+          // Add new sessions to the beginning of the list (most recent first)
+          return {
+            ...oldData,
+            mockExams: [...newSessions, ...oldData.mockExams],
+            total: oldData.total + newSessions.length
+          };
+        });
+
+        // Update aggregates cache to reflect new sessions
+        queryClient.setQueriesData(['mock-exam-aggregates'], (oldData) => {
+          if (!oldData) return oldData;
+
+          console.log('🔄 [CLONE] Updating aggregates cache');
+
+          return {
+            ...oldData,
+            totalSessions: (oldData.totalSessions || 0) + results.successful.length
+          };
+        });
+
+        console.log(`✨ [CLONE] Cache updated with ${results.successful.length} new sessions`);
+      }
+
+      // Only invalidate metrics queries (which need server calculation)
+      // This is more efficient than invalidating everything
+      queryClient.invalidateQueries(['mockExamsMetrics']);
+      queryClient.invalidateQueries(['metrics']);
     },
 
     /**
