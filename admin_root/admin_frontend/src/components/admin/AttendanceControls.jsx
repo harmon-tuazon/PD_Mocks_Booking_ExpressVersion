@@ -13,7 +13,7 @@
  * - Confirmation dialog integration
  */
 
-import { CheckCircleIcon, XMarkIcon, XCircleIcon, ArrowPathIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XMarkIcon, XCircleIcon, ArrowPathIcon, TrashIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { useState } from 'react';
 import ConfirmationDialog from './ConfirmationDialog';
 import {
@@ -41,7 +41,11 @@ const AttendanceControls = ({
   onApplyAction,
   // Cancellation props
   onCancelBookings = null,
-  isCancellationMode = false
+  isCancellationMode = false,
+  // Export CSV props
+  onExportCSV = null,
+  isExporting = false,
+  exportDisabled = false
 }) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -150,6 +154,30 @@ const AttendanceControls = ({
             <CheckCircleIcon className="h-5 w-5 mr-2" />
             Mark Attendance
           </button>
+
+          {/* Export CSV Button */}
+          {onExportCSV && (
+            <button
+              onClick={onExportCSV}
+              disabled={exportDisabled || isExporting}
+              className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors shadow-sm border ${
+                exportDisabled || isExporting
+                  ? 'text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                  : 'text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500'
+              }`}
+              title={exportDisabled ? 'No bookings to export' : 'Export bookings to CSV'}
+            >
+              {isExporting ? (
+                <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              ) : (
+                <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+              )}
+              Export CSV
+            </button>
+          )}
         </div>
       </div>
 

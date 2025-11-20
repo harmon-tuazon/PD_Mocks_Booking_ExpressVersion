@@ -23,9 +23,9 @@ import EditControls from '../components/admin/EditControls';
 import DeleteControls from '../components/admin/DeleteControls';
 import CancelBookingsModal from '../components/shared/CancelBookingsModal';
 import CreateBookingButton from '../components/admin/CreateBookingButton';
-import ExportCSVButton from '../components/admin/ExportCSVButton';
 import { useState } from 'react';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { toast } from 'react-hot-toast';
 
 function MockExamDetail() {
   const { id } = useParams();
@@ -82,6 +82,56 @@ function MockExamDetail() {
 
   // Initialize cancellation mutation
   const cancelBookingsMutation = useCancelBookingsMutation(id);
+
+  // CSV Export state
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Handle CSV export
+  const handleExportCSV = async () => {
+    if (!bookingsData?.data?.length || isExporting) return;
+
+    setIsExporting(true);
+    try {
+      const token = localStorage.getItem('admin_token');
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/admin/mock-exams/export-csv`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          bookings: bookingsData.data,
+          examId: id
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || 'Export failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      const date = new Date().toISOString().split('T')[0];
+      link.download = `bookings-exam-${id}-${date}.csv`;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success(`Exported ${bookingsData.data.length} bookings to CSV`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error(error.message || 'Failed to export bookings. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Handle apply action (mark_yes, mark_no, or unmark)
   const handleApplyAction = () => {
@@ -340,17 +390,10 @@ function MockExamDetail() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Bookings ({bookingsData?.pagination?.total || 0})
               </h2>
-              <div className="flex items-center gap-2">
-                <ExportCSVButton
-                  bookings={bookingsData?.data || []}
-                  examId={id}
-                  disabled={!bookingsData?.data?.length}
-                />
-                <CreateBookingButton
-                  mockExam={examData?.data}
-                  onSuccess={handleBookingCreated}
-                />
-              </div>
+              <CreateBookingButton
+                mockExam={examData?.data}
+                onSuccess={handleBookingCreated}
+              />
             </div>
           </div>
 
@@ -385,7 +428,11 @@ function MockExamDetail() {
               onToggleSelection: attendance.toggleSelection,
               // Add cancellation handler
               onCancelBookings: handleOpenCancellation,
-              isCancellationMode: cancellation.isCancellationMode
+              isCancellationMode: cancellation.isCancellationMode,
+              // Export CSV props
+              onExportCSV: handleExportCSV,
+              isExporting: isExporting,
+              exportDisabled: !bookingsData?.data?.length
             }}
             // Add cancellation props
             cancellationState={{

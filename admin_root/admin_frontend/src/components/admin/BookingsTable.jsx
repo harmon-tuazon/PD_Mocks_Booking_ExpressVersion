@@ -247,6 +247,9 @@ const BookingsTable = ({
             onApplyAction={attendanceData.onApplyAction}
             onCancelBookings={attendanceData.onCancelBookings}
             isCancellationMode={isCancellationMode}
+            onExportCSV={attendanceData.onExportCSV}
+            isExporting={attendanceData.isExporting}
+            exportDisabled={attendanceData.exportDisabled}
           />
 
           {/* Cancellation Controls (shown only when in cancellation mode, below the badges) */}

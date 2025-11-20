@@ -6,7 +6,7 @@
  */
 
 const Joi = require('joi');
-const { requireAdmin } = require('../../middleware/requireAdmin');
+const { requireAdmin } = require('../middleware/requireAdmin');
 
 // Validation schema
 const bookingSchema = Joi.object({
