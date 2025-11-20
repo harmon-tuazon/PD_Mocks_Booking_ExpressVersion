@@ -15,7 +15,7 @@
  * @requires adminBookingCreation - Joi validation schema
  */
 
-const { requireAdmin } = require('../middleware/requireAdmin');
+const { requirePermission } = require('../middleware/requirePermission');
 const { HubSpotService, HUBSPOT_OBJECTS } = require('../../_shared/hubspot');
 const { validateInput } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
@@ -31,9 +31,9 @@ module.exports = async (req, res) => {
     // Initialize Redis for counter management
     redis = new RedisLockService();
     // ========================================================================
-    // STEP 1: Admin Authentication
+    // STEP 1: Admin Authentication and Permission
     // ========================================================================
-    const user = await requireAdmin(req);
+    const user = await requirePermission(req, 'bookings.create');
     const adminEmail = user?.email || 'admin@prepdoctors.com';
 
     console.log(`🔧 [ADMIN BOOKING] Initiated by: ${adminEmail}`);

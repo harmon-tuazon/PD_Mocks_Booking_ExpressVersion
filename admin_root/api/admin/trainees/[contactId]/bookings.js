@@ -15,7 +15,7 @@
  * - include_inactive (optional): Set to true to include all booking statuses
  */
 
-const { requireAdmin } = require('../../middleware/requireAdmin');
+const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../../_shared/validation');
 const { getCache } = require('../../../_shared/cache');
 const hubspot = require('../../../_shared/hubspot');
@@ -29,8 +29,8 @@ const HUBSPOT_OBJECTS = {
 
 module.exports = async (req, res) => {
   try {
-    // Verify admin authentication
-    const user = await requireAdmin(req);
+    // Verify admin authentication and permission
+    const user = await requirePermission(req, 'bookings.view');
 
     // Extract contact ID from URL path parameter
     const contactId = req.query.contactId;

@@ -6,7 +6,7 @@
  */
 
 const Joi = require('joi');
-const { requireAdmin } = require('../middleware/requireAdmin');
+const { requirePermission } = require('../middleware/requirePermission');
 
 // Validation schema
 const bookingSchema = Joi.object({
@@ -68,8 +68,8 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Verify admin authentication
-    await requireAdmin(req);
+    // Verify admin authentication and permission
+    await requirePermission(req, 'bookings.export');
 
     // Validate input
     const { error, value } = exportCsvSchema.validate(req.body);

@@ -30,7 +30,27 @@ const supabasePublic = createClient(
 );
 
 /**
+ * Decode JWT payload without verification (verification done by getUser)
+ * @param {string} token - JWT token
+ * @returns {object|null} - Decoded payload or null
+ */
+function decodeJwtPayload(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    const payload = parts[1];
+    const decoded = Buffer.from(payload, 'base64').toString('utf8');
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.error('JWT decode error:', error);
+    return null;
+  }
+}
+
+/**
  * Verify and decode a Supabase JWT token
+ * Returns user object with RBAC claims (user_role, permissions)
  * @param {string} token - JWT token from client
  * @returns {Promise<{user: object, error: object|null}>}
  */
@@ -42,7 +62,18 @@ async function verifyToken(token) {
       return { user: null, error };
     }
 
-    return { user, error: null };
+    // Decode JWT to get custom claims (user_role, permissions)
+    const jwtPayload = decodeJwtPayload(token);
+
+    // Merge user object with RBAC claims from JWT
+    const userWithClaims = {
+      ...user,
+      user_role: jwtPayload?.user_role || 'viewer',
+      permissions: jwtPayload?.permissions || [],
+      role_assigned_at: jwtPayload?.role_assigned_at || null
+    };
+
+    return { user: userWithClaims, error: null };
   } catch (error) {
     console.error('Token verification error:', error);
     return { user: null, error };

@@ -146,7 +146,7 @@ CREATE TYPE app_permission AS ENUM (
   'bookings.cancel',
   'bookings.batch_cancel',
   'bookings.view',
-
+  'bookings.export',
   -- Mock Exams
   'exams.create',
   'exams.edit',

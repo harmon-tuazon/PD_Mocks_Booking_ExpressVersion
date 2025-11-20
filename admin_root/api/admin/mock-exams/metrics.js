@@ -3,14 +3,14 @@
  * Get dashboard metrics for mock exams
  */
 
-const { requireAdmin } = require('../middleware/requireAdmin');
+const { requirePermission } = require('../middleware/requirePermission');
 const { validationMiddleware } = require('../../_shared/validation');
 const hubspot = require('../../_shared/hubspot');
 
 module.exports = async (req, res) => {
   try {
-    // Verify admin authentication
-    const user = await requireAdmin(req);
+    // Verify admin authentication and permission
+    const user = await requirePermission(req, 'exams.view');
 
     // Validate query parameters
     const validator = validationMiddleware('mockExamMetrics');

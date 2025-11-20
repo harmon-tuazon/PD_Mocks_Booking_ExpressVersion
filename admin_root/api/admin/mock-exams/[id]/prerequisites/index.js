@@ -8,7 +8,7 @@
  * - Retrieve all prerequisite associations for a mock exam
  */
 
-const { requireAdmin } = require('../../../middleware/requireAdmin');
+const { requirePermission } = require('../../../middleware/requirePermission');
 const { validateInput } = require('../../../../_shared/validation');
 const hubspot = require('../../../../_shared/hubspot');
 const { HUBSPOT_OBJECTS } = require('../../../../_shared/hubspot');
@@ -20,10 +20,6 @@ const { getCache } = require('../../../../_shared/cache');
 
 module.exports = async (req, res) => {
   try {
-    // Verify admin authentication
-    const user = await requireAdmin(req);
-    const adminEmail = user?.email || 'admin@prepdoctors.ca';
-
     // Extract ID from query params (Vercel provides dynamic route params via req.query)
     const mockExamId = req.query.id;
 
@@ -38,11 +34,16 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Route to appropriate handler based on method
+    // Route to appropriate handler based on method with appropriate permissions
     switch (req.method) {
       case 'POST':
-        return handlePostRequest(req, res, mockExamId, adminEmail);
+        // POST requires exams.edit permission
+        const postUser = await requirePermission(req, 'exams.edit');
+        const postAdminEmail = postUser?.email || 'admin@prepdoctors.ca';
+        return handlePostRequest(req, res, mockExamId, postAdminEmail);
       case 'GET':
+        // GET requires exams.view permission
+        await requirePermission(req, 'exams.view');
         return handleGetRequest(req, res, mockExamId);
       default:
         return res.status(405).json({
@@ -76,25 +77,8 @@ module.exports = async (req, res) => {
 /**
  * Handle POST request to create prerequisite associations
  */
-async function handlePostRequest(req, res) {
+async function handlePostRequest(req, res, mockExamId, adminEmail) {
   try {
-    // Verify admin authentication
-    const user = await requireAdmin(req);
-    const adminEmail = user?.email || 'admin@prepdoctors.ca';
-
-    // Extract ID from query params (Vercel provides dynamic route params via req.query)
-    const mockExamId = req.query.id;
-
-    // Validate mock exam ID format
-    if (!mockExamId || !/^\d+$/.test(mockExamId)) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'INVALID_ID',
-          message: 'Valid mock exam ID is required'
-        }
-      });
-    }
 
     // Parse request body
     const { prerequisite_exam_ids = [] } = req.body;

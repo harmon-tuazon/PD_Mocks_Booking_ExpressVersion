@@ -45,7 +45,7 @@
  * - Error details for validation failures
  */
 
-const { requireAdmin } = require('../middleware/requireAdmin');
+const { requirePermission } = require('../middleware/requirePermission');
 const { validationMiddleware } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
@@ -74,8 +74,8 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Step 1: Authentication
-    const user = await requireAdmin(req);
+    // Step 1: Authentication and Permission
+    const user = await requirePermission(req, 'exams.create');
     const adminEmail = user?.email || 'admin@prepdoctors.com';
 
     console.log(`📋 [CLONE] Processing clone request from ${adminEmail}`);

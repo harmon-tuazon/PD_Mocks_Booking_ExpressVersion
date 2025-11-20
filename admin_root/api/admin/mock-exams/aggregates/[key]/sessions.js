@@ -5,14 +5,14 @@
  * Used when expanding accordion items in the admin dashboard
  */
 
-const { requireAdmin } = require('../../../middleware/requireAdmin');
+const { requirePermission } = require('../../../middleware/requirePermission');
 const hubspot = require('../../../../_shared/hubspot');
 const { getCache } = require('../../../../_shared/cache');
 
 module.exports = async (req, res) => {
   try {
-    // Verify admin authentication
-    const user = await requireAdmin(req);
+    // Verify admin authentication and permission
+    const user = await requirePermission(req, 'exams.view');
 
     const { key } = req.query; // Dynamic route parameter from Vercel
 

@@ -48,7 +48,7 @@
  * - TIMEOUT: Operation timeout (approaching 60s limit)
  */
 
-const { requireAdmin } = require('../middleware/requireAdmin');
+const { requirePermission } = require('../middleware/requirePermission');
 const { validationMiddleware } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
@@ -81,8 +81,8 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Verify admin authentication
-    const user = await requireAdmin(req);
+    // Verify admin authentication and permission
+    const user = await requirePermission(req, 'exams.delete');
     const adminEmail = user?.email || 'admin@prepdoctors.com';
 
     // Validate request body

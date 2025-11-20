@@ -8,7 +8,7 @@
 
 const { HubSpotService } = require('../../_shared/hubspot');
 const { validateInput } = require('../../_shared/validation');
-const { requireAdmin } = require('../middleware/requireAdmin');
+const { requirePermission } = require('../middleware/requirePermission');
 const { getCache } = require('../../_shared/cache');
 
 /**
@@ -232,8 +232,8 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Require admin authentication
-    await requireAdmin(req);
+    // Require admin authentication and permission
+    await requirePermission(req, 'exams.create');
 
     // Call handler
     return await bulkCreateMockExamsHandler(req, res);

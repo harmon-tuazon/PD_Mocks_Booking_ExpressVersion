@@ -16,7 +16,7 @@
  * - search (string): Search term for filtering by name or email
  */
 
-const { requireAdmin } = require('../../middleware/requireAdmin');
+const { requirePermission } = require('../../middleware/requirePermission');
 const hubspot = require('../../../_shared/hubspot');
 const { getCache } = require('../../../_shared/cache');
 
@@ -29,8 +29,8 @@ const HUBSPOT_OBJECTS = {
 
 module.exports = async (req, res) => {
   try {
-    // Verify admin authentication
-    const user = await requireAdmin(req);
+    // Verify admin authentication and permission
+    const user = await requirePermission(req, 'bookings.view');
 
     // Extract mock exam ID from URL path parameter
     // Extract ID from query params (Vercel provides dynamic route params via req.query)

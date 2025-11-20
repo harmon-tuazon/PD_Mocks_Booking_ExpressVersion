@@ -9,7 +9,7 @@
  * Returns complete mock exam details including calculated fields.
  */
 
-const { requireAdmin } = require('../middleware/requireAdmin');
+const { requirePermission } = require('../middleware/requirePermission');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
 const { validateInput } = require('../../_shared/validation');
@@ -38,8 +38,8 @@ module.exports = async (req, res) => {
  */
 async function handlePatchRequest(req, res) {
   try {
-    // Verify admin authentication
-    const user = await requireAdmin(req);
+    // Verify admin authentication and permission
+    const user = await requirePermission(req, 'exams.edit');
     const adminEmail = user?.email || 'admin@prepdoctors.ca';
 
     // Extract ID from query params (Vercel provides dynamic route params via req.query)
@@ -332,8 +332,8 @@ async function handlePatchRequest(req, res) {
  */
 async function handleGetRequest(req, res) {
   try {
-    // Verify admin authentication
-    const user = await requireAdmin(req);
+    // Verify admin authentication and permission
+    const user = await requirePermission(req, 'exams.view');
 
     // Extract ID from query params (Vercel provides dynamic route params via req.query)
     const mockExamId = req.query.id;

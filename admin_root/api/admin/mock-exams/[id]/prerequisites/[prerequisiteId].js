@@ -3,7 +3,7 @@
  * Remove a single prerequisite association from a Mock Discussion exam
  */
 
-const { requireAdmin } = require('../../../../middleware/requireAdmin');
+const { requirePermission } = require('../../../../middleware/requirePermission');
 const hubspot = require('../../../../../_shared/hubspot');
 const { HUBSPOT_OBJECTS } = require('../../../../../_shared/hubspot');
 const { getCache } = require('../../../../../_shared/cache');
@@ -21,8 +21,8 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Verify admin authentication
-    const user = await requireAdmin(req);
+    // Verify admin authentication and permission
+    const user = await requirePermission(req, 'exams.edit');
     const adminEmail = user?.email || 'admin@prepdoctors.ca';
 
     // Extract ID from query params (Vercel provides dynamic route params via req.query)
