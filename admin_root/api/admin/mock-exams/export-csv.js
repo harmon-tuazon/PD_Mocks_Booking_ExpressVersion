@@ -93,7 +93,7 @@ module.exports = async (req, res) => {
       { key: 'email', header: 'Email' },
       { key: 'student_id', header: 'Student ID' },
       { key: 'dominant_hand', header: 'Dominant Hand' },
-      { key: 'booking_status', header: 'Booking Status' },
+      { key: 'is_active', header: 'Booking Status' },
       { key: 'attendance', header: 'Attendance' },
       { key: 'attending_location', header: 'Location' },
       { key: 'exam_date', header: 'Exam Date' },
