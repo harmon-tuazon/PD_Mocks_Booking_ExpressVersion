@@ -2001,7 +2001,7 @@ class HubSpotService {
         properties: [
           'mock_type', 'exam_date', 'start_time', 'end_time',
           'capacity', 'total_bookings', 'location', 'is_active',
-          'scheduled_activation_datetime'
+          'scheduled_activation_datetime', 'hs_createdate', 'hs_lastmodifieddate'
         ],
         associations: [HUBSPOT_OBJECTS.bookings], // Fetch booking associations
         limit: 200,  // HubSpot max limit per request
