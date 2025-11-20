@@ -2126,6 +2126,7 @@ class HubSpotService {
       }));
 
       // Group by (mock_type + date + location) - now using enriched data with accurate counts
+      // OPTIMIZED: Include full session objects to avoid double-fetch in aggregates endpoint
       const aggregates = {};
 
       enrichedExams.forEach(exam => {
@@ -2133,7 +2134,10 @@ class HubSpotService {
         const key = `${properties.mock_type}_${properties.location}_${properties.exam_date}`
           .toLowerCase()
           .replace(/\s+/g, '_');
-        
+
+        const capacity = parseInt(properties.capacity) || 0;
+        const totalBookings = parseInt(properties.total_bookings) || 0;
+
         if (!aggregates[key]) {
           aggregates[key] = {
             aggregate_key: key,
@@ -2141,16 +2145,39 @@ class HubSpotService {
             exam_date: properties.exam_date,
             location: properties.location,
             session_ids: [],
+            sessions: [], // OPTIMIZATION: Pre-loaded session objects
             session_count: 0,
             total_capacity: 0,
             total_bookings: 0
           };
         }
-        
+
+        // Store session ID for backward compatibility
         aggregates[key].session_ids.push(exam.id);
+
+        // OPTIMIZATION: Store full session object to avoid re-fetching
+        aggregates[key].sessions.push({
+          id: exam.id,
+          mock_type: properties.mock_type,
+          exam_date: properties.exam_date,
+          start_time: properties.start_time,
+          end_time: properties.end_time,
+          capacity: capacity,
+          total_bookings: totalBookings,
+          location: properties.location,
+          is_active: properties.is_active,
+          scheduled_activation_datetime: properties.scheduled_activation_datetime,
+          utilization_rate: capacity > 0
+            ? Math.round((totalBookings / capacity) * 100)
+            : 0,
+          status: properties.is_active,
+          created_at: properties.hs_createdate,
+          updated_at: properties.hs_lastmodifieddate
+        });
+
         aggregates[key].session_count++;
-        aggregates[key].total_capacity += parseInt(properties.capacity || 0);
-        aggregates[key].total_bookings += parseInt(properties.total_bookings || 0); // Now uses accurate Active-only count
+        aggregates[key].total_capacity += capacity;
+        aggregates[key].total_bookings += totalBookings; // Now uses accurate Active-only count
       });
       
       // Convert to array and sort by date (descending - latest first)

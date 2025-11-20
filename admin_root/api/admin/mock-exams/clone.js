@@ -215,12 +215,15 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Step 7: Invalidate caches - ensure UI shows new cloned sessions
-    console.log(`🗑️ [CLONE] Invalidating caches...`);
+    // Step 7: Invalidate caches (except list cache - frontend handles optimistic update)
+    // NOTE: We keep list cache intact to avoid HubSpot 429 errors on refetch.
+    // Frontend adds cloned exams to React Query cache via onSuccess handler.
+    // List cache will naturally expire after TTL (5 min).
+    console.log(`🗑️ [CLONE] Invalidating caches (keeping list cache for optimistic UI)...`);
     const cache = getCache();
 
     await Promise.all([
-      cache.deletePattern('admin:mock-exams:list:*'),
+      // cache.deletePattern('admin:mock-exams:list:*'), // REMOVED: Prevents 429 errors, frontend handles optimistically
       cache.deletePattern('admin:mock-exams:aggregates:*'),
       cache.deletePattern('admin:aggregate:sessions:*'),
       cache.deletePattern('admin:metrics:*'),

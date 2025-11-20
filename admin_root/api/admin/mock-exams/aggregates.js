@@ -84,67 +84,21 @@ module.exports = async (req, res) => {
     const endIndex = startIndex + limit;
     const paginatedAggregates = sortedAggregates.slice(startIndex, endIndex);
 
-    // Preload session details for all aggregates on the current page
-    console.log(`📦 Preloading sessions for ${paginatedAggregates.length} aggregates...`);
+    // OPTIMIZED: Sessions are now pre-loaded in fetchMockExamsForAggregation
+    // No need for additional HubSpot API calls - eliminates 40+ API calls per request
+    console.log(`📦 Using pre-loaded sessions for ${paginatedAggregates.length} aggregates`);
 
-    // Collect all unique session IDs from paginated aggregates
-    const allSessionIds = [];
-    paginatedAggregates.forEach(aggregate => {
-      if (aggregate.session_ids && aggregate.session_ids.length > 0) {
-        allSessionIds.push(...aggregate.session_ids);
-      }
-    });
+    // Count total sessions for logging
+    const totalSessionCount = paginatedAggregates.reduce((sum, agg) =>
+      sum + (agg.sessions?.length || 0), 0);
+    console.log(`✅ ${totalSessionCount} sessions already loaded (no additional API calls)`);
 
-    console.log(`🔢 Total session IDs to fetch: ${allSessionIds.length}`);
-
-    // Fetch all sessions using batch API if there are any
-    let sessionDetailsMap = {};
-    if (allSessionIds.length > 0) {
-      try {
-        const sessions = await hubspot.batchFetchMockExams(allSessionIds);
-        console.log(`✅ Successfully fetched ${sessions.length} sessions`);
-
-        // Create a map of session ID to transformed session details
-        sessions.forEach(session => {
-          const capacity = parseInt(session.properties.capacity) || 0;
-          const totalBookings = parseInt(session.properties.total_bookings) || 0;
-
-          sessionDetailsMap[session.id] = {
-            id: session.id,
-            mock_type: session.properties.mock_type,
-            exam_date: session.properties.exam_date,
-            start_time: session.properties.start_time,
-            end_time: session.properties.end_time,
-            capacity: capacity,
-            total_bookings: totalBookings,
-            location: session.properties.location,
-            is_active: session.properties.is_active,
-            scheduled_activation_datetime: session.properties.scheduled_activation_datetime,
-            utilization_rate: capacity > 0
-              ? Math.round((totalBookings / capacity) * 100)
-              : 0,
-            status: session.properties.is_active,
-            created_at: session.properties.hs_createdate,
-            updated_at: session.properties.hs_lastmodifieddate
-          };
-        });
-      } catch (batchError) {
-        console.error('Error batch fetching sessions:', batchError);
-        // Continue without session details rather than failing the entire request
-        console.warn('⚠️ Continuing without preloaded session details');
-      }
-    }
-
-    // Attach session details to each aggregate
+    // Sort sessions by start_time within each aggregate
     const enrichedAggregates = paginatedAggregates.map(aggregate => {
       const aggregateWithSessions = { ...aggregate };
 
-      // Add sessions array with full details if available
-      if (aggregate.session_ids && aggregate.session_ids.length > 0) {
-        aggregateWithSessions.sessions = aggregate.session_ids
-          .map(id => sessionDetailsMap[id])
-          .filter(Boolean); // Remove any undefined sessions
-
+      // Sessions are already attached from fetchMockExamsForAggregation
+      if (aggregateWithSessions.sessions && aggregateWithSessions.sessions.length > 0) {
         // Sort sessions by start_time
         aggregateWithSessions.sessions.sort((a, b) => {
           const timeA = a.start_time || '';
@@ -165,14 +119,14 @@ module.exports = async (req, res) => {
         total_pages: Math.ceil(sortedAggregates.length / limit),
         total_aggregates: sortedAggregates.length,
         per_page: parseInt(limit),
-        preloaded_sessions: allSessionIds.length
+        preloaded_sessions: totalSessionCount
       },
       data: enrichedAggregates
     };
 
     // Cache for 2 minutes (with preloaded sessions)
     await cacheService.set(cacheKey, response, 120);
-    console.log(`💾 [Cached] ${enrichedAggregates.length} aggregates with ${allSessionIds.length} preloaded sessions for 2 minutes`);
+    console.log(`💾 [Cached] ${enrichedAggregates.length} aggregates with ${totalSessionCount} preloaded sessions for 2 minutes`);
 
     res.status(200).json(response);
   } catch (error) {

@@ -306,43 +306,26 @@ const CloneMockExamsModal = ({
                 <div className="overflow-y-auto flex-1">
                   <div className="sm:flex sm:items-start">
                     {/* Icon */}
-                    <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900 sm:mx-0 sm:h-10 sm:w-10">
-                      <DocumentDuplicateIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+                    <div className="mx-auto flex h-10 w-10 flex-shrink-0 items-center justify-center sm:mx-0">
+                      <DocumentDuplicateIcon className="h-6 w-6 text-gray-400 dark:text-gray-500" aria-hidden="true" />
                     </div>
 
                     {/* Content */}
                     <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
                       <Dialog.Title as="h3" className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100">
-                        Clone {selectedSessions.length} Session{selectedSessions.length !== 1 ? 's' : ''}
+                        Clone Sessions
                       </Dialog.Title>
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {selectedSessions.length} session{selectedSessions.length !== 1 ? 's' : ''} will be cloned
+                      </p>
 
-                      <div className="mt-4 space-y-6">
-                        {/* Info Banner */}
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                          <div className="flex">
-                            <div className="flex-shrink-0">
-                              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                            <div className="ml-3">
-                              <p className="text-sm text-blue-800 dark:text-blue-300">
-                                {selectedSessions.length === 1 ? (
-                                  <>Form pre-populated with source session values. Change any field to override.</>
-                                ) : (
-                                  <>Empty fields will use each source session's original value. Fill fields to override for all clones.</>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Section: Basic Information */}
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
-                            Basic Information
-                          </h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                      <div className="mt-6 space-y-6">
+                        {/* Edit Fields Section */}
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                            Override fields (leave blank to keep original values)
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {/* Exam Date - Required */}
                           <div className="sm:col-span-2">
                             <Label htmlFor="exam_date" className="text-gray-700 dark:text-gray-300">
@@ -559,39 +542,39 @@ const CloneMockExamsModal = ({
                 {/* Action Buttons - Fixed at bottom */}
                 <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 mt-6 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6">
                   <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
-                  {/* Clone Button */}
-                  <button
-                    type="button"
-                    onClick={handleConfirm}
-                    disabled={!formData.exam_date || cloneMutation.isPending}
-                    className={`inline-flex w-full justify-center rounded-md px-4 py-2 text-sm font-semibold shadow-sm sm:w-auto ${
-                      !formData.exam_date || cloneMutation.isPending
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'
-                        : 'bg-blue-600 text-white hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
-                    }`}
-                  >
-                    {cloneMutation.isPending ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Cloning {selectedSessions.length} session{selectedSessions.length !== 1 ? 's' : ''}...
-                      </>
-                    ) : (
-                      <>Clone {selectedSessions.length} Session{selectedSessions.length !== 1 ? 's' : ''}</>
-                    )}
-                  </button>
+                    {/* Cancel Button */}
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      disabled={cloneMutation.isPending}
+                      className="inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Cancel
+                    </button>
 
-                  {/* Cancel Button */}
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    disabled={cloneMutation.isPending}
-                    className="inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Cancel
-                  </button>
+                    {/* Clone Button */}
+                    <button
+                      type="button"
+                      onClick={handleConfirm}
+                      disabled={!formData.exam_date || cloneMutation.isPending}
+                      className={`inline-flex w-full justify-center rounded-md px-4 py-2 text-sm font-semibold shadow-sm sm:w-auto ${
+                        !formData.exam_date || cloneMutation.isPending
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'
+                          : 'bg-blue-600 text-white hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
+                      }`}
+                    >
+                      {cloneMutation.isPending ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Cloning {selectedSessions.length} session{selectedSessions.length !== 1 ? 's' : ''}...
+                        </>
+                      ) : (
+                        <>Clone {selectedSessions.length} Session{selectedSessions.length !== 1 ? 's' : ''}</>
+                      )}
+                    </button>
                   </div>
                 </div>
               </Dialog.Panel>
