@@ -671,15 +671,22 @@ console.log(`✅ Invalidated duplicate cache for contact ${contact_id}, date ${e
 - Alternative approach: Update to `booking_id:Cancelled` for audit trail
 - Reconciliation worker syncs cache status with HubSpot every 5 minutes (catches admin cancellations)
 
-**2. Redis Counter Persistence** (NO TTL):
+**2. Redis Counter Persistence** (90-day TTL for self-healing):
 ```javascript
-// Counters should NEVER expire automatically
-// Use SET/INCR/DECR without TTL:
-await redis.set(`exam:${mock_exam_id}:bookings`, count);    // No TTL
-await redis.incr(`exam:${mock_exam_id}:bookings`);          // No TTL
-await redis.decr(`exam:${mock_exam_id}:bookings`);          // No TTL
+// Counters use 90-day TTL for automatic cleanup of expired exams
+const TTL_90_DAYS = 90 * 24 * 60 * 60; // 7,776,000 seconds
 
-// Only manual invalidation or reconciliation should update
+// Initial seeding from HubSpot
+await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_90_DAYS, count);
+
+// After incr(), always refresh TTL (incr on non-existent key creates without TTL)
+await redis.incr(`exam:${mock_exam_id}:bookings`);
+await redis.expire(`exam:${mock_exam_id}:bookings`, TTL_90_DAYS);
+
+// This ensures:
+// 1. Keys auto-expire 90 days after last booking (self-healing)
+// 2. Expired/finished exams clean up automatically
+// 3. System recovers from stale data without manual intervention
 ```
 
 **3. Background Reconciliation Worker (Vercel Cron Job)**:
