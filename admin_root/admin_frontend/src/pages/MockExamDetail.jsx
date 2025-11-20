@@ -92,7 +92,7 @@ function MockExamDetail() {
 
     setIsExporting(true);
     try {
-      const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem('access_token');
 
       const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/admin/mock-exams/export-csv`, {
         method: 'POST',
