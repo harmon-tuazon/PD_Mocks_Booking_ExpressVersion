@@ -288,7 +288,7 @@ const CloneMockExamsModal = ({
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl sm:p-6 max-h-[90vh] flex flex-col">
+              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-3xl sm:p-6">
                 {/* Close button */}
                 <div className="absolute right-0 top-0 pr-4 pt-4 sm:block">
                   <button
@@ -302,33 +302,39 @@ const CloneMockExamsModal = ({
                   </button>
                 </div>
 
-                {/* Modal Content - Scrollable */}
-                <div className="overflow-y-auto flex-1">
-                  <div className="sm:flex sm:items-start">
-                    {/* Icon */}
-                    <div className="mx-auto flex h-10 w-10 flex-shrink-0 items-center justify-center sm:mx-0">
-                      <DocumentDuplicateIcon className="h-6 w-6 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-                    </div>
+                {/* Modal Content */}
+                <div className="sm:flex sm:items-start">
+                  {/* Icon */}
+                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900 sm:mx-0 sm:h-10 sm:w-10">
+                    <DocumentDuplicateIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+                  </div>
 
-                    {/* Content */}
-                    <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
-                      <Dialog.Title as="h3" className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100">
-                        Clone Sessions
-                      </Dialog.Title>
-                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {selectedSessions.length} session{selectedSessions.length !== 1 ? 's' : ''} will be cloned
-                      </p>
+                  {/* Content */}
+                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
+                    <Dialog.Title as="h3" className="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
+                      Clone Sessions
+                    </Dialog.Title>
 
-                      <div className="mt-6 space-y-6">
-                        {/* Edit Fields Section */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                            Override fields (leave blank to keep original values)
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="mt-4 space-y-4">
+                      {/* Session count info */}
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-3">
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          <span className="font-semibold text-blue-600 dark:text-blue-400">
+                            {selectedSessions.length}
+                          </span>{' '}
+                          session{selectedSessions.length !== 1 ? 's' : ''} will be cloned
+                        </p>
+                      </div>
+
+                      {/* Edit Fields Section */}
+                      <div className="space-y-4 border border-gray-200 dark:border-gray-600 rounded-md p-4">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          Override fields (leave blank to keep original values)
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {/* Exam Date - Required */}
-                          <div className="sm:col-span-2">
-                            <Label htmlFor="exam_date" className="text-gray-700 dark:text-gray-300">
+                          <div className="md:col-span-2">
+                            <Label htmlFor="exam_date">
                               New Exam Date <span className="text-red-500">*</span>
                             </Label>
                             <DatePicker
@@ -349,9 +355,7 @@ const CloneMockExamsModal = ({
 
                           {/* Location */}
                           <div>
-                            <Label htmlFor="location" className="text-gray-700 dark:text-gray-300">
-                              Location (optional)
-                            </Label>
+                            <Label htmlFor="location">Location</Label>
                             <Select
                               value={formData.location}
                               onValueChange={(value) => handleFieldChange('location', value)}
@@ -371,9 +375,7 @@ const CloneMockExamsModal = ({
 
                           {/* Mock Type */}
                           <div>
-                            <Label htmlFor="mock_type" className="text-gray-700 dark:text-gray-300">
-                              Mock Type (optional)
-                            </Label>
+                            <Label htmlFor="mock_type">Mock Type</Label>
                             <Select
                               value={formData.mock_type}
                               onValueChange={(value) => handleFieldChange('mock_type', value)}
@@ -393,9 +395,7 @@ const CloneMockExamsModal = ({
 
                           {/* Capacity */}
                           <div>
-                            <Label htmlFor="capacity" className="text-gray-700 dark:text-gray-300">
-                              Capacity (optional)
-                            </Label>
+                            <Label htmlFor="capacity">Capacity</Label>
                             <Input
                               type="number"
                               id="capacity"
@@ -416,9 +416,7 @@ const CloneMockExamsModal = ({
 
                           {/* Start Time */}
                           <div>
-                            <Label htmlFor="start_time" className="text-gray-700 dark:text-gray-300">
-                              Start Time (optional)
-                            </Label>
+                            <Label htmlFor="start_time">Start Time</Label>
                             <Input
                               type="time"
                               id="start_time"
@@ -437,9 +435,7 @@ const CloneMockExamsModal = ({
 
                           {/* End Time */}
                           <div>
-                            <Label htmlFor="end_time" className="text-gray-700 dark:text-gray-300">
-                              End Time (optional)
-                            </Label>
+                            <Label htmlFor="end_time">End Time</Label>
                             <Input
                               type="time"
                               id="end_time"
@@ -452,10 +448,8 @@ const CloneMockExamsModal = ({
                           </div>
 
                           {/* Status */}
-                          <div className="sm:col-span-2">
-                            <Label htmlFor="is_active" className="text-gray-700 dark:text-gray-300">
-                              Status (optional)
-                            </Label>
+                          <div>
+                            <Label htmlFor="is_active">Status</Label>
                             <Select
                               value={formData.is_active}
                               onValueChange={(value) => handleFieldChange('is_active', value)}
@@ -473,109 +467,101 @@ const CloneMockExamsModal = ({
                             </Select>
                           </div>
 
-                          {/* Scheduled Activation DateTime - Conditional */}
-                          {formData.is_active === 'scheduled' && (
-                            <div className="sm:col-span-2">
-                              <Label htmlFor="scheduled_activation_datetime" className="text-gray-700 dark:text-gray-300">
-                                Scheduled Activation <span className="text-red-500">*</span>
-                              </Label>
-                              <DateTimePicker
-                                id="scheduled_activation_datetime"
-                                value={formData.scheduled_activation_datetime || ''}
-                                onChange={(value) => handleFieldChange('scheduled_activation_datetime', value)}
-                                placeholder="Select activation date and time"
-                                className="mt-1 w-full"
-                                disabled={cloneMutation.isPending}
-                                minDateTime={new Date().toISOString().slice(0, 16)}
-                              />
-                              {validationErrors.scheduled_activation_datetime && (
-                                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
-                                  <ExclamationCircleIcon className="h-4 w-4 mr-1" />
-                                  {validationErrors.scheduled_activation_datetime}
-                                </p>
-                              )}
-                            </div>
-                          )}
+                          {/* Scheduled Activation DateTime */}
+                          <div>
+                            <Label htmlFor="scheduled_activation_datetime">Scheduled Activation</Label>
+                            <DateTimePicker
+                              id="scheduled_activation_datetime"
+                              value={formData.scheduled_activation_datetime || ''}
+                              onChange={(value) => handleFieldChange('scheduled_activation_datetime', value)}
+                              placeholder="Keep current"
+                              disabled={cloneMutation.isPending}
+                              minDateTime={new Date().toISOString()}
+                            />
+                            {validationErrors.scheduled_activation_datetime && (
+                              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                                {validationErrors.scheduled_activation_datetime}
+                              </p>
+                            )}
                           </div>
                         </div>
+                      </div>
 
-                        {/* Session Preview Table */}
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
-                            Selected Sessions ({selectedSessions.length})
-                          </h4>
-                          <div className="mt-4 max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
-                            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      {/* Session Preview Table */}
+                      {previewSessions.length > 0 && (
+                        <>
+                          <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-md">
+                            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
                               <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
                                 <tr>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Type</th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date</th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Location</th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Capacity</th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Location</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Capacity</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                                 </tr>
                               </thead>
-                              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
                                 {previewSessions.map((session) => (
-                                  <tr key={session.id}>
-                                    <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100">{session.mock_type}</td>
-                                    <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100">{session.exam_date}</td>
-                                    <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100">{session.location}</td>
-                                    <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100">{session.capacity}</td>
-                                    <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100">{getStatusDisplay(session)}</td>
+                                  <tr key={session.id} className="bg-blue-50 dark:bg-blue-900/20">
+                                    <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">{session.mock_type}</td>
+                                    <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">{session.exam_date}</td>
+                                    <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">{session.location}</td>
+                                    <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">{session.capacity}</td>
+                                    <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">{getStatusDisplay(session)}</td>
                                   </tr>
                                 ))}
                               </tbody>
                             </table>
                           </div>
+
+                          {/* Remaining count */}
                           {remainingCount > 0 && (
-                            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 italic">
                               ...and {remainingCount} more session{remainingCount !== 1 ? 's' : ''}
                             </p>
                           )}
-                        </div>
-                      </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Action Buttons - Fixed at bottom */}
-                <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 mt-6 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6">
-                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
-                    {/* Cancel Button */}
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      disabled={cloneMutation.isPending}
-                      className="inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Cancel
-                    </button>
+                {/* Actions */}
+                <div className="mt-6 sm:mt-4 sm:flex sm:flex-row-reverse sm:ml-10">
+                  {/* Clone Button */}
+                  <button
+                    type="button"
+                    onClick={handleConfirm}
+                    disabled={!formData.exam_date || cloneMutation.isPending}
+                    className={`inline-flex w-full justify-center items-center rounded-md px-3 py-2 text-sm font-semibold text-white shadow-sm sm:ml-3 sm:w-auto transition-colors ${
+                      !formData.exam_date || cloneMutation.isPending
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                    }`}
+                  >
+                    {cloneMutation.isPending ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Cloning...
+                      </>
+                    ) : (
+                      `Clone ${selectedSessions.length} Session${selectedSessions.length !== 1 ? 's' : ''}`
+                    )}
+                  </button>
 
-                    {/* Clone Button */}
-                    <button
-                      type="button"
-                      onClick={handleConfirm}
-                      disabled={!formData.exam_date || cloneMutation.isPending}
-                      className={`inline-flex w-full justify-center rounded-md px-4 py-2 text-sm font-semibold shadow-sm sm:w-auto ${
-                        !formData.exam_date || cloneMutation.isPending
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'
-                          : 'bg-blue-600 text-white hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
-                      }`}
-                    >
-                      {cloneMutation.isPending ? (
-                        <>
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Cloning {selectedSessions.length} session{selectedSessions.length !== 1 ? 's' : ''}...
-                        </>
-                      ) : (
-                        <>Clone {selectedSessions.length} Session{selectedSessions.length !== 1 ? 's' : ''}</>
-                      )}
-                    </button>
-                  </div>
+                  {/* Cancel Button */}
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    disabled={cloneMutation.isPending}
+                    className="inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:mt-0 sm:w-auto transition-colors"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </Dialog.Panel>
             </Transition.Child>
