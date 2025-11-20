@@ -367,7 +367,7 @@ function PasswordReset() {
 
               <div>
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <div className="mt-1">
+                <div className="mt-1 relative">
                   <Input
                     id="confirmPassword"
                     name="confirmPassword"
@@ -375,7 +375,19 @@ function PasswordReset() {
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pr-10"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
                 </div>
                 {confirmPassword && (
                   <div className={`flex items-center mt-1 text-sm ${passwordChecks.matches ? 'text-green-600' : 'text-red-500'}`}>
