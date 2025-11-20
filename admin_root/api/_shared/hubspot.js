@@ -2078,15 +2078,10 @@ class HubSpotService {
             });
           }
 
-          // If no bookings, set count to 0
+          // If no bookings found via associations, use the stored total_bookings value
+          // (associations may not be returned by search API, but the property is)
           if (bookingIds.length === 0) {
-            return {
-              ...exam,
-              properties: {
-                ...exam.properties,
-                total_bookings: '0'
-              }
-            };
+            return exam; // Keep original properties including total_bookings
           }
 
           // Batch fetch booking details to check is_active status
