@@ -23,6 +23,7 @@ import EditControls from '../components/admin/EditControls';
 import DeleteControls from '../components/admin/DeleteControls';
 import CancelBookingsModal from '../components/shared/CancelBookingsModal';
 import CreateBookingButton from '../components/admin/CreateBookingButton';
+import ExportCSVButton from '../components/admin/ExportCSVButton';
 import { useState } from 'react';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
@@ -339,10 +340,17 @@ function MockExamDetail() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Bookings ({bookingsData?.pagination?.total || 0})
               </h2>
-              <CreateBookingButton
-                mockExam={examData?.data}
-                onSuccess={handleBookingCreated}
-              />
+              <div className="flex items-center gap-2">
+                <ExportCSVButton
+                  bookings={bookingsData?.data || []}
+                  examId={id}
+                  disabled={!bookingsData?.data?.length}
+                />
+                <CreateBookingButton
+                  mockExam={examData?.data}
+                  onSuccess={handleBookingCreated}
+                />
+              </div>
             </div>
           </div>
 
