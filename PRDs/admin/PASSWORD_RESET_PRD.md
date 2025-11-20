@@ -1,24 +1,25 @@
-# PRD: Password Reset Feature Using Supabase Auth OTP
+# PRD: Password Reset Feature Using Custom OTP with HubSpot Email Delivery
 
 ## Document Information
-- **Feature**: Password Reset (Forgot Password) with OTP
+- **Feature**: Password Reset (Forgot Password) with Custom OTP
 - **Status**: Draft
 - **Priority**: High
-- **Estimated Effort**: 4-5 hours
+- **Estimated Effort**: 5-6 hours
 - **Confidence Score**: 9/10
 - **Created**: 2025-10-29
-- **Version**: 2.0.0 (Updated to OTP)
-- **Authentication Provider**: Supabase Auth (Email OTP)
+- **Version**: 3.0.0 (Custom OTP with HubSpot Email)
+- **Authentication Provider**: Supabase Auth (Password Update via Admin API)
+- **Email Delivery**: HubSpot Workflow via Webhook
 
 ## Table of Contents
 1. [Overview](#overview)
 2. [User Stories](#user-stories)
 3. [Technical Requirements](#technical-requirements)
-4. [Frontend Components](#frontend-components)
-5. [Backend Requirements](#backend-requirements)
-6. [User Flow](#user-flow)
-7. [Supabase Configuration](#supabase-configuration)
-8. [Email Templates](#email-templates)
+4. [Architecture](#architecture)
+5. [Frontend Components](#frontend-components)
+6. [Backend Requirements](#backend-requirements)
+7. [User Flow](#user-flow)
+8. [HubSpot Workflow Configuration](#hubspot-workflow-configuration)
 9. [Security Considerations](#security-considerations)
 10. [Edge Cases & Error Handling](#edge-cases--error-handling)
 11. [Testing Requirements](#testing-requirements)
@@ -33,20 +34,26 @@
 Currently, administrators who forget their passwords have no way to recover access to the admin dashboard. This creates support overhead and potential security risks if users resort to sharing credentials or using weak passwords.
 
 ### Solution
-Implement a **simple 3-step password reset flow** using Supabase Auth's Email OTP (One-Time Password):
+Implement a **simple 3-step password reset flow** using a custom OTP system with HubSpot for email delivery:
 
-1. User enters email → Receives 6-digit code
-2. User enters code → Code verified
-3. User sets new password → Done
+1. User enters email → Receives 6-digit code via HubSpot email
+2. User enters code → Code verified against Redis
+3. User sets new password → Password updated via Supabase Admin API
 
 ### Key Benefits
-- **Simpler Implementation**: Single page with step wizard (not 2 separate pages)
-- **No Redirects Needed**: User stays on same page, no URL configuration
-- **Mobile Friendly**: Easy to copy 6-digit code from email
-- **Familiar UX**: Users know how OTP works (like 2FA)
-- **Secure**: Same security as magic links but simpler
-- **No Backend Code**: Supabase handles everything
+- **HubSpot Email Delivery**: Branded emails via existing HubSpot workflows
+- **No SMTP Configuration**: Uses HubSpot's email infrastructure
+- **Full Control**: Custom OTP generation and validation logic
+- **Redis Storage**: Lightweight, auto-expiring OTP storage (~100 bytes per OTP)
+- **30-minute TTL**: Shorter expiry for better security
+- **Single Page UX**: All 3 steps on one page, no navigation
 - Self-service password recovery reduces admin burden
+
+### Why Custom OTP Instead of Supabase OTP?
+- **HubSpot Email Branding**: Use existing HubSpot email templates and workflows
+- **No SMTP Setup**: Avoid configuring external SMTP servers
+- **Webhook Integration**: Trigger HubSpot workflows for email delivery
+- **Existing Infrastructure**: Leverages Redis already in use for booking locks
 
 ---
 
@@ -54,17 +61,19 @@ Implement a **simple 3-step password reset flow** using Supabase Auth's Email OT
 
 ### Primary User Story
 **As an** administrator who forgot their password
-**I want to** reset my password using a code sent to my email
-**So that** I can regain access quickly without clicking links
+**I want to** reset my password using a code sent to my email via HubSpot
+**So that** I can regain access quickly with branded PrepDoctors emails
 
 ### Acceptance Criteria
 - [ ] "Forgot password?" link is visible on login page
 - [ ] Clicking link navigates to password reset page
 - [ ] User can enter email and request OTP code
-- [ ] System sends 6-digit code via email (expires in 1 hour)
+- [ ] System generates 6-digit code and stores in Redis (expires in 30 minutes)
+- [ ] System triggers HubSpot workflow to send branded email
 - [ ] User enters code on same page (no navigation needed)
-- [ ] System verifies code and allows password update
+- [ ] System verifies code against Redis
 - [ ] User sets new password with real-time validation
+- [ ] System updates password via Supabase Admin API
 - [ ] Success message appears and redirects to login
 - [ ] Old password becomes invalid after reset
 - [ ] Clear error messages for invalid/expired codes
@@ -78,45 +87,105 @@ Implement a **simple 3-step password reset flow** using Supabase Auth's Email OT
 
 ### Core Technologies
 - **Frontend**: React 18, React hooks (useState for step management)
-- **Backend**: Supabase Auth API (serverless)
-- **Email Service**: Supabase SMTP (or custom SMTP)
-- **Authentication**: Supabase Email OTP
+- **Backend**: Vercel Serverless Functions
+- **OTP Storage**: Redis (existing infrastructure)
+- **Email Delivery**: HubSpot Workflow via Webhook
+- **Password Update**: Supabase Admin API
 - **State Management**: React hooks only (no router needed for steps)
 
-### Supabase Auth Flow (OTP)
+### Custom OTP Flow
 Simple 3-step flow all on one page:
 
 ```
 Step 1: Request OTP
-User enters email → supabase.auth.signInWithOtp() → 6-digit code sent
+User enters email → API generates OTP → Redis stores OTP → HubSpot sends email
 
 Step 2: Verify OTP
-User enters code → supabase.auth.verifyOtp() → Session created
+User enters code → API verifies against Redis → Returns success/failure
 
 Step 3: Update Password
-User enters new password → supabase.auth.updateUser() → Done
+User enters new password → Supabase Admin API updates password → Done
 ```
 
 ### Data Flow
 ```
 User clicks "Forgot Password?" → /reset-password page (Step 1)
     ↓
-User enters email → supabase.auth.signInWithOtp({ email, shouldCreateUser: false })
+User enters email → POST /api/auth/request-otp
     ↓
-Supabase sends email with 6-digit code (e.g., "123456")
+API generates 6-digit OTP
+    ↓
+API stores in Redis: otp:{email} = {code, attempts, createdAt} (TTL: 30 min)
+    ↓
+API sends webhook to HubSpot workflow endpoint
+    ↓
+HubSpot workflow sends branded email with OTP code
     ↓
 Page shows Step 2: "Enter the code we sent to your email"
     ↓
-User enters code → supabase.auth.verifyOtp({ email, token: '123456', type: 'email' })
+User enters code → POST /api/auth/verify-otp
+    ↓
+API verifies code against Redis (increments attempts on failure)
     ↓
 If valid: Page shows Step 3: "Set New Password"
     ↓
-User enters new password → supabase.auth.updateUser({ password })
+User enters new password → POST /api/auth/update-password
+    ↓
+API uses Supabase Admin API to update password
     ↓
 Success → Redirect to /login with success message
 ```
 
 **Key Advantage**: All 3 steps happen on ONE page, no navigation between pages!
+
+---
+
+## Architecture
+
+### System Components
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   React App     │────▶│  Vercel API     │────▶│     Redis       │
+│  (Frontend)     │     │  (Serverless)   │     │   (OTP Store)   │
+└─────────────────┘     └────────┬────────┘     └─────────────────┘
+                                 │
+                                 │ Webhook
+                                 ▼
+                        ┌─────────────────┐     ┌─────────────────┐
+                        │ HubSpot Webhook │────▶│ HubSpot Email   │
+                        │    Endpoint     │     │   Workflow      │
+                        └─────────────────┘     └─────────────────┘
+                                                        │
+                                                        ▼
+                                               ┌─────────────────┐
+                                               │  User's Inbox   │
+                                               └─────────────────┘
+```
+
+### Redis Storage Schema
+
+**Key**: `otp:{email}`
+**Value**: JSON object
+**TTL**: 1800 seconds (30 minutes)
+
+```javascript
+{
+  "code": "487392",           // 6-digit OTP
+  "createdAt": 1699123456789  // Timestamp for rate limiting
+}
+```
+
+**Memory Usage**: ~80 bytes per OTP
+**Impact on 30MB limit**: Negligible (<0.1%)
+
+### Rate Limiting Keys
+
+**Key**: `otp:ratelimit:{email}`
+**Value**: "1"
+**TTL**: 60 seconds
+
+Used to enforce 1 OTP request per 60 seconds per email.
 
 ---
 
@@ -289,21 +358,500 @@ Success → Redirect to /login with success message
 
 ## Backend Requirements
 
-### Supabase Configuration (Dashboard)
+### API Endpoints
 
-**1. Enable Email OTP**
+#### 1. POST /api/auth/request-otp
 
-Navigate to: **Authentication → Providers → Email**
+**Location**: `admin_root/api/auth/request-otp.js`
 
-- ✅ Enable "Email OTP"
-- Set OTP expiration: `3600` seconds (1 hour)
-- Rate limit: Default (1 request per 60 seconds per email)
+**Purpose**: Generate OTP, store in Redis, trigger HubSpot email
 
-**2. Email Template**
+**Request**:
+```javascript
+{
+  "email": "admin@prepdoctors.com"
+}
+```
 
-Navigate to: **Authentication → Email Templates → Magic Link**
+**Response (Success)**:
+```javascript
+{
+  "success": true,
+  "message": "If this email exists, a code has been sent."
+}
+```
 
-**Update template to show OTP code** (use `{{ .Token }}` variable):
+**Response (Rate Limited)**:
+```javascript
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "Please wait 60 seconds before requesting a new code."
+  }
+}
+```
+
+**Implementation**:
+```javascript
+const Joi = require('joi');
+const RedisLockService = require('../_shared/redis');
+const axios = require('axios');
+const { createClient } = require('@supabase/supabase-js');
+
+// Validation schema
+const requestOtpSchema = Joi.object({
+  email: Joi.string().email().required()
+});
+
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    // Validate input
+    const { error, value } = requestOtpSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
+      });
+    }
+
+    const { email } = value;
+    const redis = new RedisLockService();
+
+    // Check rate limit
+    const rateLimitKey = `otp:ratelimit:${email}`;
+    const isRateLimited = await redis.get(rateLimitKey);
+
+    if (isRateLimited) {
+      await redis.close();
+      return res.status(429).json({
+        success: false,
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Please wait 60 seconds before requesting a new code.'
+        }
+      });
+    }
+
+    // Check if user exists in Supabase (optional - for security, always return success)
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+    const userExists = users?.users?.some(u => u.email === email);
+
+    if (userExists) {
+      // Generate 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Store in Redis with 30-minute TTL
+      const otpData = {
+        code: otp,
+        createdAt: Date.now()
+      };
+
+      await redis.setex(`otp:${email}`, 1800, JSON.stringify(otpData));
+
+      // Set rate limit (60 seconds)
+      await redis.setex(rateLimitKey, 60, '1');
+
+      // Trigger HubSpot workflow via webhook
+      const hubspotWebhookUrl = 'https://api-na1.hubapi.com/automation/v4/webhook-triggers/46814382/GC6xV7M';
+
+      await axios.post(hubspotWebhookUrl, {
+        email: email,
+        otp: otp
+      });
+
+      console.log(`✅ OTP sent to ${email}`);
+    }
+
+    await redis.close();
+
+    // Always return success (security - don't reveal if email exists)
+    return res.status(200).json({
+      success: true,
+      message: 'If this email exists, a code has been sent.'
+    });
+
+  } catch (error) {
+    console.error('❌ Error in request-otp:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'An error occurred. Please try again.' }
+    });
+  }
+};
+```
+
+#### 2. POST /api/auth/verify-otp
+
+**Location**: `admin_root/api/auth/verify-otp.js`
+
+**Purpose**: Verify OTP code against Redis
+
+**Request**:
+```javascript
+{
+  "email": "admin@prepdoctors.com",
+  "code": "487392"
+}
+```
+
+**Response (Success)**:
+```javascript
+{
+  "success": true,
+  "message": "Code verified successfully."
+}
+```
+
+**Response (Invalid Code)**:
+```javascript
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_CODE",
+    "message": "Invalid code. Please check and try again."
+  }
+}
+```
+
+**Response (Expired)**:
+```javascript
+{
+  "success": false,
+  "error": {
+    "code": "CODE_EXPIRED",
+    "message": "This code has expired. Please request a new one."
+  }
+}
+```
+
+**Implementation**:
+```javascript
+const Joi = require('joi');
+const RedisLockService = require('../_shared/redis');
+
+const verifyOtpSchema = Joi.object({
+  email: Joi.string().email().required(),
+  code: Joi.string().length(6).pattern(/^\d+$/).required()
+});
+
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { error, value } = verifyOtpSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
+      });
+    }
+
+    const { email, code } = value;
+    const redis = new RedisLockService();
+
+    // Get OTP data from Redis
+    const otpKey = `otp:${email}`;
+    const otpDataStr = await redis.get(otpKey);
+
+    if (!otpDataStr) {
+      await redis.close();
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'CODE_EXPIRED',
+          message: 'This code has expired. Please request a new one.'
+        }
+      });
+    }
+
+    const otpData = JSON.parse(otpDataStr);
+
+    // Verify code
+    if (otpData.code !== code) {
+      await redis.close();
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_CODE',
+          message: 'Invalid code. Please check and try again.'
+        }
+      });
+    }
+
+    // Code is valid - mark as verified (don't delete yet, need for password update)
+    otpData.verified = true;
+    await redis.setex(otpKey, 1800, JSON.stringify(otpData));
+    await redis.close();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Code verified successfully.'
+    });
+
+  } catch (error) {
+    console.error('❌ Error in verify-otp:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'An error occurred. Please try again.' }
+    });
+  }
+};
+```
+
+#### 3. POST /api/auth/update-password
+
+**Location**: `admin_root/api/auth/update-password.js`
+
+**Purpose**: Update password via Supabase Admin API
+
+**Request**:
+```javascript
+{
+  "email": "admin@prepdoctors.com",
+  "password": "NewSecure123!"
+}
+```
+
+**Response (Success)**:
+```javascript
+{
+  "success": true,
+  "message": "Password updated successfully."
+}
+```
+
+**Implementation**:
+```javascript
+const Joi = require('joi');
+const RedisLockService = require('../_shared/redis');
+const { createClient } = require('@supabase/supabase-js');
+
+const updatePasswordSchema = Joi.object({
+  email: Joi.string().email().required(),
+  password: Joi.string().min(8).required()
+});
+
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { error, value } = updatePasswordSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
+      });
+    }
+
+    const { email, password } = value;
+    const redis = new RedisLockService();
+
+    // Verify OTP was validated
+    const otpKey = `otp:${email}`;
+    const otpDataStr = await redis.get(otpKey);
+
+    if (!otpDataStr) {
+      await redis.close();
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'SESSION_EXPIRED',
+          message: 'Session expired. Please start the password reset process again.'
+        }
+      });
+    }
+
+    const otpData = JSON.parse(otpDataStr);
+
+    if (!otpData.verified) {
+      await redis.close();
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'CODE_NOT_VERIFIED',
+          message: 'Please verify your code first.'
+        }
+      });
+    }
+
+    // Update password via Supabase Admin API
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Find user by email
+    const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+    const user = users?.users?.find(u => u.email === email);
+
+    if (!user) {
+      await redis.close();
+      return res.status(400).json({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found.' }
+      });
+    }
+
+    // Update password
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      user.id,
+      { password: password }
+    );
+
+    if (updateError) {
+      await redis.close();
+      console.error('❌ Supabase password update error:', updateError.message);
+      return res.status(500).json({
+        success: false,
+        error: { code: 'UPDATE_FAILED', message: 'Failed to update password.' }
+      });
+    }
+
+    // Delete OTP from Redis (cleanup)
+    await redis.del(otpKey);
+    await redis.close();
+
+    console.log(`✅ Password updated for ${email}`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password updated successfully.'
+    });
+
+  } catch (error) {
+    console.error('❌ Error in update-password:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'An error occurred. Please try again.' }
+    });
+  }
+};
+```
+
+### Environment Variables Required
+
+```bash
+# Existing
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+PD_Bookings_Cache_REDIS_URL=redis://...
+
+# No new variables needed - HubSpot webhook URL is hardcoded
+```
+
+---
+
+## User Flow
+
+### Happy Path: Successful Password Reset
+
+```
+1. User on login page, forgot password
+2. Clicks "Forgot password?" link
+3. Navigates to /reset-password page (Step 1: Email)
+4. Enters email: admin@prepdoctors.com
+5. Clicks "Send Code"
+6. Loading spinner appears
+7. API generates OTP, stores in Redis, triggers HubSpot webhook
+8. HubSpot workflow sends branded email
+9. Success: Page transitions to Step 2 (Verify Code)
+10. Message: "We sent a 6-digit code to admin@prepdoctors.com"
+11. Email arrives within 1-2 minutes (HubSpot delivery)
+12. User opens email, sees code: "487392"
+13. User enters code in 6 input boxes: 4-8-7-3-9-2
+14. Inputs auto-advance between boxes
+15. Clicks "Verify Code"
+16. API verifies against Redis
+17. Success: Page transitions to Step 3 (Set Password)
+18. User enters new password: "NewSecure123!"
+19. Password strength indicator shows "Strong"
+20. User confirms password: "NewSecure123!"
+21. All validation checks pass (✓ green checkmarks)
+22. Clicks "Update Password"
+23. API updates password via Supabase Admin API
+24. Success message: "Password Updated!"
+25. Countdown: "Redirecting to login in 3... 2... 1..."
+26. Redirected to /login
+27. User signs in with new password
+28. Successfully authenticated → Dashboard
+```
+
+### Alternative Path: Resend OTP Code
+
+```
+1-11. [Same as happy path]
+12. User didn't receive email or code expired
+13. Waits 60 seconds (rate limit countdown)
+14. Clicks "Resend Code"
+15. New code generated, stored in Redis, HubSpot sends new email
+16. Continues from step 11
+```
+
+### Alternative Path: Invalid Code
+
+```
+1-13. [Same as happy path]
+14. User enters wrong code: "123456"
+15. Clicks "Verify Code"
+16. Error message: "Invalid code. Please check and try again. (4 attempts remaining)"
+17. Input boxes turn red
+18. User can try again (max 5 attempts)
+19. User enters correct code
+20. Continues to Step 3
+```
+
+### Alternative Path: Code Expired
+
+```
+1-13. [Same as happy path but waited 30+ minutes]
+14. User enters expired code
+15. Clicks "Verify Code"
+16. Error message: "This code has expired. Please request a new one."
+17. "Request New Code" button appears
+18. User clicks button → Back to Step 1
+```
+
+---
+
+## HubSpot Workflow Configuration
+
+### Webhook Endpoint
+
+**URL**: `https://api-na1.hubapi.com/automation/v4/webhook-triggers/46814382/GC6xV7M`
+
+### Webhook Payload
+
+```javascript
+{
+  "email": "admin@prepdoctors.com",
+  "otp": "487392"
+}
+```
+
+### HubSpot Workflow Setup
+
+1. **Trigger**: Webhook receives payload
+2. **Action 1**: Look up contact by email (or create enrollment record)
+3. **Action 2**: Send email using template
+4. **Email Template Variables**:
+   - `{{ otp }}` - The 6-digit code
+   - `{{ email }}` - The recipient email
+
+### Email Template (HubSpot)
 
 ```html
 <!DOCTYPE html>
@@ -339,10 +887,10 @@ Navigate to: **Authentication → Email Templates → Magic Link**
       <p>Enter this code to reset your password:</p>
 
       <div class="code">
-        {{ .Token }}
+        {{ otp }}
       </div>
 
-      <p><strong>This code expires in 1 hour.</strong></p>
+      <p><strong>This code expires in 30 minutes.</strong></p>
 
       <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
 
@@ -359,151 +907,15 @@ Navigate to: **Authentication → Email Templates → Magic Link**
 </html>
 ```
 
-**Template Variables**:
-- `{{ .Token }}` - The 6-digit OTP code (e.g., "123456")
-- `{{ .SiteURL }}` - Your site URL (not needed for OTP, but available)
-
-**3. Email Settings**
-
-Navigate to: **Authentication → Email → SMTP Settings**
-
-**For Development** (use Supabase default):
-- Supabase provides built-in SMTP
-- Limited to 2 emails per hour
-- Suitable for testing only
-
-**For Production** (configure custom SMTP):
-```
-SMTP Host: smtp.sendgrid.net
-SMTP Port: 587
-SMTP User: apikey
-SMTP Password: [Your SendGrid API Key]
-Sender Email: noreply@prepdoctors.com
-Sender Name: PrepDoctors Admin
-```
-
-**4. Site URL Configuration**
-
-Navigate to: **Settings → General → Site URL**
-
-```
-Production: https://admin.prepdoctors.com
-Development: http://localhost:5173
-```
-
-**5. Rate Limiting (Automatic)**
-
-- Default: 1 OTP request per 60 seconds per email
-- Code expires after 1 hour
-- Maximum 86,400 seconds (1 day) expiration
-
-### No Backend Endpoints Needed
-
-Supabase Auth handles all backend operations:
-- ✅ OTP generation and email sending
-- ✅ Code verification
-- ✅ Password hashing and storage
-- ✅ Token expiry management
-- ✅ Rate limiting
-- ✅ Security best practices
-
-**Our frontend only needs 3 API calls**:
-1. `supabase.auth.signInWithOtp()` - Send OTP code
-2. `supabase.auth.verifyOtp()` - Verify code
-3. `supabase.auth.updateUser()` - Update password
-
-### NO Redirect URL Configuration Needed!
-
-Unlike magic links, OTP doesn't require redirect URL configuration. Users stay on the same page throughout the entire flow.
-
----
-
-## User Flow
-
-### Happy Path: Successful Password Reset
-
-```
-1. User on login page, forgot password
-2. Clicks "Forgot password?" link
-3. Navigates to /reset-password page (Step 1: Email)
-4. Enters email: admin@prepdoctors.com
-5. Clicks "Send Code"
-6. Loading spinner appears
-7. Success: Page transitions to Step 2 (Verify Code)
-8. Message: "We sent a 6-digit code to admin@prepdoctors.com"
-9. Email arrives within 1 minute
-10. User opens email, sees code: "487392"
-11. User enters code in 6 input boxes: 4-8-7-3-9-2
-12. Inputs auto-advance between boxes
-13. Clicks "Verify Code" (or auto-submits after 6 digits)
-14. Loading spinner appears
-15. Success: Page transitions to Step 3 (Set Password)
-16. User enters new password: "NewSecure123!"
-17. Password strength indicator shows "Strong"
-18. User confirms password: "NewSecure123!"
-19. All validation checks pass (✓ green checkmarks)
-20. Clicks "Update Password"
-21. Loading spinner appears
-22. Success message: "Password Updated!"
-23. Countdown: "Redirecting to login in 3... 2... 1..."
-24. Redirected to /login
-25. User signs in with new password
-26. Successfully authenticated → Dashboard
-```
-
-### Alternative Path: Resend OTP Code
-
-```
-1-11. [Same as happy path]
-12. User didn't receive email or code expired
-13. Waits 60 seconds (rate limit countdown)
-14. Clicks "Resend Code"
-15. New code sent
-16. Continues from step 11
-```
-
-### Alternative Path: Invalid Code
-
-```
-1-13. [Same as happy path]
-14. User enters wrong code: "123456"
-15. Clicks "Verify Code"
-16. Error message: "Invalid code. Please check and try again."
-17. Input boxes turn red
-18. User can try again (3-5 attempts before lockout)
-19. User enters correct code
-20. Continues to Step 3
-```
-
-### Alternative Path: Code Expired
-
-```
-1-13. [Same as happy path but waited 1+ hour]
-14. User enters expired code
-15. Clicks "Verify Code"
-16. Error message: "This code has expired. Please request a new one."
-17. "Request New Code" button appears
-18. User clicks button → Back to Step 1
-```
-
-### Alternative Path: User Goes Back
-
-```
-At any step, user can click "← Back" or "Back to Sign In"
-- From Step 2 → Returns to Step 1 (can change email)
-- From Step 1 → Returns to /login
-```
-
 ---
 
 ## Security Considerations
 
 ### 1. OTP Security
-- **Expiry**: Codes expire after 1 hour
-- **Single Use**: Code becomes invalid after successful verification
+- **Expiry**: Codes expire after 30 minutes (shorter is more secure)
+- **Single Use**: Code becomes invalid after successful password update
 - **Numeric Only**: 6 digits (000000-999999) = 1 million combinations
-- **Brute Force Protection**: Rate limiting prevents automated attempts
-- **Secure Transmission**: Codes sent via email, not SMS (no SIM swapping risk)
+- **Secure Storage**: OTP stored in Redis, not in logs or responses
 
 ### 2. Email Enumeration Prevention
 - **Generic Success**: Same message for existing and non-existing emails
@@ -511,19 +923,22 @@ At any step, user can click "← Back" or "Back to Sign In"
 - **Timing Attack Prevention**: Consistent response times
 
 ### 3. Rate Limiting
-- **Request Limit**: 1 OTP per 60 seconds per email (Supabase default)
-- **Verification Attempts**: Limited failed attempts before lockout
-- **Email Limit**: SMTP rate limits apply
+- **Request Limit**: 1 OTP per 60 seconds per email
+- **Auto-cleanup**: OTP deleted after password update or expiry
 
 ### 4. Password Requirements
 - **Minimum Length**: 8 characters
 - **Complexity**: Must include letters and numbers
 - **Real-time Validation**: Check password strength before submission
-- **No Common Passwords**: Supabase has built-in checking
 
 ### 5. Session Management
-- **Auto Logout**: Old sessions invalidated after password change
-- **Force Re-login**: User must sign in with new password
+- **Verification Required**: Password update only after OTP verified
+- **OTP Cleanup**: OTP deleted from Redis after password update
+
+### 6. Redis Security
+- **No Sensitive Data in Keys**: Only email in key name
+- **Auto-expiration**: TTL ensures cleanup
+- **Encrypted Connection**: Redis URL uses TLS
 
 ---
 
@@ -532,6 +947,7 @@ At any step, user can click "← Back" or "Back to Sign In"
 ### 1. Invalid Email Format
 **Scenario**: User enters malformed email
 **Frontend Validation**: HTML5 email validation + custom regex
+**Backend Validation**: Joi schema validation
 **Error Message**: "Please enter a valid email address"
 **UI Behavior**: Disable submit button, show error below input
 
@@ -542,21 +958,21 @@ At any step, user can click "← Back" or "Back to Sign In"
 
 ### 3. Invalid OTP Code
 **Scenario**: User enters wrong 6-digit code
-**Supabase Response**: 400 error "Invalid token"
+**Backend Response**: 400 error "INVALID_CODE"
 **Error Message**: "Invalid code. Please check and try again."
-**UI Behavior**: Input boxes turn red, allow retry (max 3-5 attempts)
+**UI Behavior**: Input boxes turn red, allow retry
 
 ### 4. OTP Code Expired
-**Scenario**: User waits >1 hour before entering code
-**Supabase Response**: 400 error "Token has expired"
+**Scenario**: User waits >30 minutes before entering code
+**Backend Response**: 400 error "CODE_EXPIRED"
 **Error Message**: "This code has expired. Please request a new one."
 **UI Behavior**: Show "Request New Code" button
 
 ### 5. Rate Limit Exceeded
 **Scenario**: User requests multiple codes too quickly
-**Supabase Response**: 429 error "Too many requests"
+**Backend Response**: 429 error "RATE_LIMITED"
 **Error Message**: "Please wait 60 seconds before requesting a new code."
-**UI Behavior**: Show countdown timer, disable "Resend" button
+**UI Behavior**: Show countdown timer, disable "Send Code" button
 
 ### 6. Weak Password
 **Scenario**: Password doesn't meet requirements
@@ -570,16 +986,22 @@ At any step, user can click "← Back" or "Back to Sign In"
 **Error Message**: "Passwords do not match"
 **UI Behavior**: Disable submit, show error
 
-### 8. Email Service Down
-**Scenario**: SMTP server unavailable
-**Supabase Behavior**: Queues email, retries automatically
-**User Experience**: Success message shown, email may be delayed
-**Fallback**: User can request again
+### 8. HubSpot Webhook Failure
+**Scenario**: HubSpot webhook endpoint unavailable
+**Backend Handling**: Log error, still return success (don't reveal)
+**User Experience**: User won't receive email
+**Fallback**: User can try again after 60 seconds
 
 ### 9. User Already Authenticated
 **Scenario**: Logged-in user tries to reset password
 **Detection**: Check auth state on page load
 **UI Behavior**: Redirect to dashboard
+
+### 10. Session Expired Before Password Update
+**Scenario**: User verifies OTP but waits >30 minutes to set password
+**Backend Response**: 400 error "SESSION_EXPIRED"
+**Error Message**: "Session expired. Please start the password reset process again."
+**UI Behavior**: Return to Step 1
 
 ---
 
@@ -587,7 +1009,42 @@ At any step, user can click "← Back" or "Back to Sign In"
 
 ### Unit Tests
 
-#### PasswordReset Component Tests
+#### API Endpoint Tests
+**File**: `admin_root/tests/unit/auth/request-otp.test.js`
+
+```javascript
+describe('POST /api/auth/request-otp', () => {
+  test('generates OTP and stores in Redis', async () => {});
+  test('triggers HubSpot webhook with correct payload', async () => {});
+  test('enforces rate limiting (1 per 60 seconds)', async () => {});
+  test('returns generic success for non-existent email', async () => {});
+  test('validates email format', async () => {});
+});
+```
+
+**File**: `admin_root/tests/unit/auth/verify-otp.test.js`
+
+```javascript
+describe('POST /api/auth/verify-otp', () => {
+  test('verifies correct OTP code', async () => {});
+  test('rejects incorrect OTP code', async () => {});
+  test('returns expired error for missing OTP', async () => {});
+});
+```
+
+**File**: `admin_root/tests/unit/auth/update-password.test.js`
+
+```javascript
+describe('POST /api/auth/update-password', () => {
+  test('updates password via Supabase Admin API', async () => {});
+  test('requires OTP to be verified first', async () => {});
+  test('deletes OTP from Redis after success', async () => {});
+  test('validates password minimum length', async () => {});
+  test('returns error for non-existent user', async () => {});
+});
+```
+
+#### Frontend Component Tests
 **File**: `admin_frontend/src/pages/__tests__/PasswordReset.test.jsx`
 
 ```javascript
@@ -596,7 +1053,7 @@ describe('PasswordReset', () => {
     test('renders email input form', () => {});
     test('validates email format', () => {});
     test('disables submit for invalid email', () => {});
-    test('sends OTP on submit', () => {});
+    test('calls request-otp API on submit', () => {});
     test('transitions to Step 2 on success', () => {});
   });
 
@@ -604,6 +1061,7 @@ describe('PasswordReset', () => {
     test('renders 6 OTP input boxes', () => {});
     test('auto-advances between input boxes', () => {});
     test('handles paste of 6-digit code', () => {});
+    test('calls verify-otp API on submit', () => {});
     test('shows error for invalid code', () => {});
     test('allows resend after 60 seconds', () => {});
     test('transitions to Step 3 on success', () => {});
@@ -613,7 +1071,7 @@ describe('PasswordReset', () => {
     test('validates password requirements', () => {});
     test('shows password strength indicator', () => {});
     test('validates passwords match', () => {});
-    test('updates password on submit', () => {});
+    test('calls update-password API on submit', () => {});
     test('redirects to login on success', () => {});
   });
 
@@ -622,60 +1080,36 @@ describe('PasswordReset', () => {
 });
 ```
 
-#### OTPInput Component Tests
-**File**: `admin_frontend/src/components/__tests__/OTPInput.test.jsx`
-
-```javascript
-describe('OTPInput', () => {
-  test('renders 6 input boxes', () => {});
-  test('only accepts numeric input', () => {});
-  test('auto-focuses next box on digit entry', () => {});
-  test('auto-focuses previous box on backspace', () => {});
-  test('handles paste of 6-digit code', () => {});
-  test('shows error state with red borders', () => {});
-  test('calls onChange with complete code', () => {});
-});
-```
-
 ### Integration Tests
 
-**File**: `admin_root/tests/integration/test-password-reset-otp.js`
+**File**: `admin_root/tests/integration/password-reset-flow.test.js`
 
 ```javascript
-describe('Password Reset OTP Flow', () => {
+describe('Password Reset Flow (Integration)', () => {
   test('complete flow: request → verify → update', async () => {
-    // 1. Navigate to reset password
-    // 2. Enter email and send OTP
-    // 3. Get OTP code from Supabase test helpers
-    // 4. Verify OTP code
-    // 5. Set new password
-    // 6. Verify redirect to login
-    // 7. Login with new password
-    // 8. Verify authenticated
-  });
-
-  test('expired code handling', async () => {
-    // 1. Generate OTP
-    // 2. Wait for expiration
-    // 3. Try to verify
-    // 4. Verify error message
-    // 5. Request new code
-  });
-
-  test('invalid code handling', async () => {
     // 1. Request OTP
-    // 2. Enter wrong code
-    // 3. Verify error message
-    // 4. Enter correct code
-    // 5. Verify success
+    // 2. Verify OTP stored in Redis
+    // 3. Verify code
+    // 4. Update password
+    // 5. Verify can login with new password
   });
 
-  test('resend code flow', async () => {
-    // 1. Request OTP
-    // 2. Wait 60 seconds
-    // 3. Click resend
-    // 4. Verify new code sent
-    // 5. Verify old code invalid
+  test('HubSpot webhook is triggered with correct payload', async () => {
+    // Mock HubSpot endpoint
+    // Verify payload contains email and otp
+  });
+
+  test('rate limiting prevents rapid requests', async () => {
+    // Request OTP
+    // Immediately request again
+    // Verify 429 response
+  });
+
+  test('expired OTP returns correct error', async () => {
+    // Request OTP
+    // Manually expire in Redis
+    // Attempt to verify
+    // Verify error response
   });
 });
 ```
@@ -689,17 +1123,19 @@ describe('Password Reset OTP Flow', () => {
 - [ ] Loading state shows during request
 - [ ] Transitions to Step 2 on success
 - [ ] Error shown for network issues
+- [ ] Rate limit message after rapid requests
 
-**Email**:
-- [ ] OTP email received (check spam)
+**Email Delivery**:
+- [ ] HubSpot workflow triggered
+- [ ] Email received (check spam)
 - [ ] 6-digit code displayed prominently
 - [ ] Email styling renders correctly
-- [ ] Expiry time mentioned
+- [ ] Expiry time mentioned (30 minutes)
 
 **Step 2: OTP Verification**:
 - [ ] 6 input boxes render
 - [ ] Auto-focus between boxes works
-- [ ] Paste support works (try pasting "123456")
+- [ ] Paste support works
 - [ ] Only accepts numbers
 - [ ] Resend button disabled for 60 seconds
 - [ ] Countdown timer shows correctly
@@ -724,29 +1160,36 @@ describe('Password Reset OTP Flow', () => {
 - [ ] Dark mode styling correct
 - [ ] Mobile responsive
 - [ ] Keyboard navigation works
-- [ ] Screen reader accessible
 
 ---
 
 ## Implementation Checklist
 
-### Phase 1: Supabase Configuration (30 min)
+### Phase 1: Backend API Endpoints (2 hours)
 
-- [ ] Enable Email OTP in Supabase Dashboard
-  - [ ] Navigate to Auth → Providers → Email
-  - [ ] Enable "Email OTP"
-  - [ ] Set expiration to 3600 seconds
-- [ ] Update email template to show OTP code
-  - [ ] Use `{{ .Token }}` variable
-  - [ ] Style code prominently
-  - [ ] Test template
-- [ ] Configure SMTP (if production)
-  - [ ] Set up SendGrid
-  - [ ] Configure in Supabase
-  - [ ] Send test email
-- [ ] Set site URL
+- [ ] Create request-otp endpoint
+  - [ ] OTP generation (6 digits)
+  - [ ] Redis storage with 30-minute TTL
+  - [ ] Rate limiting (60 seconds)
+  - [ ] HubSpot webhook trigger
+  - [ ] Joi validation
+- [ ] Create verify-otp endpoint
+  - [ ] Redis lookup
+  - [ ] Verified flag setting
+- [ ] Create update-password endpoint
+  - [ ] Verification check
+  - [ ] Supabase Admin API call
+  - [ ] Redis cleanup
+  - [ ] Joi validation
 
-### Phase 2: Frontend Components (2-3 hours)
+### Phase 2: HubSpot Workflow (30 min)
+
+- [ ] Create or update HubSpot workflow
+- [ ] Configure webhook trigger
+- [ ] Create email template with OTP variable
+- [ ] Test email delivery
+
+### Phase 3: Frontend Components (2-3 hours)
 
 - [ ] Create PasswordReset page with step wizard
   - [ ] Step 1: Email input
@@ -769,35 +1212,21 @@ describe('Password Reset OTP Flow', () => {
 - [ ] Update App routing
   - [ ] Add /reset-password route
 
-### Phase 3: Integration & Testing (1 hour)
+### Phase 4: Testing (1 hour)
 
-- [ ] Test complete OTP flow
-  - [ ] Email sent and received
-  - [ ] Code verification works
-  - [ ] Password update succeeds
+- [ ] Write unit tests for API endpoints
+- [ ] Write component tests
+- [ ] Test complete flow manually
 - [ ] Test error scenarios
-  - [ ] Invalid code
-  - [ ] Expired code
-  - [ ] Weak password
-  - [ ] Rate limiting
-- [ ] Test resend functionality
+- [ ] Test HubSpot email delivery
+- [ ] Test rate limiting
 - [ ] Test in dark mode
 - [ ] Test mobile responsiveness
 
-### Phase 4: Code Review & Polish (30 min)
+### Phase 5: Documentation & Deployment (30 min)
 
-- [ ] Review code for best practices
-- [ ] Check accessibility
-- [ ] Verify error messages
-- [ ] Test performance
-- [ ] Remove console logs
-
-### Phase 5: Documentation & Deployment (1 hour)
-
-- [ ] Update component documentation
+- [ ] Update API documentation
 - [ ] Add JSDoc comments
-- [ ] Update README
-- [ ] Build and test production
 - [ ] Deploy to staging
 - [ ] Run smoke tests
 - [ ] Deploy to production
@@ -809,138 +1238,93 @@ describe('Password Reset OTP Flow', () => {
 
 ### Functional Metrics
 - ✅ OTP request succeeds 100% of time
-- ✅ Emails delivered within 2 minutes
+- ✅ HubSpot email delivered within 2 minutes
 - ✅ Code verification succeeds with valid code
 - ✅ Password update succeeds after verification
 - ✅ Old password invalid after reset
 
 ### User Experience Metrics
 - ⏱️ Reset page loads within 500ms
-- ⏱️ Email arrives within 2 minutes
-- ⏱️ Code verification completes within 1 second
-- ⏱️ Password update completes within 2 seconds
+- ⏱️ API response times under 1 second
+- ⏱️ HubSpot email arrives within 2 minutes
 - ⏱️ No page navigation required (single page)
 - 📊 Clear instructions at each step
 
 ### Security Metrics
-- 🔒 Codes expire after 1 hour
+- 🔒 Codes expire after 30 minutes
 - 🔒 Codes cannot be reused
-- 🔒 Rate limiting prevents abuse
+- 🔒 Rate limiting (1 per 60 seconds)
 - 🔒 No email enumeration
 - 🔒 Weak passwords rejected
+
+### Technical Metrics
+- 📊 Redis memory usage: <1KB per OTP
+- 📊 99.9% HubSpot webhook delivery success
+- 📊 Zero orphaned OTPs (TTL auto-cleanup)
 
 ---
 
 ## Dependencies & Constraints
 
 ### Dependencies
-- Supabase Auth service
-- SMTP service for email
-- Existing AuthContext
+- Redis (existing infrastructure)
+- Supabase Auth Admin API
+- HubSpot Workflow API
 - Existing UI components
+- Axios for HTTP requests
 
 ### Constraints
-- Must use Supabase Auth (no custom backend)
 - OTP rate limited to 1 per 60 seconds
-- Code expires after 1 hour (configurable)
-- Email delivery depends on SMTP
+- Code expires after 30 minutes
+- Email delivery depends on HubSpot
+- Requires SUPABASE_SERVICE_ROLE_KEY
 
 ### Assumptions
 - Users have email access
-- Users can copy 6 digits accurately
-- Email service is reliable
+- HubSpot workflow is configured and active
+- Redis has sufficient memory (minimal impact)
+- Supabase Admin API is available
 
 ---
 
-## Comparison: OTP vs Magic Link
+## Comparison: Custom OTP vs Supabase OTP
 
-| Feature | OTP (This PRD) | Magic Link (Alternative) |
-|---------|----------------|--------------------------|
-| **Simplicity** | ✅ Simpler (1 page) | ❌ More complex (2 pages) |
-| **User Steps** | 3 steps on 1 page | 2 pages with navigation |
-| **Configuration** | ✅ No redirect URLs | ❌ Must configure redirects |
-| **Code** | 6-digit number | Long token in URL |
-| **Mobile UX** | ✅ Easy to copy code | ❌ Must click link |
-| **URL Safety** | ✅ No tokens in URL | ⚠️ Token visible in URL |
-| **Effort** | 4-5 hours | 6-8 hours |
+| Feature | Custom OTP (This PRD) | Supabase OTP |
+|---------|----------------------|--------------|
+| **Email Delivery** | ✅ HubSpot branded | ❌ Requires SMTP setup |
+| **Email Templates** | ✅ HubSpot templates | ❌ Supabase templates |
+| **Infrastructure** | ✅ Uses existing Redis | ❌ Requires SMTP config |
+| **Backend Code** | ❌ Need 3 endpoints | ✅ No backend needed |
+| **Control** | ✅ Full control | ❌ Limited customization |
+| **TTL** | ✅ Configurable (30 min) | ⚠️ Fixed options |
+| **Effort** | 5-6 hours | 4-5 hours |
 
-**Recommendation**: Use OTP for simpler, more maintainable implementation.
-
----
-
-## Implementation Notes
-
-### API Usage Examples
-
-**Step 1: Send OTP**
-```javascript
-const { error } = await supabase.auth.signInWithOtp({
-  email: email,
-  options: {
-    shouldCreateUser: false  // Don't create new users during reset
-  }
-});
-
-if (error) {
-  setError(error.message);
-} else {
-  setStep('verify');  // Move to Step 2
-}
-```
-
-**Step 2: Verify OTP**
-```javascript
-const { data: { session }, error } = await supabase.auth.verifyOtp({
-  email: email,
-  token: otpCode,  // '123456'
-  type: 'email'
-});
-
-if (error) {
-  setError('Invalid code. Please try again.');
-} else {
-  setStep('update');  // Move to Step 3, session is now active
-}
-```
-
-**Step 3: Update Password**
-```javascript
-const { error } = await supabase.auth.updateUser({
-  password: newPassword
-});
-
-if (error) {
-  setError(error.message);
-} else {
-  navigate('/login?reset=success');
-}
-```
+**Recommendation**: Use Custom OTP for HubSpot email branding and existing infrastructure.
 
 ---
 
 ## Conclusion
 
-This PRD provides a comprehensive plan for implementing password reset using Supabase Auth's **Email OTP**, which is **significantly simpler** than magic link approaches.
+This PRD provides a comprehensive plan for implementing password reset using a **custom OTP system with HubSpot email delivery**.
 
 **Key Advantages**:
-- **Simpler**: Single page with step wizard (not 2 pages)
-- **No Redirects**: No URL configuration needed
-- **Mobile Friendly**: Easy to copy 6-digit code
-- **Familiar**: Users know OTP from 2FA
-- **Secure**: Same security as magic links
-- **No Backend**: Supabase handles everything
-- **Faster Implementation**: 4-5 hours vs 6-8 hours
+- **HubSpot Branding**: Use existing email templates and workflows
+- **No SMTP Setup**: Leverages HubSpot's email infrastructure
+- **Existing Infrastructure**: Uses Redis already configured
+- **Full Control**: Custom OTP generation, validation, and expiry
+- **30-minute TTL**: Shorter expiry for better security
+- **Minimal Redis Impact**: ~100 bytes per OTP
 
-**Implementation Time**: 4-5 hours
-- Supabase configuration: 30 min
+**Implementation Time**: 5-6 hours
+- Backend API endpoints: 2 hours
+- HubSpot workflow: 30 min
 - Frontend components: 2-3 hours
-- Integration and testing: 1 hour
-- Code review and polish: 30 min
-- Documentation and deployment: 1 hour
+- Testing: 1 hour
+- Documentation and deployment: 30 min
 
 **Confidence Score**: 9/10
 
 ---
 
 **Document Status**: Ready for Implementation
-**Next Steps**: Begin Phase 1 (Supabase Configuration)
+**Next Steps**: Begin Phase 1 (Backend API Endpoints)

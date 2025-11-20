@@ -231,11 +231,11 @@ INSERT INTO public.role_permissions (role, permission) VALUES
   ('admin', 'bookings.cancel'),
   ('admin', 'bookings.batch_cancel'),
   ('admin', 'bookings.view'),
-  ('admin', 'exams.create'),
-  ('admin', 'exams.edit'),
-  ('admin', 'exams.activate'),
-  ('admin', 'exams.view'),
+  ('admin', 'exams.view')
 
+INSERT INTO public.role_permissions (role, permission) VALUES
+  ('viewer', 'bookings.view'),
+  ('viewer', 'exams.view')
 
 -- =====================================================
 -- STEP 4: GRANT PERMISSIONS TO AUTH ADMIN
@@ -256,19 +256,44 @@ REVOKE ALL ON public.role_permissions FROM PUBLIC, authenticated;
 
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.role_permissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.role_audit_log ENABLE ROW LEVEL SECURITY;
+
+-- =====================================================
+-- CRITICAL: Auth admin bypass policies (MUST come first!)
+-- These allow the auth hook to read tables without recursion
+-- =====================================================
+
+-- Bypass policy for auth hook on user_roles
+CREATE POLICY "Auth admin bypass"
+  ON public.user_roles
+  FOR ALL
+  TO supabase_auth_admin
+  USING (true)
+  WITH CHECK (true);
+
+-- Bypass policy for auth hook on role_permissions
+CREATE POLICY "Auth admin bypass"
+  ON public.role_permissions
+  FOR ALL
+  TO supabase_auth_admin
+  USING (true)
+  WITH CHECK (true);
+
+-- =====================================================
+-- Application policies (for authenticated users)
+-- =====================================================
 
 -- Policy: Users can view their own role
 CREATE POLICY "Users can view own role"
   ON public.user_roles
   FOR SELECT
+  TO authenticated
   USING (auth.uid() = user_id);
 
 -- Policy: Super admins can manage all roles
 CREATE POLICY "Super admins can manage roles"
   ON public.user_roles
   FOR ALL
+  TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM public.user_roles
@@ -280,12 +305,14 @@ CREATE POLICY "Super admins can manage roles"
 CREATE POLICY "Anyone can read permissions"
   ON public.role_permissions
   FOR SELECT
+  TO authenticated
   USING (true);
 
 -- Policy: Only super admins can modify permissions
 CREATE POLICY "Super admins can modify permissions"
   ON public.role_permissions
   FOR ALL
+  TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM public.user_roles
@@ -293,24 +320,6 @@ CREATE POLICY "Super admins can modify permissions"
     )
   );
 
--- Policy: Users can view their own admin metadata
-CREATE POLICY "Users can view own metadata"
-  ON public.admin_users
-  FOR SELECT
-  USING (auth.uid() = id);
-
--- Policy: Super admins can manage all admin users
-CREATE POLICY "Super admins can manage admin users"
-  ON public.admin_users
-  FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.user_roles
-      WHERE user_id = auth.uid() AND role = 'super_admin'
-    )
-  );
-
-COMMIT;
 
 -- =====================================================
 -- VERIFICATION
@@ -595,15 +604,6 @@ BEGIN
     'super_admin',
     NULL, -- Bootstrap: no granter for first super_admin
     'Initial super admin - bootstrapped during setup'
-  );
-
-  -- Add to admin_users metadata
-  INSERT INTO public.admin_users (id, email, full_name, is_active)
-  VALUES (
-    v_user_id,
-    v_email,
-    'System Administrator', -- Change this if you want
-    true
   );
 
   RAISE NOTICE '✅ SUCCESS! Super admin role assigned to: %', v_email;
@@ -1229,6 +1229,68 @@ viewer      | 4          | 1                | 3                 | 2025-01-18    
 
 ## Troubleshooting
 
+### Problem: "Infinite recursion detected in policy for relation user_roles"
+
+**Cause:** RLS policies on `user_roles` use `auth.uid()` or query `user_roles` itself, causing a loop when the auth hook tries to read the table before the JWT exists.
+
+**Solution:**
+
+1. Add bypass policy for `supabase_auth_admin`:
+   ```sql
+   -- Drop existing policies first
+   DROP POLICY IF EXISTS "Auth admin bypass" ON public.user_roles;
+   DROP POLICY IF EXISTS "Auth admin bypass" ON public.role_permissions;
+
+   -- Create bypass policies
+   CREATE POLICY "Auth admin bypass" ON public.user_roles
+     FOR ALL
+     TO supabase_auth_admin
+     USING (true)
+     WITH CHECK (true);
+
+   CREATE POLICY "Auth admin bypass" ON public.role_permissions
+     FOR ALL
+     TO supabase_auth_admin
+     USING (true)
+     WITH CHECK (true);
+   ```
+
+2. If still failing, temporarily disable RLS:
+   ```sql
+   ALTER TABLE public.user_roles DISABLE ROW LEVEL SECURITY;
+   ALTER TABLE public.role_permissions DISABLE ROW LEVEL SECURITY;
+   ```
+
+3. Re-enable with proper policies after login works.
+
+### Problem: "Permission denied for function custom_access_token_hook"
+
+**Cause:** `supabase_auth_admin` doesn't have execute permission on the function.
+
+**Solution:**
+
+```sql
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION public.custom_access_token_hook(jsonb) TO supabase_auth_admin;
+
+-- Grant schema usage
+GRANT USAGE ON SCHEMA public TO supabase_auth_admin;
+
+-- Grant table access
+GRANT SELECT ON public.user_roles TO supabase_auth_admin;
+GRANT SELECT ON public.role_permissions TO supabase_auth_admin;
+```
+
+### Problem: "Too many login attempts" rate limiting
+
+**Cause:** Multiple failed login attempts (often from auth hook errors) triggered Supabase's rate limiting.
+
+**Solution:**
+
+1. Wait 15 minutes (rate limit expires)
+2. Or use a different IP (VPN/mobile hotspot)
+3. Or test with a different email address
+
 ### Problem: Auth hook not working (JWT doesn't have custom claims)
 
 **Solution:**
@@ -1236,6 +1298,7 @@ viewer      | 4          | 1                | 3                 | 2025-01-18    
 1. Verify hook is enabled:
    - Dashboard → Authentication → Hooks
    - Should show "Custom Access Token Hook: Enabled"
+   - **Note:** The UI may not always show the hook even when it's working
 
 2. Check function exists:
    ```sql
@@ -1258,6 +1321,40 @@ viewer      | 4          | 1                | 3                 | 2025-01-18    
    ```javascript
    await supabase.auth.refreshSession();
    ```
+
+5. Verify RLS policies are correct:
+   ```sql
+   -- Check RLS is enabled
+   SELECT tablename, rowsecurity
+   FROM pg_tables
+   WHERE tablename IN ('user_roles', 'role_permissions');
+
+   -- Check policies exist
+   SELECT tablename, policyname, roles, cmd
+   FROM pg_policies
+   WHERE tablename IN ('user_roles', 'role_permissions')
+   ORDER BY tablename, policyname;
+   ```
+
+### Problem: Hook configured but not showing in Dashboard UI
+
+**Cause:** This is a known Supabase Dashboard UI bug.
+
+**Solution:**
+
+If login works and your JWT contains `user_role` and `permissions`, the hook IS working. The UI display is cosmetic - ignore it.
+
+To verify via SQL:
+```sql
+-- Check if hook function exists and has correct permissions
+SELECT
+  p.proname as function_name,
+  pg_get_functiondef(p.oid) as definition
+FROM pg_proc p
+JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE n.nspname = 'public'
+  AND p.proname = 'custom_access_token_hook';
+```
 
 ### Problem: "User has no assigned role" error
 

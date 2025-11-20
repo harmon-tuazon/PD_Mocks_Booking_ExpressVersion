@@ -45,7 +45,8 @@
       "mcp__serena__write_memory",
       "mcp__serena__think_about_task_adherence",
       "mcp__vercel__list_deployments",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

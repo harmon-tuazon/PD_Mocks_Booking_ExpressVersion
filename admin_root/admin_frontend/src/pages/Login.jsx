@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { ResponsiveLogo } from '../components/shared/Logo'
 import { Input } from '@/components/ui/input'
@@ -116,6 +116,15 @@ function Login() {
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900 cursor-pointer">
                   Remember me for 7 days
                 </label>
+              </div>
+
+              <div className="text-sm">
+                <Link
+                  to="/reset-password"
+                  className="font-medium text-primary-600 hover:text-primary-500"
+                >
+                  Forgot password?
+                </Link>
               </div>
             </div>
 

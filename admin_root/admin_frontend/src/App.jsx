@@ -9,6 +9,7 @@ import MockExamsDashboard from './pages/MockExamsDashboard'
 import MockExamDetail from './pages/MockExamDetail'
 import TraineeDashboard from './pages/TraineeDashboard'
 import Login from './pages/Login'
+import PasswordReset from './pages/PasswordReset'
 import MainLayout from './components/layout/MainLayout'
 
 const queryClient = new QueryClient({
@@ -68,6 +69,7 @@ function App() {
           <AuthProvider>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<PasswordReset />} />
 
               <Route
                 path="/"
