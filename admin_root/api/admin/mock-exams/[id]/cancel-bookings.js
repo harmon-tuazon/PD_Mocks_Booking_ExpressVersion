@@ -40,6 +40,7 @@ const { validationMiddleware } = require('../../../_shared/validation');
 const { getCache } = require('../../../_shared/cache');
 const hubspot = require('../../../_shared/hubspot');
 const RedisLockService = require('../../../_shared/redis');
+const { updateBookingStatusInSupabase } = require('../../../_shared/supabase-data');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -372,6 +373,24 @@ module.exports = async (req, res) => {
       console.log(`🗑️ [CANCEL] Caches invalidated for mock exam ${mockExamId}`);
     }
 
+    // Sync cancellations to Supabase
+    let supabaseSynced = false;
+    if (results.successful.length > 0) {
+      try {
+        const supabaseUpdates = results.successful.map(result =>
+          updateBookingStatusInSupabase(result.bookingId, 'Cancelled')
+        );
+
+        const supabaseResults = await Promise.allSettled(supabaseUpdates);
+        const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
+        console.log(`✅ [CANCEL] Synced ${syncedCount}/${results.successful.length} cancellations to Supabase`);
+        supabaseSynced = syncedCount === results.successful.length;
+      } catch (supabaseError) {
+        console.error('❌ Supabase cancellation sync failed:', supabaseError.message);
+        // Continue - HubSpot is source of truth
+      }
+    }
+
     // Calculate summary
     const summary = {
       total: bookingIds.length,
@@ -421,7 +440,8 @@ module.exports = async (req, res) => {
         processedBy: adminEmail,
         mockExamId,
         executionTime
-      }
+      },
+      supabase_synced: supabaseSynced
     });
 
   } catch (error) {

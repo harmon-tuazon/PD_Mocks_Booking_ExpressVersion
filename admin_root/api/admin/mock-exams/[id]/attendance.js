@@ -30,6 +30,7 @@ const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../../_shared/validation');
 const { getCache } = require('../../../_shared/cache');
 const hubspot = require('../../../_shared/hubspot');
+const { supabaseAdmin } = require('../../../_shared/supabase');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -228,6 +229,50 @@ module.exports = async (req, res) => {
       console.log(`🗑️ [ATTENDANCE] Caches invalidated for mock exam ${mockExamId}`);
     }
 
+    // Sync attendance updates to Supabase
+    let supabaseSynced = false;
+    if (results.successful.length > 0) {
+      try {
+        const supabaseUpdates = results.successful.map(result => {
+          const originalRequest = bookingMap.get(result.id);
+          let newAttendance;
+          if (originalRequest.attended === null || originalRequest.attended === undefined) {
+            newAttendance = '';
+          } else if (originalRequest.attended === true) {
+            newAttendance = 'Yes';
+          } else {
+            newAttendance = 'No';
+          }
+
+          // Determine is_active based on attendance
+          let isActive;
+          if (newAttendance === 'Yes' || newAttendance === 'No') {
+            isActive = 'Completed';
+          } else {
+            isActive = 'Active';
+          }
+
+          return supabaseAdmin
+            .from('hubspot_bookings')
+            .update({
+              attendance: newAttendance,
+              is_active: isActive,
+              updated_at: new Date().toISOString(),
+              synced_at: new Date().toISOString()
+            })
+            .eq('hubspot_id', result.id);
+        });
+
+        const supabaseResults = await Promise.allSettled(supabaseUpdates);
+        const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
+        console.log(`✅ [ATTENDANCE] Synced ${syncedCount}/${results.successful.length} attendance updates to Supabase`);
+        supabaseSynced = syncedCount === results.successful.length;
+      } catch (supabaseError) {
+        console.error('❌ Supabase attendance sync failed:', supabaseError.message);
+        // Continue - HubSpot is source of truth
+      }
+    }
+
     // Calculate summary
     const summary = {
       total: bookings.length,
@@ -258,7 +303,8 @@ module.exports = async (req, res) => {
         processedBy: adminEmail,
         mockExamId,
         executionTime
-      }
+      },
+      supabase_synced: supabaseSynced
     });
 
   } catch (error) {

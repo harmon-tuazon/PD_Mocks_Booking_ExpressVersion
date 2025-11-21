@@ -188,18 +188,6 @@ module.exports = async (req, res) => {
         if (response.results) {
           results.successful.push(...response.results);
           console.log(`✅ [CLONE] Chunk ${chunkNumber} successful: ${response.results.length} sessions cloned`);
-
-          // SUPABASE SYNC: Sync each cloned exam to Supabase (non-blocking)
-          for (const exam of response.results) {
-            try {
-              await syncExamToSupabase({
-                id: exam.id,
-                properties: exam.properties
-              });
-            } catch (syncErr) {
-              console.error(`⚠️ Supabase sync failed for exam ${exam.id}:`, syncErr.message);
-            }
-          }
         }
 
         // Handle partial failures within successful batch call
@@ -226,6 +214,27 @@ module.exports = async (req, res) => {
       createCloneAuditTrails(sourceSessionIds, results.successful.length, user).catch(err => {
         console.error('[CLONE] Audit trail creation failed:', err);
       });
+    }
+
+    // Step 6.5: Sync cloned exams to Supabase
+    let supabaseSynced = false;
+    if (results.successful.length > 0) {
+      try {
+        const supabaseUpdates = results.successful.map(exam =>
+          syncExamToSupabase({
+            id: exam.id,
+            properties: exam.properties
+          })
+        );
+
+        const supabaseResults = await Promise.allSettled(supabaseUpdates);
+        const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
+        console.log(`✅ [CLONE] Synced ${syncedCount}/${results.successful.length} cloned exams to Supabase`);
+        supabaseSynced = syncedCount === results.successful.length;
+      } catch (supabaseError) {
+        console.error('❌ Supabase clone sync failed:', supabaseError.message);
+        // Continue - HubSpot is source of truth
+      }
     }
 
     // Step 7: Invalidate caches (except list cache - frontend handles optimistic update)
@@ -270,7 +279,8 @@ module.exports = async (req, res) => {
         timestamp: new Date().toISOString(),
         processedBy: adminEmail,
         executionTime: Date.now() - startTime
-      }
+      },
+      supabase_synced: supabaseSynced
     });
 
   } catch (error) {

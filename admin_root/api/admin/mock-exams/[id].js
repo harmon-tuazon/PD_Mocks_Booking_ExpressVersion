@@ -14,6 +14,7 @@ const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
 const { validateInput } = require('../../_shared/validation');
 const { HUBSPOT_OBJECTS } = require('../../_shared/hubspot');
+const { syncExamToSupabase } = require('../../_shared/supabase-data');
 
 module.exports = async (req, res) => {
   // Handle PATCH request for updating mock exam
@@ -289,6 +290,20 @@ async function handlePatchRequest(req, res) {
     // Fetch the updated exam with all properties for response
     const refreshedExam = await hubspot.getMockExam(mockExamId);
 
+    // Sync to Supabase
+    let supabaseSynced = false;
+    try {
+      await syncExamToSupabase({
+        id: mockExamId,
+        properties: refreshedExam.properties
+      });
+      console.log(`✅ [EDIT] Exam ${mockExamId} synced to Supabase`);
+      supabaseSynced = true;
+    } catch (supabaseError) {
+      console.error('❌ Supabase exam sync failed:', supabaseError.message);
+      // Continue - HubSpot is source of truth
+    }
+
     // Return success response
     res.status(200).json({
       success: true,
@@ -297,7 +312,8 @@ async function handlePatchRequest(req, res) {
         timestamp: new Date().toISOString(),
         updated_by: adminEmail,
         changes: changedFields
-      }
+      },
+      supabase_synced: supabaseSynced
     });
 
   } catch (error) {

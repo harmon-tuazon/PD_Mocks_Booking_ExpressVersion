@@ -32,6 +32,7 @@ const { requirePermission } = require('../middleware/requirePermission');
 const { validationMiddleware } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
+const { syncExamToSupabase } = require('../../_shared/supabase-data');
 
 // HubSpot Object Type ID for mock exams
 const HUBSPOT_OBJECTS = {
@@ -257,6 +258,28 @@ module.exports = async (req, res) => {
       });
     }
 
+    // Step 8.5: Sync updates to Supabase
+    let supabaseSynced = false;
+    if (results.successful.length > 0) {
+      try {
+        const supabaseUpdates = results.successful.map(sessionId => {
+          const update = validUpdates.find(u => u.id === sessionId);
+          return syncExamToSupabase({
+            id: sessionId,
+            properties: update.properties
+          });
+        });
+
+        const supabaseResults = await Promise.allSettled(supabaseUpdates);
+        const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
+        console.log(`✅ [BULK-UPDATE] Synced ${syncedCount}/${results.successful.length} exams to Supabase`);
+        supabaseSynced = syncedCount === results.successful.length;
+      } catch (supabaseError) {
+        console.error('❌ Supabase bulk update sync failed:', supabaseError.message);
+        // Continue - HubSpot is source of truth
+      }
+    }
+
     // Step 9: Invalidate caches
     console.log(`🗑️ [BULK-UPDATE] Invalidating caches...`);
     const cache = getCache();
@@ -294,7 +317,8 @@ module.exports = async (req, res) => {
         timestamp: new Date().toISOString(),
         processedBy: adminEmail,
         executionTime: Date.now() - startTime
-      }
+      },
+      supabase_synced: supabaseSynced
     });
 
   } catch (error) {

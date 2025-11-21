@@ -52,6 +52,7 @@ const { requirePermission } = require('../middleware/requirePermission');
 const { validationMiddleware } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
+const { deleteExamFromSupabase } = require('../../_shared/supabase-data');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -207,6 +208,24 @@ module.exports = async (req, res) => {
       console.log(`🗑️ [BATCH-DELETE] Caches invalidated`);
     }
 
+    // Step 4.5: Sync deletions to Supabase
+    let supabaseSynced = false;
+    if (results.deleted.length > 0) {
+      try {
+        const supabaseDeletes = results.deleted.map(sessionId =>
+          deleteExamFromSupabase(sessionId)
+        );
+
+        const supabaseResults = await Promise.allSettled(supabaseDeletes);
+        const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
+        console.log(`✅ [BATCH-DELETE] Deleted ${syncedCount}/${results.deleted.length} exams from Supabase`);
+        supabaseSynced = syncedCount === results.deleted.length;
+      } catch (supabaseError) {
+        console.error('❌ Supabase batch delete sync failed:', supabaseError.message);
+        // Continue - HubSpot is source of truth
+      }
+    }
+
     // Step 5: Create audit log (non-blocking)
     if (results.deleted.length > 0) {
       console.log(`✅ [BATCH-DELETE] Successfully deleted ${results.deleted.length} session(s)`);
@@ -235,7 +254,8 @@ module.exports = async (req, res) => {
         timestamp: new Date().toISOString(),
         processedBy: adminEmail,
         executionTime
-      }
+      },
+      supabase_synced: supabaseSynced
     });
 
   } catch (error) {

@@ -20,6 +20,7 @@ const { HubSpotService, HUBSPOT_OBJECTS } = require('../../_shared/hubspot');
 const { validateInput } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const RedisLockService = require('../../_shared/redis');
+const { syncBookingToSupabase } = require('../../_shared/supabase-data');
 
 module.exports = async (req, res) => {
   let bookingCreated = false;
@@ -262,7 +263,38 @@ module.exports = async (req, res) => {
     });
 
     // ========================================================================
-    // STEP 9: Create Comprehensive Audit Note (3 associations)
+    // STEP 9: Sync Booking to Supabase
+    // ========================================================================
+    let supabaseSynced = false;
+    try {
+      await syncBookingToSupabase({
+        id: createdBookingId,
+        properties: {
+          booking_id: bookingId,
+          associated_mock_exam: mock_exam_id,
+          associated_contact_id: contactId,
+          student_id,
+          name: contactName,
+          student_email: contact.properties.email,
+          is_active: 'Active',
+          exam_date,
+          dominant_hand,
+          attending_location,
+          token_used: 'Admin Override',
+          start_time: mockExam.properties.start_time,
+          end_time: mockExam.properties.end_time,
+          createdate: new Date().toISOString()
+        }
+      }, mock_exam_id);
+      console.log(`✅ [ADMIN BOOKING] Synced to Supabase`);
+      supabaseSynced = true;
+    } catch (supabaseError) {
+      console.error('❌ Supabase sync failed:', supabaseError.message);
+      // Continue - HubSpot is source of truth
+    }
+
+    // ========================================================================
+    // STEP 10: Create Comprehensive Audit Note (3 associations)
     // ========================================================================
     console.log(`📝 [ADMIN BOOKING] Creating audit note...`);
 
@@ -361,7 +393,7 @@ module.exports = async (req, res) => {
     }
 
     // ========================================================================
-    // STEP 10: Invalidate Relevant Caches
+    // STEP 11: Invalidate Relevant Caches
     // ========================================================================
     console.log(`🗑️ [ADMIN BOOKING] Invalidating caches...`);
 
@@ -386,7 +418,7 @@ module.exports = async (req, res) => {
     }
 
     // ========================================================================
-    // STEP 11: Return Success Response
+    // STEP 12: Return Success Response
     // ========================================================================
     const contactAssocSuccess = associationResults.find(r => r.type === 'contact')?.success || false;
     const mockExamAssocSuccess = associationResults.find(r => r.type === 'mock_exam')?.success || false;
@@ -420,7 +452,8 @@ module.exports = async (req, res) => {
         created_at: new Date().toISOString(),
         admin_override: true,
         bypass_warnings: totalBookings >= capacity ? ['Capacity limit bypassed'] : []
-      }
+      },
+      supabase_synced: supabaseSynced
     });
 
   } catch (error) {

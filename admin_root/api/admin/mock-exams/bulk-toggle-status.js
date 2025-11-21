@@ -26,6 +26,7 @@ const { requirePermission } = require('../middleware/requirePermission');
 const { validationMiddleware } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
+const { supabaseAdmin } = require('../../_shared/supabase');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -207,6 +208,32 @@ module.exports = async (req, res) => {
       console.log(`🗑️ [BULK-TOGGLE] Caches invalidated`);
     }
 
+    // Sync status toggles to Supabase
+    let supabaseSynced = false;
+    if (results.successful.length > 0) {
+      try {
+        const supabaseUpdates = results.successful.map(result => {
+          const originalUpdate = updates.find(u => u.id === result.id);
+          return supabaseAdmin
+            .from('hubspot_mock_exams')
+            .update({
+              is_active: originalUpdate.metadata.newState,
+              updated_at: new Date().toISOString(),
+              synced_at: new Date().toISOString()
+            })
+            .eq('hubspot_id', result.id);
+        });
+
+        const supabaseResults = await Promise.allSettled(supabaseUpdates);
+        const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
+        console.log(`✅ [BULK-TOGGLE] Synced ${syncedCount}/${results.successful.length} status toggles to Supabase`);
+        supabaseSynced = syncedCount === results.successful.length;
+      } catch (supabaseError) {
+        console.error('❌ Supabase status toggle sync failed:', supabaseError.message);
+        // Continue - HubSpot is source of truth
+      }
+    }
+
     // Log audit trail (non-blocking)
     if (results.successful.length > 0) {
       console.log(`✅ [BULK-TOGGLE] Successfully toggled ${results.successful.length} session(s)`);
@@ -233,7 +260,8 @@ module.exports = async (req, res) => {
         timestamp: new Date().toISOString(),
         processedBy: adminEmail,
         executionTime
-      }
+      },
+      supabase_synced: supabaseSynced
     });
 
   } catch (error) {
