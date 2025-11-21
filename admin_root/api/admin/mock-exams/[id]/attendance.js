@@ -234,7 +234,16 @@ module.exports = async (req, res) => {
     if (results.successful.length > 0) {
       try {
         const supabaseUpdates = results.successful.map(result => {
-          const originalRequest = bookingMap.get(result.id);
+          // result.id is from HubSpot response, bookingMap is keyed by bookingId (string)
+          const bookingId = result.id.toString();
+          const originalRequest = bookingMap.get(bookingId);
+
+          // Skip if we can't find the original request (shouldn't happen)
+          if (!originalRequest) {
+            console.warn(`⚠️ Could not find original request for booking ${bookingId}`);
+            return null;
+          }
+
           let newAttendance;
           if (originalRequest.attended === null || originalRequest.attended === undefined) {
             newAttendance = '';
@@ -263,7 +272,9 @@ module.exports = async (req, res) => {
             .eq('hubspot_id', result.id);
         });
 
-        const supabaseResults = await Promise.allSettled(supabaseUpdates);
+        // Filter out null entries (bookings that couldn't be found)
+        const validUpdates = supabaseUpdates.filter(update => update !== null);
+        const supabaseResults = await Promise.allSettled(validUpdates);
         const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
         console.log(`✅ [ATTENDANCE] Synced ${syncedCount}/${results.successful.length} attendance updates to Supabase`);
         supabaseSynced = syncedCount === results.successful.length;
