@@ -133,8 +133,6 @@ module.exports = async (req, res) => {
         ...(overrides.location && { location: overrides.location }),
         ...(overrides.mock_type && { mock_type: overrides.mock_type }),
         ...(overrides.capacity && { capacity: overrides.capacity.toString() }),
-        ...(overrides.start_time && { start_time: overrides.start_time }),
-        ...(overrides.end_time && { end_time: overrides.end_time }),
         ...(overrides.is_active && { is_active: overrides.is_active }),
         ...(overrides.scheduled_activation_datetime && {
           scheduled_activation_datetime: overrides.scheduled_activation_datetime
@@ -149,6 +147,20 @@ module.exports = async (req, res) => {
         // Auto-generate new mock_exam_name
         mock_exam_name: `${overrides.mock_type || sourceProps.mock_type}-${overrides.location || sourceProps.location}-${overrides.exam_date}`
       };
+
+      // Convert start_time and end_time from HH:mm to Unix timestamp (required by HubSpot)
+      // Use the new exam_date (from overrides) for timestamp calculation
+      const examDate = overrides.exam_date;
+      const startTime = overrides.start_time || sourceProps.start_time;
+      const endTime = overrides.end_time || sourceProps.end_time;
+
+      if (startTime && examDate) {
+        // Convert HH:mm format to timestamp using exam_date
+        clonedProperties.start_time = hubspot.convertToTimestamp(examDate, startTime).toString();
+      }
+      if (endTime && examDate) {
+        clonedProperties.end_time = hubspot.convertToTimestamp(examDate, endTime).toString();
+      }
 
       // Clear scheduled_activation_datetime if is_active changed from 'scheduled'
       if (overrides.is_active && overrides.is_active !== 'scheduled' && sourceProps.is_active === 'scheduled') {
