@@ -43,6 +43,10 @@ ADD COLUMN IF NOT EXISTS ndecc_exam_date DATE;
 ALTER TABLE hubspot_bookings
 ADD COLUMN IF NOT EXISTS idempotency_key TEXT;
 
+-- Add mock_type for exam type (synced from HubSpot)
+ALTER TABLE hubspot_bookings
+ADD COLUMN IF NOT EXISTS mock_type TEXT;
+
 -- =============================================
 -- MOCK EXAMS TABLE - Add missing columns
 -- =============================================

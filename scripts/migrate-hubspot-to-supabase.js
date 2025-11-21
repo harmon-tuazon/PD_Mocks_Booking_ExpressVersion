@@ -130,7 +130,7 @@ async function fetchBookingsForExam(examId) {
     'booking_id', 'associated_mock_exam', 'associated_contact_id', 'student_id', 'name',
     'student_email', 'is_active', 'attendance', 'attending_location',
     'exam_date', 'dominant_hand', 'token_used', 'token_refunded_at', 'token_refund_admin',
-    'start_time', 'end_time', 'ndecc_exam_date', 'idempotency_key',
+    'mock_type', 'start_time', 'end_time', 'ndecc_exam_date', 'idempotency_key',
     'createdate', 'hs_lastmodifieddate'
   ];
 
@@ -203,6 +203,7 @@ async function syncBookingsToSupabase(bookings, examId) {
       token_used: props.token_used,
       token_refunded_at: props.token_refunded_at ? new Date(parseInt(props.token_refunded_at)).toISOString() : null,
       token_refund_admin: props.token_refund_admin,
+      mock_type: props.mock_type,
       start_time: props.start_time,
       end_time: props.end_time,
       ndecc_exam_date: props.ndecc_exam_date,

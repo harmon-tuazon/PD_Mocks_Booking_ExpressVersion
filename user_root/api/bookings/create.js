@@ -529,7 +529,8 @@ module.exports = module.exports = module.exports = async function handler(req, r
           dominant_hand: dominant_hand || null,
           token_used: tokenUsed || null,
           idempotency_key: idempotencyKey || null,
-          // Include mock exam's time properties for display purposes
+          // Include mock exam's properties for display purposes
+          mock_type: mock_type,
           start_time: mockExam.properties?.start_time || null,
           end_time: mockExam.properties?.end_time || null,
           ndecc_exam_date: mockExam.properties?.ndecc_exam_date || null,
