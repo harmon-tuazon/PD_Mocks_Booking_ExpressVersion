@@ -9,6 +9,7 @@
  * - Safe lock release with ownership verification (Lua script)
  * - Exponential backoff retry strategy
  * - Auto-expiration via TTL (prevents orphaned locks)
+ * - Key expiration management (expire method)
  *
  * @see PRDs/booking-race-condition-redis-locking.md
  */
