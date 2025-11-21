@@ -25,6 +25,7 @@ require('dotenv').config();
 const Joi = require('joi');
 const { HubSpotService, HUBSPOT_OBJECTS } = require('../_shared/hubspot');
 const RedisLockService = require('../_shared/redis');
+const { updateBookingStatusInSupabase, updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
 const {
   setCorsHeaders,
   handleOptionsRequest,
@@ -287,6 +288,26 @@ async function cancelSingleBooking(hubspot, bookingData) {
       result.error = 'Failed to cancel booking';
       result.error_code = 'SOFT_DELETE_FAILED';
       return result;
+    }
+
+    // Step 11: SUPABASE SYNC - Update booking status and exam count
+    try {
+      // Update booking status in Supabase
+      await updateBookingStatusInSupabase(bookingId, 'Cancelled');
+
+      // Update exam booking count if we have mockExamId
+      if (mockExamId) {
+        const redis = new RedisLockService();
+        const counterKey = `exam:${mockExamId}:bookings`;
+        const currentCount = parseInt(await redis.get(counterKey)) || 0;
+        await updateExamBookingCountInSupabase(mockExamId, currentCount);
+        await redis.close();
+      }
+
+      console.log(`✅ Supabase synced for cancelled booking ${bookingId}`);
+    } catch (supabaseError) {
+      // Non-blocking - log but don't fail
+      console.error(`⚠️ Supabase sync failed (non-blocking):`, supabaseError.message);
     }
 
     // Success!

@@ -4,6 +4,7 @@ const { HubSpotService, HUBSPOT_OBJECTS } = require('../_shared/hubspot');
 const { schemas } = require('../_shared/validation');
 const { getCache } = require('../_shared/cache');
 const RedisLockService = require('../_shared/redis');
+const { syncBookingToSupabase, updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
 const {
   setCorsHeaders,
   handleOptionsRequest,
@@ -500,6 +501,33 @@ module.exports = module.exports = module.exports = async function handler(req, r
     createdBookingId = createdBooking.id;
     console.log(`✅ Booking created successfully with ID: ${createdBookingId}`);
 
+    // SUPABASE SYNC: Sync booking to Supabase for read optimization
+    try {
+      const bookingForSync = {
+        id: createdBookingId,
+        properties: {
+          booking_id: bookingId,
+          mock_exam_id: mock_exam_id,
+          contact_id: contact_id,
+          student_id: student_id,
+          student_name: sanitizedName,
+          student_email: sanitizedEmail,
+          booking_status: 'Confirmed',
+          is_active: 'Active',
+          attendance: null,
+          attending_location: attending_location || null,
+          exam_date: exam_date,
+          dominant_hand: dominant_hand || null,
+          createdate: new Date().toISOString()
+        }
+      };
+      await syncBookingToSupabase(bookingForSync, mock_exam_id);
+      console.log(`✅ Booking synced to Supabase`);
+    } catch (supabaseError) {
+      // Non-blocking - log but don't fail the booking
+      console.error(`⚠️ Supabase sync failed (non-blocking):`, supabaseError.message);
+    }
+
     // Cache booking in Redis to prevent duplicate bookings (until exam date)
     const examDateTime = new Date(`${exam_date}T23:59:59Z`);
     const ttlSeconds = Math.max((examDateTime - Date.now()) / 1000, 86400);
@@ -558,6 +586,13 @@ module.exports = module.exports = module.exports = async function handler(req, r
     const TTL_90_DAYS = 90 * 24 * 60 * 60; // 7,776,000 seconds
     await redis.expire(`exam:${mock_exam_id}:bookings`, TTL_90_DAYS);
     console.log(`✅ Redis counter incremented: exam:${mock_exam_id}:bookings = ${newTotalBookings} (TTL: 90 days)`);
+
+    // SUPABASE SYNC: Update exam booking count in Supabase
+    try {
+      await updateExamBookingCountInSupabase(mock_exam_id, newTotalBookings);
+    } catch (supabaseError) {
+      console.error(`⚠️ Supabase exam count sync failed (non-blocking):`, supabaseError.message);
+    }
 
     // Trigger HubSpot workflow via webhook (async, non-blocking)
     // This runs AFTER response is sent to user - doesn't block booking completion

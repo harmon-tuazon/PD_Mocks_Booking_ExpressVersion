@@ -1,17 +1,30 @@
-# PRD: Supabase-First Read Architecture with Redis Cache
+# PRD: Supabase-First Read Architecture with Redis Cache (User App)
 
-**Version**: 2.0
+**Version**: 3.0
 **Created**: 2025-01-20
-**Updated**: 2025-01-20
+**Updated**: 2025-01-21
 **Complexity**: ⭐⭐ (Low)
-**Code Required**: ~100 lines
+**Code Required**: ~150 lines
 **Monthly Cost**: $0 (uses existing infrastructure)
+**Target Application**: **user_root** (Student Booking App)
 
 ---
 
 ## Overview
 
-Use Supabase as the **primary read source** to eliminate HubSpot API rate limit (429) issues. Redis remains as the first-level cache, but cache misses fetch from Supabase instead of HubSpot. HubSpot becomes write-only for data mutations.
+Use Supabase as the **primary read source** to eliminate HubSpot API rate limit (429) issues during high-concurrency booking scenarios (250+ concurrent users). Redis remains as the first-level cache, but cache misses fetch from Supabase instead of HubSpot. HubSpot becomes write-only for data mutations.
+
+### Why User App Needs This
+
+The user_root booking app faces critical bottlenecks during exam booking rushes:
+- **250 concurrent users** trying to book limited exam slots
+- **HubSpot rate limit**: ~10 calls/10 seconds
+- **Current result**: 75-125 seconds to serve all users, many see "session full" after waiting
+
+With Supabase-first architecture:
+- **Supabase handles**: 1000+ queries/sec
+- **Redis atomic counters**: 100k+ ops/sec for capacity checks
+- **Result**: <1 second response for all users
 
 ## Goals
 
@@ -164,9 +177,60 @@ CREATE INDEX idx_bookings_exam_id ON public.hubspot_bookings(mock_exam_id);
 CREATE INDEX idx_exams_hubspot_id ON public.hubspot_mock_exams(hubspot_id);
 ```
 
+### Step 1.5: Supabase Connection Setup
+
+#### How Supabase Authentication Works
+
+Supabase uses a mixture of **JWT and API Key authentication**:
+
+- **Without Authorization header**: The API assumes you're making a request as an anonymous user
+- **With Authorization header**: Supabase switches to the role of the user making the request, using Row Level Security (RLS) policies
+
+For server-side API routes (our use case), we use the **service role key** which bypasses RLS for admin operations.
+
+#### Environment Variables
+
+Add these to your Vercel environment:
+
+```bash
+SUPABASE_URL=https://wjeglmmcbdtrochsmqvz.supabase.co
+SUPABASE_ANON_KEY=your_anon_key_here      # For client-side (limited access)
+SUPABASE_SERVICE_KEY=your_service_key_here # For server-side (full access)
+```
+
+> **Important**: Never expose the service role key to the client. Use it only in serverless functions.
+
+#### Connection Method
+
+Supabase uses a **RESTful API** (not direct PostgreSQL connection):
+- Each project has a unique API endpoint
+- API keys authenticate requests
+- PostgREST handles SQL-to-REST translation
+- Perfect for serverless (no connection pooling needed)
+
+#### Initialize Supabase Client
+
+Create `user_root/api/_shared/supabase.js`:
+
+```javascript
+const { createClient } = require('@supabase/supabase-js');
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+
+// Service role client for server-side operations (bypasses RLS)
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+module.exports = { supabaseAdmin };
+```
+
+---
+
 ### Step 2: Create Data Access Layer (20 minutes)
 
-Create new file: `admin_root/api/_shared/supabase-data.js`
+Create new file: `user_root/api/_shared/supabase-data.js`
+
+> **Note**: This file can be shared between admin_root and user_root by placing in a common location, or each app can have its own copy.
 
 ```javascript
 /**
@@ -383,26 +447,54 @@ module.exports = {
 
 ### Step 3: Update Read Endpoints (Supabase-First)
 
-Update read endpoints to fetch from Supabase instead of HubSpot.
+Update user_root read endpoints to fetch from Supabase instead of HubSpot.
 
-#### Example: `mock-exams/[id]/bookings.js` (READ)
+#### Example: `user_root/api/mock-exams/available.js` (READ - Critical for booking)
 
 ```javascript
-const { getBookingsFromSupabase } = require('../../_shared/supabase-data');
-const redis = require('../../_shared/redis');
+const { getExamsFromSupabase } = require('../_shared/supabase-data');
+const redis = require('../_shared/redis');
 
 module.exports = async (req, res) => {
-  const { id: examId } = req.query;
-  const cacheKey = `bookings:${examId}`;
+  const cacheKey = `user:exams:available`;
 
   // 1. Check Redis cache first
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    return res.status(200).json({ success: true, exams: JSON.parse(cached) });
+  }
+
+  // 2. Cache miss → Fetch from SUPABASE (not HubSpot!)
+  const exams = await getExamsFromSupabase({
+    is_active: 'active',
+    startDate: new Date().toISOString().split('T')[0] // Only future exams
+  });
+
+  // 3. Cache in Redis (shorter TTL for availability - 1 minute)
+  await redis.set(cacheKey, JSON.stringify(exams), 'EX', 60);
+
+  return res.status(200).json({ success: true, exams });
+};
+```
+
+#### Example: `user_root/api/bookings/list.js` (READ - User's bookings)
+
+```javascript
+const { getBookingsFromSupabase } = require('../_shared/supabase-data');
+const redis = require('../_shared/redis');
+
+module.exports = async (req, res) => {
+  const { contactId } = req.query; // User's contact ID
+  const cacheKey = `user:bookings:${contactId}`;
+
+  // 1. Check Redis cache
   const cached = await redis.get(cacheKey);
   if (cached) {
     return res.status(200).json({ success: true, bookings: JSON.parse(cached) });
   }
 
-  // 2. Cache miss → Fetch from SUPABASE (not HubSpot!)
-  const bookings = await getBookingsFromSupabase(examId);
+  // 2. Cache miss → Fetch from SUPABASE
+  const bookings = await getBookingsByContactFromSupabase(contactId);
 
   // 3. Cache in Redis
   await redis.set(cacheKey, JSON.stringify(bookings), 'EX', 300);
@@ -411,68 +503,64 @@ module.exports = async (req, res) => {
 };
 ```
 
-#### Example: `mock-exams/list.js` (READ)
+### Step 4: Update Write Endpoints (HubSpot → Supabase → Invalidate)
+
+Update user_root write endpoints to sync to Supabase and invalidate Redis.
+
+#### Example: `user_root/api/bookings/create.js` (WRITE - Critical booking endpoint)
 
 ```javascript
-const { getExamsFromSupabase } = require('../_shared/supabase-data');
+const hubspot = require('../_shared/hubspot');
+const { syncBookingToSupabase } = require('../_shared/supabase-data');
 const redis = require('../_shared/redis');
 
 module.exports = async (req, res) => {
-  const cacheKey = `exams:list`;
+  const { examId, contactId, ...bookingData } = req.body;
 
-  // 1. Check Redis cache
-  const cached = await redis.get(cacheKey);
-  if (cached) {
-    return res.status(200).json({ success: true, exams: JSON.parse(cached) });
+  // 1. Atomic capacity check with Redis (prevents overbooking)
+  const capacityKey = `capacity:${examId}`;
+  const remaining = await redis.decr(capacityKey);
+
+  if (remaining < 0) {
+    // Restore the counter and reject
+    await redis.incr(capacityKey);
+    return res.status(409).json({
+      success: false,
+      error: 'Session is full'
+    });
   }
 
-  // 2. Cache miss → Fetch from SUPABASE
-  const exams = await getExamsFromSupabase(req.query);
+  try {
+    // 2. Write to HubSpot (source of truth)
+    const booking = await hubspot.createBooking({ examId, contactId, ...bookingData });
 
-  // 3. Cache in Redis
-  await redis.set(cacheKey, JSON.stringify(exams), 'EX', 300);
+    // 3. Sync to Supabase
+    await syncBookingToSupabase(booking, examId);
 
-  return res.status(200).json({ success: true, exams });
+    // 4. Invalidate Redis caches
+    await Promise.all([
+      redis.del(`user:bookings:${contactId}`),
+      redis.del(`user:exams:available`)
+    ]);
+
+    return res.status(201).json({ success: true, booking });
+  } catch (error) {
+    // Restore capacity on failure
+    await redis.incr(capacityKey);
+    throw error;
+  }
 };
 ```
 
-### Step 4: Update Write Endpoints (HubSpot → Supabase → Invalidate)
-
-Update write endpoints to sync to Supabase and invalidate Redis.
-
-#### Example: `bookings/create.js` (WRITE)
+#### Example: `user_root/api/bookings/batch-cancel.js` (WRITE)
 
 ```javascript
-const hubspot = require('../../_shared/hubspot');
-const { syncBookingToSupabase } = require('../../_shared/supabase-data');
-const redis = require('../../_shared/redis');
+const hubspot = require('../_shared/hubspot');
+const { syncBookingToSupabase } = require('../_shared/supabase-data');
+const redis = require('../_shared/redis');
 
 module.exports = async (req, res) => {
-  const { examId, ...bookingData } = req.body;
-
-  // 1. Write to HubSpot (source of truth)
-  const booking = await hubspot.createBooking(bookingData);
-
-  // 2. Sync to Supabase
-  await syncBookingToSupabase(booking, examId);
-
-  // 3. Invalidate Redis cache (DELETE, not update!)
-  await redis.del(`bookings:${examId}`);
-  await redis.del(`exams:list`); // Invalidate exam list too (booking count changed)
-
-  return res.status(201).json({ success: true, booking });
-};
-```
-
-#### Example: `bookings/cancel.js` (WRITE)
-
-```javascript
-const hubspot = require('../../_shared/hubspot');
-const { syncBookingToSupabase } = require('../../_shared/supabase-data');
-const redis = require('../../_shared/redis');
-
-module.exports = async (req, res) => {
-  const { bookingId, examId } = req.body;
+  const { bookingId, examId, contactId } = req.body;
 
   // 1. Update in HubSpot
   const booking = await hubspot.cancelBooking(bookingId);
@@ -480,16 +568,26 @@ module.exports = async (req, res) => {
   // 2. Sync updated booking to Supabase
   await syncBookingToSupabase(booking, examId);
 
-  // 3. Invalidate Redis
-  await redis.del(`bookings:${examId}`);
+  // 3. Restore capacity
+  const capacityKey = `capacity:${examId}`;
+  await redis.incr(capacityKey);
+
+  // 4. Invalidate caches
+  await Promise.all([
+    redis.del(`user:bookings:${contactId}`),
+    redis.del(`user:exams:available`)
+  ]);
 
   return res.status(200).json({ success: true, booking });
 };
 ```
 
-#### Example: `mock-exams/create.js` (WRITE)
+#### Capacity Initialization (on exam creation/update from admin)
+
+When admin creates or updates exams, initialize Redis capacity counters:
 
 ```javascript
+// admin_root/api/admin/mock-exams/create.js (ADMIN - triggers user_root cache)
 const hubspot = require('../../_shared/hubspot');
 const { syncExamToSupabase } = require('../../_shared/supabase-data');
 const redis = require('../../_shared/redis');
@@ -501,8 +599,15 @@ module.exports = async (req, res) => {
   // 2. Sync to Supabase
   await syncExamToSupabase(exam);
 
-  // 3. Invalidate exams list cache
-  await redis.del(`exams:list`);
+  // 3. Initialize Redis capacity counter
+  const capacityKey = `capacity:${exam.id}`;
+  await redis.set(capacityKey, exam.properties.capacity);
+
+  // 4. Invalidate caches (both admin and user)
+  await Promise.all([
+    redis.del(`exams:list`),
+    redis.del(`user:exams:available`)
+  ]);
 
   return res.status(201).json({ success: true, exam });
 };
@@ -607,26 +712,29 @@ module.exports = async (req, res) => {
 
 ## Endpoints to Update
 
-### Read Endpoints (Change to Supabase)
+### user_root Read Endpoints (Change to Supabase)
 
-| Endpoint | Change |
-|----------|--------|
-| `mock-exams/list.js` | Read from `getExamsFromSupabase()` |
-| `mock-exams/[id]/bookings.js` | Read from `getBookingsFromSupabase()` |
-| `mock-exams/get.js` | Read from `getExamByIdFromSupabase()` |
-| `mock-exams/aggregates.js` | Read from `getExamsFromSupabase()` |
+| Endpoint | Change | Priority |
+|----------|--------|----------|
+| `user_root/api/mock-exams/available.js` | Read from `getExamsFromSupabase()` | **Critical** |
+| `user_root/api/bookings/list.js` | Read from `getBookingsByContactFromSupabase()` | High |
+| `user_root/api/bookings/[id].js` | Read from `getBookingByIdFromSupabase()` | Medium |
 
-### Write Endpoints (Add Supabase sync + Redis invalidation)
+### user_root Write Endpoints (Add Supabase sync + Redis capacity)
 
-| Endpoint | Changes |
-|----------|---------|
-| `bookings/create.js` | Add `syncBookingToSupabase()` + `redis.del()` |
-| `bookings/cancel.js` | Add `syncBookingToSupabase()` + `redis.del()` |
-| `bookings/batch-cancel.js` | Add `syncBookingsToSupabase()` + `redis.del()` |
-| `mock-exams/create.js` | Add `syncExamToSupabase()` + `redis.del()` |
-| `mock-exams/update.js` | Add `syncExamToSupabase()` + `redis.del()` |
-| `mock-exams/delete.js` | Add `deleteExamFromSupabase()` + `redis.del()` |
-| `mock-exams/activate.js` | Add `syncExamToSupabase()` + `redis.del()` |
+| Endpoint | Changes | Priority |
+|----------|---------|----------|
+| `user_root/api/bookings/create.js` | Redis atomic DECR + `syncBookingToSupabase()` | **Critical** |
+| `user_root/api/bookings/batch-cancel.js` | Redis INCR + `syncBookingToSupabase()` | High |
+
+### admin_root Write Endpoints (Trigger user_root cache invalidation)
+
+| Endpoint | Changes | Why |
+|----------|---------|-----|
+| `admin_root/api/admin/mock-exams/create.js` | Initialize Redis capacity + invalidate `user:exams:available` | New exams need capacity counters |
+| `admin_root/api/admin/mock-exams/update.js` | Update Redis capacity + invalidate `user:exams:available` | Capacity changes affect user app |
+| `admin_root/api/admin/mock-exams/delete.js` | Delete Redis capacity + invalidate `user:exams:available` | Deleted exams unavailable |
+| `admin_root/api/admin/mock-exams/activate.js` | Invalidate `user:exams:available` | Status changes visibility |
 
 ---
 
@@ -653,6 +761,218 @@ module.exports = async (req, res) => {
 - [ ] Force sync endpoint works
 - [ ] Handle Supabase connection errors gracefully
 - [ ] Test concurrent write operations
+
+---
+
+## Security: API Keys, RLS & Hardening
+
+This section covers securing the Supabase tables with least privilege access, Row Level Security policies, and hardening techniques.
+
+### API Key Strategy (Least Privilege)
+
+Supabase provides different API key types. For our server-side use case:
+
+| Key Type | Privilege | Our Usage |
+|----------|-----------|-----------|
+| **`anon` key** | Low - respects RLS | NOT USED - we don't need client-side access |
+| **`service_role` key** | High - bypasses RLS | ✅ Used for server-side sync operations |
+
+#### Why Service Role Key?
+
+Our architecture requires the service role key because:
+1. **Server-side only**: All Supabase calls happen in Vercel serverless functions (never client-side)
+2. **Sync operations need full access**: Upserting HubSpot data requires bypassing RLS
+3. **No user authentication context**: Our sync operations don't have a logged-in Supabase user
+
+#### Environment Variables (Updated)
+
+```bash
+# Vercel Environment Variables
+SUPABASE_URL=https://wjeglmmcbdtrochsmqvz.supabase.co
+SUPABASE_SERVICE_KEY=your_service_role_key_here  # Server-side only, bypasses RLS
+
+# NOT NEEDED for this architecture (no client-side Supabase access)
+# SUPABASE_ANON_KEY=your_anon_key_here
+```
+
+#### Security Best Practices for Service Key
+
+1. **Never expose in client code** - Only use in serverless functions
+2. **Store encrypted** - Use Vercel's encrypted environment variables
+3. **Log safely** - Only log first 6 characters if needed: `console.log('Key: ' + key.substring(0, 6) + '...')`
+4. **Rotate if compromised** - Regenerate in Supabase Dashboard → Settings → API
+
+---
+
+### Row Level Security (RLS) Policies
+
+Even though we use the service role key (which bypasses RLS), enabling RLS is still important:
+1. **Defense in depth** - Protection if key is ever exposed
+2. **Future-proofing** - If we add client-side access later
+3. **Best practice** - Supabase warns about tables without RLS
+
+#### Enable RLS on Tables
+
+Run in Supabase SQL Editor:
+
+```sql
+-- Enable RLS on all sync tables
+ALTER TABLE public.hubspot_bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hubspot_mock_exams ENABLE ROW LEVEL SECURITY;
+```
+
+#### Create RLS Policies
+
+Since our tables are only accessed by the service role key (server-side), we create restrictive policies that block direct access:
+
+```sql
+-- ============== BOOKINGS TABLE POLICIES ==============
+
+-- Policy: Block all direct access (service_role bypasses this)
+CREATE POLICY "Deny direct access to bookings"
+ON public.hubspot_bookings
+FOR ALL
+TO anon, authenticated
+USING (false);
+
+-- If you later need read access for authenticated users:
+-- CREATE POLICY "Users can view their own bookings"
+-- ON public.hubspot_bookings
+-- FOR SELECT
+-- TO authenticated
+-- USING (contact_id = auth.jwt() ->> 'contact_id');
+
+-- ============== MOCK EXAMS TABLE POLICIES ==============
+
+-- Policy: Block all direct access (service_role bypasses this)
+CREATE POLICY "Deny direct access to mock_exams"
+ON public.hubspot_mock_exams
+FOR ALL
+TO anon, authenticated
+USING (false);
+
+-- If you later need public read access for available exams:
+-- CREATE POLICY "Anyone can view active exams"
+-- ON public.hubspot_mock_exams
+-- FOR SELECT
+-- TO anon, authenticated
+-- USING (is_active = 'active');
+```
+
+#### Why Block Direct Access?
+
+Our architecture routes ALL data access through the API:
+```
+User → API Endpoint → Service Role Key → Supabase
+```
+
+Direct Supabase access (using anon key from browser) is NOT part of our design. The restrictive policies ensure:
+- **No accidental exposure** if someone tries to connect directly
+- **API is the single entry point** for all data access
+- **Service role key** handles all operations server-side
+
+---
+
+### Hardening Techniques
+
+#### 1. Custom Schema (Optional - Advanced)
+
+Instead of using the `public` schema, create a dedicated `api` schema:
+
+```sql
+-- Create private schema
+CREATE SCHEMA IF NOT EXISTS hubspot_sync;
+
+-- Move tables to private schema
+ALTER TABLE public.hubspot_bookings SET SCHEMA hubspot_sync;
+ALTER TABLE public.hubspot_mock_exams SET SCHEMA hubspot_sync;
+
+-- Grant access only to service role (implicitly has all access)
+-- No grants needed for anon/authenticated since service_role bypasses
+```
+
+**Benefits**:
+- Tables are hidden from default Data API exposure
+- Explicit control over what's accessible
+- Reduces attack surface
+
+**Trade-off**: Requires updating all table references in code to use `hubspot_sync.table_name`.
+
+#### 2. Revoke Public Schema Defaults (Recommended)
+
+Prevent accidental access by revoking default permissions:
+
+```sql
+-- Revoke default public schema permissions for anon and authenticated
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM anon, authenticated;
+
+-- Re-grant only to specific tables if needed later
+-- GRANT SELECT ON public.hubspot_mock_exams TO anon;
+```
+
+#### 3. Monitor for Unprotected Tables
+
+Supabase sends daily emails warning about tables without RLS. Additionally:
+
+1. **Check Security Advisor**: Supabase Dashboard → Database → Security Advisor
+2. **Query unprotected tables**:
+   ```sql
+   SELECT schemaname, tablename
+   FROM pg_tables
+   WHERE schemaname = 'public'
+   AND tablename NOT IN (
+     SELECT tablename FROM pg_policies WHERE schemaname = 'public'
+   );
+   ```
+
+#### 4. Audit Logging (Optional)
+
+Track who accesses data:
+
+```sql
+-- Create audit table
+CREATE TABLE IF NOT EXISTS public.audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  table_name TEXT NOT NULL,
+  operation TEXT NOT NULL,
+  record_id TEXT,
+  performed_at TIMESTAMP DEFAULT NOW(),
+  performed_by TEXT
+);
+
+-- Add trigger to bookings table
+CREATE OR REPLACE FUNCTION log_booking_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.audit_log (table_name, operation, record_id, performed_by)
+  VALUES (
+    'hubspot_bookings',
+    TG_OP,
+    COALESCE(NEW.hubspot_id, OLD.hubspot_id),
+    current_user
+  );
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER bookings_audit_trigger
+AFTER INSERT OR UPDATE OR DELETE ON public.hubspot_bookings
+FOR EACH ROW EXECUTE FUNCTION log_booking_changes();
+```
+
+---
+
+### Security Checklist
+
+- [ ] **Service role key** stored in Vercel encrypted env vars
+- [ ] **RLS enabled** on `hubspot_bookings` and `hubspot_mock_exams`
+- [ ] **Restrictive policies** created to block direct access
+- [ ] **No anon key** exposed to client (not needed)
+- [ ] **Security Advisor** checked in Supabase Dashboard
+- [ ] **Default permissions revoked** from public schema
+- [ ] **Audit logging** enabled (optional)
 
 ---
 
@@ -697,13 +1017,25 @@ module.exports = async (req, res) => {
 
 ## Success Criteria
 
-- [ ] **Zero HubSpot 429 errors** on read operations
-- [ ] All reads come from Supabase (not HubSpot)
+### Performance Targets (250 concurrent users)
+- [ ] **<1 second** response time for availability checks
+- [ ] **Zero HubSpot 429 errors** during booking rush
+- [ ] **Zero overbookings** with Redis atomic counters
+- [ ] **<50ms** average read latency from Supabase
+
+### Technical Requirements
+- [ ] All user_root reads come from Supabase (not HubSpot)
+- [ ] Redis capacity counters initialized for all exams
 - [ ] Writes sync to Supabase within same request
-- [ ] Redis cache invalidation working
+- [ ] Cache invalidation working across admin/user apps
 - [ ] Force sync endpoint available for recovery
 - [ ] Zero additional monthly costs
-- [ ] Migration completed successfully
+- [ ] Initial migration completed successfully
+
+### User Experience
+- [ ] Instant feedback on slot availability
+- [ ] No "session full" errors after waiting
+- [ ] Accurate real-time capacity display
 
 ---
 

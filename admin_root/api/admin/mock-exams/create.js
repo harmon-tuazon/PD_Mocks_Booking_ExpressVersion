@@ -10,6 +10,7 @@ const { HubSpotService } = require('../../_shared/hubspot');
 const { validateInput } = require('../../_shared/validation');
 const { requirePermission } = require('../middleware/requirePermission');
 const { getCache } = require('../../_shared/cache');
+const { syncExamToSupabase } = require('../../_shared/supabase-data');
 
 /**
  * Handler for creating a single mock exam
@@ -63,6 +64,17 @@ async function createMockExamHandler(req, res) {
       mock_type: validatedData.mock_type,
       exam_date: validatedData.exam_date
     });
+
+    // SUPABASE SYNC: Sync exam to Supabase for read optimization
+    try {
+      await syncExamToSupabase({
+        id: result.id,
+        properties: result.properties
+      });
+      console.log(`✅ Exam synced to Supabase`);
+    } catch (supabaseError) {
+      console.error(`⚠️ Supabase sync failed (non-blocking):`, supabaseError.message);
+    }
 
     // Invalidate caches after successful creation
     const cache = getCache();

@@ -49,6 +49,7 @@ const { requirePermission } = require('../middleware/requirePermission');
 const { validationMiddleware } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
+const { syncExamToSupabase } = require('../../_shared/supabase-data');
 
 // HubSpot Object Type ID for mock exams
 const HUBSPOT_OBJECTS = {
@@ -187,6 +188,18 @@ module.exports = async (req, res) => {
         if (response.results) {
           results.successful.push(...response.results);
           console.log(`✅ [CLONE] Chunk ${chunkNumber} successful: ${response.results.length} sessions cloned`);
+
+          // SUPABASE SYNC: Sync each cloned exam to Supabase (non-blocking)
+          for (const exam of response.results) {
+            try {
+              await syncExamToSupabase({
+                id: exam.id,
+                properties: exam.properties
+              });
+            } catch (syncErr) {
+              console.error(`⚠️ Supabase sync failed for exam ${exam.id}:`, syncErr.message);
+            }
+          }
         }
 
         // Handle partial failures within successful batch call

@@ -2,6 +2,7 @@ require('dotenv').config();
 const { HubSpotService } = require('../_shared/hubspot');
 const { validateInput } = require('../_shared/validation');
 const { getCache } = require('../_shared/cache');
+const { getExamsFromSupabase } = require('../_shared/supabase-data');
 const {
   setCorsHeaders,
   handleOptionsRequest,
@@ -65,130 +66,55 @@ module.exports = async (req, res) => {
       }
     }
 
-    console.log(`📋 Cache MISS - Fetching from HubSpot (key: ${cacheKey})`);
+    console.log(`📋 Cache MISS - Fetching from Supabase (key: ${cacheKey})`);
 
-    // Fetch from HubSpot
-    const hubspot = new HubSpotService();
-    const searchResult = await hubspot.searchMockExams(mock_type, true);
+    // SUPABASE-FIRST: Fetch from Supabase instead of HubSpot
+    // This eliminates HubSpot 429 rate limit errors during booking rushes
+    let examResults = [];
 
-    // OPTIMIZED: Batch process real-time capacity if requested
-    if (useRealTimeCapacity && searchResult.results.length > 0) {
-      console.log(`🔄 Real-time capacity requested for ${searchResult.results.length} exams - using batch operations`);
+    try {
+      // Build filters for Supabase query
+      const filters = {
+        is_active: 'active',
+        startDate: new Date().toISOString().split('T')[0] // Only future exams
+      };
 
-      try {
-        // Step 1: Collect all exam IDs
-        const examIds = searchResult.results.map(exam => exam.id);
-
-        // Step 2: Batch read all booking associations for all exams at once (1-2 API calls)
-        console.log(`📊 Batch reading associations for ${examIds.length} exam(s)...`);
-        const allAssociations = await hubspot.batch.batchReadAssociations(
-          '2-50158913', // mock_exams
-          examIds,
-          '2-50158943'  // bookings
-        );
-        console.log(`✅ Retrieved ${allAssociations.length} association records`);
-
-        // Debug: Log first association structure
-        if (allAssociations.length > 0) {
-          console.log('📋 Sample association structure:', JSON.stringify(allAssociations[0], null, 2));
-        }
-
-        // Step 3: Extract unique booking IDs
-        const bookingIds = [...new Set(
-          allAssociations.flatMap(assoc => {
-            const bookings = assoc.to || [];
-            if (!assoc.to) {
-              console.warn(`⚠️ Association for exam ${assoc.from?.id} has no 'to' property`);
-            }
-            return bookings.map(t => t.toObjectId);
-          }).filter(Boolean)
-        )];
-        console.log(`📝 Extracted ${bookingIds.length} unique booking IDs from ${allAssociations.length} associations`);
-
-        // Step 4: Batch read all bookings to check is_active status (1-2 API calls)
-        const bookings = bookingIds.length > 0
-          ? await hubspot.batch.batchReadObjects('2-50158943', bookingIds, ['is_active'])
-          : [];
-
-        console.log(`📦 Batch read returned ${bookings.length} booking(s) from ${bookingIds.length} requested IDs`);
-
-        // CRITICAL VALIDATION: Check for silent failure
-        if (bookingIds.length > 0 && bookings.length === 0) {
-          console.error(`🚨 CRITICAL: Batch read returned 0 bookings despite ${bookingIds.length} valid IDs!`);
-          console.error('   Requested IDs:', bookingIds);
-          console.error('   This indicates a batch read failure or all bookings are archived/deleted');
-        }
-
-        // Step 5: Build booking status map
-        const bookingStatusMap = new Map();
-        for (const booking of bookings) {
-          const isActive = booking.properties.is_active !== 'Cancelled' &&
-                          booking.properties.is_active !== 'cancelled' &&
-                          booking.properties.is_active !== false;
-          bookingStatusMap.set(booking.id, isActive);
-          console.log(`  Booking ${booking.id}: is_active="${booking.properties.is_active}" → counted as ${isActive ? 'ACTIVE' : 'INACTIVE'}`);
-        }
-        console.log(`🗺️ Built status map with ${bookingStatusMap.size} entries`);
-
-        // Step 6: Count active bookings per exam
-        const activeBookingCounts = new Map();
-        for (const assoc of allAssociations) {
-          const examId = assoc.from?.id;
-          if (!examId) {
-            console.error('⚠️ Association missing exam ID:', assoc);
-            continue;
-          }
-
-          const associatedBookings = assoc.to || [];
-
-          const activeCount = associatedBookings.filter(bookingAssoc => {
-            // FIX: Convert toObjectId to string for map lookup (booking.id is a string)
-            const bookingId = String(bookingAssoc.toObjectId);
-            const isActive = bookingStatusMap.get(bookingId);
-
-            // Debug: Log lookup results
-            if (isActive === undefined) {
-              console.warn(`⚠️ Booking ${bookingId} not found in status map (toObjectId type: ${typeof bookingAssoc.toObjectId})`);
-            }
-
-            return isActive === true;
-          }).length;
-
-          console.log(`  Exam ${examId}: ${activeCount} active booking(s) out of ${associatedBookings.length} total`);
-          activeBookingCounts.set(examId, activeCount);
-        }
-        console.log(`🔢 Calculated counts for ${activeBookingCounts.size} exam(s)`);
-
-        // Step 7: Collect exams that need updating
-        const updatesToMake = [];
-        for (const exam of searchResult.results) {
-          const currentCount = parseInt(exam.properties.total_bookings) || 0;
-          const actualCount = activeBookingCounts.get(exam.id) || 0;
-
-          if (actualCount !== currentCount) {
-            console.log(`📊 Exam ${exam.id}: stored=${currentCount}, actual=${actualCount}`);
-            updatesToMake.push({
-              id: exam.id,
-              properties: { total_bookings: actualCount.toString() }
-            });
-            // Update the exam object for processing
-            exam.properties.total_bookings = actualCount.toString();
-          }
-        }
-
-        // Step 8: Batch update all changed exams at once (1 API call)
-        if (updatesToMake.length > 0) {
-          console.log(`✏️ Batch updating ${updatesToMake.length} exams with corrected booking counts`);
-          await hubspot.batch.batchUpdateObjects('2-50158913', updatesToMake);
-        }
-
-        const apiCallsSaved = (examIds.length * 2) - (2 + (bookingIds.length > 100 ? 2 : 1) + (updatesToMake.length > 0 ? 1 : 0));
-        console.log(`✅ Real-time capacity completed (saved ~${apiCallsSaved} API calls)`);
-      } catch (batchError) {
-        console.error(`❌ Batch capacity calculation failed, falling back to cached values:`, batchError);
-        // Continue with cached values on error
+      if (mock_type && mock_type !== 'all') {
+        filters.mock_type = mock_type;
       }
+
+      const supabaseExams = await getExamsFromSupabase(filters);
+
+      // Transform Supabase format to match expected HubSpot format
+      examResults = supabaseExams.map(exam => ({
+        id: exam.hubspot_id,
+        properties: {
+          exam_date: exam.exam_date,
+          start_time: exam.start_time,
+          end_time: exam.end_time,
+          mock_type: exam.mock_type,
+          capacity: exam.capacity?.toString() || '0',
+          total_bookings: exam.total_bookings?.toString() || '0',
+          location: exam.location,
+          is_active: exam.is_active
+        }
+      }));
+
+      console.log(`✅ Fetched ${examResults.length} active exams from Supabase (no HubSpot API calls)`);
+
+    } catch (supabaseError) {
+      // Fallback to HubSpot if Supabase fails
+      console.error(`❌ Supabase fetch failed, falling back to HubSpot:`, supabaseError.message);
+
+      const hubspot = new HubSpotService();
+      const searchResult = await hubspot.searchMockExams(mock_type, true);
+      examResults = searchResult.results;
+
+      console.log(`⚠️ Fallback: Fetched ${examResults.length} exams from HubSpot`);
     }
+
+    // Store results in format expected by downstream code
+    const searchResult = { results: examResults };
 
     // Process exams for response - Read from Redis for real-time availability
     const RedisLockService = require('../_shared/redis');
