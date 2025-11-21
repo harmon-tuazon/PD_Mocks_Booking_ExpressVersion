@@ -9,6 +9,7 @@ const { requirePermission } = require('../middleware/requirePermission');
 const { validationMiddleware } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
+const { syncExamToSupabase } = require('../../_shared/supabase-data');
 
 module.exports = async (req, res) => {
   try {
@@ -214,6 +215,20 @@ module.exports = async (req, res) => {
     // Update mock exam in HubSpot
     const updatedMockExam = await hubspot.updateMockExam(mockExamId, properties);
 
+    // Sync update to Supabase
+    let supabaseSynced = false;
+    try {
+      await syncExamToSupabase({
+        id: mockExamId,
+        properties: updatedMockExam.properties
+      });
+      console.log(`✅ Mock exam ${mockExamId} synced to Supabase`);
+      supabaseSynced = true;
+    } catch (supabaseError) {
+      console.error('❌ Supabase sync failed:', supabaseError.message);
+      // Continue - HubSpot is source of truth
+    }
+
     // Create audit trail note if there were changes (non-blocking)
     if (Object.keys(changes).length > 0) {
       console.log('📝 [UPDATE] Creating audit trail note for changes');
@@ -247,7 +262,8 @@ module.exports = async (req, res) => {
       mockExam: {
         id: updatedMockExam.id,
         properties: updatedMockExam.properties
-      }
+      },
+      supabase_synced: supabaseSynced
     });
 
   } catch (error) {
