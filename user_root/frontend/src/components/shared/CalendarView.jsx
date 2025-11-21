@@ -167,7 +167,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [] }) 
           </div>
 
           {/* Week Days Header */}
-          <div className="grid grid-cols-7 gap-1 mb-4">
+          <div className="grid grid-cols-7 mb-4">
             {weekDays.map(day => (
               <div key={day} className="h-8 md:h-10 flex items-center justify-center text-xs md:text-sm font-subheading font-medium text-gray-600 dark:text-gray-400">
                 {day}
@@ -176,7 +176,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [] }) 
           </div>
 
           {/* Calendar Days */}
-          <div className="grid grid-cols-7 gap-1 md:gap-1">
+          <div className="grid grid-cols-7">
             {calendarDays.map((date, index) => (
               <button
                 key={index}
