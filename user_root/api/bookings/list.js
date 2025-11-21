@@ -18,7 +18,6 @@ const {
   sanitizeInput
 } = require('../_shared/auth');
 const { getBookingsByContactFromSupabase, getExamByIdFromSupabase } = require('../_shared/supabase-data');
-const { supabaseAdmin } = require('../_shared/supabase');
 
 /**
  * Main handler for listing bookings
@@ -90,51 +89,14 @@ async function handler(req, res) {
     const sanitizedStudentId = sanitizeInput(student_id);
     const sanitizedEmail = sanitizeInput(email);
 
-    // Initialize HubSpot service (for fallback only)
+    // Initialize HubSpot service for authentication
     const hubspot = new HubSpotService();
 
-    // Step 1: SUPABASE-FIRST - Authenticate user by finding contact in Supabase
-    console.log('🔐 Authenticating user via Supabase contact lookup...');
+    // Step 1: Authenticate user via HubSpot contact search
+    // HubSpot remains the source of truth for authentication
+    console.log('🔐 Authenticating user via HubSpot...');
 
-    let contact = null;
-    let contactId = null;
-
-    try {
-      // Try Supabase first - query hubspot_contacts table
-      const { data: supabaseContact, error: supabaseError } = await supabaseAdmin
-        .from('hubspot_contacts')
-        .select('*')
-        .eq('student_id', sanitizedStudentId)
-        .eq('email', sanitizedEmail.toLowerCase())
-        .single();
-
-      if (supabaseContact && !supabaseError) {
-        contact = {
-          id: supabaseContact.hubspot_id,
-          properties: {
-            firstname: supabaseContact.firstname,
-            lastname: supabaseContact.lastname,
-            email: supabaseContact.email,
-            student_id: supabaseContact.student_id,
-            hs_object_id: supabaseContact.hubspot_id,
-            sj_credits: supabaseContact.sj_credits,
-            cs_credits: supabaseContact.cs_credits,
-            sjmini_credits: supabaseContact.sjmini_credits,
-            shared_mock_credits: supabaseContact.shared_mock_credits
-          }
-        };
-        contactId = supabaseContact.hubspot_id;
-        console.log(`✅ Contact authenticated via Supabase: ${contactId} (no HubSpot API call)`);
-      }
-    } catch (supabaseErr) {
-      console.log('⚠️ Supabase contact lookup failed, falling back to HubSpot:', supabaseErr.message);
-    }
-
-    // Fallback to HubSpot if Supabase lookup failed
-    if (!contact) {
-      console.log('🔄 Falling back to HubSpot contact search...');
-      contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail);
-    }
+    const contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail);
 
     if (!contact) {
       console.error('❌ Contact not found:', {
