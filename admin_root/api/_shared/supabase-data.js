@@ -57,8 +57,12 @@ async function getExamsFromSupabase(filters = {}) {
   let query = supabaseAdmin.from('hubspot_mock_exams').select('*');
 
   if (filters.is_active) {
-    // Handle both string 'Yes' and boolean true formats
-    const activeValue = filters.is_active === 'Yes' ? 'true' : filters.is_active;
+    // Map filter values to Supabase stored values
+    // 'active' or 'Yes' → 'true', others pass through
+    let activeValue = filters.is_active;
+    if (activeValue === 'active' || activeValue === 'Yes') {
+      activeValue = 'true';
+    }
     query = query.eq('is_active', activeValue);
   }
   if (filters.startDate) {
