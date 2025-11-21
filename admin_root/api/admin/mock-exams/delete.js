@@ -8,7 +8,7 @@
 const { requirePermission } = require('../middleware/requirePermission');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
-const { deleteExamFromSupabase, deleteBookingFromSupabase } = require('../../_shared/supabase-data');
+const { deleteExamFromSupabase } = require('../../_shared/supabase-data');
 
 module.exports = async (req, res) => {
   try {
@@ -62,21 +62,12 @@ module.exports = async (req, res) => {
     // Sync deletion to Supabase
     let supabaseSynced = false;
     try {
-      // Delete any cancelled bookings from Supabase first
-      if (totalBookings > 0 && cancelledCount > 0) {
-        for (const booking of mockExamDetails.bookings) {
-          try {
-            await deleteBookingFromSupabase(booking.id);
-          } catch (bookingErr) {
-            console.warn(`⚠️ Failed to delete booking ${booking.id} from Supabase:`, bookingErr.message);
-          }
-        }
-        console.log(`✅ Deleted ${cancelledCount} cancelled booking(s) from Supabase`);
-      }
-
-      // Delete the exam from Supabase
+      // Delete the exam from Supabase (cancelled bookings are left orphaned)
       await deleteExamFromSupabase(mockExamId);
       console.log(`✅ Mock exam ${mockExamId} deleted from Supabase`);
+      if (cancelledCount > 0) {
+        console.log(`ℹ️ ${cancelledCount} cancelled booking(s) left orphaned in Supabase`);
+      }
       supabaseSynced = true;
     } catch (supabaseError) {
       console.error('❌ Failed to sync deletion to Supabase:', supabaseError.message);
