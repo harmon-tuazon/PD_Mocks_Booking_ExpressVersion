@@ -17,6 +17,8 @@ const {
   rateLimitMiddleware,
   sanitizeInput
 } = require('../_shared/auth');
+const { getBookingsByContactFromSupabase, getExamByIdFromSupabase } = require('../_shared/supabase-data');
+const { supabaseAdmin } = require('../_shared/supabase');
 
 /**
  * Main handler for listing bookings
@@ -88,12 +90,51 @@ async function handler(req, res) {
     const sanitizedStudentId = sanitizeInput(student_id);
     const sanitizedEmail = sanitizeInput(email);
 
-    // Initialize HubSpot service
+    // Initialize HubSpot service (for fallback only)
     const hubspot = new HubSpotService();
 
-    // Step 1: Authenticate user by finding contact
-    console.log('🔐 Authenticating user via HubSpot contact search...');
-    const contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail);
+    // Step 1: SUPABASE-FIRST - Authenticate user by finding contact in Supabase
+    console.log('🔐 Authenticating user via Supabase contact lookup...');
+
+    let contact = null;
+    let contactId = null;
+
+    try {
+      // Try Supabase first - query hubspot_contacts table
+      const { data: supabaseContact, error: supabaseError } = await supabaseAdmin
+        .from('hubspot_contacts')
+        .select('*')
+        .eq('student_id', sanitizedStudentId)
+        .eq('email', sanitizedEmail.toLowerCase())
+        .single();
+
+      if (supabaseContact && !supabaseError) {
+        contact = {
+          id: supabaseContact.hubspot_id,
+          properties: {
+            firstname: supabaseContact.firstname,
+            lastname: supabaseContact.lastname,
+            email: supabaseContact.email,
+            student_id: supabaseContact.student_id,
+            hs_object_id: supabaseContact.hubspot_id,
+            sj_credits: supabaseContact.sj_credits,
+            cs_credits: supabaseContact.cs_credits,
+            sjmini_credits: supabaseContact.sjmini_credits,
+            shared_mock_credits: supabaseContact.shared_mock_credits
+          }
+        };
+        contactId = supabaseContact.hubspot_id;
+        console.log(`✅ Contact authenticated via Supabase: ${contactId} (no HubSpot API call)`);
+      }
+    } catch (supabaseErr) {
+      console.log('⚠️ Supabase contact lookup failed, falling back to HubSpot:', supabaseErr.message);
+    }
+
+    // Fallback to HubSpot if Supabase lookup failed
+    if (!contact) {
+      console.log('🔄 Falling back to HubSpot contact search...');
+      contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail);
+    }
 
     if (!contact) {
       console.error('❌ Contact not found:', {
@@ -106,7 +147,7 @@ async function handler(req, res) {
       throw error;
     }
 
-    const contactId = contact.id;
+    contactId = contactId || contact.id;
     console.log(`✅ Contact authenticated: ${contactId} - ${contact.properties.firstname} ${contact.properties.lastname}`, {
       contactId,
       studentId: contact.properties.student_id,
@@ -124,7 +165,7 @@ async function handler(req, res) {
 
     // Step 2: Get contact's HubSpot object ID for associations API
     const contactHsObjectId = contact.properties.hs_object_id || contactId;
-    console.log(`🔗 Using contact HubSpot object ID: ${contactHsObjectId} for associations API`);
+    console.log(`🔗 Using contact HubSpot object ID: ${contactHsObjectId}`);
 
     // Step 3: Get bookings using the improved associations-focused approach
     try {
@@ -149,8 +190,98 @@ async function handler(req, res) {
       }
 
       if (!bookingsData) {
-        console.log(`📋 Cache MISS - Retrieving bookings via HubSpot associations API (filter: ${filter}, page: ${page}, limit: ${limit})`);
-        bookingsData = await hubspot.getBookingsForContact(contactHsObjectId, { filter, page, limit });
+        console.log(`📋 Cache MISS - Retrieving bookings from Supabase (filter: ${filter}, page: ${page}, limit: ${limit})`);
+
+        // SUPABASE-FIRST: Get bookings from Supabase instead of HubSpot
+        let supabaseBookings = [];
+        try {
+          supabaseBookings = await getBookingsByContactFromSupabase(contactHsObjectId);
+          console.log(`✅ Fetched ${supabaseBookings.length} bookings from Supabase (no HubSpot API calls)`);
+        } catch (supabaseErr) {
+          console.error('❌ Supabase booking fetch failed, falling back to HubSpot:', supabaseErr.message);
+          // Fallback to HubSpot
+          const hubspotData = await hubspot.getBookingsForContact(contactHsObjectId, { filter, page, limit });
+          bookingsData = hubspotData;
+        }
+
+        // If we got Supabase bookings, transform and filter them
+        if (supabaseBookings.length > 0 || !bookingsData) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          // Transform Supabase format to expected format
+          let transformedBookings = supabaseBookings.map(booking => {
+            // Normalize exam_date to YYYY-MM-DD
+            let normalizedDate = booking.exam_date;
+            if (normalizedDate && normalizedDate.includes(' ')) {
+              normalizedDate = normalizedDate.split(' ')[0];
+            } else if (normalizedDate && normalizedDate.includes('T')) {
+              normalizedDate = normalizedDate.split('T')[0];
+            }
+
+            return {
+              id: booking.hubspot_id,
+              booking_id: booking.booking_id,
+              name: booking.name,
+              email: booking.student_email,
+              exam_date: normalizedDate,
+              start_time: booking.start_time,
+              end_time: booking.end_time,
+              mock_type: booking.mock_type || '',
+              location: booking.attending_location || booking.location || 'TBD',
+              is_active: booking.is_active,
+              attendance: booking.attendance,
+              dominant_hand: booking.dominant_hand,
+              mock_exam_id: booking.associated_mock_exam
+            };
+          });
+
+          // Apply filter
+          if (filter === 'upcoming') {
+            transformedBookings = transformedBookings.filter(booking => {
+              if (!booking.exam_date) return false;
+              const examDate = new Date(booking.exam_date);
+              examDate.setHours(0, 0, 0, 0);
+              const isActive = booking.is_active === 'Active' || booking.is_active === 'active' || booking.is_active === 'true' || booking.is_active === true;
+              return examDate >= today && isActive;
+            });
+          } else if (filter === 'past') {
+            transformedBookings = transformedBookings.filter(booking => {
+              if (!booking.exam_date) return false;
+              const examDate = new Date(booking.exam_date);
+              examDate.setHours(0, 0, 0, 0);
+              return examDate < today;
+            });
+          } else if (filter === 'cancelled') {
+            transformedBookings = transformedBookings.filter(booking => {
+              return booking.is_active === 'Cancelled' || booking.is_active === 'cancelled';
+            });
+          }
+
+          // Sort by exam_date descending (most recent first)
+          transformedBookings.sort((a, b) => {
+            const dateA = new Date(a.exam_date || 0);
+            const dateB = new Date(b.exam_date || 0);
+            return dateB - dateA;
+          });
+
+          // Pagination
+          const total = transformedBookings.length;
+          const startIndex = (page - 1) * limit;
+          const paginatedBookings = transformedBookings.slice(startIndex, startIndex + limit);
+
+          bookingsData = {
+            bookings: paginatedBookings,
+            total,
+            pagination: {
+              current_page: page,
+              total_pages: Math.ceil(total / limit),
+              total_bookings: total,
+              has_next: startIndex + limit < total,
+              has_previous: page > 1
+            }
+          };
+        }
 
         // Auto-complete past bookings
         const today = new Date();
