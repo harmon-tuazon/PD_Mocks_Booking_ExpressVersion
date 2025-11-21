@@ -213,15 +213,15 @@ module.exports = async (req, res) => {
     if (results.successful.length > 0) {
       try {
         const supabaseUpdates = results.successful.map(result => {
-          const originalUpdate = updates.find(u => u.id === result.id);
+          // results.successful contains objects with sessionId and newState (already processed)
           return supabaseAdmin
             .from('hubspot_mock_exams')
             .update({
-              is_active: originalUpdate.metadata.newState,
+              is_active: result.newState,
               updated_at: new Date().toISOString(),
               synced_at: new Date().toISOString()
             })
-            .eq('hubspot_id', result.id);
+            .eq('hubspot_id', result.sessionId);
         });
 
         const supabaseResults = await Promise.allSettled(supabaseUpdates);
