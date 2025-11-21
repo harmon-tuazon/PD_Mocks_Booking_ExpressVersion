@@ -44,6 +44,7 @@ const {
   rateLimitMiddleware,
   sanitizeInput
 } = require('../_shared/auth');
+const { updateBookingStatusInSupabase } = require('../_shared/supabase-data');
 
 // Handler function for GET /api/bookings/[id]
 async function handler(req, res) {
@@ -520,13 +521,24 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
     // Step 7: Perform soft delete (mark as cancelled)
     try {
       await hubspot.softDeleteBooking(bookingId);
-      console.log(`✅ Booking ${bookingId} marked as cancelled`);
+      console.log(`✅ Booking ${bookingId} marked as cancelled in HubSpot`);
     } catch (deleteError) {
       console.error('❌ Failed to soft delete booking:', deleteError);
       const softDeleteError = new Error('Failed to cancel booking');
       softDeleteError.status = 500;
       softDeleteError.code = 'SOFT_DELETE_FAILED';
       throw softDeleteError;
+    }
+
+    // Step 7.1: Sync cancellation to Supabase
+    let supabaseSynced = false;
+    try {
+      await updateBookingStatusInSupabase(bookingId, 'Cancelled');
+      console.log(`✅ Booking ${bookingId} marked as cancelled in Supabase`);
+      supabaseSynced = true;
+    } catch (supabaseError) {
+      console.error('❌ Failed to sync cancellation to Supabase:', supabaseError.message);
+      // Continue - HubSpot is source of truth, Supabase sync failure is non-blocking
     }
 
     // Step 7.5: Update Redis counters and invalidate cache (CRITICAL for eventual consistency + ENHANCED LOGGING)
@@ -642,7 +654,8 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
         soft_delete: true,
         note_created: noteCreated,
         bookings_decremented: bookingsDecremented,
-        credits_restored: !!creditsRestored
+        credits_restored: !!creditsRestored,
+        supabase_synced: supabaseSynced
       },
       ...(creditsRestored ? { credit_restoration: creditsRestored } : {}),
       ...(reason ? { reason } : {})
