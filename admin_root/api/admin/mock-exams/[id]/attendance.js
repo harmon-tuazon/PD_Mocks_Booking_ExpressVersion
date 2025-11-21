@@ -234,11 +234,18 @@ module.exports = async (req, res) => {
     if (results.successful.length > 0) {
       try {
         const supabaseUpdates = results.successful.map(result => {
-          // result.id is from HubSpot response, bookingMap is keyed by bookingId (string)
-          const bookingId = result.id.toString();
-          const originalRequest = bookingMap.get(bookingId);
+          // result is from HubSpot batch update response
+          // Check both result.id (standard) and result.properties?.hs_object_id (alternative)
+          const bookingId = result.id || result.properties?.hs_object_id;
 
-          // Skip if we can't find the original request (shouldn't happen)
+          if (!bookingId) {
+            console.warn(`⚠️ Could not extract booking ID from result:`, JSON.stringify(result));
+            return null;
+          }
+
+          const originalRequest = bookingMap.get(bookingId.toString());
+
+          // Skip if we can't find the original request
           if (!originalRequest) {
             console.warn(`⚠️ Could not find original request for booking ${bookingId}`);
             return null;
@@ -269,7 +276,7 @@ module.exports = async (req, res) => {
               updated_at: new Date().toISOString(),
               synced_at: new Date().toISOString()
             })
-            .eq('hubspot_id', result.id);
+            .eq('hubspot_id', bookingId.toString());
         });
 
         // Filter out null entries (bookings that couldn't be found)
