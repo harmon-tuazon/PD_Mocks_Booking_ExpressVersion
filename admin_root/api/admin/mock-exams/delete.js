@@ -8,6 +8,7 @@
 const { requirePermission } = require('../middleware/requirePermission');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
+const { deleteExamFromSupabase, deleteBookingFromSupabase } = require('../../_shared/supabase-data');
 
 module.exports = async (req, res) => {
   try {
@@ -58,6 +59,30 @@ module.exports = async (req, res) => {
     // Delete mock exam from HubSpot
     await hubspot.deleteMockExam(mockExamId);
 
+    // Sync deletion to Supabase
+    let supabaseSynced = false;
+    try {
+      // Delete any cancelled bookings from Supabase first
+      if (totalBookings > 0 && cancelledCount > 0) {
+        for (const booking of mockExamDetails.bookings) {
+          try {
+            await deleteBookingFromSupabase(booking.id);
+          } catch (bookingErr) {
+            console.warn(`⚠️ Failed to delete booking ${booking.id} from Supabase:`, bookingErr.message);
+          }
+        }
+        console.log(`✅ Deleted ${cancelledCount} cancelled booking(s) from Supabase`);
+      }
+
+      // Delete the exam from Supabase
+      await deleteExamFromSupabase(mockExamId);
+      console.log(`✅ Mock exam ${mockExamId} deleted from Supabase`);
+      supabaseSynced = true;
+    } catch (supabaseError) {
+      console.error('❌ Failed to sync deletion to Supabase:', supabaseError.message);
+      // Continue - HubSpot is source of truth
+    }
+
     // Invalidate caches after successful deletion
     const cache = getCache();
     await cache.deletePattern('admin:mock-exams:list:*');
@@ -77,7 +102,8 @@ module.exports = async (req, res) => {
         total: totalBookings,
         cancelled: cancelledCount,
         active_or_completed: activeOrCompletedBookings.length
-      }
+      },
+      supabase_synced: supabaseSynced
     });
 
   } catch (error) {
