@@ -429,6 +429,21 @@ class RedisLockService {
   }
 
   /**
+   * Set expiration time on a key
+   * @param {string} key - Redis key
+   * @param {number} ttlSeconds - TTL in seconds
+   * @returns {Promise<number>} 1 if set, 0 if key doesn't exist
+   */
+  async expire(key, ttlSeconds) {
+    try {
+      return await this.redis.expire(key, ttlSeconds);
+    } catch (error) {
+      console.error(`❌ Redis expire error for key "${key}":`, error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Decrement counter
    * @param {string} key - Redis key
    * @returns {Promise<number>} New value after decrement
