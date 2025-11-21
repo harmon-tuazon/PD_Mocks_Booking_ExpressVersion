@@ -234,9 +234,8 @@ module.exports = async (req, res) => {
     if (results.successful.length > 0) {
       try {
         const supabaseUpdates = results.successful.map(result => {
-          // result is from HubSpot batch update response
-          // Check both result.id (standard) and result.properties?.hs_object_id (alternative)
-          const bookingId = result.id || result.properties?.hs_object_id;
+          // result is our custom object with bookingId (from lines 208-214)
+          const bookingId = result.bookingId;
 
           if (!bookingId) {
             console.warn(`⚠️ Could not extract booking ID from result:`, JSON.stringify(result));
