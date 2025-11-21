@@ -77,6 +77,19 @@ const CloneMockExamsModal = ({
 
   const cloneMutation = useCloneSessions();
 
+  // Helper to convert ISO timestamp or HH:mm to HH:mm format
+  const normalizeTimeToHHMM = (timeValue) => {
+    if (!timeValue) return '';
+    // If already in HH:mm format, return as is
+    if (/^\d{2}:\d{2}$/.test(timeValue)) return timeValue;
+    // If ISO format, extract HH:mm
+    if (timeValue.includes('T')) {
+      const match = timeValue.match(/T(\d{2}:\d{2})/);
+      return match ? match[1] : '';
+    }
+    return timeValue;
+  };
+
   // Pre-populate form when single session selected
   useEffect(() => {
     if (!isOpen) return;
@@ -91,8 +104,8 @@ const CloneMockExamsModal = ({
         location: source.location || KEEP_ORIGINAL,
         mock_type: source.mock_type || KEEP_ORIGINAL,
         capacity: source.capacity || '',
-        start_time: source.start_time || '',
-        end_time: source.end_time || '',
+        start_time: normalizeTimeToHHMM(source.start_time),
+        end_time: normalizeTimeToHHMM(source.end_time),
         is_active: source.is_active || KEEP_ORIGINAL,
         scheduled_activation_datetime: source.scheduled_activation_datetime || ''
       });
