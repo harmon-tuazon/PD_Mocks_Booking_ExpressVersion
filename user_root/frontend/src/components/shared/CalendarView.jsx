@@ -91,16 +91,16 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [] }) 
     let classes = 'h-12 w-12 md:h-10 md:w-10 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center ';
 
     if (isPast) {
-      classes += 'text-gray-300 dark:text-gray-600 cursor-not-allowed bg-gray-50 dark:bg-dark-card/50 ';
+      classes += 'text-gray-400 dark:text-gray-500 cursor-not-allowed bg-gray-50 dark:bg-dark-card/50 ';
     } else if (isSelected) {
       classes += 'bg-primary-600 text-white font-bold shadow-md ring-2 ring-primary-300 dark:ring-primary-700 ';
     } else if (hasExams) {
-      classes += 'bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-400 hover:bg-teal-200 dark:hover:bg-teal-800/50 cursor-pointer border-2 border-teal-200 dark:border-teal-700 font-semibold ';
+      classes += 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 hover:bg-teal-200 dark:hover:bg-teal-800/50 cursor-pointer border-2 border-teal-200 dark:border-teal-700 font-semibold ';
       if (isDateToday) {
         classes += 'ring-2 ring-primary-300 dark:ring-primary-700 ';
       }
     } else {
-      classes += 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-hover ';
+      classes += 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-hover ';
       if (isDateToday) {
         classes += 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 ring-2 ring-primary-200 dark:ring-primary-700 ';
       }
@@ -178,14 +178,15 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [] }) 
           {/* Calendar Days */}
           <div className="grid grid-cols-7">
             {calendarDays.map((date, index) => (
-              <button
-                key={index}
-                onClick={() => handleDateClick(date)}
-                className={getDayClasses(date)}
-                disabled={!date || isBefore(date, startOfDay(new Date())) || (!examsByDate[date && format(date, 'yyyy-MM-dd')])}
-              >
-                {date && format(date, 'd')}
-              </button>
+              <div key={index} className="flex items-center justify-center py-1">
+                <button
+                  onClick={() => handleDateClick(date)}
+                  className={getDayClasses(date)}
+                  disabled={!date || isBefore(date, startOfDay(new Date())) || (!examsByDate[date && format(date, 'yyyy-MM-dd')])}
+                >
+                  {date && format(date, 'd')}
+                </button>
+              </div>
             ))}
           </div>
 
