@@ -507,17 +507,22 @@ module.exports = module.exports = module.exports = async function handler(req, r
         id: createdBookingId,
         properties: {
           booking_id: bookingId,
-          mock_exam_id: mock_exam_id,
-          contact_id: contact_id,
+          associated_mock_exam: mock_exam_id,
+          associated_contact_id: contact_id,
           student_id: student_id,
-          student_name: sanitizedName,
+          name: sanitizedName,
           student_email: sanitizedEmail,
-          booking_status: 'Confirmed',
           is_active: 'Active',
           attendance: null,
           attending_location: attending_location || null,
           exam_date: exam_date,
           dominant_hand: dominant_hand || null,
+          token_used: tokenUsed || null,
+          idempotency_key: idempotencyKey || null,
+          // Include mock exam's time properties for display purposes
+          start_time: mockExam.properties?.start_time || null,
+          end_time: mockExam.properties?.end_time || null,
+          ndecc_exam_date: mockExam.properties?.ndecc_exam_date || null,
           createdate: new Date().toISOString()
         }
       };

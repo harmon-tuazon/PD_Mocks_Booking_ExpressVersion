@@ -56,7 +56,7 @@ const BookingRow = ({
   };
 
   // Check if booking is cancelled (cannot be selected in cancellation mode)
-  const isCancelled = booking.booking_status === 'cancelled' || booking.is_active === 'Cancelled';
+  const isCancelled = booking.is_active === 'Cancelled';
 
   // Determine if selection mode is active
   const isSelectionMode = isAttendanceMode || isCancellationMode;

@@ -18,7 +18,7 @@ async function getBookingsFromSupabase(examId) {
   const { data, error } = await supabaseAdmin
     .from('hubspot_bookings')
     .select('*')
-    .eq('mock_exam_id', examId);
+    .eq('associated_mock_exam', examId);
 
   if (error) {
     console.error(`❌ Supabase read error for exam ${examId}:`, error.message);
@@ -37,7 +37,7 @@ async function getBookingsByContactFromSupabase(contactId) {
   const { data, error } = await supabaseAdmin
     .from('hubspot_bookings')
     .select('*')
-    .eq('contact_id', contactId)
+    .eq('associated_contact_id', contactId)
     .order('exam_date', { ascending: false });
 
   if (error) {
@@ -131,7 +131,7 @@ async function getActiveBookingsCountFromSupabase(examId) {
   const { count, error } = await supabaseAdmin
     .from('hubspot_bookings')
     .select('*', { count: 'exact', head: true })
-    .eq('mock_exam_id', examId)
+    .eq('associated_mock_exam', examId)
     .neq('is_active', 'Cancelled')
     .neq('is_active', 'cancelled');
 
@@ -156,17 +156,23 @@ async function syncBookingToSupabase(booking, examId) {
   const record = {
     hubspot_id: booking.id,
     booking_id: props.booking_id,
-    mock_exam_id: examId || props.mock_exam_id,
-    contact_id: props.contact_id,
+    associated_mock_exam: examId || props.associated_mock_exam || props.mock_exam_id,
+    associated_contact_id: props.associated_contact_id || props.contact_id,
     student_id: props.student_id,
-    student_name: props.student_name || props.name,
+    name: props.name || props.student_name,
     student_email: props.student_email || props.email,
-    booking_status: props.booking_status,
     is_active: props.is_active,
     attendance: props.attendance,
     attending_location: props.attending_location,
     exam_date: props.exam_date,
     dominant_hand: props.dominant_hand,
+    token_used: props.token_used,
+    token_refunded_at: props.token_refunded_at ? new Date(parseInt(props.token_refunded_at)).toISOString() : null,
+    token_refund_admin: props.token_refund_admin,
+    start_time: props.start_time,
+    end_time: props.end_time,
+    ndecc_exam_date: props.ndecc_exam_date,
+    idempotency_key: props.idempotency_key,
     created_at: props.createdate || props.created_at,
     updated_at: props.hs_lastmodifieddate || props.updated_at,
     synced_at: new Date().toISOString()
@@ -197,17 +203,23 @@ async function syncBookingsToSupabase(bookings, examId) {
     return {
       hubspot_id: booking.id,
       booking_id: props.booking_id,
-      mock_exam_id: examId || props.mock_exam_id,
-      contact_id: props.contact_id,
+      associated_mock_exam: examId || props.associated_mock_exam || props.mock_exam_id,
+      associated_contact_id: props.associated_contact_id || props.contact_id,
       student_id: props.student_id,
-      student_name: props.student_name || props.name,
+      name: props.name || props.student_name,
       student_email: props.student_email || props.email,
-      booking_status: props.booking_status,
       is_active: props.is_active,
       attendance: props.attendance,
       attending_location: props.attending_location,
       exam_date: props.exam_date,
       dominant_hand: props.dominant_hand,
+      token_used: props.token_used,
+      token_refunded_at: props.token_refunded_at,
+      token_refund_admin: props.token_refund_admin,
+      start_time: props.start_time,
+      end_time: props.end_time,
+      ndecc_exam_date: props.ndecc_exam_date,
+      idempotency_key: props.idempotency_key,
       created_at: props.createdate || props.created_at,
       updated_at: props.hs_lastmodifieddate || props.updated_at,
       synced_at: new Date().toISOString()
@@ -244,6 +256,7 @@ async function syncExamToSupabase(exam) {
     capacity: parseInt(props.capacity) || 0,
     total_bookings: parseInt(props.total_bookings) || 0,
     is_active: props.is_active,
+    scheduled_activation_datetime: props.scheduled_activation_datetime,
     created_at: props.createdate || props.created_at,
     updated_at: props.hs_lastmodifieddate || props.updated_at,
     synced_at: new Date().toISOString()

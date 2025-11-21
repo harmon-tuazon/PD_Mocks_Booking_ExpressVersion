@@ -154,7 +154,6 @@ module.exports = async (req, res) => {
               'student_id',
               'dominant_hand',
               'contact_id',
-              'booking_status',
               'attendance',
               'attending_location',
               'token_used',

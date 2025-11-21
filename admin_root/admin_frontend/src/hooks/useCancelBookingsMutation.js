@@ -61,8 +61,7 @@ const useCancelBookingsMutation = (mockExamId) => {
             if (bookingIds.includes(booking.id)) {
               return {
                 ...booking,
-                is_active: 'Cancelled',
-                booking_status: 'cancelled'
+                is_active: 'Cancelled'
               };
             }
             return booking;

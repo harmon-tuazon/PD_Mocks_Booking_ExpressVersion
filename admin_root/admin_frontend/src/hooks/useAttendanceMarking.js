@@ -58,7 +58,7 @@ const useAttendanceMarking = (bookings = []) => {
    */
   const toggleSelection = useCallback((bookingId, booking) => {
     // Cannot select cancelled bookings
-    if (booking?.booking_status === 'cancelled') {
+    if (booking?.is_active === 'Cancelled') {
       return false;
     }
 

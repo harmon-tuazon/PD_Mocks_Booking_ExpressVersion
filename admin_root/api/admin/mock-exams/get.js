@@ -58,7 +58,7 @@ module.exports = async (req, res) => {
       student_id: booking.properties.student_id || '',
       student_name: booking.properties.student_name || '',
       student_email: booking.properties.student_email || '',
-      booking_status: booking.properties.booking_status || 'confirmed',
+      is_active: booking.properties.is_active || 'Active',
       booking_date: booking.properties.hs_createdate || '',
       exam_date: booking.properties.exam_date || ''
     }));

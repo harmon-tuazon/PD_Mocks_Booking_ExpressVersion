@@ -147,7 +147,7 @@ module.exports = async (req, res) => {
       // they must belong to this exam. This avoids a redundant HubSpot API call.
 
       // Check if booking is cancelled
-      if (existingBooking.properties.booking_status === 'cancelled') {
+      if (existingBooking.properties.is_active === 'Cancelled') {
         results.failed.push({
           bookingId: booking.bookingId,
           error: 'Cannot update attendance for cancelled booking',
@@ -322,7 +322,6 @@ async function fetchBookingsBatch(bookingIds) {
     try {
       const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
         properties: [
-          'booking_status',
           'contact_id',
           'attendance',
           'is_active'

@@ -385,7 +385,7 @@ class HubSpotService {
           }]
         }],
         properties: [
-          'contact_id', 'mock_exam_id', 'booking_status',
+          'contact_id', 'mock_exam_id', 'is_active',
           'created_at', 'payment_method', 'confirmation_number'
         ],
         limit: 1
@@ -746,14 +746,14 @@ class HubSpotService {
       // Add status filter if not 'all'
       if (filter !== 'all') {
         const statusMap = {
-          'upcoming': ['confirmed', 'pending'],
-          'completed': ['completed'],
-          'cancelled': ['cancelled']
+          'upcoming': ['Active'],
+          'completed': ['Completed'],
+          'cancelled': ['Cancelled']
         };
 
         if (statusMap[filter]) {
           filters.push({
-            propertyName: 'booking_status',
+            propertyName: 'is_active',
             operator: 'IN',
             values: statusMap[filter]
           });
@@ -767,7 +767,7 @@ class HubSpotService {
       const searchResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/search`, {
         filterGroups: [{ filters }],
         properties: [
-          'booking_status', 'mock_exam_id', 'created_at',
+          'is_active', 'mock_exam_id', 'created_at',
           'payment_method', 'confirmation_number'
         ],
         sorts: [
@@ -811,7 +811,7 @@ class HubSpotService {
         // Determine time-based status
         let status = 'unknown';
         if (bookingDate) {
-          if (booking.properties.booking_status === 'cancelled') {
+          if (booking.properties.is_active === 'Cancelled') {
             status = 'cancelled';
           } else if (bookingDate < now) {
             status = 'past';
@@ -827,7 +827,7 @@ class HubSpotService {
 
         return {
           id: booking.id,
-          bookingStatus: booking.properties.booking_status,
+          bookingStatus: booking.properties.is_active,
           mockExamId: booking.properties.mock_exam_id,
           createdAt: booking.properties.created_at,
           paymentMethod: booking.properties.payment_method,
@@ -880,7 +880,7 @@ class HubSpotService {
     try {
       // Get the booking with associations
       const bookingResponse = await this.apiCall('GET',
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/${bookingId}?associations=${HUBSPOT_OBJECTS.contacts},${HUBSPOT_OBJECTS.mock_exams}&properties=booking_status,contact_id,mock_exam_id,created_at,payment_method,confirmation_number`
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/${bookingId}?associations=${HUBSPOT_OBJECTS.contacts},${HUBSPOT_OBJECTS.mock_exams}&properties=is_active,contact_id,mock_exam_id,created_at,payment_method,confirmation_number`
       );
 
       const result = {
@@ -1637,7 +1637,7 @@ class HubSpotService {
           try {
             const batchResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
               properties: [
-                'booking_status', 'contact_id', 'created_at',
+                'is_active', 'contact_id', 'created_at',
                 'payment_method', 'confirmation_number',
                 'student_id', 'student_name', 'student_email',
                 'exam_date', 'hs_createdate', 'is_active'
@@ -1684,9 +1684,9 @@ class HubSpotService {
         bookings: processedBookings,
         statistics: {
           total: bookings.length,
-          confirmed: bookings.filter(b => b.properties.booking_status === 'confirmed').length,
-          pending: bookings.filter(b => b.properties.booking_status === 'pending').length,
-          cancelled: bookings.filter(b => b.properties.booking_status === 'cancelled').length
+          confirmed: bookings.filter(b => b.properties.is_active === 'Active').length,
+          pending: bookings.filter(b => b.properties.is_active === 'Active').length,  // Active bookings are confirmed/pending
+          cancelled: bookings.filter(b => b.properties.is_active === 'Cancelled').length
         }
       };
     } catch (error) {

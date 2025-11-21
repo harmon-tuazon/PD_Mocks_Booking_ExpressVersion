@@ -16,7 +16,6 @@ const bookingSchema = Joi.object({
   email: Joi.string().allow('', null),
   student_id: Joi.string().allow('', null),
   dominant_hand: Joi.string().allow('', null),
-  booking_status: Joi.string().allow('', null),
   attendance: Joi.string().allow('', null),
   attending_location: Joi.string().allow('', null),
   exam_date: Joi.string().allow('', null),

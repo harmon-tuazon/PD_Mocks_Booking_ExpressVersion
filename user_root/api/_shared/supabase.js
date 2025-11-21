@@ -21,7 +21,8 @@ const supabaseAdmin = createClient(
     auth: {
       persistSession: false,
       autoRefreshToken: false,
-    }
+    },
+    db: { schema: process.env.SUPABASE_SCHEMA_NAME } 
   }
 );
 

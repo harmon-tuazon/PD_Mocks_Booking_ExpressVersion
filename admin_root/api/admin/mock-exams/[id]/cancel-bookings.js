@@ -487,7 +487,6 @@ async function fetchBookingsBatch(bookingIds) {
       const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
         properties: [
           'is_active',
-          'booking_status',
           'name',
           'email'
         ],

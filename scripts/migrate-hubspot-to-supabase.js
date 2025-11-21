@@ -10,7 +10,8 @@
  * - SUPABASE_SERVICE_ROLE_KEY
  */
 
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { createClient } = require('@supabase/supabase-js');
 
 // Initialize Supabase
@@ -21,7 +22,8 @@ const supabaseAdmin = createClient(
     auth: {
       persistSession: false,
       autoRefreshToken: false,
-    }
+    },
+    db: { schema: process.env.SUPABASE_SCHEMA_NAME }
   }
 );
 
@@ -70,8 +72,8 @@ async function fetchAllMockExams() {
   let after = undefined;
   const properties = [
     'mock_exam_name', 'mock_type', 'exam_date', 'start_time', 'end_time',
-    'location', 'capacity', 'total_bookings', 'is_active', 'createdate',
-    'hs_lastmodifieddate'
+    'location', 'capacity', 'total_bookings', 'is_active', 'scheduled_activation_datetime',
+    'createdate', 'hs_lastmodifieddate'
   ];
 
   console.log('📋 Fetching all mock exams from HubSpot...');
@@ -125,9 +127,11 @@ async function fetchBookingsForExam(examId) {
 
   // Fetch booking details in batch
   const properties = [
-    'booking_id', 'mock_exam_id', 'contact_id', 'student_id', 'student_name',
-    'student_email', 'booking_status', 'is_active', 'attendance', 'attending_location',
-    'exam_date', 'dominant_hand', 'createdate', 'hs_lastmodifieddate'
+    'booking_id', 'associated_mock_exam', 'associated_contact_id', 'student_id', 'name',
+    'student_email', 'is_active', 'attendance', 'attending_location',
+    'exam_date', 'dominant_hand', 'token_used', 'token_refunded_at', 'token_refund_admin',
+    'start_time', 'end_time', 'ndecc_exam_date', 'idempotency_key',
+    'createdate', 'hs_lastmodifieddate'
   ];
 
   const batchResponse = await hubspotApiCall(
@@ -160,6 +164,7 @@ async function syncExamToSupabase(exam) {
     capacity: parseInt(props.capacity) || 0,
     total_bookings: parseInt(props.total_bookings) || 0,
     is_active: props.is_active,
+    scheduled_activation_datetime: props.scheduled_activation_datetime,
     created_at: props.createdate,
     updated_at: props.hs_lastmodifieddate,
     synced_at: new Date().toISOString()
@@ -185,17 +190,23 @@ async function syncBookingsToSupabase(bookings, examId) {
     return {
       hubspot_id: booking.id,
       booking_id: props.booking_id,
-      mock_exam_id: examId || props.mock_exam_id,
-      contact_id: props.contact_id,
+      associated_mock_exam: examId || props.associated_mock_exam,
+      associated_contact_id: props.associated_contact_id,
       student_id: props.student_id,
-      student_name: props.student_name,
+      name: props.name,
       student_email: props.student_email,
-      booking_status: props.booking_status,
       is_active: props.is_active,
       attendance: props.attendance,
       attending_location: props.attending_location,
       exam_date: props.exam_date,
       dominant_hand: props.dominant_hand,
+      token_used: props.token_used,
+      token_refunded_at: props.token_refunded_at ? new Date(parseInt(props.token_refunded_at)).toISOString() : null,
+      token_refund_admin: props.token_refund_admin,
+      start_time: props.start_time,
+      end_time: props.end_time,
+      ndecc_exam_date: props.ndecc_exam_date,
+      idempotency_key: props.idempotency_key,
       created_at: props.createdate,
       updated_at: props.hs_lastmodifieddate,
       synced_at: new Date().toISOString()

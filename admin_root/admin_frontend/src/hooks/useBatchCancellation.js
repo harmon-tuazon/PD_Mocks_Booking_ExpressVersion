@@ -31,8 +31,7 @@ const useBatchCancellation = (bookings = []) => {
   // Get cancellable bookings (exclude already cancelled)
   const cancellableBookings = useMemo(() => {
     return bookings.filter(booking =>
-      booking.is_active !== 'Cancelled' &&
-      booking.booking_status !== 'cancelled'
+      booking.is_active !== 'Cancelled'
     );
   }, [bookings]);
 
@@ -83,7 +82,7 @@ const useBatchCancellation = (bookings = []) => {
   // Toggle individual booking selection
   const toggleSelection = useCallback((bookingId, booking) => {
     // Validate booking can be selected
-    if (booking?.is_active === 'Cancelled' || booking?.booking_status === 'cancelled') {
+    if (booking?.is_active === 'Cancelled') {
       return false;
     }
 
@@ -93,7 +92,7 @@ const useBatchCancellation = (bookings = []) => {
         newSet.delete(bookingId);
       } else {
         // Only add if booking is cancellable
-        if (booking && booking.is_active !== 'Cancelled' && booking.booking_status !== 'cancelled') {
+        if (booking && booking.is_active !== 'Cancelled') {
           newSet.add(bookingId);
         }
       }
@@ -110,8 +109,7 @@ const useBatchCancellation = (bookings = []) => {
   const canCancel = useCallback((bookingId) => {
     const booking = bookings.find(b => b.id === bookingId);
     return booking &&
-      booking.is_active !== 'Cancelled' &&
-      booking.booking_status !== 'cancelled';
+      booking.is_active !== 'Cancelled';
   }, [bookings]);
 
   // Open cancellation modal
