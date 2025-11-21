@@ -86,19 +86,29 @@ module.exports = async (req, res) => {
       const supabaseExams = await getExamsFromSupabase(filters);
 
       // Transform Supabase format to match expected HubSpot format
-      examResults = supabaseExams.map(exam => ({
-        id: exam.hubspot_id,
-        properties: {
-          exam_date: exam.exam_date,
-          start_time: exam.start_time,
-          end_time: exam.end_time,
-          mock_type: exam.mock_type,
-          capacity: exam.capacity?.toString() || '0',
-          total_bookings: exam.total_bookings?.toString() || '0',
-          location: exam.location,
-          is_active: exam.is_active
+      examResults = supabaseExams.map(exam => {
+        // Normalize exam_date to YYYY-MM-DD format (strip time portion if present)
+        let normalizedDate = exam.exam_date;
+        if (normalizedDate && normalizedDate.includes(' ')) {
+          normalizedDate = normalizedDate.split(' ')[0];
+        } else if (normalizedDate && normalizedDate.includes('T')) {
+          normalizedDate = normalizedDate.split('T')[0];
         }
-      }));
+
+        return {
+          id: exam.hubspot_id,
+          properties: {
+            exam_date: normalizedDate,
+            start_time: exam.start_time,
+            end_time: exam.end_time,
+            mock_type: exam.mock_type,
+            capacity: exam.capacity?.toString() || '0',
+            total_bookings: exam.total_bookings?.toString() || '0',
+            location: exam.location,
+            is_active: exam.is_active
+          }
+        };
+      });
 
       console.log(`✅ Fetched ${examResults.length} active exams from Supabase (no HubSpot API calls)`);
 
