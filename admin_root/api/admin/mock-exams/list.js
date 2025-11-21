@@ -161,16 +161,14 @@ module.exports = async (req, res) => {
         status = 'past';
       }
 
-      // Format times to 12-hour AM/PM format
-      const startTime = formatTime(properties.start_time);
-      const endTime = formatTime(properties.end_time);
-
+      // Pass raw time values - frontend handles formatting
+      // This avoids timezone issues with server-side Date conversion
       return {
         id: exam.id,
         mock_type: properties.mock_type || '',
         exam_date: examDate || '',
-        start_time: startTime,
-        end_time: endTime,
+        start_time: properties.start_time || '',
+        end_time: properties.end_time || '',
         capacity,
         total_bookings: totalBookings,
         utilization_rate: utilizationRate,

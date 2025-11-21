@@ -32,6 +32,50 @@ const HUBSPOT_OBJECTS = {
   'mock_exams': '2-50158913'     // PRIMARY for this feature
 };
 
+/**
+ * Helper function to format time to 12-hour AM/PM format
+ * Handles Unix timestamps, ISO timestamps, and HH:MM format
+ */
+function formatTime(timeValue) {
+  if (!timeValue) return '';
+
+  try {
+    // Handle Unix timestamp (number in milliseconds)
+    if (typeof timeValue === 'number' || !isNaN(Number(timeValue))) {
+      const date = new Date(Number(timeValue));
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    }
+
+    // Handle ISO timestamp format (e.g., "2025-09-26T16:00:00Z")
+    if (typeof timeValue === 'string' && (timeValue.includes('T') || timeValue.includes('Z'))) {
+      const date = new Date(timeValue);
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    }
+
+    // Handle HH:MM format (e.g., "14:30")
+    if (typeof timeValue === 'string' && timeValue.includes(':')) {
+      const [hours, minutes] = timeValue.split(':');
+      const hour = parseInt(hours, 10);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+      return `${displayHour}:${minutes} ${ampm}`;
+    }
+
+    return String(timeValue);
+  } catch (error) {
+    console.error('Error formatting time:', error);
+    return String(timeValue);
+  }
+}
+
 class HubSpotService {
   constructor() {
     this.token = process.env.HS_PRIVATE_APP_TOKEN;
