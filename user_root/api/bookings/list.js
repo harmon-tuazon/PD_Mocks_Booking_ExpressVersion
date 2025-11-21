@@ -109,7 +109,7 @@ async function handler(req, res) {
       throw error;
     }
 
-    contactId = contactId || contact.id;
+    const contactId = contact.id;
     console.log(`✅ Contact authenticated: ${contactId} - ${contact.properties.firstname} ${contact.properties.lastname}`, {
       contactId,
       studentId: contact.properties.student_id,
