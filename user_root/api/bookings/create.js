@@ -136,6 +136,16 @@ module.exports = module.exports = module.exports = async function handler(req, r
     // Assign to function-scoped variable for finally block access
     mock_exam_id = validatedData.mock_exam_id;
 
+    // Transform location to proper display name
+    const locationDisplayNames = {
+      'mississauga': 'Mississauga',
+      'calgary': 'Calgary',
+      'vancouver': 'Vancouver',
+      'montreal': 'Montreal',
+      'richmond_hill': 'Richmond Hill'
+    };
+    const formattedLocation = attending_location ? (locationDisplayNames[attending_location] || attending_location) : null;
+
     // Sanitize inputs
     const sanitizedName = sanitizeInput(name);
     const sanitizedEmail = sanitizeInput(email);
@@ -493,7 +503,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
     if (mock_type === 'Clinical Skills') {
       bookingData.dominantHand = dominant_hand;
     } else if (mock_type === 'Situational Judgment' || mock_type === 'Mini-mock') {
-      bookingData.attendingLocation = attending_location;
+      bookingData.attendingLocation = formattedLocation;
     }
 
     const createdBooking = await hubspot.createBooking(bookingData);
@@ -514,7 +524,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
           student_email: sanitizedEmail,
           is_active: 'Active',
           attendance: null,
-          attending_location: attending_location || null,
+          attending_location: formattedLocation,
           exam_date: exam_date,
           dominant_hand: dominant_hand || null,
           token_used: tokenUsed || null,
