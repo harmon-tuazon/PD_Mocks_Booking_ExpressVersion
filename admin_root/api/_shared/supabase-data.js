@@ -262,7 +262,8 @@ async function syncExamToSupabase(exam) {
     capacity: parseInt(props.capacity) || 0,
     total_bookings: parseInt(props.total_bookings) || 0,
     is_active: props.is_active,
-    scheduled_activation_datetime: props.scheduled_activation_datetime,
+    // Convert empty string to null for TIMESTAMPTZ column
+    scheduled_activation_datetime: props.scheduled_activation_datetime || null,
     created_at: props.createdate || props.created_at,
     updated_at: props.hs_lastmodifieddate || props.updated_at,
     synced_at: new Date().toISOString()
