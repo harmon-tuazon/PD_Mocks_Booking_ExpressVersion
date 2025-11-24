@@ -10,6 +10,7 @@ const { HubSpotService } = require('../../_shared/hubspot');
 const { validateInput } = require('../../_shared/validation');
 const { requirePermission } = require('../middleware/requirePermission');
 const { getCache } = require('../../_shared/cache');
+const { syncExamToSupabase } = require('../../_shared/supabase-data');
 
 /**
  * Handler for bulk creating mock exams
@@ -117,8 +118,29 @@ async function bulkCreateMockExamsHandler(req, res) {
     // Log success
     console.log(`✅ [BULK-CREATE] Bulk created ${result.length || 0} mock exams successfully`);
 
+    // Sync all created exams to Supabase (non-blocking)
+    console.log('🔍 [BULK-CREATE] Step 5: Syncing to Supabase...');
+    let supabaseSynced = false;
+    const mockExamsArray = Array.isArray(result) ? result : [];
+    if (mockExamsArray.length > 0) {
+      try {
+        const syncResults = await Promise.allSettled(
+          mockExamsArray.map(exam => syncExamToSupabase({
+            id: exam.id,
+            properties: exam.properties
+          }))
+        );
+        const syncedCount = syncResults.filter(r => r.status === 'fulfilled').length;
+        console.log(`✅ [BULK-CREATE] Synced ${syncedCount}/${mockExamsArray.length} exams to Supabase`);
+        supabaseSynced = syncedCount === mockExamsArray.length;
+      } catch (supabaseError) {
+        console.error('❌ [BULK-CREATE] Supabase bulk sync failed:', supabaseError.message);
+        // Continue - HubSpot is source of truth
+      }
+    }
+
     // Invalidate caches after successful bulk creation
-    console.log('🔍 [BULK-CREATE] Step 5: Invalidating caches...');
+    console.log('🔍 [BULK-CREATE] Step 6: Invalidating caches...');
     const cache = getCache();
     await cache.deletePattern('admin:mock-exams:list:*');
     await cache.deletePattern('admin:mock-exams:aggregates:*');
@@ -137,7 +159,8 @@ async function bulkCreateMockExamsHandler(req, res) {
         id: exam.id,
         properties: exam.properties
       })),
-      message: `Successfully created ${mockExams.length} mock exam${mockExams.length > 1 ? 's' : ''}`
+      message: `Successfully created ${mockExams.length} mock exam${mockExams.length > 1 ? 's' : ''}`,
+      supabase_synced: supabaseSynced
     });
 
   } catch (error) {

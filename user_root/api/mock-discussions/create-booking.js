@@ -14,6 +14,7 @@ const {
   rateLimitMiddleware,
   sanitizeInput
 } = require('../_shared/auth');
+const { syncBookingToSupabase, updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
 
 /**
  * Validation schema specific to Mock Discussion bookings
@@ -409,6 +410,17 @@ module.exports = async function handler(req, res) {
     createdBookingId = createdBooking.id;
     console.log(`✅ Mock Discussion booking created successfully with ID: ${createdBookingId}`);
 
+    // Sync booking to Supabase (non-blocking)
+    let supabaseSynced = false;
+    try {
+      await syncBookingToSupabase(createdBooking, mock_exam_id);
+      console.log(`✅ Mock Discussion booking ${createdBookingId} synced to Supabase`);
+      supabaseSynced = true;
+    } catch (supabaseError) {
+      console.error('❌ Failed to sync Mock Discussion booking to Supabase:', supabaseError.message);
+      // Continue - HubSpot is source of truth
+    }
+
     const associationResults = [];
 
     // Associate with Contact
@@ -449,6 +461,15 @@ module.exports = async function handler(req, res) {
     // Increment Redis counter immediately (non-blocking, real-time)
     const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
     console.log(`✅ Redis counter incremented: exam:${mock_exam_id}:bookings = ${newTotalBookings}`);
+
+    // Sync exam booking count to Supabase (non-blocking)
+    try {
+      await updateExamBookingCountInSupabase(mock_exam_id, newTotalBookings);
+      console.log(`✅ Exam ${mock_exam_id} booking count synced to Supabase: ${newTotalBookings}`);
+    } catch (supabaseError) {
+      console.error('❌ Failed to sync exam booking count to Supabase:', supabaseError.message);
+      // Continue - Redis is authoritative for counts
+    }
 
     // Trigger HubSpot workflow via webhook (async, non-blocking)
     // This runs AFTER response is sent to user - doesn't block booking completion
