@@ -1,5 +1,6 @@
--- Supabase table for caching HubSpot contact credit information
--- This eliminates 429 rate limit errors by serving reads from Supabase
+-- Supabase secondary database table for HubSpot contact credit information
+-- Pattern: Same as bookings/exams - HubSpot is source of truth, Supabase is read replica
+-- This eliminates 429 rate limit errors by serving reads from Supabase instead of HubSpot
 
 CREATE TABLE IF NOT EXISTS hubspot_contact_credits (
   -- Primary Keys
@@ -47,11 +48,11 @@ CREATE POLICY "Service role has full access" ON hubspot_contact_credits
 
 -- Grant necessary permissions to service role
 GRANT ALL ON hubspot_contact_credits TO service_role;
-GRANT USAGE, SELECT ON SEQUENCE hubspot_contact_credits_id_seq TO service_role;
+-- Note: GRANT ALL includes sequence permissions, no need for separate GRANT on sequence
 
 -- Comments for documentation
-COMMENT ON TABLE hubspot_contact_credits IS 'Cached HubSpot contact credit data to avoid 429 rate limit errors';
-COMMENT ON COLUMN hubspot_contact_credits.synced_at IS 'Last time this record was synced from HubSpot';
+COMMENT ON TABLE hubspot_contact_credits IS 'Secondary database (read replica) for HubSpot contact credit data. Eliminates 429 rate limit errors.';
+COMMENT ON COLUMN hubspot_contact_credits.synced_at IS 'Last time this record was synced from HubSpot (source of truth)';
 COMMENT ON COLUMN hubspot_contact_credits.sj_credits IS 'Situational Judgment specific credits';
 COMMENT ON COLUMN hubspot_contact_credits.cs_credits IS 'Clinical Skills specific credits';
 COMMENT ON COLUMN hubspot_contact_credits.sjmini_credits IS 'Mini-mock specific credits (no shared credits)';
