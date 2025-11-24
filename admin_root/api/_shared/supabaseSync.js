@@ -1,0 +1,283 @@
+/**
+ * Supabase Sync Utility
+ * Syncs mock exams and bookings from HubSpot to Supabase
+ * Used by cron jobs and manual sync endpoints
+ */
+
+const { createClient } = require('@supabase/supabase-js');
+
+// Initialize Supabase
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    db: { schema: process.env.SUPABASE_SCHEMA_NAME || 'public' }
+  }
+);
+
+// HubSpot API configuration
+const HUBSPOT_TOKEN = process.env.HS_PRIVATE_APP_TOKEN || '';
+const HUBSPOT_BASE_URL = 'https://api.hubapi.com';
+
+// Object type IDs
+const HUBSPOT_OBJECTS = {
+  mock_exams: '2-50158913',
+  bookings: '2-50158943',
+  contacts: '0-1'
+};
+
+/**
+ * Make HubSpot API call with error handling
+ */
+async function hubspotApiCall(method, endpoint, body = null) {
+  const options = {
+    method,
+    headers: {
+      'Authorization': `Bearer ${HUBSPOT_TOKEN}`,
+      'Content-Type': 'application/json'
+    }
+  };
+
+  if (body) {
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(`${HUBSPOT_BASE_URL}${endpoint}`, options);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`HubSpot API error: ${response.status} - ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetch all mock exams from HubSpot with pagination
+ */
+async function fetchAllMockExams() {
+  const allExams = [];
+  let after = undefined;
+  const properties = [
+    'mock_exam_name', 'mock_type', 'exam_date', 'start_time', 'end_time',
+    'location', 'capacity', 'total_bookings', 'is_active', 'scheduled_activation_datetime',
+    'createdate', 'hs_lastmodifieddate'
+  ];
+
+  do {
+    const searchBody = {
+      filterGroups: [],
+      properties,
+      limit: 100
+    };
+
+    if (after) {
+      searchBody.after = after;
+    }
+
+    const response = await hubspotApiCall(
+      'POST',
+      `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`,
+      searchBody
+    );
+
+    allExams.push(...response.results);
+    after = response.paging?.next?.after;
+
+    // Rate limiting
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+  } while (after);
+
+  return allExams;
+}
+
+/**
+ * Fetch bookings for a specific exam
+ */
+async function fetchBookingsForExam(examId) {
+  // Get associations first
+  const associationsResponse = await hubspotApiCall(
+    'GET',
+    `/crm/v4/objects/${HUBSPOT_OBJECTS.mock_exams}/${examId}/associations/${HUBSPOT_OBJECTS.bookings}`
+  );
+
+  const bookingIds = associationsResponse.results?.map(r => r.toObjectId) || [];
+
+  if (bookingIds.length === 0) {
+    return [];
+  }
+
+  // Fetch booking details in batch
+  const properties = [
+    'booking_id', 'associated_mock_exam', 'associated_contact_id', 'student_id', 'name',
+    'student_email', 'is_active', 'attendance', 'attending_location',
+    'exam_date', 'dominant_hand', 'token_used', 'token_refunded_at', 'token_refund_admin',
+    'mock_type', 'start_time', 'end_time', 'ndecc_exam_date', 'idempotency_key',
+    'createdate', 'hs_lastmodifieddate'
+  ];
+
+  const batchResponse = await hubspotApiCall(
+    'POST',
+    `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`,
+    {
+      propertiesWithHistory: [],
+      inputs: bookingIds.map(id => ({ id })),
+      properties
+    }
+  );
+
+  return batchResponse.results || [];
+}
+
+/**
+ * Sync exam to Supabase
+ */
+async function syncExamToSupabase(exam) {
+  const props = exam.properties;
+
+  const record = {
+    hubspot_id: exam.id,
+    mock_exam_name: props.mock_exam_name,
+    mock_type: props.mock_type,
+    exam_date: props.exam_date,
+    start_time: props.start_time,
+    end_time: props.end_time,
+    location: props.location,
+    capacity: parseInt(props.capacity) || 0,
+    total_bookings: parseInt(props.total_bookings) || 0,
+    is_active: props.is_active,
+    scheduled_activation_datetime: props.scheduled_activation_datetime,
+    created_at: props.createdate,
+    updated_at: props.hs_lastmodifieddate,
+    synced_at: new Date().toISOString()
+  };
+
+  const { error } = await supabaseAdmin
+    .from('hubspot_mock_exams')
+    .upsert(record, { onConflict: 'hubspot_id' });
+
+  if (error) {
+    throw new Error(`Supabase exam sync error: ${error.message}`);
+  }
+}
+
+/**
+ * Sync bookings to Supabase in bulk
+ */
+async function syncBookingsToSupabase(bookings, examId) {
+  if (!bookings || bookings.length === 0) return;
+
+  const records = bookings.map(booking => {
+    const props = booking.properties;
+    return {
+      hubspot_id: booking.id,
+      booking_id: props.booking_id,
+      associated_mock_exam: examId || props.associated_mock_exam,
+      associated_contact_id: props.associated_contact_id,
+      student_id: props.student_id,
+      name: props.name,
+      student_email: props.student_email,
+      is_active: props.is_active,
+      attendance: props.attendance,
+      attending_location: props.attending_location,
+      exam_date: props.exam_date,
+      dominant_hand: props.dominant_hand,
+      token_used: props.token_used,
+      token_refunded_at: props.token_refunded_at ? new Date(parseInt(props.token_refunded_at)).toISOString() : null,
+      token_refund_admin: props.token_refund_admin,
+      mock_type: props.mock_type,
+      start_time: props.start_time,
+      end_time: props.end_time,
+      ndecc_exam_date: props.ndecc_exam_date,
+      idempotency_key: props.idempotency_key,
+      created_at: props.createdate,
+      updated_at: props.hs_lastmodifieddate,
+      synced_at: new Date().toISOString()
+    };
+  });
+
+  const { error } = await supabaseAdmin
+    .from('hubspot_bookings')
+    .upsert(records, { onConflict: 'hubspot_id' });
+
+  if (error) {
+    throw new Error(`Supabase bookings sync error: ${error.message}`);
+  }
+}
+
+/**
+ * Main sync function - Syncs all mock exams and bookings
+ * Returns summary of sync operation
+ */
+async function syncAllData() {
+  const startTime = Date.now();
+  let totalExams = 0;
+  let totalBookings = 0;
+  let errors = [];
+
+  try {
+    // Step 1: Fetch all mock exams
+    const exams = await fetchAllMockExams();
+    totalExams = exams.length;
+
+    // Step 2: Sync exams to Supabase
+    for (let i = 0; i < exams.length; i++) {
+      const exam = exams[i];
+      try {
+        await syncExamToSupabase(exam);
+      } catch (error) {
+        console.error(`Failed to sync exam ${exam.id}: ${error.message}`);
+        errors.push({ type: 'exam', id: exam.id, error: error.message });
+      }
+    }
+
+    // Step 3: Fetch and sync bookings for each exam
+    for (let i = 0; i < exams.length; i++) {
+      const exam = exams[i];
+      try {
+        const bookings = await fetchBookingsForExam(exam.id);
+        if (bookings.length > 0) {
+          await syncBookingsToSupabase(bookings, exam.id);
+          totalBookings += bookings.length;
+        }
+
+        // Rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`Failed to sync bookings for exam ${exam.id}: ${error.message}`);
+        errors.push({ type: 'bookings', examId: exam.id, error: error.message });
+      }
+    }
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    return {
+      success: true,
+      summary: {
+        exams_synced: totalExams,
+        bookings_synced: totalBookings,
+        errors_count: errors.length,
+        duration_seconds: duration,
+        completed_at: new Date().toISOString()
+      },
+      errors: errors.length > 0 ? errors : undefined
+    };
+
+  } catch (error) {
+    console.error('Sync failed:', error.message);
+    throw error;
+  }
+}
+
+module.exports = {
+  syncAllData,
+  fetchAllMockExams,
+  fetchBookingsForExam,
+  syncExamToSupabase,
+  syncBookingsToSupabase
+};

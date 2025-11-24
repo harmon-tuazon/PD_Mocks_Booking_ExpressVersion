@@ -16,6 +16,7 @@ const {
  */
 function calculateCredits(contact, mockType) {
   if (!contact || !contact.properties) {
+    console.error('[CREDITS] Contact or properties missing:', { contact: !!contact, properties: !!contact?.properties });
     return {
       eligible: false,
       available_credits: 0,
@@ -29,6 +30,16 @@ function calculateCredits(contact, mockType) {
   const props = contact.properties;
   let specificCredits = 0;
   let sharedCredits = parseInt(props.shared_mock_credits) || 0;
+
+  // Log raw property values for debugging
+  console.log('[CREDITS] Raw property values:', {
+    mockType,
+    sj_credits: props.sj_credits,
+    cs_credits: props.cs_credits,
+    sjmini_credits: props.sjmini_credits,
+    mock_discussion_token: props.mock_discussion_token,
+    shared_mock_credits: props.shared_mock_credits
+  });
 
   switch (mockType) {
     case 'Situational Judgment':
@@ -52,6 +63,14 @@ function calculateCredits(contact, mockType) {
   }
 
   const totalCredits = specificCredits + sharedCredits;
+
+  console.log('[CREDITS] Calculated credits:', {
+    mockType,
+    specificCredits,
+    sharedCredits,
+    totalCredits,
+    eligible: totalCredits > 0
+  });
 
   return {
     eligible: totalCredits > 0,
