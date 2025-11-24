@@ -152,8 +152,8 @@ module.exports = async (req, res) => {
             const redis = new RedisLockService();
 
             // Update Redis with actual count from HubSpot associations
-            const TTL_90_DAYS = 90 * 24 * 60 * 60;
-            await redis.setex(`exam:${examId}:bookings`, TTL_90_DAYS, actualCount);
+            const TTL_30_DAYS = 30 * 24 * 60 * 60;
+            await redis.setex(`exam:${examId}:bookings`, TTL_30_DAYS, actualCount);
             console.log(`✅ Updated Redis counter for exam ${examId}: ${currentCount} → ${actualCount}`);
 
             // Trigger HubSpot workflow via webhook to sync total_bookings property

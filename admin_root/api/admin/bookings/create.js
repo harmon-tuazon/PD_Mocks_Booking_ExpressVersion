@@ -107,8 +107,8 @@ module.exports = async (req, res) => {
     if (totalBookings === null) {
       // Seed from HubSpot if not in Redis
       totalBookings = parseInt(mockExam.properties.total_bookings) || 0;
-      const TTL_90_DAYS = 90 * 24 * 60 * 60;
-      await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_90_DAYS, totalBookings);
+      const TTL_30_DAYS = 30 * 24 * 60 * 60;
+      await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_30_DAYS, totalBookings);
       console.log(`📊 [ADMIN BOOKING] Seeded Redis counter from HubSpot: ${totalBookings}`);
     } else {
       totalBookings = parseInt(totalBookings);

@@ -279,10 +279,10 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
             console.warn(`⚠️ [REDIS] Counter is already at ${currentCount}, resetting to 0 (drift detected)`);
 
             // Preserve TTL when resetting to 0
-            const TTL_90_DAYS = 90 * 24 * 60 * 60; // 7,776,000 seconds
-            await redis.setex(counterKey, TTL_90_DAYS, 0);
+            const TTL_30_DAYS = 30 * 24 * 60 * 60; // 2,592,000 seconds
+            await redis.setex(counterKey, TTL_30_DAYS, 0);
             newCount = 0;
-            console.log(`✅ [REDIS] Counter reset to 0 for exam ${mockExamId} (TTL: 90 days)`);
+            console.log(`✅ [REDIS] Counter reset to 0 for exam ${mockExamId} (TTL: 30 days)`);
           } else {
             newCount = await redis.decr(counterKey);
             console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);

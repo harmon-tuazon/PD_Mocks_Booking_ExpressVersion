@@ -139,8 +139,9 @@ module.exports = async (req, res) => {
       // TIER 2: Fallback to HubSpot if Redis doesn't have it
       if (totalBookings === null) {
         totalBookings = parseInt(exam.properties.total_bookings) || 0;
-        // Seed Redis with HubSpot value (no TTL - persist forever)
-        await redis.set(`exam:${exam.id}:bookings`, totalBookings);
+        // Seed Redis with HubSpot value (TTL: 30 days for self-healing)
+        const TTL_30_DAYS = 30 * 24 * 60 * 60; // 2,592,000 seconds
+        await redis.setex(`exam:${exam.id}:bookings`, TTL_30_DAYS, totalBookings);
       } else {
         totalBookings = parseInt(totalBookings);
       }

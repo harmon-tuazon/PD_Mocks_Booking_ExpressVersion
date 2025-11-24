@@ -373,10 +373,10 @@ module.exports = module.exports = module.exports = async function handler(req, r
     // TIER 2: Fallback to HubSpot if Redis doesn't have it yet
     if (totalBookings === null) {
       totalBookings = parseInt(mockExam.properties.total_bookings) || 0;
-      // Seed Redis with current HubSpot value (TTL: 90 days for self-healing)
-      const TTL_90_DAYS = 90 * 24 * 60 * 60; // 7,776,000 seconds
-      await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_90_DAYS, totalBookings);
-      console.log(`📊 Redis cache seeded: exam:${mock_exam_id}:bookings = ${totalBookings} (TTL: 90 days)`);
+      // Seed Redis with current HubSpot value (TTL: 30 days for self-healing)
+      const TTL_30_DAYS = 30 * 24 * 60 * 60; // 2,592,000 seconds
+      await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_30_DAYS, totalBookings);
+      console.log(`📊 Redis cache seeded: exam:${mock_exam_id}:bookings = ${totalBookings} (TTL: 30 days)`);
     } else {
       totalBookings = parseInt(totalBookings);
       console.log(`📊 Redis cache hit: exam:${mock_exam_id}:bookings = ${totalBookings}`);
@@ -599,9 +599,9 @@ module.exports = module.exports = module.exports = async function handler(req, r
     // Increment Redis counter immediately (non-blocking, real-time)
     const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
     // Ensure TTL is set (incr on non-existent key creates without TTL)
-    const TTL_90_DAYS = 90 * 24 * 60 * 60; // 7,776,000 seconds
-    await redis.expire(`exam:${mock_exam_id}:bookings`, TTL_90_DAYS);
-    console.log(`✅ Redis counter incremented: exam:${mock_exam_id}:bookings = ${newTotalBookings} (TTL: 90 days)`);
+    const TTL_30_DAYS = 30 * 24 * 60 * 60; // 2,592,000 seconds
+    await redis.expire(`exam:${mock_exam_id}:bookings`, TTL_30_DAYS);
+    console.log(`✅ Redis counter incremented: exam:${mock_exam_id}:bookings = ${newTotalBookings} (TTL: 30 days)`);
 
     // SUPABASE SYNC: Update exam booking count in Supabase
     try {
