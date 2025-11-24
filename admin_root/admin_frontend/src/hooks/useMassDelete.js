@@ -41,7 +41,7 @@ const useMassDelete = () => {
     },
 
     /**
-     * Success handler - invalidate queries and show success toast
+     * Success handler - optimistically update cache and show success/warning toasts
      * @param {Object} data - Response data from batch delete API
      */
     onSuccess: (data) => {
@@ -85,27 +85,46 @@ const useMassDelete = () => {
         console.error('❌ [MASS DELETE] Failed deletions:', errors);
       }
 
-      // Invalidate all related queries to trigger refetch
-      // This ensures the dashboard and all lists are updated
-      queryClient.invalidateQueries({ queryKey: ['mockExams'] });
-      queryClient.invalidateQueries({ queryKey: ['mockExamsMetrics'] });
-      queryClient.invalidateQueries({ queryKey: ['mock-exam-aggregates'] });
-      queryClient.invalidateQueries({ queryKey: ['aggregate-sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['mockExamsInfinite'] });
-      queryClient.invalidateQueries({ queryKey: ['mockExamDetails'] });
-
-      // Remove deleted exams from cache
+      // Optimistically update the cache by removing deleted sessions
       if (deleted && deleted.length > 0) {
+        // Update mock-exams-list cache by removing deleted sessions
+        queryClient.setQueriesData(['mock-exams-list'], (oldData) => {
+          if (!oldData) return oldData;
+
+          console.log('🔄 [MASS DELETE] Optimistically removing sessions from mock-exams-list cache');
+
+          return {
+            ...oldData,
+            mockExams: oldData.mockExams.filter(exam => !deleted.includes(exam.id)),
+            total: oldData.total - deleted.length
+          };
+        });
+
+        // Update aggregates cache to reflect removed sessions
+        queryClient.setQueriesData(['mock-exam-aggregates'], (oldData) => {
+          if (!oldData) return oldData;
+
+          console.log('🔄 [MASS DELETE] Updating aggregates cache');
+
+          return {
+            ...oldData,
+            totalSessions: Math.max(0, (oldData.totalSessions || 0) - deleted.length)
+          };
+        });
+
+        // Remove individual exam queries from cache
         deleted.forEach(sessionId => {
           queryClient.removeQueries({ queryKey: ['mockExam', sessionId] });
           queryClient.removeQueries({ queryKey: ['mockExamDetails', sessionId] });
         });
+
+        console.log(`✨ [MASS DELETE] Cache updated - removed ${deleted.length} sessions`);
       }
 
-      // CRITICAL: Force immediate refetch of active queries
-      // Without this, invalidated queries won't refetch until window focus/remount
-      // This ensures the UI updates immediately after deletion
-      queryClient.refetchQueries({ active: true });
+      // Only invalidate metrics queries (which need server calculation)
+      // This is more efficient than invalidating everything
+      queryClient.invalidateQueries({ queryKey: ['mockExamsMetrics'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics'] });
     },
 
     /**
