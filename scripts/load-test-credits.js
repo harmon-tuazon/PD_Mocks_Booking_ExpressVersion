@@ -4,20 +4,21 @@
  * Purpose: Reproduce 429 rate limit errors by making multiple concurrent requests
  *
  * Usage:
- *   node tests/load-test-credits.js [num_requests] [concurrent_batches]
+ *   node scripts/load-test-credits.js [num_requests] [concurrent_batches]
  *
  * Examples:
- *   node tests/load-test-credits.js 20 5    # 20 requests in 5 concurrent batches
- *   node tests/load-test-credits.js 50 10   # 50 requests in 10 concurrent batches (stress test)
+ *   node scripts/load-test-credits.js           # Default: 100 requests in 10 batches
+ *   node scripts/load-test-credits.js 50 5     # 50 requests in 5 concurrent batches
+ *   node scripts/load-test-credits.js 200 20   # 200 requests in 20 batches (stress test)
  */
 
 require('dotenv').config();
 const axios = require('axios');
 
 // Configuration
-const API_BASE_URL = process.env.API_BASE_URL || 'https://pd-mocks-booking.vercel.app';
-const NUM_REQUESTS = parseInt(process.argv[2]) || 20;
-const CONCURRENT_BATCHES = parseInt(process.argv[3]) || 5;
+const API_BASE_URL = process.env.API_BASE_URL || 'https://mocksbooking-8honz4xpt-prepdoctors.vercel.app';
+const NUM_REQUESTS = parseInt(process.argv[2]) || 100;
+const CONCURRENT_BATCHES = parseInt(process.argv[3]) || 10;
 const REQUESTS_PER_BATCH = Math.ceil(NUM_REQUESTS / CONCURRENT_BATCHES);
 
 // Test data (use valid test credentials)

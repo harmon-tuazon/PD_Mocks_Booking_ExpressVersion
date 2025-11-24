@@ -10,6 +10,10 @@ const {
   rateLimitMiddleware,
   sanitizeInput
 } = require('../_shared/auth');
+const {
+  getContactCreditsFromSupabase,
+  syncContactCreditsToSupabase
+} = require('../_shared/supabase-data');
 
 /**
  * Calculate available credits based on mock type
@@ -125,24 +129,53 @@ module.exports = async (req, res) => {
     const sanitizedStudentId = sanitizeInput(student_id);
     const sanitizedEmail = sanitizeInput(email);
 
-    // Search for contact in HubSpot - pass mock_type for optimized property fetching
-    const hubspot = new HubSpotService();
-    const contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail, mock_type);
+    // PHASE 1: Try to read from Supabase cache (fast, no rate limits)
+    let cachedContact = await getContactCreditsFromSupabase(sanitizedStudentId, sanitizedEmail);
 
-    // Check if contact exists
-    if (!contact) {
-      const error = new Error('Student not found in system');
-      error.status = 404;
-      error.code = 'STUDENT_NOT_FOUND';
-      throw error;
-    }
+    let contact;
+    if (cachedContact) {
+      // Use cached data - convert to HubSpot format
+      console.log(`✅ [CACHE HIT] Using Supabase cache for ${sanitizedStudentId}`);
+      contact = {
+        id: cachedContact.hubspot_id,
+        properties: {
+          student_id: cachedContact.student_id,
+          email: cachedContact.email,
+          firstname: cachedContact.firstname,
+          lastname: cachedContact.lastname,
+          sj_credits: cachedContact.sj_credits?.toString(),
+          cs_credits: cachedContact.cs_credits?.toString(),
+          sjmini_credits: cachedContact.sjmini_credits?.toString(),
+          mock_discussion_token: cachedContact.mock_discussion_token?.toString(),
+          shared_mock_credits: cachedContact.shared_mock_credits?.toString(),
+          ndecc_exam_date: cachedContact.ndecc_exam_date
+        }
+      };
+    } else {
+      // PHASE 2: Cache miss - read from HubSpot and sync to Supabase
+      console.log(`⚠️ [CACHE MISS] Fetching from HubSpot for ${sanitizedStudentId}`);
+      const hubspot = new HubSpotService();
+      contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail, mock_type);
 
-    // Verify email matches
-    if (contact.properties.email?.toLowerCase() !== sanitizedEmail.toLowerCase()) {
-      const error = new Error('Email does not match student record');
-      error.status = 400;
-      error.code = 'EMAIL_MISMATCH';
-      throw error;
+      if (!contact) {
+        const error = new Error('Student not found in system');
+        error.status = 404;
+        error.code = 'STUDENT_NOT_FOUND';
+        throw error;
+      }
+
+      // Verify email matches
+      if (contact.properties.email?.toLowerCase() !== sanitizedEmail.toLowerCase()) {
+        const error = new Error('Email does not match student record');
+        error.status = 400;
+        error.code = 'EMAIL_MISMATCH';
+        throw error;
+      }
+
+      // Sync to Supabase for future requests (fire-and-forget, don't wait)
+      syncContactCreditsToSupabase(contact).catch(err => {
+        console.error('[SYNC ERROR] Failed to cache contact credits:', err.message);
+      });
     }
 
     // Calculate available credits
