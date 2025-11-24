@@ -31,8 +31,8 @@ function calculateCredits(contact, mockType) {
   let specificCredits = 0;
   let sharedCredits = parseInt(props.shared_mock_credits) || 0;
 
-  // Log raw property values for debugging
-  console.log('[CREDITS] Raw property values:', {
+  // Log raw property values for debugging (using console.error so it appears in Vercel logs)
+  console.error('[CREDITS] Raw property values:', {
     mockType,
     sj_credits: props.sj_credits,
     cs_credits: props.cs_credits,
@@ -64,7 +64,8 @@ function calculateCredits(contact, mockType) {
 
   const totalCredits = specificCredits + sharedCredits;
 
-  console.log('[CREDITS] Calculated credits:', {
+  // Log calculated credits (using console.error so it appears in Vercel logs)
+  console.error('[CREDITS] Calculated credits:', {
     mockType,
     specificCredits,
     sharedCredits,
