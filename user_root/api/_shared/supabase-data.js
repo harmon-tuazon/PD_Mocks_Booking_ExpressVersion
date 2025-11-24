@@ -364,13 +364,14 @@ async function deleteExamFromSupabase(examId) {
   console.log(`✅ Deleted exam ${examId} from Supabase`);
 }
 
-// ============== CONTACT CREDITS OPERATIONS ==============
+// ============== CONTACT CREDITS OPERATIONS (Secondary Database) ==============
 
 /**
- * Get contact credits from Supabase
+ * Get contact credits from Supabase secondary database
+ * Pattern: Same as bookings/exams - Supabase mirrors HubSpot data
  * @param {string} studentId - Student ID
  * @param {string} email - Contact email
- * @returns {object|null} - Contact credits object or null
+ * @returns {object|null} - Contact credits object or null if not found
  */
 async function getContactCreditsFromSupabase(studentId, email) {
   const { data, error } = await supabaseAdmin
@@ -389,12 +390,13 @@ async function getContactCreditsFromSupabase(studentId, email) {
 }
 
 /**
- * Sync contact credits to Supabase after HubSpot read
- * @param {object} contact - Contact object from HubSpot
+ * Sync contact credits to Supabase secondary database after HubSpot read
+ * This maintains the read replica - HubSpot remains source of truth
+ * @param {object} contact - Contact object from HubSpot (source of truth)
  */
 async function syncContactCreditsToSupabase(contact) {
   if (!contact || !contact.properties) {
-    console.error('[SUPABASE] Cannot sync - contact or properties missing');
+    console.error('[SUPABASE SYNC] Cannot sync - contact or properties missing');
     return;
   }
 
@@ -421,15 +423,16 @@ async function syncContactCreditsToSupabase(contact) {
     .upsert(record, { onConflict: 'hubspot_id' });
 
   if (error) {
-    console.error(`❌ Supabase contact credits sync error:`, error.message);
+    console.error(`❌ [SUPABASE SYNC] Failed to sync contact ${contact.id}:`, error.message);
     throw error;
   }
 
-  console.log(`✅ Synced contact ${contact.id} credits to Supabase`);
+  console.log(`✅ [SUPABASE SYNC] Updated secondary DB for contact ${contact.id}`);
 }
 
 /**
- * Update contact credits in Supabase after credit deduction
+ * Update contact credits in Supabase secondary database after credit deduction
+ * Called after HubSpot update to keep secondary DB in sync
  * @param {string} contactId - HubSpot contact ID
  * @param {string} mockType - Mock type to update credits for
  * @param {number} newSpecificCredits - New specific credit value
@@ -465,11 +468,11 @@ async function updateContactCreditsInSupabase(contactId, mockType, newSpecificCr
     .eq('hubspot_id', contactId);
 
   if (error) {
-    console.error(`❌ Supabase contact credits update error:`, error.message);
+    console.error(`❌ [SUPABASE SYNC] Failed to update contact ${contactId}:`, error.message);
     throw error;
   }
 
-  console.log(`✅ Updated contact ${contactId} credits in Supabase`);
+  console.log(`✅ [SUPABASE SYNC] Updated secondary DB for contact ${contactId} (${mockType})`);
 }
 
 module.exports = {

@@ -1,6 +1,6 @@
-# PRD: Contact Credits Supabase Caching Layer
+# PRD: Contact Credits Supabase Secondary Database
 
-**Feature Name**: Contact Credits Supabase Caching Layer
+**Feature Name**: Contact Credits Supabase Secondary Database
 **Type**: Performance Optimization & Scalability Enhancement
 **Priority**: P0 (Critical - Production Issue)
 **Status**: ✅ Implemented
@@ -11,13 +11,16 @@
 
 ## Executive Summary
 
-Replace the HubSpot request queue throttling approach with a Supabase caching layer for contact credit validation. This eliminates 429 rate limit errors while scaling to 400+ concurrent users without introducing unacceptable delays.
+Replace the HubSpot request queue throttling approach with a Supabase secondary database for contact credit validation. This eliminates 429 rate limit errors while scaling to 400+ concurrent users without introducing unacceptable delays.
+
+**Architecture Pattern**: Same as existing bookings/exams - HubSpot remains source of truth, Supabase stores read replica.
 
 ### Quick Stats
 - **Problem**: Request queue causes 50-second delays for 400th concurrent user
-- **Solution**: Supabase cache with ~50ms read time, no rate limits
+- **Solution**: Supabase secondary DB with ~50ms read time, no rate limits
 - **Impact**: Scales to unlimited concurrent users with sub-second response times
 - **Deployment Time**: ~30 minutes (schema + migration + deploy)
+- **Pattern**: Consistent with existing Redis (bookings) + Supabase (exams) architecture
 
 ---
 
@@ -42,13 +45,22 @@ We're using HubSpot as a **database** for read-heavy operations when it's design
 - Rate limiting on reads (HubSpot's 10/sec limit)
 - Slow response times (200-500ms per HubSpot call)
 - Poor scalability under concurrent load
-- No caching layer between users and HubSpot
+- No secondary database layer between users and HubSpot
 
 ---
 
 ## Solution Overview
 
-### Architecture: Supabase as Read Cache
+### Architecture: Supabase as Secondary Database (Read Replica)
+
+**Consistent Pattern**: This follows the same architecture used for bookings and exams:
+- **HubSpot**: Source of truth (CRM manages the data)
+- **Supabase**: Secondary database (permanent read replica)
+- **User App**: Reads from Supabase (fast, scalable)
+
+**Comparison with Existing Architecture**:
+- **Redis** (bookings): Secondary storage with TTL (30 days, key-value)
+- **Supabase** (exams, bookings, credits): Secondary DB, permanent, relational
 
 ```
 ┌─────────────┐
@@ -62,13 +74,13 @@ We're using HubSpot as a **database** for read-heavy operations when it's design
 └──────┬──────────────────────────────┘
        │
        ▼
-   [Try Cache First]
+   [Try Supabase First]
        │
-       ├─── Cache HIT (80% of requests)
+       ├─── Found in Supabase (80% of requests)
        │    └─► Supabase read (~50ms)
        │         └─► Return credits immediately
        │
-       └─── Cache MISS (20% of requests)
+       └─── Not in Supabase (20% of requests)
             └─► HubSpot read (~500ms)
                  ├─► Return credits to user
                  └─► Async sync to Supabase (fire-and-forget)
@@ -76,11 +88,12 @@ We're using HubSpot as a **database** for read-heavy operations when it's design
 
 ### Key Principles
 
-1. **Cache-First Strategy**: Always try Supabase first
-2. **Lazy Population**: Populate cache on-demand (cache misses)
-3. **Fire-and-Forget Sync**: Don't wait for Supabase writes
-4. **Eventual Consistency**: Cache updates asynchronously after HubSpot writes
-5. **No User Impact**: Cache misses are transparent to users
+1. **Secondary DB Pattern**: Same pattern as bookings/exams - Supabase mirrors HubSpot data
+2. **HubSpot = Source of Truth**: All writes go to HubSpot first, then sync to Supabase
+3. **Lazy Population**: Populate Supabase on-demand (first read if missing)
+4. **Fire-and-Forget Sync**: Don't wait for Supabase writes (non-blocking)
+5. **Eventual Consistency**: Supabase updates asynchronously after HubSpot writes
+6. **No User Impact**: Missing data in Supabase = transparent fallback to HubSpot
 
 ---
 
@@ -89,6 +102,8 @@ We're using HubSpot as a **database** for read-heavy operations when it's design
 ### 1. Database Schema
 
 **File**: `supabase-contact-credits-schema.sql`
+
+**Purpose**: Secondary database table for contact credit data (read replica of HubSpot)
 
 ```sql
 CREATE TABLE hubspot_contact_credits (
@@ -140,13 +155,13 @@ CREATE INDEX idx_synced_at ON hubspot_contact_credits(synced_at);
 
 #### Function: `getContactCreditsFromSupabase(studentId, email)`
 ```javascript
-// Fast cache read - returns null if not found
-const cachedContact = await getContactCreditsFromSupabase(studentId, email);
+// Fast Supabase read - returns null if not found
+const contact = await getContactCreditsFromSupabase(studentId, email);
 ```
 
 **Performance**: ~50ms
 **Returns**: Contact credits object or `null`
-**Error Handling**: Throws on Supabase errors (not on cache miss)
+**Error Handling**: Throws on Supabase errors (not on missing record)
 
 #### Function: `syncContactCreditsToSupabase(contact)`
 ```javascript
@@ -172,16 +187,16 @@ await updateContactCreditsInSupabase(contactId, 'Situational Judgment', 2, 5);
 
 **File**: `user_root/api/mock-exams/validate-credits.js`
 
-#### PHASE 1: Try Cache First
+#### PHASE 1: Try Supabase First
 ```javascript
 // Lines 108-129
-let cachedContact = await getContactCreditsFromSupabase(sanitizedStudentId, sanitizedEmail);
+let supabaseContact = await getContactCreditsFromSupabase(sanitizedStudentId, sanitizedEmail);
 
-if (cachedContact) {
-  // Cache HIT - convert Supabase format to HubSpot format
-  console.log(`✅ [CACHE HIT] Using Supabase cache for ${sanitizedStudentId}`);
+if (supabaseContact) {
+  // Found in Supabase - convert to HubSpot format for compatibility
+  console.log(`✅ [SUPABASE] Reading from secondary DB for ${sanitizedStudentId}`);
   contact = {
-    id: cachedContact.hubspot_id,
+    id: supabaseContact.hubspot_id,
     properties: {
       student_id: cachedContact.student_id,
       email: cachedContact.email,
@@ -193,16 +208,16 @@ if (cachedContact) {
 ```
 
 **Success Criteria**:
-- ✅ Cache hit logged as `[CACHE HIT]`
+- ✅ Supabase read logged as `[SUPABASE]`
 - ✅ Response time < 100ms
 - ✅ No HubSpot API call
 
-#### PHASE 2: Cache Miss Handling
+#### PHASE 2: Fallback to HubSpot
 ```javascript
 // Lines 130-155
 else {
-  // Cache MISS - fetch from HubSpot
-  console.log(`⚠️ [CACHE MISS] Fetching from HubSpot for ${sanitizedStudentId}`);
+  // Not in Supabase - fetch from HubSpot (source of truth)
+  console.log(`⚠️ [HUBSPOT] Reading from source of truth for ${sanitizedStudentId}`);
   const hubspot = new HubSpotService();
   contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail, mock_type);
 
@@ -220,10 +235,11 @@ else {
 ```
 
 **Success Criteria**:
-- ✅ Cache miss logged as `[CACHE MISS]`
-- ✅ Response time < 600ms (HubSpot read)
+- ✅ HubSpot read logged as `[HUBSPOT]`
+- ✅ Response time < 600ms (HubSpot read + sync)
 - ✅ Async sync doesn't block response
 - ✅ Sync errors logged but don't fail request
+- ✅ Next request for same student will read from Supabase (populated)
 
 ### 4. Initial Migration Script
 
@@ -308,28 +324,28 @@ Successfully processed: 1,247/1,247
 
 ### Response Time Comparison
 
-| Scenario | Old (Queue) | New (Cache) | Improvement |
-|----------|-------------|-------------|-------------|
-| Single request | 500ms | 500ms (miss) / 50ms (hit) | 10x faster on hit |
+| Scenario | Old (Queue) | New (Secondary DB) | Improvement |
+|----------|-------------|-------------------|-------------|
+| Single request | 500ms | 500ms (not in Supabase) / 50ms (in Supabase) | 10x faster when found |
 | 10 concurrent | 1.25s (queueing) | 50-500ms | 2-25x faster |
 | 100 concurrent | 12.5s (queueing) | 50-500ms | 25-250x faster |
 | 400 concurrent | **50s** (unacceptable) | 50-500ms | **100x faster** |
 
-### Cache Hit Rate Projections
+### Supabase Population Rate Projections
 
 **Assumptions**:
-- Initial cache population: 100% of contacts migrated
-- Cache invalidation: None (credits update on booking, not validation)
+- Initial migration: 100% of existing contacts synced to Supabase
+- New contacts: Populated on first read (lazy loading)
 - User behavior: Students check credits multiple times before booking
 
-**Expected Cache Hit Rates**:
-- **Hour 1 after migration**: 95% (most users already cached)
-- **Day 1**: 90% (new students trigger cache misses)
-- **Steady state**: 85% (new students + occasional HubSpot updates)
+**Expected Supabase Coverage Rates**:
+- **Hour 1 after migration**: 95% (most users already in Supabase)
+- **Day 1**: 90% (new students populate on first read)
+- **Steady state**: 85% (accounts for new students, Supabase reads)
 
-**With 400 Concurrent Users @ 85% Hit Rate**:
-- **340 cache hits** @ 50ms = instant responses ✅
-- **60 cache misses** @ 500ms = acceptable ✅
+**With 400 Concurrent Users @ 85% Coverage**:
+- **340 Supabase reads** @ 50ms = instant responses ✅
+- **60 HubSpot reads** @ 500ms = acceptable ✅
 - **0 queuing delays** ✅
 - **0 429 errors** ✅
 
@@ -479,9 +495,9 @@ Check Vercel function logs for:
 
 ---
 
-## Cache Invalidation Strategy
+## Data Synchronization Strategy
 
-### When to Invalidate Cache
+### When to Update Supabase (Sync from HubSpot)
 
 1. **Credit Deduction (Booking Creation)**
    - **Trigger**: Student books a mock exam
@@ -491,34 +507,35 @@ Check Vercel function logs for:
 
 2. **Credit Addition (Admin Action)**
    - **Trigger**: Admin adds credits to contact in HubSpot
-   - **Action**: Cache miss on next validation → fresh HubSpot read → cache update
-   - **Implementation**: Passive invalidation (no action needed)
-   - **Status**: ✅ Automatic via cache miss
+   - **Action**: Next validation reads from HubSpot → syncs to Supabase
+   - **Implementation**: Passive sync (no action needed)
+   - **Status**: ✅ Automatic via HubSpot fallback
 
-3. **Manual Invalidation (Admin Tool)**
-   - **Trigger**: Admin suspects stale cache
-   - **Action**: Delete contact from Supabase → cache miss → fresh read
+3. **Manual Sync (Admin Tool)**
+   - **Trigger**: Admin suspects stale Supabase data
+   - **Action**: Delete contact from Supabase → next read triggers HubSpot → syncs fresh data
    - **Implementation**: Admin endpoint or SQL query
    - **Status**: 🚧 Not yet implemented (future enhancement)
 
-### Current Strategy: Lazy Invalidation
+### Current Strategy: Lazy Synchronization
 
 **How it works**:
-1. Cache is populated on-demand (cache misses)
-2. Cache is updated when credits are read from HubSpot
-3. No active invalidation after credit changes
-4. Stale cache resolved on next validation attempt
+1. Supabase populated on-demand (first read triggers HubSpot fetch + sync)
+2. Supabase updated when credits are read from HubSpot
+3. No active sync after credit changes in HubSpot
+4. Stale data resolved on next validation attempt
 
 **Trade-offs**:
 - ✅ Simple implementation
-- ✅ No complex invalidation logic
-- ✅ Self-healing via cache misses
+- ✅ No complex sync scheduling
+- ✅ Self-healing via HubSpot fallback
 - ⚠️ Potential staleness window (until next validation)
 
 **Acceptable because**:
 - Credit changes are infrequent (only on booking or admin action)
-- Users validate credits before booking (cache refreshes then)
-- Cache miss is transparent to user (just slower, not wrong)
+- Users validate credits before booking (triggers sync then)
+- Stale data is transparent to user (just slower, not wrong)
+- Pattern matches existing bookings/exams architecture
 
 ---
 
@@ -575,7 +592,7 @@ node scripts/load-test-credits.js 100 10
 - Fast response times
 - Correct credit calculations
 
-#### Test 2: Cache Hit Verification
+#### Test 2: Supabase Read Verification
 ```bash
 # Manual test
 curl -X POST https://your-app.vercel.app/api/mock-exams/validate-credits \
@@ -583,12 +600,12 @@ curl -X POST https://your-app.vercel.app/api/mock-exams/validate-credits \
   -d '{"student_id":"1599999","email":"test@example.com","mock_type":"Situational Judgment"}'
 
 # Check Vercel logs for:
-# ✅ [CACHE HIT] Using Supabase cache for 1599999
+# ✅ [SUPABASE] Reading from secondary DB for 1599999
 ```
 
-#### Test 3: Cache Miss → Sync Flow
+#### Test 3: HubSpot Fallback → Sync Flow
 ```bash
-# Delete from cache
+# Delete from Supabase to simulate missing data
 DELETE FROM hubspot_contact_credits WHERE student_id = '1599999';
 
 # Make request
@@ -597,22 +614,22 @@ curl -X POST https://your-app.vercel.app/api/mock-exams/validate-credits \
   -d '{"student_id":"1599999","email":"test@example.com","mock_type":"Situational Judgment"}'
 
 # Check Vercel logs for:
-# ⚠️ [CACHE MISS] Fetching from HubSpot for 1599999
+# ⚠️ [HUBSPOT] Reading from source of truth for 1599999
 # ✅ Synced contact 12345 credits to Supabase
 
-# Verify cache populated
+# Verify Supabase populated
 SELECT * FROM hubspot_contact_credits WHERE student_id = '1599999';
 ```
 
 ### Manual Testing Checklist
 
-- [ ] Cache hit returns correct credits in < 100ms
-- [ ] Cache miss fetches from HubSpot and syncs to Supabase
+- [ ] Supabase read returns correct credits in < 100ms
+- [ ] HubSpot fallback fetches and syncs to Supabase
 - [ ] Async sync errors don't fail the request
 - [ ] Credits calculation is correct (SJ, CS, Mini-mock, Discussion)
 - [ ] Shared credits logic works (SJ/CS only)
 - [ ] 100 concurrent requests complete without errors
-- [ ] Vercel logs show cache hit/miss ratio
+- [ ] Vercel logs show Supabase/HubSpot read ratio
 - [ ] No 429 errors under load
 
 ---

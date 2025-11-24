@@ -1,7 +1,8 @@
 /**
- * Migration Script: Populate Supabase contact_credits table from HubSpot
+ * Migration Script: Populate Supabase Secondary Database from HubSpot
  *
- * Purpose: Initial sync of all contacts with credit data from HubSpot to Supabase
+ * Purpose: Initial population of Supabase read replica with contact credit data from HubSpot
+ * Pattern: Same as bookings/exams - HubSpot is source of truth, Supabase is secondary DB
  *
  * Usage:
  *   node scripts/migrate-contact-credits-to-supabase.js [--dry-run] [--limit=N]
@@ -95,10 +96,11 @@ async function fetchAllContactsFromHubSpot() {
 }
 
 /**
- * Sync contacts to Supabase
+ * Sync contacts to Supabase secondary database
+ * Populates the read replica with contact credit data
  */
 async function syncContactsToSupabase(contacts, isDryRun) {
-  console.log(`${isDryRun ? '🔍 DRY RUN: ' : '💾 '}Syncing ${contacts.length} contacts to Supabase...\n`);
+  console.log(`${isDryRun ? '🔍 DRY RUN: ' : '💾 '}Syncing ${contacts.length} contacts to Supabase secondary DB...\n`);
 
   let successCount = 0;
   let errorCount = 0;
@@ -189,10 +191,12 @@ function generateSummary(contacts) {
 
 /**
  * Main migration function
+ * Populates Supabase secondary database with HubSpot contact credit data
  */
 async function runMigration() {
-  console.log('🚀 Contact Credits Migration to Supabase');
+  console.log('🚀 Contact Credits Migration to Supabase Secondary DB');
   console.log('=' .repeat(60));
+  console.log(`Pattern: HubSpot (source of truth) → Supabase (read replica)`);
   console.log(`Mode: ${isDryRun ? 'DRY RUN (no changes)' : 'LIVE (will write to Supabase)'}`);
   console.log(`Limit: ${limit ? `${limit} contacts` : 'All contacts'}`);
   console.log('=' .repeat(60) + '\n');
@@ -237,8 +241,9 @@ async function runMigration() {
     if (isDryRun) {
       console.log('\n💡 To perform actual migration, run without --dry-run flag');
     } else {
-      console.log('\n✅ Contact credits are now cached in Supabase!');
-      console.log('   Future validate-credits requests will use this cache.');
+      console.log('\n✅ Contact credits are now in Supabase secondary database!');
+      console.log('   Future validate-credits requests will read from Supabase (fast).');
+      console.log('   Missing contacts will auto-populate from HubSpot on first read.');
     }
 
     console.log('\n' + '='.repeat(60) + '\n');
