@@ -4,7 +4,7 @@ const { HubSpotService, HUBSPOT_OBJECTS } = require('../_shared/hubspot');
 const { schemas } = require('../_shared/validation');
 const { getCache } = require('../_shared/cache');
 const RedisLockService = require('../_shared/redis');
-const { syncBookingToSupabase, updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
+const { syncBookingToSupabase, updateExamBookingCountInSupabase, updateContactCreditsInSupabase } = require('../_shared/supabase-data');
 const {
   setCorsHeaders,
   handleOptionsRequest,
@@ -650,6 +650,26 @@ module.exports = module.exports = module.exports = async function handler(req, r
     const newCreditValue = Math.max(0, currentCreditValue - 1);
 
     await hubspot.updateContactCredits(contact_id, creditField, newCreditValue);
+
+    // Step 8a: Sync credit deduction to Supabase (non-blocking)
+    // Calculate new credit values for Supabase sync
+    let newSpecificCredits = specificCredits;
+    let newSharedCredits = sharedCredits;
+
+    if (creditField === 'shared_mock_credits') {
+      newSharedCredits = newCreditValue;
+    } else {
+      newSpecificCredits = newCreditValue;
+    }
+
+    updateContactCreditsInSupabase(contact_id, mock_type, newSpecificCredits, newSharedCredits)
+      .then(() => {
+        console.log(`✅ [SUPABASE SYNC] Contact credits synced for ${contact_id} after booking`);
+      })
+      .catch(supabaseError => {
+        console.error(`⚠️ [SUPABASE SYNC] Failed to sync contact credits to Supabase (non-blocking):`, supabaseError.message);
+        // Don't block booking - Supabase will sync on next cron run
+      });
 
     // Step 9: Create Note in Contact timeline (async, non-blocking)
     const mockExamDataForNote = {

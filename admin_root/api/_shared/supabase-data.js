@@ -363,6 +363,51 @@ async function deleteExamFromSupabase(examId) {
   console.log(`✅ Deleted exam ${examId} from Supabase`);
 }
 
+/**
+ * Update contact credits in Supabase secondary database after credit changes
+ * Called after HubSpot update to keep secondary DB in sync
+ * @param {string} contactId - HubSpot contact ID
+ * @param {string} mockType - Mock type to update credits for
+ * @param {number} newSpecificCredits - New specific credit value
+ * @param {number} newSharedCredits - New shared credit value
+ */
+async function updateContactCreditsInSupabase(contactId, mockType, newSpecificCredits, newSharedCredits) {
+  const updateData = {
+    updated_at: new Date().toISOString(),
+    synced_at: new Date().toISOString()
+  };
+
+  // Update specific credit field based on mock type
+  switch (mockType) {
+    case 'Situational Judgment':
+      updateData.sj_credits = newSpecificCredits;
+      updateData.shared_mock_credits = newSharedCredits;
+      break;
+    case 'Clinical Skills':
+      updateData.cs_credits = newSpecificCredits;
+      updateData.shared_mock_credits = newSharedCredits;
+      break;
+    case 'Mini-mock':
+      updateData.sjmini_credits = newSpecificCredits;
+      break;
+    case 'Mock Discussion':
+      updateData.mock_discussion_token = newSpecificCredits;
+      break;
+  }
+
+  const { error } = await supabaseAdmin
+    .from('hubspot_contact_credits')
+    .update(updateData)
+    .eq('hubspot_id', contactId);
+
+  if (error) {
+    console.error(`❌ [SUPABASE SYNC] Failed to update contact ${contactId}:`, error.message);
+    throw error;
+  }
+
+  console.log(`✅ [SUPABASE SYNC] Updated secondary DB for contact ${contactId} (${mockType})`);
+}
+
 module.exports = {
   // Reads
   getBookingsFromSupabase,
@@ -378,5 +423,6 @@ module.exports = {
   updateBookingStatusInSupabase,
   updateExamBookingCountInSupabase,
   deleteBookingFromSupabase,
-  deleteExamFromSupabase
+  deleteExamFromSupabase,
+  updateContactCreditsInSupabase
 };

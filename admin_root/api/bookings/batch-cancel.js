@@ -29,6 +29,7 @@ const Joi = require('joi');
 const { HubSpotService, HUBSPOT_OBJECTS } = require('../_shared/hubspot');
 const { requireAdmin } = require('../admin/middleware/requireAdmin');
 const RedisLockService = require('../_shared/redis');
+const { updateContactCreditsInSupabase } = require('../_shared/supabase-data');
 
 // Validation schema for batch cancellation
 const batchCancelSchema = Joi.object({
@@ -217,6 +218,55 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
         console.log(`✅ Credits restored successfully for booking ${bookingId}`);
         result.actions_completed.credits_restored = true;
         result.credit_restoration = creditsRestored;
+
+        // Sync credit restoration to Supabase (non-blocking)
+        if (creditsRestored) {
+          // Map token to mock_type for Supabase sync
+          const tokenToMockTypeMapping = {
+            'Situational Judgment Token': 'Situational Judgment',
+            'Clinical Skills Token': 'Clinical Skills',
+            'Mini-mock Token': 'Mini-mock',
+            'Mock Discussion Token': 'Mock Discussion',
+            'Shared Token': mockExamDetails?.mock_type || bookingProperties.mock_type || 'Situational Judgment'
+          };
+
+          const mockTypeForSync = tokenToMockTypeMapping[tokenUsed] || mockExamDetails?.mock_type || bookingProperties.mock_type;
+
+          // Calculate new credit values for Supabase sync
+          const newCredits = { ...currentCredits };
+          newCredits[creditsRestored.credit_type] = creditsRestored.new_balance;
+
+          // Determine specific and shared credits based on credit_type
+          let newSpecificCredits = 0;
+          let newSharedCredits = newCredits.shared_mock_credits;
+
+          if (creditsRestored.credit_type === 'sj_credits') {
+            newSpecificCredits = newCredits.sj_credits;
+          } else if (creditsRestored.credit_type === 'cs_credits') {
+            newSpecificCredits = newCredits.cs_credits;
+          } else if (creditsRestored.credit_type === 'sjmini_credits') {
+            newSpecificCredits = newCredits.sjmini_credits;
+            newSharedCredits = 0;
+          } else if (creditsRestored.credit_type === 'mock_discussion_token') {
+            newSpecificCredits = newCredits.mock_discussion_token;
+            newSharedCredits = 0;
+          } else if (creditsRestored.credit_type === 'shared_mock_credits') {
+            newSharedCredits = newCredits.shared_mock_credits;
+            if (mockTypeForSync === 'Situational Judgment') {
+              newSpecificCredits = newCredits.sj_credits;
+            } else if (mockTypeForSync === 'Clinical Skills') {
+              newSpecificCredits = newCredits.cs_credits;
+            }
+          }
+
+          updateContactCreditsInSupabase(contactId, mockTypeForSync, newSpecificCredits, newSharedCredits)
+            .then(() => {
+              console.log(`✅ [SUPABASE SYNC] Contact credits synced for ${contactId} (admin batch cancel)`);
+            })
+            .catch(supabaseError => {
+              console.error(`⚠️ [SUPABASE SYNC] Failed to sync contact credits (non-blocking):`, supabaseError.message);
+            });
+        }
       } catch (creditError) {
         console.error(`❌ Failed to restore credits: ${creditError.message}`);
       }

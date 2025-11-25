@@ -146,32 +146,14 @@ class HubSpotService {
       'lastname',
       'email',
       'hs_object_id',
-      'ndecc_exam_date'
+      'ndecc_exam_date',
+      'hs_lastmodifieddate'  // Needed for Supabase sync updated_at timestamp
     ];
-    
-    let creditProperties = [];
-    if (mockType) {
-      switch (mockType) {
-        case 'Mock Discussion':
-          creditProperties = ['mock_discussion_token'];
-          break;
-        case 'Situational Judgment':
-          creditProperties = ['sj_credits', 'shared_mock_credits'];
-          break;
-        case 'Clinical Skills':
-          creditProperties = ['cs_credits', 'shared_mock_credits'];
-          break;
-        case 'Mini-mock':
-          creditProperties = ['sjmini_credits'];
-          break;
-        default:
-          // If unknown type, fetch all credit properties as fallback
-          creditProperties = ['sj_credits', 'cs_credits', 'sjmini_credits', 'mock_discussion_token', 'shared_mock_credits'];
-      }
-    } else {
-      // If no type specified, fetch all credit properties (for backward compatibility)
-      creditProperties = ['sj_credits', 'cs_credits', 'sjmini_credits', 'mock_discussion_token', 'shared_mock_credits'];
-    }
+
+    // IMPORTANT: Always fetch ALL credit properties to prevent Supabase auto-populate from overwriting credits with 0
+    // The auto-populate sync in validate-credits.js expects all credit fields to be present
+    // If we only fetch specific credits, other credits get synced as 0 and overwrite actual values
+    const creditProperties = ['sj_credits', 'cs_credits', 'sjmini_credits', 'mock_discussion_token', 'shared_mock_credits'];
     
     const searchPayload = {
       filterGroups: [{

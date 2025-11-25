@@ -211,13 +211,108 @@ async function syncBookingsToSupabase(bookings, examId) {
 }
 
 /**
- * Main sync function - Syncs all mock exams and bookings
+ * Fetch all contacts with credits from HubSpot
+ * Only fetches contacts that have student_id and at least one credit > 0
+ */
+async function fetchAllContactsWithCredits() {
+  const allContacts = [];
+  let after = undefined;
+  const properties = [
+    'student_id', 'email', 'firstname', 'lastname',
+    'sj_credits', 'cs_credits', 'sjmini_credits',
+    'mock_discussion_token', 'shared_mock_credits',
+    'ndecc_exam_date', 'createdate', 'hs_lastmodifieddate'
+  ];
+
+  do {
+    const searchBody = {
+      filterGroups: [
+        {
+          filters: [
+            { propertyName: 'student_id', operator: 'HAS_PROPERTY' }
+          ]
+        },
+        {
+          filters: [
+            { propertyName: 'sj_credits', operator: 'GT', value: '0' },
+            { propertyName: 'cs_credits', operator: 'GT', value: '0' },
+            { propertyName: 'sjmini_credits', operator: 'GT', value: '0' },
+            { propertyName: 'mock_discussion_token', operator: 'GT', value: '0' },
+            { propertyName: 'shared_mock_credits', operator: 'GT', value: '0' }
+          ]
+        }
+      ],
+      properties,
+      limit: 100
+    };
+
+    if (after) {
+      searchBody.after = after;
+    }
+
+    const response = await hubspotApiCall(
+      'POST',
+      `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/search`,
+      searchBody
+    );
+
+    allContacts.push(...response.results);
+    after = response.paging?.next?.after;
+
+    // Rate limiting
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+  } while (after);
+
+  return allContacts;
+}
+
+/**
+ * Sync contact credits to Supabase
+ */
+async function syncContactCreditsToSupabase(contact) {
+  if (!contact || !contact.properties) {
+    console.error('[SYNC] Cannot sync contact - missing properties');
+    return;
+  }
+
+  const props = contact.properties;
+
+  const record = {
+    hubspot_id: contact.id,
+    student_id: props.student_id,
+    email: props.email?.toLowerCase(),
+    firstname: props.firstname,
+    lastname: props.lastname,
+    sj_credits: parseInt(props.sj_credits) || 0,
+    cs_credits: parseInt(props.cs_credits) || 0,
+    sjmini_credits: parseInt(props.sjmini_credits) || 0,
+    mock_discussion_token: parseInt(props.mock_discussion_token) || 0,
+    shared_mock_credits: parseInt(props.shared_mock_credits) || 0,
+    ndecc_exam_date: props.ndecc_exam_date,
+    created_at: props.createdate,
+    updated_at: props.hs_lastmodifieddate,
+    synced_at: new Date().toISOString()
+  };
+
+  const { error } = await supabaseAdmin
+    .from('hubspot_contact_credits')
+    .upsert(record, { onConflict: 'hubspot_id' });
+
+  if (error) {
+    throw new Error(`Supabase contact credits sync error: ${error.message}`);
+  }
+}
+
+/**
+ * Main sync function - Syncs all mock exams, bookings, and contact credits
  * Returns summary of sync operation
  */
 async function syncAllData() {
   const startTime = Date.now();
   let totalExams = 0;
   let totalBookings = 0;
+  let totalContactCredits = 0;
   let errors = [];
 
   try {
@@ -254,6 +349,37 @@ async function syncAllData() {
       }
     }
 
+    // Step 4: Fetch and sync contact credits
+    console.log('🔄 Starting contact credits sync...');
+    try {
+      const contacts = await fetchAllContactsWithCredits();
+      totalContactCredits = contacts.length;
+      console.log(`📊 Found ${totalContactCredits} contacts with credits to sync`);
+
+      for (let i = 0; i < contacts.length; i++) {
+        const contact = contacts[i];
+        try {
+          await syncContactCreditsToSupabase(contact);
+
+          // Log progress every 50 contacts
+          if ((i + 1) % 50 === 0) {
+            console.log(`   Progress: ${i + 1}/${totalContactCredits} contacts synced`);
+          }
+        } catch (error) {
+          console.error(`Failed to sync contact ${contact.id}: ${error.message}`);
+          errors.push({ type: 'contact_credits', id: contact.id, error: error.message });
+        }
+
+        // Rate limiting
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      console.log(`✅ Contact credits sync completed: ${totalContactCredits} contacts synced`);
+    } catch (error) {
+      console.error(`❌ Failed to sync contact credits: ${error.message}`);
+      errors.push({ type: 'contact_credits_fetch', error: error.message });
+    }
+
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
     return {
@@ -261,6 +387,7 @@ async function syncAllData() {
       summary: {
         exams_synced: totalExams,
         bookings_synced: totalBookings,
+        contact_credits_synced: totalContactCredits,
         errors_count: errors.length,
         duration_seconds: duration,
         completed_at: new Date().toISOString()
@@ -279,5 +406,7 @@ module.exports = {
   fetchAllMockExams,
   fetchBookingsForExam,
   syncExamToSupabase,
-  syncBookingsToSupabase
+  syncBookingsToSupabase,
+  fetchAllContactsWithCredits,
+  syncContactCreditsToSupabase
 };
