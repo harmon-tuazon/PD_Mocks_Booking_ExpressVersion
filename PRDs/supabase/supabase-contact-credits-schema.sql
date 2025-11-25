@@ -2,9 +2,9 @@
 -- Pattern: Same as bookings/exams - HubSpot is source of truth, Supabase is read replica
 -- This eliminates 429 rate limit errors by serving reads from Supabase instead of HubSpot
 
-CREATE TABLE IF NOT EXISTS hubspot_contact_credits (
+CREATE TABLE IF NOT EXISTS public.hubspot_contact_credits (
   -- Primary Keys
-  id BIGSERIAL PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   hubspot_id TEXT UNIQUE NOT NULL, -- HubSpot contact ID
 
   -- Contact Identification
@@ -33,22 +33,22 @@ CREATE TABLE IF NOT EXISTS hubspot_contact_credits (
 );
 
 -- Create indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_student_id ON hubspot_contact_credits(student_id);
-CREATE INDEX IF NOT EXISTS idx_email ON hubspot_contact_credits(email);
-CREATE INDEX IF NOT EXISTS idx_hubspot_id ON hubspot_contact_credits(hubspot_id);
-CREATE INDEX IF NOT EXISTS idx_synced_at ON hubspot_contact_credits(synced_at);
+CREATE INDEX IF NOT EXISTS idx_contact_credits_student_id ON public.hubspot_contact_credits(student_id);
+CREATE INDEX IF NOT EXISTS idx_contact_credits_email ON public.hubspot_contact_credits(email);
+CREATE INDEX IF NOT EXISTS idx_contact_credits_hubspot_id ON public.hubspot_contact_credits(hubspot_id);
+CREATE INDEX IF NOT EXISTS idx_contact_credits_synced_at ON public.hubspot_contact_credits(synced_at);
 
--- Row-level security (RLS) - allow service role full access
-ALTER TABLE hubspot_contact_credits ENABLE ROW LEVEL SECURITY;
+-- Row-level security (RLS) - block direct access (service_role bypasses this)
+ALTER TABLE public.hubspot_contact_credits ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Service role has full access" ON hubspot_contact_credits
-  FOR ALL
-  USING (true)
-  WITH CHECK (true);
+CREATE POLICY "Deny direct access to contact_credits"
+ON public.hubspot_contact_credits
+FOR ALL
+TO anon, authenticated
+USING (false);
 
--- Grant necessary permissions to service role
-GRANT ALL ON hubspot_contact_credits TO service_role;
--- Note: GRANT ALL includes sequence permissions, no need for separate GRANT on sequence
+-- Revoke permissions from anon and authenticated users
+REVOKE ALL ON public.hubspot_contact_credits FROM anon, authenticated;
 
 -- Comments for documentation
 COMMENT ON TABLE hubspot_contact_credits IS 'Secondary database (read replica) for HubSpot contact credit data. Eliminates 429 rate limit errors.';

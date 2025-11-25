@@ -189,19 +189,23 @@ await updateContactCreditsInSupabase(contactId, 'Situational Judgment', 2, 5);
 
 #### PHASE 1: Try Supabase First
 ```javascript
-// Lines 108-129
-let supabaseContact = await getContactCreditsFromSupabase(sanitizedStudentId, sanitizedEmail);
+// Lines 134-157
+const supabaseContact = await getContactCreditsFromSupabase(sanitizedStudentId, sanitizedEmail);
 
 if (supabaseContact) {
   // Found in Supabase - convert to HubSpot format for compatibility
-  console.log(`✅ [SUPABASE] Reading from secondary DB for ${sanitizedStudentId}`);
+  console.log(`✅ [SUPABASE] Reading from secondary DB for student ${sanitizedStudentId}`);
   contact = {
     id: supabaseContact.hubspot_id,
     properties: {
-      student_id: cachedContact.student_id,
-      email: cachedContact.email,
-      sj_credits: cachedContact.sj_credits?.toString(),
-      // ... other credit fields
+      student_id: supabaseContact.student_id,
+      email: supabaseContact.email,
+      sj_credits: supabaseContact.sj_credits?.toString() || '0',
+      cs_credits: supabaseContact.cs_credits?.toString() || '0',
+      sjmini_credits: supabaseContact.sjmini_credits?.toString() || '0',
+      mock_discussion_token: supabaseContact.mock_discussion_token?.toString() || '0',
+      shared_mock_credits: supabaseContact.shared_mock_credits?.toString() || '0',
+      ndecc_exam_date: supabaseContact.ndecc_exam_date
     }
   };
 }
@@ -212,12 +216,13 @@ if (supabaseContact) {
 - ✅ Response time < 100ms
 - ✅ No HubSpot API call
 
-#### PHASE 2: Fallback to HubSpot
+#### PHASE 2: Fallback to HubSpot with Auto-Population
 ```javascript
-// Lines 130-155
-else {
+// Lines 163-191
+if (!contact) {
   // Not in Supabase - fetch from HubSpot (source of truth)
-  console.log(`⚠️ [HUBSPOT] Reading from source of truth for ${sanitizedStudentId}`);
+  console.log(`⚠️ [HUBSPOT] Reading from source of truth for student ${sanitizedStudentId}`);
+
   const hubspot = new HubSpotService();
   contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail, mock_type);
 
@@ -227,9 +232,10 @@ else {
     throw new Error('Email does not match student record');
   }
 
-  // Async sync to Supabase (fire-and-forget, don't wait)
-  syncContactCreditsToSupabase(contact).catch(err => {
-    console.error('[SYNC ERROR] Failed to cache contact credits:', err.message);
+  // AUTO-POPULATE: Async sync to Supabase (fire-and-forget, don't wait)
+  syncContactCreditsToSupabase(contact).catch(syncError => {
+    console.error('[SYNC ERROR] Failed to cache contact credits:', syncError.message);
+    // Non-blocking - don't fail the request if sync fails
   });
 }
 ```
@@ -239,14 +245,15 @@ else {
 - ✅ Response time < 600ms (HubSpot read + sync)
 - ✅ Async sync doesn't block response
 - ✅ Sync errors logged but don't fail request
-- ✅ Next request for same student will read from Supabase (populated)
+- ✅ Next request for same student will read from Supabase (auto-populated)
+- ✅ **AUTO-POPULATION**: Any user validating credits gets added to Supabase automatically
 
 ### 4. Initial Migration Script
 
 **File**: `scripts/migrate-contact-credits-to-supabase.js`
 
 #### Purpose
-Populate Supabase with all existing HubSpot contacts that have `student_id` property.
+Populate Supabase with **ONLY contacts that have credits > 0**. This dramatically reduces the initial migration size and focuses on active users.
 
 #### Usage
 ```bash
@@ -258,13 +265,37 @@ node scripts/migrate-contact-credits-to-supabase.js
 ```
 
 #### Features
-- ✅ Fetches all contacts with `student_id` from HubSpot
+- ✅ **Filters contacts with credits > 0** (reduces migration size by ~60-80%)
+- ✅ Fetches contacts with `student_id` AND at least one credit type > 0
 - ✅ Batch processing (100 contacts per HubSpot page)
-- ✅ Rate limiting (150ms between pages = 6.67 pages/sec)
+- ✅ Rate limiting (100ms between pages)
 - ✅ Dry-run mode for safe testing
 - ✅ Limit flag for incremental testing
 - ✅ Statistics and error reporting
-- ✅ Progress logging every 50 contacts
+- ✅ Progress logging every 10 contacts
+
+#### Filter Logic
+The migration now uses HubSpot's filter groups to only fetch contacts with credits:
+```javascript
+filterGroups: [
+  {
+    filters: [
+      { propertyName: 'student_id', operator: 'HAS_PROPERTY' }
+    ]
+  },
+  {
+    filters: [
+      { propertyName: 'sj_credits', operator: 'GT', value: '0' },
+      { propertyName: 'cs_credits', operator: 'GT', value: '0' },
+      { propertyName: 'sjmini_credits', operator: 'GT', value: '0' },
+      { propertyName: 'mock_discussion_token', operator: 'GT', value: '0' },
+      { propertyName: 'shared_mock_credits', operator: 'GT', value: '0' }
+    ]
+  }
+]
+```
+
+This means: "Has student_id" AND ("sj_credits > 0" OR "cs_credits > 0" OR ... OR "shared_mock_credits > 0")
 
 #### Expected Output
 ```
@@ -699,36 +730,49 @@ try {
 
 ---
 
-#### 4. **Credit Addition (Admin Action)** ✅ PASSIVE SYNC
+#### 4. **Credit Addition (Admin Action)** 🚧 NO AUTOMATIC SYNC
 
 **Trigger**: Admin manually adds/modifies credits in HubSpot CRM
 
-**Implementation**: **Passive sync via validation fallback**
+**Implementation**: **No automatic sync - manual cleanup required**
 
-**Flow**:
+**What Happens**:
 ```
 Admin updates credits in HubSpot → HubSpot updated (source of truth)
                                          ↓
                               Supabase NOT updated (stale)
                                          ↓
-User validates credits next time → Checks Supabase first
+User validates credits next time → Reads from Supabase (STALE DATA)
                                          ↓
-                              Supabase has stale data (or missing)
+                              Returns incorrect balance to user
                                          ↓
-                              Falls back to HubSpot (source of truth)
-                                         ↓
-                              Syncs fresh data to Supabase
-                                         ↓
-                              Future validations read from Supabase (updated)
+                              Staleness persists indefinitely
 ```
 
-**Why This Works**:
-- Admin credit changes are **infrequent** (bulk additions, manual corrections)
-- Users **always validate before booking** (triggers sync if stale)
-- Worst case: User sees stale data once, then it auto-corrects on fallback
-- No active sync infrastructure needed
+**The Problem**:
+- ❌ System does NOT detect staleness (only checks if data exists)
+- ❌ HubSpot fallback only triggers when data is **missing entirely**, not stale
+- ❌ User will see incorrect credit balance until manual intervention
+- ❌ No automatic correction mechanism
 
-**Status**: ✅ **Implemented via HubSpot fallback mechanism**
+**Manual Workarounds**:
+
+1. **SQL Delete** (forces fresh fetch on next validation):
+```sql
+-- Delete specific contact (next validation will repopulate from HubSpot)
+DELETE FROM hubspot_contact_credits WHERE student_id = '1234567';
+
+-- Or delete all contacts and let lazy loading repopulate
+TRUNCATE hubspot_contact_credits;
+```
+
+2. **Re-run Migration Script**:
+```bash
+# Sync all contacts from HubSpot to Supabase
+node scripts/migrate-contact-credits-to-supabase.js
+```
+
+**Status**: 🚧 **No automatic sync - requires manual database cleanup**
 
 ---
 
