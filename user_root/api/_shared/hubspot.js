@@ -1,6 +1,5 @@
 const axios = require('axios');
 const { HubSpotBatchService } = require('./batch');
-const { getHubSpotQueue } = require('./requestQueue');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -65,12 +64,9 @@ class HubSpotService {
       url = `${this.baseURL}${url}`;
     }
 
-    // Get the request queue singleton
-    const queue = getHubSpotQueue();
-
-    // Wrap the axios call in the queue to prevent rate limit errors
-    const makeRequest = async () => {
-      return axios({
+    try {
+      // Make the API request directly with axios
+      const response = await axios({
         method,
         url,
         data: requestData,
@@ -79,11 +75,6 @@ class HubSpotService {
           'Content-Type': 'application/json'
         }
       });
-    };
-
-    try {
-      // Enqueue the request - this throttles to 8 req/sec
-      const response = await queue.enqueue(makeRequest);
 
       // PHASE 2: Monitor rate limit headers after successful response
       const rateLimitHeaders = response.headers || {};
