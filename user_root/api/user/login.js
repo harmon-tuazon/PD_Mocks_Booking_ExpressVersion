@@ -14,7 +14,7 @@ const {
   getContactCreditsFromSupabase,
   syncContactCreditsToSupabase
 } = require('../_shared/supabase-data');
-const CacheService = require('../_shared/cache');
+const { CacheService } = require('../_shared/cache');
 
 /**
  * POST /api/user/login
