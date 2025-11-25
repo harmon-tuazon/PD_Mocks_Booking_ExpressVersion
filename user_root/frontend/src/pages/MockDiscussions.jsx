@@ -42,7 +42,7 @@ const MockDiscussions = () => {
 
   // Extract mock discussion token data
   const mockDiscussionData = credits?.['Mock Discussion'];
-  const mockDiscussionTokens = mockDiscussionData?.available_credits || 0;
+  const mockDiscussionTokens = mockDiscussionData?.credit_breakdown?.total_credits || 0;
 
   // Filter discussions based on selected location
   const filteredDiscussions = useMemo(() => {
