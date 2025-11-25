@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { validateUserCredentials } from '../services/api';
+import apiService, { transformLoginCreditsToCache } from '../services/api';
 import { ResponsiveLogo } from './shared/Logo';
 import { setUserSession } from '../utils/auth';
 
@@ -17,21 +17,33 @@ const LoginForm = () => {
     setError('');
 
     try {
-      // Validate user exists in HubSpot
-      const response = await validateUserCredentials(studentId, email);
+      // Use new login endpoint that returns ALL credit types in one call
+      const response = await apiService.user.login(studentId, email);
 
       if (response.success) {
-        // Store user data in a secure cookie for persistence across page reloads
+        const profileData = response.data;
+
+        // Store user data in localStorage for persistence across page reloads
         const userData = {
           studentId: studentId.toUpperCase(),
           email: email.toLowerCase(),
-          contactId: response.data.contact_id,
-          studentName: response.data.student_name,
-          enrollmentId: response.data.enrollment_id,
-          ndeccExamDate: response.data.ndecc_exam_date
+          contactId: profileData.contact_id,
+          studentName: profileData.name,
+          ndeccExamDate: profileData.ndecc_exam_date
         };
 
         setUserSession(userData);
+
+        // Transform and pre-populate credit cache for instant ExamTypeSelector rendering
+        const transformedCredits = transformLoginCreditsToCache(profileData);
+
+        // Store transformed credits in localStorage for useCachedCredits hook
+        localStorage.setItem('creditCache', JSON.stringify({
+          data: transformedCredits,
+          timestamp: Date.now(),
+          studentId: studentId.toUpperCase(),
+          email: email.toLowerCase()
+        }));
 
         // Redirect to exam type selection
         navigate('/book/exam-types');

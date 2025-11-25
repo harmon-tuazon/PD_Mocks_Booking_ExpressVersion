@@ -53,7 +53,40 @@ export function useCachedCredits() {
    * @returns {Promise<void>}
    */
   const fetchCredits = async (studentId, email, force = false) => {
-    // Check if cache is fresh and not forced refresh
+    // STEP 1: Check localStorage for pre-populated cache from login endpoint
+    if (!force && !creditCache) {
+      try {
+        const localCache = localStorage.getItem('creditCache');
+        if (localCache) {
+          const parsedCache = JSON.parse(localCache);
+          const cacheAge = Date.now() - parsedCache.timestamp;
+
+          // Verify cache is for the same user and is fresh
+          if (
+            parsedCache.studentId === studentId.toUpperCase() &&
+            parsedCache.email === email.toLowerCase() &&
+            cacheAge < CACHE_DURATION &&
+            parsedCache.data
+          ) {
+            // Use pre-populated cache from login
+            creditCache = parsedCache.data;
+            lastFetchTime = parsedCache.timestamp;
+
+            // Update all subscribers
+            subscribers.forEach(setState => {
+              setState(parsedCache.data);
+            });
+
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error reading credit cache from localStorage:', error);
+        // Continue to API fetch if localStorage read fails
+      }
+    }
+
+    // STEP 2: Check if cache is fresh and not forced refresh
     if (!force && creditCache && lastFetchTime) {
       const cacheAge = Date.now() - lastFetchTime;
       if (cacheAge < CACHE_DURATION) {
