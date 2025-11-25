@@ -364,6 +364,117 @@ async function deleteExamFromSupabase(examId) {
   console.log(`✅ Deleted exam ${examId} from Supabase`);
 }
 
+// ============== CONTACT CREDITS OPERATIONS (Secondary Database) ==============
+
+/**
+ * Get contact credits from Supabase secondary database
+ * Pattern: Same as bookings/exams - Supabase mirrors HubSpot data
+ * @param {string} studentId - Student ID
+ * @param {string} email - Contact email
+ * @returns {object|null} - Contact credits object or null if not found
+ */
+async function getContactCreditsFromSupabase(studentId, email) {
+  const { data, error } = await supabaseAdmin
+    .from('hubspot_contact_credits')
+    .select('*')
+    .eq('student_id', studentId)
+    .eq('email', email.toLowerCase())
+    .single();
+
+  if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+    console.error(`❌ Supabase contact credits read error:`, error.message);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Sync contact credits to Supabase secondary database after HubSpot read
+ * This maintains the read replica - HubSpot remains source of truth
+ * @param {object} contact - Contact object from HubSpot (source of truth)
+ */
+async function syncContactCreditsToSupabase(contact) {
+  if (!contact || !contact.properties) {
+    console.error('[SUPABASE SYNC] Cannot sync - contact or properties missing');
+    return;
+  }
+
+  const props = contact.properties;
+
+  const record = {
+    hubspot_id: contact.id,
+    student_id: props.student_id,
+    email: props.email?.toLowerCase(),
+    firstname: props.firstname,
+    lastname: props.lastname,
+    sj_credits: parseInt(props.sj_credits) || 0,
+    cs_credits: parseInt(props.cs_credits) || 0,
+    sjmini_credits: parseInt(props.sjmini_credits) || 0,
+    mock_discussion_token: parseInt(props.mock_discussion_token) || 0,
+    shared_mock_credits: parseInt(props.shared_mock_credits) || 0,
+    ndecc_exam_date: props.ndecc_exam_date,
+    updated_at: props.hs_lastmodifieddate || new Date().toISOString(),
+    synced_at: new Date().toISOString()
+  };
+
+  const { error } = await supabaseAdmin
+    .from('hubspot_contact_credits')
+    .upsert(record, { onConflict: 'hubspot_id' });
+
+  if (error) {
+    console.error(`❌ [SUPABASE SYNC] Failed to sync contact ${contact.id}:`, error.message);
+    throw error;
+  }
+
+  console.log(`✅ [SUPABASE SYNC] Updated secondary DB for contact ${contact.id}`);
+}
+
+/**
+ * Update contact credits in Supabase secondary database after credit deduction
+ * Called after HubSpot update to keep secondary DB in sync
+ * @param {string} contactId - HubSpot contact ID
+ * @param {string} mockType - Mock type to update credits for
+ * @param {number} newSpecificCredits - New specific credit value
+ * @param {number} newSharedCredits - New shared credit value
+ */
+async function updateContactCreditsInSupabase(contactId, mockType, newSpecificCredits, newSharedCredits) {
+  const updateData = {
+    updated_at: new Date().toISOString(),
+    synced_at: new Date().toISOString()
+  };
+
+  // Update specific credit field based on mock type
+  switch (mockType) {
+    case 'Situational Judgment':
+      updateData.sj_credits = newSpecificCredits;
+      updateData.shared_mock_credits = newSharedCredits;
+      break;
+    case 'Clinical Skills':
+      updateData.cs_credits = newSpecificCredits;
+      updateData.shared_mock_credits = newSharedCredits;
+      break;
+    case 'Mini-mock':
+      updateData.sjmini_credits = newSpecificCredits;
+      break;
+    case 'Mock Discussion':
+      updateData.mock_discussion_token = newSpecificCredits;
+      break;
+  }
+
+  const { error } = await supabaseAdmin
+    .from('hubspot_contact_credits')
+    .update(updateData)
+    .eq('hubspot_id', contactId);
+
+  if (error) {
+    console.error(`❌ [SUPABASE SYNC] Failed to update contact ${contactId}:`, error.message);
+    throw error;
+  }
+
+  console.log(`✅ [SUPABASE SYNC] Updated secondary DB for contact ${contactId} (${mockType})`);
+}
+
 module.exports = {
   // Reads
   getBookingsFromSupabase,
@@ -372,6 +483,7 @@ module.exports = {
   getExamByIdFromSupabase,
   getBookingByIdFromSupabase,
   getActiveBookingsCountFromSupabase,
+  getContactCreditsFromSupabase,
   // Write syncs
   syncBookingToSupabase,
   syncBookingsToSupabase,
@@ -379,5 +491,7 @@ module.exports = {
   updateBookingStatusInSupabase,
   updateExamBookingCountInSupabase,
   deleteBookingFromSupabase,
-  deleteExamFromSupabase
+  deleteExamFromSupabase,
+  syncContactCreditsToSupabase,
+  updateContactCreditsInSupabase
 };

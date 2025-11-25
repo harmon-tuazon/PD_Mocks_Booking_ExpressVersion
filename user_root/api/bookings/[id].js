@@ -44,7 +44,7 @@ const {
   rateLimitMiddleware,
   sanitizeInput
 } = require('../_shared/auth');
-const { updateBookingStatusInSupabase } = require('../_shared/supabase-data');
+const { updateBookingStatusInSupabase, updateContactCreditsInSupabase } = require('../_shared/supabase-data');
 
 // Handler function for GET /api/bookings/[id]
 async function handler(req, res) {
@@ -509,6 +509,57 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
 
         creditsRestored = await hubspot.restoreCredits(contactId, tokenUsed, currentCredits);
         console.log('✅ Credits restored successfully:', creditsRestored);
+
+        // Sync credit restoration to Supabase (non-blocking)
+        if (creditsRestored) {
+          // Map token to mock_type for Supabase sync
+          const tokenToMockTypeMapping = {
+            'Situational Judgment Token': 'Situational Judgment',
+            'Clinical Skills Token': 'Clinical Skills',
+            'Mini-mock Token': 'Mini-mock',
+            'Mock Discussion Token': 'Mock Discussion',
+            'Shared Token': mockExamDetails?.mock_type || bookingProperties.mock_type || 'Situational Judgment'
+          };
+
+          const mockTypeForSync = tokenToMockTypeMapping[tokenUsed] || mockExamDetails?.mock_type || bookingProperties.mock_type;
+
+          // Calculate new credit values for Supabase sync
+          const newCredits = { ...currentCredits };
+          newCredits[creditsRestored.credit_type] = creditsRestored.new_balance;
+
+          // Determine specific and shared credits based on credit_type
+          let newSpecificCredits = 0;
+          let newSharedCredits = newCredits.shared_mock_credits;
+
+          if (creditsRestored.credit_type === 'sj_credits') {
+            newSpecificCredits = newCredits.sj_credits;
+          } else if (creditsRestored.credit_type === 'cs_credits') {
+            newSpecificCredits = newCredits.cs_credits;
+          } else if (creditsRestored.credit_type === 'sjmini_credits') {
+            newSpecificCredits = newCredits.sjmini_credits;
+            newSharedCredits = 0; // Mini-mock doesn't use shared
+          } else if (creditsRestored.credit_type === 'mock_discussion_token') {
+            newSpecificCredits = newCredits.mock_discussion_token;
+            newSharedCredits = 0; // Mock Discussion doesn't use shared
+          } else if (creditsRestored.credit_type === 'shared_mock_credits') {
+            newSharedCredits = newCredits.shared_mock_credits;
+            // Get specific credits from mock_type
+            if (mockTypeForSync === 'Situational Judgment') {
+              newSpecificCredits = newCredits.sj_credits;
+            } else if (mockTypeForSync === 'Clinical Skills') {
+              newSpecificCredits = newCredits.cs_credits;
+            }
+          }
+
+          updateContactCreditsInSupabase(contactId, mockTypeForSync, newSpecificCredits, newSharedCredits)
+            .then(() => {
+              console.log(`✅ [SUPABASE SYNC] Contact credits synced for ${contactId} after cancellation`);
+            })
+            .catch(supabaseError => {
+              console.error(`⚠️ [SUPABASE SYNC] Failed to sync contact credits to Supabase (non-blocking):`, supabaseError.message);
+              // Don't block cancellation - Supabase will sync on next cron run
+            });
+        }
       } catch (creditError) {
         console.error('❌ Failed to restore credits:', creditError.message);
         // Continue with cancellation even if credit restoration fails

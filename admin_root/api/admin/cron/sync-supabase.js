@@ -10,7 +10,7 @@
  * Usage:
  * - Automatically triggered by Vercel every 2 hours
  * - Can be manually triggered: curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain.com/api/admin/cron/sync-supabase
- */
+ **/
 
 const { syncAllData } = require('../../_shared/supabaseSync');
 
@@ -89,4 +89,3 @@ module.exports = async (req, res) => {
     });
   }
 };
-

@@ -38,5 +38,9 @@
     "url": "https://github.com/prepdoctors/mocks_booking.git"
   },
   "author": "PrepDoctors",
-  "license": "PRIVATE"
+  "license": "PRIVATE",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "dotenv": "^17.2.3"
+  }
 }

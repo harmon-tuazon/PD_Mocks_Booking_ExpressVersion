@@ -9,6 +9,7 @@
 
 const { HubSpotService } = require('./hubspot');
 const { getCache } = require('./cache');
+const { syncExamToSupabase } = require('./supabase-data');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -45,19 +46,56 @@ async function activateScheduledSessions() {
     // Activate sessions in batches
     const results = await batchActivateSessions(sessionsToActivate);
 
-    // Invalidate caches if any sessions were activated
+    // Sync activated sessions to Supabase (direct update, no re-fetch needed)
+    let supabaseSynced = 0;
     if (results.successful.length > 0) {
+      console.log(`🔄 [SCHEDULED-ACTIVATION] Syncing ${results.successful.length} activated exams to Supabase...`);
+
+      // Create a map of session IDs to their original data for quick lookup
+      const sessionMap = new Map(sessionsToActivate.map(s => [s.id, s]));
+
+      for (const successfulResult of results.successful) {
+        try {
+          // Get original session data
+          const originalSession = sessionMap.get(successfulResult.id);
+          if (!originalSession) {
+            console.warn(`⚠️ [SCHEDULED-ACTIVATION] Session ${successfulResult.id} not found in original data`);
+            continue;
+          }
+
+          // Build exam object with updated is_active property (no HubSpot API call needed!)
+          const updatedExam = {
+            id: successfulResult.id,
+            properties: {
+              ...successfulResult.properties, // Properties from HubSpot batch update response
+              is_active: 'true' // We know it's now active
+            }
+          };
+
+          // Sync to Supabase
+          await syncExamToSupabase(updatedExam);
+          supabaseSynced++;
+        } catch (supabaseError) {
+          console.error(`❌ [SCHEDULED-ACTIVATION] Failed to sync exam ${successfulResult.id} to Supabase:`, supabaseError.message);
+          // Continue with next exam - don't block activation
+        }
+      }
+
+      console.log(`✅ [SCHEDULED-ACTIVATION] Synced ${supabaseSynced}/${results.successful.length} exams to Supabase`);
+
+      // Invalidate caches after sync
       await invalidateSessionCaches();
       console.log(`🗑️ [SCHEDULED-ACTIVATION] Caches invalidated`);
     }
 
     const executionTime = Date.now() - startTime;
 
-    console.log(`✅ [SCHEDULED-ACTIVATION] Complete: ${results.successful.length} activated, ${results.failed.length} failed in ${executionTime}ms`);
+    console.log(`✅ [SCHEDULED-ACTIVATION] Complete: ${results.successful.length} activated, ${results.failed.length} failed, ${supabaseSynced} synced to Supabase in ${executionTime}ms`);
 
     return {
       activated: results.successful.length,
       failed: results.failed.length,
+      supabase_synced: supabaseSynced,
       total: sessionsToActivate.length,
       successful_ids: results.successful.map(s => s.id),
       failed_ids: results.failed.map(f => f.id),

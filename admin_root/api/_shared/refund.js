@@ -16,6 +16,7 @@
  */
 
 const hubspot = require('./hubspot');
+const { updateContactCreditsInSupabase } = require('./supabase-data');
 
 // HubSpot object type IDs
 const HUBSPOT_OBJECTS = {
@@ -206,9 +207,10 @@ function calculateTokenUpdates(currentTokenValues, tokenPropertyName) {
 /**
  * Batch update contact token properties in HubSpot
  * @param {Array} updates - Array of update objects { id, properties }
+ * @param {string} tokenPropertyName - Token property name for Supabase sync (optional)
  * @returns {Promise<Object>} { successful: Array, failed: Array }
  */
-async function batchUpdateContactTokens(updates) {
+async function batchUpdateContactTokens(updates, tokenPropertyName = null) {
   const results = {
     successful: [],
     failed: []
@@ -235,6 +237,48 @@ async function batchUpdateContactTokens(updates) {
       }
 
       console.log(`  ✅ Updated chunk ${i / HUBSPOT_BATCH_SIZE + 1}: ${chunk.length} contacts`);
+
+      // Sync successful updates to Supabase (non-blocking, batch operation)
+      if (tokenPropertyName && response.results && response.results.length > 0) {
+        // Map token property to mock_type
+        const tokenToMockTypeMapping = {
+          'mock_discussion_token': 'Mock Discussion',
+          'cs_credits': 'Clinical Skills',
+          'sj_credits': 'Situational Judgment',
+          'sjmini_credits': 'Mini-mock'
+        };
+
+        const mockType = tokenToMockTypeMapping[tokenPropertyName];
+
+        if (mockType) {
+          // Sync each successful contact credit update to Supabase
+          response.results.forEach(result => {
+            // Find the corresponding update to get the new value
+            const update = chunk.find(u => u.id === result.id);
+            if (update && update.properties[tokenPropertyName]) {
+              const newValue = parseInt(update.properties[tokenPropertyName]);
+
+              // Determine specific and shared credits
+              let newSpecificCredits = newValue;
+              let newSharedCredits = 0;
+
+              // For shared-enabled mock types, we need current shared value (sync will update it properly)
+              if (mockType === 'Situational Judgment' || mockType === 'Clinical Skills') {
+                // For these types, shared credits might also change
+                // The updateContactCreditsInSupabase will handle the proper update
+              }
+
+              updateContactCreditsInSupabase(result.id, mockType, newSpecificCredits, newSharedCredits)
+                .then(() => {
+                  console.log(`✅ [SUPABASE SYNC] Contact ${result.id} credits synced (bulk refund)`);
+                })
+                .catch(supabaseError => {
+                  console.error(`⚠️ [SUPABASE SYNC] Failed to sync contact ${result.id} (non-blocking):`, supabaseError.message);
+                });
+            }
+          });
+        }
+      }
     } catch (error) {
       console.error(`❌ Error updating contact token batch:`, error);
 
@@ -380,8 +424,8 @@ async function processRefunds(bookings, adminEmail = 'system') {
       // Step 3.3: Calculate updates (+1 to each)
       const tokenUpdates = calculateTokenUpdates(currentTokenValues, tokenPropertyName);
 
-      // Step 3.4: Update contact tokens in HubSpot
-      const updateResults = await batchUpdateContactTokens(tokenUpdates);
+      // Step 3.4: Update contact tokens in HubSpot (with Supabase sync)
+      const updateResults = await batchUpdateContactTokens(tokenUpdates, tokenPropertyName);
 
       // Step 3.5: Mark bookings as refunded
       const bookingIds = tokenBookings.map(b => b.id);
