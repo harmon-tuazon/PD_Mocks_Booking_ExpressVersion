@@ -1,11 +1,15 @@
 import { useState, useCallback, useEffect } from 'react';
 import apiService from '../services/api';
 import useCachedCredits from './useCachedCredits';
+import { useCachedBookings } from './useCachedBookings';
 import { findConflictingBookings } from '../utils/timeConflictUtils';
 
 const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
   // Import the cached credits hook at the top level
   const { credits, loading: creditsLoading, fetchCredits, invalidateCache } = useCachedCredits();
+
+  // Import the cached bookings hook for conflict checking
+  const { bookings: cachedBookings, fetchBookings: fetchCachedBookings } = useCachedBookings();
 
   // Multi-step form state
   const [step, setStep] = useState('verify'); // 'verify' | 'details' | 'confirming' | 'confirmed'
@@ -84,27 +88,33 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     try {
       console.log('🕐 Checking for time conflicts with session:', sessionData);
 
-      // Fetch user's current bookings
-      const bookingsResponse = await apiService.bookings.list({
-        student_id: bookingData.studentId,
-        email: bookingData.email,
-        filter: 'upcoming',
-        limit: 50 // Get more bookings to check conflicts
-      });
+      // Try to use cached bookings first (instant conflict check!)
+      let bookingsToCheck = cachedBookings;
 
-      if (!bookingsResponse.success || !bookingsResponse.data?.bookings) {
-        console.warn('Could not fetch bookings for conflict check, proceeding anyway');
+      // If no cached bookings, fetch them
+      if (!bookingsToCheck) {
+        console.log('📥 No cached bookings found, fetching from backend...');
+        bookingsToCheck = await fetchCachedBookings(bookingData.studentId, bookingData.email, {
+          filter: 'upcoming',
+          limit: 50
+        });
+      } else {
+        console.log('✅ Using cached bookings for conflict check (instant!)');
+      }
+
+      if (!bookingsToCheck || bookingsToCheck.length === 0) {
+        console.log('ℹ️ No existing bookings to check conflicts against');
         return [];
       }
 
       // Find conflicts using the utility function
       const conflicts = findConflictingBookings(
-        bookingsResponse.data.bookings,
+        bookingsToCheck,
         sessionData
       );
 
       console.log('🕐 Time conflict check result:', {
-        totalBookings: bookingsResponse.data.bookings.length,
+        totalBookings: bookingsToCheck.length,
         conflictsFound: conflicts.length,
         conflicts: conflicts
       });
@@ -116,7 +126,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
       // If we can't check conflicts, allow submission (backend will validate)
       return [];
     }
-  }, [bookingData.studentId, bookingData.email]);
+  }, [bookingData.studentId, bookingData.email, cachedBookings, fetchCachedBookings]);
 
   // Verify credits step - now uses cached credits
   const verifyCredits = useCallback(async (studentId, email) => {
