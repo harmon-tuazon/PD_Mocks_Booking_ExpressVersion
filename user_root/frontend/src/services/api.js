@@ -458,40 +458,68 @@ export const transformLoginCreditsToCache = (loginResponse) => {
     shared_mock_credits = 0
   } = loginResponse.credits;
 
+  // Extract common fields from login response (available in all mock types)
+  const commonFields = {
+    student_name: loginResponse.name || '',
+    contact_id: loginResponse.contact_id || null,
+    enrollment_id: null, // Login endpoint doesn't provide enrollment_id
+    error_message: null
+  };
+
   return {
     'Situational Judgment': {
       eligible: (sj_credits + shared_mock_credits) > 0,
+      available_credits: sj_credits + shared_mock_credits,
       credit_breakdown: {
         specific_credits: sj_credits,
         shared_credits: shared_mock_credits,
         total_credits: sj_credits + shared_mock_credits
-      }
+      },
+      ...commonFields,
+      error_message: (sj_credits + shared_mock_credits) > 0 
+        ? null 
+        : 'You have 0 credits available for Situational Judgment exams.'
     },
     'Clinical Skills': {
       eligible: (cs_credits + shared_mock_credits) > 0,
+      available_credits: cs_credits + shared_mock_credits,
       credit_breakdown: {
         specific_credits: cs_credits,
         shared_credits: shared_mock_credits,
         total_credits: cs_credits + shared_mock_credits
-      }
+      },
+      ...commonFields,
+      error_message: (cs_credits + shared_mock_credits) > 0 
+        ? null 
+        : 'You have 0 credits available for Clinical Skills exams.'
     },
     'Mini-mock': {
       eligible: (sjmini_credits + shared_mock_credits) > 0,
+      available_credits: sjmini_credits + shared_mock_credits,
       credit_breakdown: {
         specific_credits: sjmini_credits,
         shared_credits: shared_mock_credits,
         total_credits: sjmini_credits + shared_mock_credits
-      }
+      },
+      ...commonFields,
+      error_message: (sjmini_credits + shared_mock_credits) > 0 
+        ? null 
+        : 'You have 0 credits available for Mini-mock exams.'
     },
     'Mock Discussion': {
       eligible: mock_discussion_token > 0,
+      available_credits: mock_discussion_token,
       credit_breakdown: {
         specific_credits: mock_discussion_token,
         shared_credits: 0, // Mock discussions don't use shared credits
         total_credits: mock_discussion_token
-      }
+      },
+      ...commonFields,
+      error_message: mock_discussion_token > 0 
+        ? null 
+        : 'You have 0 credits available for Mock Discussion sessions.'
     }
   };
-};
+};;
 
 export default apiService;
