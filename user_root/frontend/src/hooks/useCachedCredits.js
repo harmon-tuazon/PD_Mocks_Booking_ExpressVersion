@@ -176,10 +176,15 @@ export function useCachedCredits() {
    * Also dispatches a custom event to notify other parts of the application
    */
   const invalidateCache = () => {
+    console.log('🔄 [CACHE INVALIDATED] Clearing credits cache');
+
     // Clear module-level cache
     creditCache = null;
     lastFetchTime = null;
     ongoingRequest = null;
+
+    // CRITICAL FIX: Clear localStorage cache to prevent stale data
+    localStorage.removeItem('creditCache');
 
     // Update all subscribers to reflect cache clear
     subscribers.forEach(setState => {
@@ -207,6 +212,7 @@ export const __resetCache = () => {
   lastFetchTime = null;
   subscribers.clear();
   ongoingRequest = null;
+  localStorage.removeItem('creditCache');
 };
 
 export default useCachedCredits;
