@@ -191,10 +191,11 @@ Prioritize reusing old components, endpoints, functions, logic, etc. when they a
 
 ### Design Principles
 
-- **API-First Architecture**: HubSpot and Stripe APIs are our backend - no custom databases
+- **API-First Architecture**: HubSpot as source of truth with Supabase as read-optimized secondary database
+- **Two-Tier Database Architecture**: HubSpot (write operations + source of truth) → Supabase (read optimization for high-frequency queries)
 - **Stateless by Design**: Every Vercel function execution is independent
 - **Error-First Callbacks**: Always handle errors as the first parameter in callbacks
-- **Async by Default**: Use async/await for all API calls to HubSpot and Stripe
+- **Async by Default**: Use async/await for all API calls to HubSpot, Supabase, and Stripe
 - **Fail Fast**: Validate inputs early using Joi schemas
 - **Security First**: Never trust user input, always validate with existing validation.js patterns
 
@@ -218,20 +219,28 @@ rg --files -g "*.js"
 
 ### HubSpot-Centric Guidelines
 
-1. **HubSpot as Single Source of Truth**
-   - Never cache data locally beyond request lifecycle
-   - Always query HubSpot for current state
-   - Use custom object properties for all status tracking
+1. **HubSpot as Single Source of Truth with Supabase Secondary Database**
+   - HubSpot is the authoritative source for all data writes
+   - Supabase serves as read-optimized secondary database for high-frequency queries (contact credits)
+   - Write-through pattern: Write to HubSpot → Immediately sync to Supabase (non-blocking)
+   - Read pattern: Try Supabase first → Fallback to HubSpot if not found → Auto-populate Supabase
+   - Never modify Supabase without updating HubSpot first
 
-2. **Deal Timeline for Audit Trail**
+2. **Supabase Sync Strategy**
+   - Immediate sync after all credit-changing operations (non-blocking, fire-and-forget)
+   - Cron job every 2 hours to sync exams, bookings, and contact credits
+   - Auto-populate on read misses to build Supabase cache
+   - Always fetch all credit properties to prevent partial overwrites
+
+3. **Deal Timeline for Audit Trail**
    - Log all business events as formatted notes
    - Use consistent icons (✅ ❌ 🔁 📊)
    - Include structured data in note HTML
 
-3. **Property-Based State Management**
+4. **Property-Based State Management**
    - Use existing properties before creating new ones
    - Batch property updates for efficiency
-   - Validate property values match HubSpot enumeratio
+   - Validate property values match HubSpot enumeration
 1. **Function Timeout Awareness**
    - Maximum 60 seconds per function execution
    - Design for quick response times
@@ -472,9 +481,9 @@ vercel --prod                           # Deploy to production
 
 ## Critical Integration Points
 
-### HubSpot CRM
+### HubSpot CRM (Source of Truth)
 - Private app authentication via `HS_PRIVATE_APP_TOKEN`
-- Custom objects (Object Type ID): 
+- Custom objects (Object Type ID):
   - Transactions (`2-47045790`)
   - Payment Schedules (`2-47381547`)
   - Credit Notes (`2-41609496`)
@@ -486,6 +495,17 @@ vercel --prod                           # Deploy to production
   - Lab Stations (`2-41603799`)
   - Bookings (`2-50158943`)
   - Mock Exams (`2-50158913`)
+
+### Supabase (Read-Optimized Secondary Database)
+- Service role authentication via `SUPABASE_SERVICE_ROLE_KEY`
+- Secondary database tables (synced from HubSpot):
+  - `hubspot_contact_credits`: Contact credit balances (sj_credits, cs_credits, sjmini_credits, mock_discussion_token, shared_mock_credits)
+  - `hubspot_mock_exams`: Mock exam sessions (capacity, bookings, dates, times)
+  - `hubspot_bookings`: Student bookings (attendance, tokens used, refunds)
+- Read-first strategy: ~50ms vs ~500ms HubSpot API calls
+- Auto-populate on cache miss
+- Cron sync every 2 hours
+- Immediate sync after credit mutations
 
 ## Input Validation Standards
 
