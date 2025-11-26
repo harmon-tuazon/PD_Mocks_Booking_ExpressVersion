@@ -62,7 +62,11 @@ module.exports = async (req, res) => {
     // 4. Update HubSpot (source of truth)
     console.log(`[TOKEN UPDATE] Updating tokens for contact ${contactId}:`, properties);
 
-    const updatedContact = await hubspot.updateContact(contactId, properties);
+    const updatedContact = await hubspot.apiCall(
+      'PATCH',
+      `/crm/v3/objects/contacts/${contactId}`,
+      { properties }
+    );
 
     if (!updatedContact) {
       return res.status(404).json({
@@ -76,12 +80,17 @@ module.exports = async (req, res) => {
 
     // 5. Sync to Supabase (fire-and-forget, non-blocking)
     // We need to fetch the full contact to sync all required fields
-    const fullContact = await hubspot.getContactById(contactId, [
+    const propertiesToFetch = [
       'firstname', 'lastname', 'email', 'student_id',
       'mock_discussion_token', 'cs_credits', 'sj_credits',
       'sjmini_credits', 'shared_mock_credits',
       'ndecc_exam_date', 'createdate', 'hs_lastmodifieddate'
-    ]);
+    ];
+
+    const fullContact = await hubspot.apiCall(
+      'GET',
+      `/crm/v3/objects/contacts/${contactId}?properties=${propertiesToFetch.join(',')}`
+    );
 
     // Fire and forget sync to Supabase
     syncContactCreditsToSupabase(fullContact).catch(error => {
