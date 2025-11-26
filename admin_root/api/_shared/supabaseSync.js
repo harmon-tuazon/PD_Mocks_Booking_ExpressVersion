@@ -225,13 +225,44 @@ async function fetchAllContactsWithCredits() {
   ];
 
   do {
-    // Fixed: Use single filterGroup with only student_id requirement
-    // This avoids the 400 error from invalid OR logic in multiple filterGroups
+    // CORRECT PATTERN: Multiple filterGroups with student_id AND one credit type in each
+    // Creates OR logic: (student_id AND sj > 0) OR (student_id AND cs > 0) OR ...
+    // This matches the migration script pattern
     const searchBody = {
       filterGroups: [
+        // Filter Group 1: Has student_id AND has SJ credits > 0
         {
           filters: [
-            { propertyName: 'student_id', operator: 'HAS_PROPERTY' }
+            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
+            { propertyName: 'sj_credits', operator: 'GT', value: '0' }
+          ]
+        },
+        // Filter Group 2: Has student_id AND has CS credits > 0
+        {
+          filters: [
+            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
+            { propertyName: 'cs_credits', operator: 'GT', value: '0' }
+          ]
+        },
+        // Filter Group 3: Has student_id AND has Mini-mock credits > 0
+        {
+          filters: [
+            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
+            { propertyName: 'sjmini_credits', operator: 'GT', value: '0' }
+          ]
+        },
+        // Filter Group 4: Has student_id AND has Discussion token > 0
+        {
+          filters: [
+            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
+            { propertyName: 'mock_discussion_token', operator: 'GT', value: '0' }
+          ]
+        },
+        // Filter Group 5: Has student_id AND has Shared credits > 0
+        {
+          filters: [
+            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
+            { propertyName: 'shared_mock_credits', operator: 'GT', value: '0' }
           ]
         }
       ],
@@ -257,20 +288,8 @@ async function fetchAllContactsWithCredits() {
 
   } while (after);
 
-  // Filter contacts with credits on our end (more reliable than HubSpot API)
-  // This is optional - we can sync all contacts with student_id
-  const contactsWithCredits = allContacts.filter(contact => {
-    const props = contact.properties;
-    const sjCredits = parseInt(props.sj_credits) || 0;
-    const csCredits = parseInt(props.cs_credits) || 0;
-    const sjminiCredits = parseInt(props.sjmini_credits) || 0;
-    const mockToken = parseInt(props.mock_discussion_token) || 0;
-    const sharedCredits = parseInt(props.shared_mock_credits) || 0;
-    
-    return sjCredits > 0 || csCredits > 0 || sjminiCredits > 0 || mockToken > 0 || sharedCredits > 0;
-  });
-
-  return contactsWithCredits;
+  // No need for client-side filtering - HubSpot already filtered with the correct query
+  return allContacts;
 }
 
 /**
