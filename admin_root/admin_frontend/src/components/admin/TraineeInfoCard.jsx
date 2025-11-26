@@ -13,7 +13,8 @@ const TraineeInfoCard = ({ trainee }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedTokens, setEditedTokens] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [lastSavedTokens, setLastSavedTokens] = useState(null);
+
   // Import the token edit mutation hook
   const tokenEditMutation = useTokenEditMutation(trainee?.contactId);
 
@@ -27,6 +28,8 @@ const TraineeInfoCard = ({ trainee }) => {
         mini_mock: trainee.tokens.mini_mock || 0,
         shared_mock: trainee.tokens.shared_mock || 0
       });
+      // Clear lastSavedTokens when trainee data updates from server
+      setLastSavedTokens(null);
     }
   }, [trainee, isEditMode]);
 
@@ -47,6 +50,11 @@ const TraineeInfoCard = ({ trainee }) => {
   // Helper function to display field value or placeholder
   const displayField = (value, placeholder = 'N/A') => {
     return value || placeholder;
+  };
+
+  // Get display tokens - use lastSavedTokens if available (optimistic update), otherwise use trainee.tokens
+  const getDisplayTokens = () => {
+    return lastSavedTokens || trainee?.tokens || {};
   };
 
   // Check if there are any changes
@@ -78,10 +86,15 @@ const TraineeInfoCard = ({ trainee }) => {
         shared_mock: editedTokens.shared_mock === '' ? 0 : editedTokens.shared_mock
       };
 
+      // Save locally for immediate display
+      setLastSavedTokens(normalizedTokens);
+
       await tokenEditMutation.mutateAsync(normalizedTokens);
       setIsEditMode(false);
     } catch (error) {
       // Error handling is done in the mutation hook
+      // Clear lastSavedTokens on error to revert to original display
+      setLastSavedTokens(null);
       console.error('Failed to save tokens:', error);
     } finally {
       setIsSubmitting(false);
@@ -276,7 +289,7 @@ const TraineeInfoCard = ({ trainee }) => {
                   />
                 ) : (
                   <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-700 rounded-md">
-                    {trainee.tokens.mock_discussion}
+                    {getDisplayTokens().mock_discussion || 0}
                   </span>
                 )}
               </div>
@@ -297,7 +310,7 @@ const TraineeInfoCard = ({ trainee }) => {
                   />
                 ) : (
                   <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-700 rounded-md">
-                    {trainee.tokens.clinical_skills}
+                    {getDisplayTokens().clinical_skills || 0}
                   </span>
                 )}
               </div>
@@ -318,7 +331,7 @@ const TraineeInfoCard = ({ trainee }) => {
                   />
                 ) : (
                   <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-700 rounded-md">
-                    {trainee.tokens.situational_judgment}
+                    {getDisplayTokens().situational_judgment || 0}
                   </span>
                 )}
               </div>
@@ -339,7 +352,7 @@ const TraineeInfoCard = ({ trainee }) => {
                   />
                 ) : (
                   <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-700 rounded-md">
-                    {trainee.tokens.mini_mock}
+                    {getDisplayTokens().mini_mock || 0}
                   </span>
                 )}
               </div>
@@ -360,7 +373,7 @@ const TraineeInfoCard = ({ trainee }) => {
                   />
                 ) : (
                   <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-700 rounded-md">
-                    {trainee.tokens.shared_mock || 0}
+                    {getDisplayTokens().shared_mock || 0}
                   </span>
                 )}
               </div>
