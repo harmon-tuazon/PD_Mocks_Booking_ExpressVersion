@@ -52,12 +52,16 @@ const TraineeInfoCard = ({ trainee }) => {
   // Check if there are any changes
   const hasChanges = () => {
     if (!trainee?.tokens) return false;
+
+    // Convert empty strings to 0 for comparison
+    const normalizeValue = (val) => val === '' ? 0 : val;
+
     return (
-      editedTokens.mock_discussion !== trainee.tokens.mock_discussion ||
-      editedTokens.clinical_skills !== trainee.tokens.clinical_skills ||
-      editedTokens.situational_judgment !== trainee.tokens.situational_judgment ||
-      editedTokens.mini_mock !== trainee.tokens.mini_mock ||
-      editedTokens.shared_mock !== (trainee.tokens.shared_mock || 0)
+      normalizeValue(editedTokens.mock_discussion) !== trainee.tokens.mock_discussion ||
+      normalizeValue(editedTokens.clinical_skills) !== trainee.tokens.clinical_skills ||
+      normalizeValue(editedTokens.situational_judgment) !== trainee.tokens.situational_judgment ||
+      normalizeValue(editedTokens.mini_mock) !== trainee.tokens.mini_mock ||
+      normalizeValue(editedTokens.shared_mock) !== (trainee.tokens.shared_mock || 0)
     );
   };
 
@@ -65,7 +69,16 @@ const TraineeInfoCard = ({ trainee }) => {
   const handleSaveTokens = async () => {
     setIsSubmitting(true);
     try {
-      await tokenEditMutation.mutateAsync(editedTokens);
+      // Normalize empty strings to 0 before sending
+      const normalizedTokens = {
+        mock_discussion: editedTokens.mock_discussion === '' ? 0 : editedTokens.mock_discussion,
+        clinical_skills: editedTokens.clinical_skills === '' ? 0 : editedTokens.clinical_skills,
+        situational_judgment: editedTokens.situational_judgment === '' ? 0 : editedTokens.situational_judgment,
+        mini_mock: editedTokens.mini_mock === '' ? 0 : editedTokens.mini_mock,
+        shared_mock: editedTokens.shared_mock === '' ? 0 : editedTokens.shared_mock
+      };
+
+      await tokenEditMutation.mutateAsync(normalizedTokens);
       setIsEditMode(false);
     } catch (error) {
       // Error handling is done in the mutation hook
@@ -92,8 +105,29 @@ const TraineeInfoCard = ({ trainee }) => {
 
   // Handle token input change
   const handleTokenChange = (tokenType, value) => {
-    const parsedValue = parseInt(value) || 0;
-    const clampedValue = Math.max(0, parsedValue); // Ensure non-negative
+    // Handle empty string - allow it temporarily during typing
+    if (value === '' || value === null || value === undefined) {
+      setEditedTokens(prev => ({
+        ...prev,
+        [tokenType]: ''
+      }));
+      return;
+    }
+
+    // Parse and clamp the value
+    const parsedValue = parseInt(value, 10);
+
+    // If parsing fails or results in NaN, set to 0
+    if (isNaN(parsedValue)) {
+      setEditedTokens(prev => ({
+        ...prev,
+        [tokenType]: 0
+      }));
+      return;
+    }
+
+    // Ensure non-negative
+    const clampedValue = Math.max(0, parsedValue);
     setEditedTokens(prev => ({
       ...prev,
       [tokenType]: clampedValue
