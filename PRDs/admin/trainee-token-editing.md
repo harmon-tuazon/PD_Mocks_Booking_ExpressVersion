@@ -244,7 +244,7 @@ const { syncContactCreditsToSupabase } = require('../../../_shared/supabaseSync'
 module.exports = async (req, res) => {
   try {
     // Step 1: Verify admin authentication and permission
-    const user = await requirePermission(req, 'credits.edit');
+    const user = await requirePermission(req, 'contacts.tokens');
 
     // Step 2: Validate request body
     const validator = validationMiddleware('updateTraineeTokens');
@@ -407,7 +407,7 @@ schemas.updateTraineeTokens = updateTraineeTokensSchema;
 
 ### 3.3 Permission Requirements
 
-**New Permission:** `credits.edit`
+**New Permission:** `contacts.tokens` (configured in Supabase RBAC)
 
 **Location:** `admin_root/api/admin/middleware/requirePermission.js`
 
@@ -419,7 +419,7 @@ const PERMISSIONS = {
   'exams.delete': 'Delete mock exams',
   'bookings.view': 'View bookings',
   'bookings.edit': 'Edit bookings',
-  'credits.edit': 'Edit trainee credit tokens', // NEW
+  'contacts.tokens': 'Edit trainee credit tokens', // RBAC permission from Supabase JWT
   // ... other permissions
 };
 ```
@@ -434,7 +434,7 @@ User Edits Token → Frontend Validation → API Request
                                               ↓
                                     [Authentication Check]
                                               ↓
-                                    [Permission Check: credits.edit]
+                                    [RBAC Permission Check: contacts.tokens]
                                               ↓
                                     [Joi Schema Validation]
                                               ↓
@@ -481,7 +481,7 @@ Frontend Request → Redis Cache → Supabase → HubSpot Fallback
 
 ### Authentication & Authorization
 1. ✅ **JWT Token Required**: All requests must include valid admin token
-2. ✅ **Permission Check**: `credits.edit` permission required
+2. ✅ **RBAC Permission Check**: `contacts.tokens` permission required (configured in Supabase JWT)
 3. ✅ **Audit Trail**: Log admin email in response metadata
 
 ### Rate Limiting
@@ -651,7 +651,7 @@ Frontend Request → Redis Cache → Supabase → HubSpot Fallback
 1. `admin_root/admin_frontend/src/components/admin/TraineeInfoCard.jsx` - Add edit mode UI
 2. `admin_root/admin_frontend/src/services/adminApi.js` - Add updateTokens method
 3. `admin_root/api/_shared/validation.js` - Add validation schema
-4. `admin_root/api/admin/middleware/requirePermission.js` - Add credits.edit permission
+4. RBAC permission `contacts.tokens` is enforced via `requirePermission` middleware (configured in Supabase)
 
 ### Test Files
 1. `tests/unit/trainee-tokens.test.js`

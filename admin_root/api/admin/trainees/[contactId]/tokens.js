@@ -27,8 +27,8 @@ const { syncContactCreditsToSupabase } = require('../../../_shared/supabaseSync'
 
 module.exports = validationMiddleware('updateTraineeTokens')(async (req, res) => {
   try {
-    // 1. Auth & permission check
-    const user = await requirePermission(req, 'credits.edit');
+    // 1. Auth & permission check (RBAC: contacts.tokens)
+    const user = await requirePermission(req, 'contacts.tokens');
 
     // 2. Get contactId from URL and tokens from body
     const contactId = req.query.contactId;

@@ -1072,7 +1072,7 @@ const schemas = {
 
   traineeBookings: Joi.object({
     contactId: Joi.string()
-      .pattern(/^\\d+$/)
+      .pattern(/^\d+$/)
       .required()
       .messages({
         'string.pattern.base': 'Contact ID must be numeric',

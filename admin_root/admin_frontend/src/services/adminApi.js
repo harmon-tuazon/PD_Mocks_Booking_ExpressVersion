@@ -287,20 +287,10 @@ export const traineeApi = {
       throw new Error('Token data is required');
     }
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Authentication token not found');
-    }
-
+    // Note: Authentication token is automatically added by axios interceptor
     const response = await api.patch(
       `/admin/trainees/${contactId}/tokens`,
-      { tokens },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      }
+      { tokens }
     );
 
     if (!response.data.success) {
