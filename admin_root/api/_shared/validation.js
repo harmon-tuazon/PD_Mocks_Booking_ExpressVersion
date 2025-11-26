@@ -221,7 +221,7 @@ const schemas = {
         'any.required': 'Mock type is required'
       }),
     exam_date: Joi.string()
-      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
       .required()
       .messages({
         'string.pattern.base': 'Exam date must be in YYYY-MM-DD format',
@@ -284,14 +284,14 @@ const schemas = {
         'date.min': 'Scheduled activation date must be today or in the future'
       }),
     start_time: Joi.string()
-      .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+      .pattern(/^([01]\\d|2[0-3]):([0-5]\\d)$/)
       .required()
       .messages({
         'string.pattern.base': 'Start time must be in HH:MM format (24-hour)',
         'any.required': 'Start time is required'
       }),
     end_time: Joi.string()
-      .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+      .pattern(/^([01]\\d|2[0-3]):([0-5]\\d)$/)
       .required()
       .messages({
         'string.pattern.base': 'End time must be in HH:MM format (24-hour)',
@@ -324,7 +324,7 @@ const schemas = {
           'any.required': 'Mock type is required'
         }),
       exam_date: Joi.string()
-        .pattern(/^\d{4}-\d{2}-\d{2}$/)
+        .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
         .required()
         .messages({
           'string.pattern.base': 'Exam date must be in YYYY-MM-DD format',
@@ -391,14 +391,14 @@ const schemas = {
       .items(
         Joi.object({
           start_time: Joi.string()
-            .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+            .pattern(/^([01]\\d|2[0-3]):([0-5]\\d)$/)
             .required()
             .messages({
               'string.pattern.base': 'Start time must be in HH:MM format (24-hour)',
               'any.required': 'Start time is required for each time slot'
             }),
           end_time: Joi.string()
-            .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+            .pattern(/^([01]\\d|2[0-3]):([0-5]\\d)$/)
             .required()
             .messages({
               'string.pattern.base': 'End time must be in HH:MM format (24-hour)',
@@ -544,13 +544,13 @@ const schemas = {
         'any.only': 'filter_status must be one of: all, active, inactive, or scheduled'
       }),
     filter_date_from: Joi.string()
-      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
       .optional()
       .messages({
         'string.pattern.base': 'filter_date_from must be in YYYY-MM-DD format'
       }),
     filter_date_to: Joi.string()
-      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
       .optional()
       .messages({
         'string.pattern.base': 'filter_date_to must be in YYYY-MM-DD format'
@@ -566,7 +566,7 @@ const schemas = {
         'any.only': 'Mock type must be one of: Situational Judgment, Clinical Skills, Mini-mock, or Mock Discussion'
       }),
     exam_date: Joi.string()
-      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
       .optional()
       .messages({
         'string.pattern.base': 'Exam date must be in YYYY-MM-DD format'
@@ -615,13 +615,13 @@ const schemas = {
         'any.required': 'Scheduled activation datetime is required when status is scheduled'
       }),
     start_time: Joi.string()
-      .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+      .pattern(/^([01]\\d|2[0-3]):([0-5]\\d)$/)
       .optional()
       .messages({
         'string.pattern.base': 'Start time must be in HH:MM format (24-hour)'
       }),
     end_time: Joi.string()
-      .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+      .pattern(/^([01]\\d|2[0-3]):([0-5]\\d)$/)
       .optional()
       .messages({
         'string.pattern.base': 'End time must be in HH:MM format (24-hour)'
@@ -660,13 +660,13 @@ const schemas = {
   // Schema for metrics filters (Admin Dashboard)
   mockExamMetrics: Joi.object({
     date_from: Joi.string()
-      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
       .optional()
       .messages({
         'string.pattern.base': 'date_from must be in YYYY-MM-DD format'
       }),
     date_to: Joi.string()
-      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
       .optional()
       .messages({
         'string.pattern.base': 'date_to must be in YYYY-MM-DD format'
@@ -676,7 +676,7 @@ const schemas = {
   // Schema for bulk toggle status (Admin)
   bulkToggleStatus: Joi.object({
     sessionIds: Joi.array()
-      .items(Joi.string().pattern(/^\d+$/))
+      .items(Joi.string().pattern(/^\\d+$/))
       .min(1)
       .max(100)
       .required()
@@ -691,7 +691,7 @@ const schemas = {
   // Schema for bulk update mock exams (Admin)
   bulkUpdate: Joi.object({
     sessionIds: Joi.array()
-      .items(Joi.string().pattern(/^\d+$/))
+      .items(Joi.string().pattern(/^\\d+$/))
       .min(1)
       .max(100)
       .required()
@@ -734,7 +734,7 @@ const schemas = {
         }),
 
       exam_date: Joi.string()
-        .pattern(/^\d{4}-\d{2}-\d{2}$/)
+        .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
         .optional()
         .allow('')
         .messages({
@@ -799,7 +799,7 @@ const schemas = {
   // Schema for batch delete sessions (Admin)
   batchDeleteSessions: Joi.object({
     sessionIds: Joi.array()
-      .items(Joi.string().pattern(/^\d+$/))
+      .items(Joi.string().pattern(/^\\d+$/))
       .min(1)
       .max(100)
       .required()
@@ -815,11 +815,11 @@ const schemas = {
   clone: Joi.object({
     cloneSources: Joi.array()
       .items(Joi.object({
-        sourceSessionId: Joi.string().pattern(/^\d+$/).required(),
+        sourceSessionId: Joi.string().pattern(/^\\d+$/).required(),
         sourceProperties: Joi.object({
           mock_type: Joi.string().required(),
           location: Joi.string().required(),
-          exam_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+          exam_date: Joi.string().pattern(/^\\d{4}-\\d{2}-\\d{2}$/).required(),
           capacity: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
           start_time: Joi.string().required(),
           end_time: Joi.string().required(),
@@ -837,7 +837,7 @@ const schemas = {
 
     overrides: Joi.object({
       exam_date: Joi.string()
-        .pattern(/^\d{4}-\d{2}-\d{2}$/)
+        .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
         .required()
         .messages({
           'string.pattern.base': 'Date must be in YYYY-MM-DD format',
@@ -855,9 +855,9 @@ const schemas = {
 
       capacity: Joi.number().integer().min(1).max(100).optional().allow(''),
 
-      start_time: Joi.string().pattern(/^\d{2}:\d{2}$/).optional().allow(''),
+      start_time: Joi.string().pattern(/^\\d{2}:\\d{2}$/).optional().allow(''),
 
-      end_time: Joi.string().pattern(/^\d{2}:\d{2}$/).optional().allow(''),
+      end_time: Joi.string().pattern(/^\\d{2}:\\d{2}$/).optional().allow(''),
 
       is_active: Joi.string().valid('active', 'inactive', 'scheduled').optional().allow(''),
 
@@ -901,7 +901,7 @@ const schemas = {
       .items(
         Joi.object({
           bookingId: Joi.string()
-            .pattern(/^\d+$/)
+            .pattern(/^\\d+$/)
             .required()
             .messages({
               'string.pattern.base': 'Booking ID must be numeric',
@@ -942,7 +942,7 @@ const schemas = {
       .items(
         Joi.object({
           id: Joi.string()
-            .pattern(/^\d+$/)
+            .pattern(/^\\d+$/)
             .required()
             .messages({
               'string.pattern.base': 'Booking ID must be numeric',
@@ -955,7 +955,7 @@ const schemas = {
               'string.base': 'Token used must be a string'
             }),
           associated_contact_id: Joi.string()
-            .pattern(/^\d+$/)
+            .pattern(/^\\d+$/)
             .allow('')
             .optional()
             .messages({
@@ -1042,7 +1042,7 @@ const schemas = {
         'any.required': 'Mock type is required'
       }),
     exam_date: Joi.string()
-      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
       .required()
       .messages({
         'string.pattern.base': 'Exam date must be in YYYY-MM-DD format',
@@ -1072,7 +1072,7 @@ const schemas = {
 
   traineeBookings: Joi.object({
     contactId: Joi.string()
-      .pattern(/^\d+$/)
+      .pattern(/^\\d+$/)
       .required()
       .messages({
         'string.pattern.base': 'Contact ID must be numeric',
@@ -1089,6 +1089,75 @@ const schemas = {
       .default(false)
       .messages({
         'boolean.base': 'Include inactive parameter must be a boolean value'
+      })
+  }),
+
+  // Schema for updating trainee tokens (Admin)
+  updateTraineeTokens: Joi.object({
+    tokens: Joi.object({
+      mock_discussion: Joi.number()
+        .integer()
+        .min(0)
+        .max(9999)
+        .required()
+        .messages({
+          'number.base': 'Mock discussion tokens must be a number',
+          'number.integer': 'Mock discussion tokens must be an integer',
+          'number.min': 'Mock discussion tokens cannot be negative',
+          'number.max': 'Mock discussion tokens cannot exceed 9999',
+          'any.required': 'Mock discussion tokens is required'
+        }),
+      clinical_skills: Joi.number()
+        .integer()
+        .min(0)
+        .max(9999)
+        .required()
+        .messages({
+          'number.base': 'Clinical skills credits must be a number',
+          'number.integer': 'Clinical skills credits must be an integer',
+          'number.min': 'Clinical skills credits cannot be negative',
+          'number.max': 'Clinical skills credits cannot exceed 9999',
+          'any.required': 'Clinical skills credits is required'
+        }),
+      situational_judgment: Joi.number()
+        .integer()
+        .min(0)
+        .max(9999)
+        .required()
+        .messages({
+          'number.base': 'Situational judgment credits must be a number',
+          'number.integer': 'Situational judgment credits must be an integer',
+          'number.min': 'Situational judgment credits cannot be negative',
+          'number.max': 'Situational judgment credits cannot exceed 9999',
+          'any.required': 'Situational judgment credits is required'
+        }),
+      mini_mock: Joi.number()
+        .integer()
+        .min(0)
+        .max(9999)
+        .required()
+        .messages({
+          'number.base': 'Mini mock credits must be a number',
+          'number.integer': 'Mini mock credits must be an integer',
+          'number.min': 'Mini mock credits cannot be negative',
+          'number.max': 'Mini mock credits cannot exceed 9999',
+          'any.required': 'Mini mock credits is required'
+        }),
+      shared_mock: Joi.number()
+        .integer()
+        .min(0)
+        .max(9999)
+        .optional()
+        .default(0)
+        .messages({
+          'number.base': 'Shared mock credits must be a number',
+          'number.integer': 'Shared mock credits must be an integer',
+          'number.min': 'Shared mock credits cannot be negative',
+          'number.max': 'Shared mock credits cannot exceed 9999'
+        })
+    }).required()
+      .messages({
+        'any.required': 'Tokens object is required'
       })
   })
 
@@ -1167,6 +1236,74 @@ function validationMiddleware(schemaName) {
 }
 
 module.exports = {
+  // Schema for updating trainee tokens (Admin)
+  updateTraineeTokens: Joi.object({
+    tokens: Joi.object({
+      mock_discussion: Joi.number()
+        .integer()
+        .min(0)
+        .max(9999)
+        .required()
+        .messages({
+          'number.base': 'Mock discussion tokens must be a number',
+          'number.integer': 'Mock discussion tokens must be an integer',
+          'number.min': 'Mock discussion tokens cannot be negative',
+          'number.max': 'Mock discussion tokens cannot exceed 9999',
+          'any.required': 'Mock discussion tokens is required'
+        }),
+      clinical_skills: Joi.number()
+        .integer()
+        .min(0)
+        .max(9999)
+        .required()
+        .messages({
+          'number.base': 'Clinical skills credits must be a number',
+          'number.integer': 'Clinical skills credits must be an integer',
+          'number.min': 'Clinical skills credits cannot be negative',
+          'number.max': 'Clinical skills credits cannot exceed 9999',
+          'any.required': 'Clinical skills credits is required'
+        }),
+      situational_judgment: Joi.number()
+        .integer()
+        .min(0)
+        .max(9999)
+        .required()
+        .messages({
+          'number.base': 'Situational judgment credits must be a number',
+          'number.integer': 'Situational judgment credits must be an integer',
+          'number.min': 'Situational judgment credits cannot be negative',
+          'number.max': 'Situational judgment credits cannot exceed 9999',
+          'any.required': 'Situational judgment credits is required'
+        }),
+      mini_mock: Joi.number()
+        .integer()
+        .min(0)
+        .max(9999)
+        .required()
+        .messages({
+          'number.base': 'Mini mock credits must be a number',
+          'number.integer': 'Mini mock credits must be an integer',
+          'number.min': 'Mini mock credits cannot be negative',
+          'number.max': 'Mini mock credits cannot exceed 9999',
+          'any.required': 'Mini mock credits is required'
+        }),
+      shared_mock: Joi.number()
+        .integer()
+        .min(0)
+        .max(9999)
+        .optional()
+        .default(0)
+        .messages({
+          'number.base': 'Shared mock credits must be a number',
+          'number.integer': 'Shared mock credits must be an integer',
+          'number.min': 'Shared mock credits cannot be negative',
+          'number.max': 'Shared mock credits cannot exceed 9999'
+        })
+    }).required()
+      .messages({
+        'any.required': 'Tokens object is required'
+      })
+  }),
   schemas,
   validateInput,
   validationMiddleware

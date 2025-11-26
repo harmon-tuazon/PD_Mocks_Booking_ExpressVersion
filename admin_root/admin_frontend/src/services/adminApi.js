@@ -273,6 +273,43 @@ export const traineeApi = {
    * @param {Array} bookings - Array of booking objects with id, student_id, email, reason
    * @returns {Promise<Object>} Cancellation results
    */
+  /**
+   * Update token balances for a specific trainee
+   * @param {string} contactId - HubSpot contact ID
+   * @param {Object} tokens - Token balances to update
+   * @returns {Promise<Object>} Update result with new token values
+   */
+  updateTokens: async (contactId, tokens) => {
+    if (!contactId) {
+      throw new Error('Contact ID is required');
+    }
+    if (!tokens) {
+      throw new Error('Token data is required');
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+
+    const response = await api.patch(
+      `/admin/trainees/${contactId}/tokens`,
+      { tokens },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to update tokens');
+    }
+
+    return response.data;
+  },
+
   batchCancelBookings: async (bookings) => {
     if (!bookings || bookings.length === 0) {
       throw new Error('Bookings array is required');
