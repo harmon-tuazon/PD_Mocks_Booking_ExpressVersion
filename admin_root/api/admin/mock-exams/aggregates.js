@@ -55,10 +55,106 @@ module.exports = async (req, res) => {
       console.log(`🔍 [DEBUG MODE] Cache bypassed for mock exam aggregates`);
     }
 
-    console.log(`📋 [Cache MISS] Fetching aggregates from HubSpot...`);
+    console.log(`📋 [Cache MISS] Fetching aggregates...`);
 
-    // Fetch and aggregate from HubSpot
-    const aggregates = await hubspot.fetchMockExamsForAggregation(filters);
+    // Step 1: Try to fetch from Supabase first
+    const { getExamsFromSupabase, syncExamsToSupabase } = require('../../_shared/supabase-data');
+    let aggregates = [];
+    let dataSource = 'unknown';
+    let supabaseFound = false;
+
+    try {
+      console.log(`🗄️ [SUPABASE] Fetching exams from Supabase`);
+      
+      // Build Supabase filters
+      const supabaseFilters = {};
+      if (filter_location) supabaseFilters.location = filter_location;
+      if (filter_mock_type) supabaseFilters.mock_type = filter_mock_type;
+      if (filter_status) supabaseFilters.is_active = filter_status;
+      if (filter_date_from) supabaseFilters.startDate = filter_date_from;
+      if (filter_date_to) supabaseFilters.endDate = filter_date_to;
+
+      const supabaseExams = await getExamsFromSupabase(supabaseFilters);
+
+      if (supabaseExams && supabaseExams.length > 0) {
+        console.log(`✅ [SUPABASE HIT] Found ${supabaseExams.length} exams in Supabase`);
+
+        // Group exams by type, date, and location for aggregation
+        const aggregateMap = new Map();
+        
+        supabaseExams.forEach(exam => {
+          const key = `${exam.mock_type}_${exam.exam_date}_${exam.location}`;
+          
+          if (!aggregateMap.has(key)) {
+            aggregateMap.set(key, {
+              mock_type: exam.mock_type,
+              exam_date: exam.exam_date,
+              location: exam.location,
+              sessions: []
+            });
+          }
+          
+          // Add session to aggregate
+          aggregateMap.get(key).sessions.push({
+            id: exam.hubspot_id,
+            start_time: exam.start_time,
+            end_time: exam.end_time,
+            capacity: exam.capacity,
+            total_bookings: exam.total_bookings,
+            available_slots: Math.max(0, exam.capacity - exam.total_bookings),
+            is_active: exam.is_active
+          });
+        });
+
+        // Convert map to array
+        aggregates = Array.from(aggregateMap.values());
+        supabaseFound = true;
+        dataSource = 'supabase';
+      } else {
+        console.log(`📭 [SUPABASE MISS] No exams in Supabase, falling back to HubSpot`);
+      }
+    } catch (supabaseError) {
+      console.error(`⚠️ [SUPABASE ERROR] Failed to query exams (non-blocking):`, supabaseError.message);
+    }
+
+    // Step 2: Fallback to HubSpot if not in Supabase
+    if (!supabaseFound) {
+      console.log(`📧 [HUBSPOT] Fetching exams from HubSpot`);
+      aggregates = await hubspot.fetchMockExamsForAggregation(filters);
+      dataSource = 'hubspot';
+
+      // Auto-populate Supabase with exams (fire-and-forget)
+      if (aggregates.length > 0) {
+        // Flatten sessions into individual exam objects for sync
+        const allExams = [];
+        aggregates.forEach(agg => {
+          if (agg.sessions) {
+            agg.sessions.forEach(session => {
+              allExams.push({
+                id: session.id,
+                properties: {
+                  mock_type: agg.mock_type,
+                  exam_date: agg.exam_date,
+                  location: agg.location,
+                  start_time: session.start_time,
+                  end_time: session.end_time,
+                  capacity: session.capacity,
+                  total_bookings: session.total_bookings,
+                  is_active: session.is_active
+                }
+              });
+            });
+          }
+        });
+
+        if (allExams.length > 0) {
+          syncExamsToSupabase(allExams).catch(err => {
+            console.error(`⚠️ [SUPABASE SYNC] Failed to auto-populate exams (non-blocking):`, err.message);
+          });
+          console.log(`✅ [HUBSPOT] Retrieved ${allExams.length} exams, auto-populating Supabase`);
+        }
+      }
+    }
 
     // Sort aggregates
     const sortedAggregates = aggregates.sort((a, b) => {
@@ -84,20 +180,19 @@ module.exports = async (req, res) => {
     const endIndex = startIndex + limit;
     const paginatedAggregates = sortedAggregates.slice(startIndex, endIndex);
 
-    // OPTIMIZED: Sessions are now pre-loaded in fetchMockExamsForAggregation
-    // No need for additional HubSpot API calls - eliminates 40+ API calls per request
+    // OPTIMIZED: Sessions are now pre-loaded (either from Supabase or HubSpot aggregation)
     console.log(`📦 Using pre-loaded sessions for ${paginatedAggregates.length} aggregates`);
 
     // Count total sessions for logging
     const totalSessionCount = paginatedAggregates.reduce((sum, agg) =>
       sum + (agg.sessions?.length || 0), 0);
-    console.log(`✅ ${totalSessionCount} sessions already loaded (no additional API calls)`);
+    console.log(`✅ ${totalSessionCount} sessions already loaded (source: ${dataSource})`);
 
     // Sort sessions by start_time within each aggregate
     const enrichedAggregates = paginatedAggregates.map(aggregate => {
       const aggregateWithSessions = { ...aggregate };
 
-      // Sessions are already attached from fetchMockExamsForAggregation
+      // Sessions are already attached from Supabase or HubSpot
       if (aggregateWithSessions.sessions && aggregateWithSessions.sessions.length > 0) {
         // Sort sessions by start_time
         aggregateWithSessions.sessions.sort((a, b) => {
@@ -121,12 +216,17 @@ module.exports = async (req, res) => {
         per_page: parseInt(limit),
         preloaded_sessions: totalSessionCount
       },
-      data: enrichedAggregates
+      data: enrichedAggregates,
+      meta: {
+        timestamp: new Date().toISOString(),
+        data_source: dataSource,
+        cached: false
+      }
     };
 
     // Cache for 2 minutes (with preloaded sessions)
     await cacheService.set(cacheKey, response, 120);
-    console.log(`💾 [Cached] ${enrichedAggregates.length} aggregates with ${totalSessionCount} preloaded sessions for 2 minutes`);
+    console.log(`💾 [Cached] ${enrichedAggregates.length} aggregates with ${totalSessionCount} preloaded sessions for 2 minutes (source: ${dataSource})`);
 
     res.status(200).json(response);
   } catch (error) {
