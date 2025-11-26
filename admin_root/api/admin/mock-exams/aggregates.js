@@ -83,25 +83,35 @@ module.exports = async (req, res) => {
         const aggregateMap = new Map();
         
         supabaseExams.forEach(exam => {
-          const key = `${exam.mock_type}_${exam.exam_date}_${exam.location}`;
-          
+          // Ensure exam_date is in YYYY-MM-DD format (strip time if present)
+          const dateOnly = exam.exam_date ? exam.exam_date.split(' ')[0].split('T')[0] : null;
+          const key = `${exam.mock_type}_${dateOnly}_${exam.location}`;
+
           if (!aggregateMap.has(key)) {
             aggregateMap.set(key, {
               mock_type: exam.mock_type,
-              exam_date: exam.exam_date,
+              exam_date: dateOnly, // Store date-only format
               location: exam.location,
               sessions: []
             });
           }
-          
+
+          // Calculate utilization rate for each session
+          const capacity = parseInt(exam.capacity) || 0;
+          const totalBookings = parseInt(exam.total_bookings) || 0;
+          const utilizationRate = capacity > 0
+            ? Math.round((totalBookings / capacity) * 100)
+            : 0;
+
           // Add session to aggregate
           aggregateMap.get(key).sessions.push({
             id: exam.hubspot_id,
             start_time: exam.start_time,
             end_time: exam.end_time,
-            capacity: exam.capacity,
-            total_bookings: exam.total_bookings,
-            available_slots: Math.max(0, exam.capacity - exam.total_bookings),
+            capacity: capacity,
+            total_bookings: totalBookings,
+            available_slots: Math.max(0, capacity - totalBookings),
+            utilization_rate: utilizationRate,
             is_active: exam.is_active
           });
         });

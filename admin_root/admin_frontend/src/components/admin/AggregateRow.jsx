@@ -167,7 +167,7 @@ const AggregateRow = ({
         {/* Sessions Count Column */}
         <td className="px-6 py-4">
           <span className="inline-flex items-center justify-center min-w-[90px] px-2.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
-            {aggregate.session_count} {aggregate.session_count === 1 ? 'session' : 'sessions'}
+            {(aggregate.sessions?.length || aggregate.session_count || 0)} {(aggregate.sessions?.length || aggregate.session_count || 0) === 1 ? 'session' : 'sessions'}
           </span>
         </td>
       </tr>
