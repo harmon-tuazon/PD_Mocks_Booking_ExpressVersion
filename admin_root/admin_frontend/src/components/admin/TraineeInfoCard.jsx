@@ -9,7 +9,7 @@ import { useTokenEditMutation } from '../../hooks/useTokenEditMutation';
  * Displays trainee contact information and token balances in a card format
  * Uses 2-column grid layout for basic info with horizontal token badges below
  */
-const TraineeInfoCard = ({ trainee }) => {
+const const TraineeInfoCard = ({ trainee }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedTokens, setEditedTokens] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -183,25 +183,50 @@ const TraineeInfoCard = ({ trainee }) => {
           )}
         </div>
 
-        {/* Token Balances - With Edit Mode */}
+        {/* Token Balances - With Inline Editing */}
         {trainee.tokens && (
           <div className="mt-6 pt-5 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-3">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Token Balances
               </label>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={isEditMode ? handleCancelEdit : () => setIsEditMode(true)}
-                disabled={isSubmitting}
-              >
-                {isEditMode ? 'Cancel' : 'Edit Tokens'}
-              </Button>
+              
+              {/* Edit/Save/Cancel Buttons */}
+              <div className="flex items-center gap-2">
+                {!isEditMode ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditMode(true)}
+                    disabled={isSubmitting}
+                  >
+                    Edit Tokens
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      onClick={handleSaveTokens}
+                      disabled={isSubmitting || !hasChanges()}
+                      size="sm"
+                    >
+                      {isSubmitting ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelEdit}
+                      disabled={isSubmitting}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
             
+            {/* Token Fields - Always show as inputs in edit mode */}
             <div className="flex flex-wrap gap-3">
-              {/* Mock Discussion Badge/Input */}
+              {/* Mock Discussion */}
               <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Mock Discussion:
@@ -222,7 +247,7 @@ const TraineeInfoCard = ({ trainee }) => {
                 )}
               </div>
 
-              {/* Clinical Skills Badge/Input */}
+              {/* Clinical Skills */}
               <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Clinical Skills:
@@ -243,7 +268,7 @@ const TraineeInfoCard = ({ trainee }) => {
                 )}
               </div>
 
-              {/* Situational Judgment Badge/Input */}
+              {/* Situational Judgment */}
               <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Situational Judgment:
@@ -264,7 +289,7 @@ const TraineeInfoCard = ({ trainee }) => {
                 )}
               </div>
 
-              {/* Mini-mock Badge/Input */}
+              {/* Mini-mock */}
               <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Mini-mock:
@@ -285,7 +310,7 @@ const TraineeInfoCard = ({ trainee }) => {
                 )}
               </div>
 
-              {/* Shared Mock Badge/Input */}
+              {/* Shared Mock */}
               <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Shared Mock:
@@ -306,27 +331,6 @@ const TraineeInfoCard = ({ trainee }) => {
                 )}
               </div>
             </div>
-
-            {/* Save/Cancel Buttons in Edit Mode */}
-            {isEditMode && (
-              <div className="mt-4 flex items-center gap-2">
-                <Button
-                  onClick={handleSaveTokens}
-                  disabled={isSubmitting || !hasChanges()}
-                  size="sm"
-                >
-                  {isSubmitting ? 'Saving...' : 'Save Changes'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancelEdit}
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
-              </div>
-            )}
           </div>
         )}
       </div>
