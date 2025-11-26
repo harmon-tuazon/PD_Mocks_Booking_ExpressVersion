@@ -103,32 +103,22 @@ const BookingsTable = ({
   };
 
   // Sortable header component with dynamic sizing
-  const SortableHeader = ({ column, children, align = 'left', isFixed = false }) => {
+  const SortableHeader = ({ column, children, align = 'left' }) => {
     const headerClasses = getHeaderClasses();
     const baseClasses = `${headerClasses} text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors whitespace-nowrap`;
-    const stickyClasses = isFixed ? 'sticky bg-gray-50 dark:bg-gray-800 z-10' : '';
 
     // Get column definition for min-width
     const columnDef = getColumnDef(column);
     const minWidth = columnDef?.minWidth || 'auto';
 
-    // Calculate sticky position for fixed columns
-    let leftPosition = '0';
-    if (isFixed) {
-      const columnIndex = fixedColumns.findIndex(col => col.id === column);
-      if (columnIndex === 1) leftPosition = '150px'; // After name column
-      if (columnIndex === 2) leftPosition = '350px'; // After name and email
-    }
-
     const headerStyle = {
-      ...(isFixed ? { left: leftPosition } : {}),
       minWidth
     };
 
     return (
       <th
         scope="col"
-        className={`${baseClasses} ${stickyClasses} text-${align}`}
+        className={`${baseClasses} text-${align}`}
         style={headerStyle}
         onClick={() => onSort(column)}
       >
@@ -350,21 +340,7 @@ const BookingsTable = ({
                     return null;
                   }
 
-                  // Fixed columns (always visible and sticky)
-                  if (columnDef.fixed) {
-                    return (
-                      <SortableHeader
-                        key={columnId}
-                        column={columnId}
-                        align="center"
-                        isFixed={true}
-                      >
-                        {columnDef.label}
-                      </SortableHeader>
-                    );
-                  }
-
-                  // Dynamic columns based on ID
+                  // All columns based on ID
                   switch (columnId) {
                     case 'time':
                     case 'attendance':
@@ -376,7 +352,7 @@ const BookingsTable = ({
                         </NonSortableHeader>
                       );
                     default:
-                      // Sortable columns
+                      // Sortable columns (including name, email, student_id)
                       return (
                         <SortableHeader key={columnId} column={columnId} align="center">
                           {columnDef.label}

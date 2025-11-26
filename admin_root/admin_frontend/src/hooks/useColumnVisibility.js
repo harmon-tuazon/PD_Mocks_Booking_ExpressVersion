@@ -21,11 +21,11 @@ export const TRAINEE_ONLY_COLUMNS = [
   { id: 'mock_type', label: 'Mock Type', minWidth: '150px' }
 ];
 
-// Fixed columns that are always visible and sticky
+// Fixed columns that are always visible (but not sticky - they scroll with the table)
 export const FIXED_COLUMNS = [
-  { id: 'name', label: 'Name', fixed: true, minWidth: '150px' },
-  { id: 'email', label: 'Email', fixed: true, minWidth: '200px' },
-  { id: 'student_id', label: 'Student ID', fixed: true, minWidth: '100px' }
+  { id: 'name', label: 'Name', fixed: false, minWidth: '150px' },
+  { id: 'email', label: 'Email', fixed: false, minWidth: '200px' },
+  { id: 'student_id', label: 'Student ID', fixed: false, minWidth: '100px' }
 ];;
 
 /**
