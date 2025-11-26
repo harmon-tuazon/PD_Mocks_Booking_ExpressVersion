@@ -20,19 +20,25 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { validationMiddleware } = require('../../../_shared/validation');
+const { validateInput } = require('../../../_shared/validation');
 const hubspot = require('../../../_shared/hubspot');
 const { getCache } = require('../../../_shared/cache');
 const { syncContactCreditsToSupabase } = require('../../../_shared/supabaseSync');
 
-module.exports = validationMiddleware('updateTraineeTokens')(async (req, res) => {
+module.exports = async (req, res) => {
   try {
     // 1. Auth & permission check (RBAC: contacts.tokens)
     const user = await requirePermission(req, 'contacts.tokens');
 
-    // 2. Get contactId from URL and tokens from body
+    // 2. Validate request body
+    const validatedData = await validateInput(
+      { ...req.query, ...req.body },
+      'updateTraineeTokens'
+    );
+
+    // 3. Get contactId from URL and tokens from validated data
     const contactId = req.query.contactId;
-    const { tokens } = req.body;
+    const { tokens } = validatedData;
 
     if (!contactId) {
       return res.status(400).json({
