@@ -10,6 +10,7 @@ import InsufficientTokensError from '../components/shared/InsufficientTokensErro
 import PrerequisiteWarningModal from '../components/shared/PrerequisiteWarningModal';
 import { getUserSession } from '../utils/auth';
 import useCachedCredits from '../hooks/useCachedCredits';
+import { useCachedBookings } from '../hooks/useCachedBookings';
 import LocationFilter from '../components/shared/LocationFilter';
 import { checkPrerequisites, getMissingPrerequisites } from '../utils/prerequisiteHelpers';
 
@@ -27,6 +28,9 @@ const MockDiscussions = () => {
   const [showInsufficientTokensError, setShowInsufficientTokensError] = useState(false);
   const [showPrereqModal, setShowPrereqModal] = useState(false);
   const [currentPrereqData, setCurrentPrereqData] = useState(null);
+
+  // Use cached bookings hook (4-tier caching: Frontend → Redis → Supabase → HubSpot)
+  const { bookings: cachedBookings, fetchBookings: fetchCachedBookings } = useCachedBookings();
   const [userBookings, setUserBookings] = useState([]);
 
   // Helper function to check if a discussion has unmet prerequisites
@@ -42,7 +46,7 @@ const MockDiscussions = () => {
 
   // Extract mock discussion token data
   const mockDiscussionData = credits?.['Mock Discussion'];
-  const mockDiscussionTokens = mockDiscussionData?.available_credits || 0;
+  const mockDiscussionTokens = mockDiscussionData?.credit_breakdown?.total_credits || 0;
 
   // Filter discussions based on selected location
   const filteredDiscussions = useMemo(() => {
@@ -121,15 +125,33 @@ const MockDiscussions = () => {
 
   const fetchUserBookings = async (studentId, email) => {
     try {
-      const result = await apiService.bookings.list({
-        student_id: studentId,
-        email: email
+      // Try to use cached bookings first (instant!)
+      if (cachedBookings && cachedBookings.length > 0) {
+        console.log('✅ Using cached bookings for prerequisite check (instant!)');
+        // Filter to upcoming bookings for prerequisite validation
+        const upcomingBookings = cachedBookings.filter(booking => {
+          if (!booking.exam_date) return false;
+          const examDate = new Date(booking.exam_date);
+          examDate.setHours(0, 0, 0, 0);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return examDate >= today;
+        });
+        setUserBookings(upcomingBookings);
+        return;
+      }
+
+      // If no cached bookings, fetch them with filter
+      console.log('📥 No cached bookings found, fetching from backend...');
+      const fetchedBookings = await fetchCachedBookings(studentId, email, {
+        filter: 'upcoming', // Only need upcoming bookings for prerequisite checks
+        limit: 50
       });
 
-      if (result.success && result.data?.bookings) {
-        setUserBookings(result.data.bookings);
+      if (fetchedBookings && fetchedBookings.length > 0) {
+        setUserBookings(fetchedBookings);
       } else {
-        console.warn('Failed to fetch user bookings for prerequisite validation:', result.error);
+        console.warn('No bookings fetched for prerequisite validation');
         setUserBookings([]); // Set empty array to prevent blocking
       }
     } catch (err) {

@@ -246,6 +246,19 @@ const apiService = {
   // User profile
   user: {
     /**
+     * Login user and get full profile with all credit types
+     * @param {string} studentId - The student ID
+     * @param {string} email - The student's email address
+     * @returns {Promise} - Full student profile with all 5 credit types
+     */
+    login: async (studentId, email) => {
+      return api.post('/user/login', {
+        student_id: studentId,
+        email: email
+      });
+    },
+
+    /**
      * Update NDECC exam date for a student
      * @param {string} studentId - The student's HubSpot contact ID
      * @param {string} email - The student's email address
@@ -398,5 +411,115 @@ export const getCapacityText = (availableSlots) => {
   if (availableSlots <= 3) return `${availableSlots} slots left`;
   return `${availableSlots} slots available`;
 };
+
+/**
+ * Transform login endpoint credits to useCachedCredits format
+ * Converts flat credit structure to nested structure expected by ExamTypeSelector
+ *
+ * @param {Object} loginResponse - Response from /user/login endpoint
+ * @returns {Object} - Credits in format expected by useCachedCredits hook
+ *
+ * Input format (from /user/login):
+ * {
+ *   credits: {
+ *     sj_credits: 3,
+ *     cs_credits: 2,
+ *     sjmini_credits: 1,
+ *     mock_discussion_token: 1,
+ *     shared_mock_credits: 5
+ *   }
+ * }
+ *
+ * Output format (for ExamTypeSelector):
+ * {
+ *   'Situational Judgment': {
+ *     eligible: true,
+ *     credit_breakdown: {
+ *       specific_credits: 3,
+ *       shared_credits: 5,
+ *       total_credits: 8
+ *     }
+ *   },
+ *   'Clinical Skills': { ... },
+ *   'Mini-mock': { ... },
+ *   'Mock Discussion': { ... }
+ * }
+ */
+export const transformLoginCreditsToCache = (loginResponse) => {
+  if (!loginResponse?.credits) {
+    return {};
+  }
+
+  const {
+    sj_credits = 0,
+    cs_credits = 0,
+    sjmini_credits = 0,
+    mock_discussion_token = 0,
+    shared_mock_credits = 0
+  } = loginResponse.credits;
+
+  // Extract common fields from login response (available in all mock types)
+  const commonFields = {
+    student_name: loginResponse.name || '',
+    contact_id: loginResponse.contact_id || null,
+    enrollment_id: null, // Login endpoint doesn't provide enrollment_id
+    error_message: null
+  };
+
+  return {
+    'Situational Judgment': {
+      eligible: (sj_credits + shared_mock_credits) > 0,
+      available_credits: sj_credits + shared_mock_credits,
+      credit_breakdown: {
+        specific_credits: sj_credits,
+        shared_credits: shared_mock_credits,
+        total_credits: sj_credits + shared_mock_credits
+      },
+      ...commonFields,
+      error_message: (sj_credits + shared_mock_credits) > 0 
+        ? null 
+        : 'You have 0 credits available for Situational Judgment exams.'
+    },
+    'Clinical Skills': {
+      eligible: (cs_credits + shared_mock_credits) > 0,
+      available_credits: cs_credits + shared_mock_credits,
+      credit_breakdown: {
+        specific_credits: cs_credits,
+        shared_credits: shared_mock_credits,
+        total_credits: cs_credits + shared_mock_credits
+      },
+      ...commonFields,
+      error_message: (cs_credits + shared_mock_credits) > 0 
+        ? null 
+        : 'You have 0 credits available for Clinical Skills exams.'
+    },
+    'Mini-mock': {
+      eligible: (sjmini_credits + shared_mock_credits) > 0,
+      available_credits: sjmini_credits + shared_mock_credits,
+      credit_breakdown: {
+        specific_credits: sjmini_credits,
+        shared_credits: shared_mock_credits,
+        total_credits: sjmini_credits + shared_mock_credits
+      },
+      ...commonFields,
+      error_message: (sjmini_credits + shared_mock_credits) > 0 
+        ? null 
+        : 'You have 0 credits available for Mini-mock exams.'
+    },
+    'Mock Discussion': {
+      eligible: mock_discussion_token > 0,
+      available_credits: mock_discussion_token,
+      credit_breakdown: {
+        specific_credits: mock_discussion_token,
+        shared_credits: 0, // Mock discussions don't use shared credits
+        total_credits: mock_discussion_token
+      },
+      ...commonFields,
+      error_message: mock_discussion_token > 0 
+        ? null 
+        : 'You have 0 credits available for Mock Discussion sessions.'
+    }
+  };
+};;
 
 export default apiService;

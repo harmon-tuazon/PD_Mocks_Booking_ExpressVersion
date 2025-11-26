@@ -14,6 +14,108 @@ const { supabaseAdmin } = require('./supabase');
  * @param {string} examId - Mock exam HubSpot ID
  * @returns {Array} - Array of booking objects
  */
+/**
+ * Get contact by email from Supabase
+ * @param {string} email - Contact email address
+ * @returns {object|null} - Contact object or null if not found
+ */
+async function getContactByEmailFromSupabase(email) {
+  const { data, error } = await supabaseAdmin
+    .from('hubspot_contact_credits')
+    .select('*')
+    .ilike('email', email) // Case-insensitive match
+    .single();
+
+  if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+    console.error(`❌ Supabase contact read error (email):`, error.message);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Get contact by student ID from Supabase
+ * @param {string} studentId - Student ID
+ * @returns {object|null} - Contact object or null if not found
+ */
+async function getContactByStudentIdFromSupabase(studentId) {
+  const { data, error } = await supabaseAdmin
+    .from('hubspot_contact_credits')
+    .select('*')
+    .eq('student_id', studentId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+    console.error(`❌ Supabase contact read error (student_id):`, error.message);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Get contact by HubSpot ID from Supabase
+ * @param {string} contactId - HubSpot contact ID
+ * @returns {object|null} - Contact object or null if not found
+ */
+async function getContactByIdFromSupabase(contactId) {
+  const { data, error} = await supabaseAdmin
+    .from('hubspot_contact_credits')
+    .select('*')
+    .eq('hubspot_id', contactId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+    console.error(`❌ Supabase contact read error (hubspot_id):`, error.message);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Sync contact to Supabase (auto-populate on cache miss)
+ * @param {object} contact - Contact object from HubSpot
+ */
+async function syncContactToSupabase(contact) {
+  if (!contact || !contact.properties) {
+    console.error('[SYNC] Cannot sync contact - missing properties');
+    return;
+  }
+
+  const props = contact.properties;
+
+  const record = {
+    hubspot_id: contact.id,
+    student_id: props.student_id,
+    email: props.email?.toLowerCase(),
+    firstname: props.firstname,
+    lastname: props.lastname,
+    phone: props.phone,
+    sj_credits: parseInt(props.sj_credits) || 0,
+    cs_credits: parseInt(props.cs_credits) || 0,
+    sjmini_credits: parseInt(props.sjmini_credits) || 0,
+    mock_discussion_token: parseInt(props.mock_discussion_token) || 0,
+    shared_mock_credits: parseInt(props.shared_mock_credits) || 0,
+    ndecc_exam_date: props.ndecc_exam_date,
+    created_at: props.createdate || props.created_at,
+    updated_at: props.hs_lastmodifieddate || props.updated_at,
+    synced_at: new Date().toISOString()
+  };
+
+  const { error } = await supabaseAdmin
+    .from('hubspot_contact_credits')
+    .upsert(record, { onConflict: 'hubspot_id' });
+
+  if (error) {
+    console.error(`❌ Supabase contact sync error:`, error.message);
+    throw error;
+  }
+
+  console.log(`✅ Synced contact ${contact.id} to Supabase`);
+}
+
 async function getBookingsFromSupabase(examId) {
   const { data, error } = await supabaseAdmin
     .from('hubspot_bookings')
@@ -409,7 +511,12 @@ async function updateContactCreditsInSupabase(contactId, mockType, newSpecificCr
 }
 
 module.exports = {
-  // Reads
+  // Contact reads
+  getContactByEmailFromSupabase,
+  getContactByStudentIdFromSupabase,
+  getContactByIdFromSupabase,
+  syncContactToSupabase,
+  // Booking reads
   getBookingsFromSupabase,
   getBookingsByContactFromSupabase,
   getExamsFromSupabase,

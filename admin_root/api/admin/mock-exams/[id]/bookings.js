@@ -103,7 +103,7 @@ module.exports = async (req, res) => {
 
     console.log(`📋 [Cache MISS] Fetching bookings for mock exam ${mockExamId}`);
 
-    // Step 1: Verify the mock exam exists
+    // Step 1: Verify the mock exam exists (can use Supabase or HubSpot)
     let mockExam;
     try {
       mockExam = await hubspot.getMockExam(mockExamId);
@@ -123,82 +123,140 @@ module.exports = async (req, res) => {
       throw error;
     }
 
-    // Step 2: Get bookings associated with this mock exam via associations
-    // Get mock exam with associations to get all booking IDs
-    const mockExamWithAssociations = await hubspot.apiCall('GET',
-      `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}`
-    );
+    // Step 2: Try to fetch bookings from Supabase first
+    const { getBookingsFromSupabase, syncBookingsToSupabase } = require('../../../_shared/supabase-data');
+    let allBookings = [];
+    let dataSource = 'unknown';
+    let supabaseFound = false;
 
+    try {
+      console.log(`🗄️ [SUPABASE] Fetching bookings for exam ${mockExamId}`);
+      const supabaseBookings = await getBookingsFromSupabase(mockExamId);
 
-    // Extract booking IDs from associations
-    // HubSpot returns association keys in various formats depending on portal configuration:
-    // - Standard format: '2-50158943' (object type ID)
-    // - Portal-specific format: 'p46814382_bookings_' (portal ID + object name)
-    // We need to check for both formats
-    const bookingIds = [];
-    if (mockExamWithAssociations.associations) {
-      // Find the bookings association key (flexible matching)
-      const bookingsKey = Object.keys(mockExamWithAssociations.associations).find(key =>
-        key === HUBSPOT_OBJECTS.bookings || key.includes('bookings')
-      );
+      if (supabaseBookings && supabaseBookings.length > 0) {
+        console.log(`✅ [SUPABASE HIT] Found ${supabaseBookings.length} bookings in Supabase`);
 
+        // Transform Supabase bookings to HubSpot format
+        allBookings = supabaseBookings.map(booking => ({
+          id: booking.hubspot_id,
+          properties: {
+            booking_id: booking.booking_id,
+            name: booking.name,
+            email: booking.student_email,
+            student_id: booking.student_id,
+            dominant_hand: booking.dominant_hand,
+            contact_id: booking.associated_contact_id,
+            attendance: booking.attendance,
+            attending_location: booking.attending_location,
+            token_used: booking.token_used,
+            associated_contact_id: booking.associated_contact_id,
+            ndecc_exam_date: booking.ndecc_exam_date,
+            exam_date: booking.exam_date,
+            mock_type: booking.mock_type,
+            mock_exam_type: booking.mock_type,
+            location: booking.attending_location,
+            start_time: booking.start_time,
+            end_time: booking.end_time,
+            is_active: booking.is_active,
+            hs_createdate: booking.created_at,
+            hs_lastmodifieddate: booking.updated_at
+          }
+        }));
 
-      if (bookingsKey && mockExamWithAssociations.associations[bookingsKey]?.results?.length > 0) {
-        mockExamWithAssociations.associations[bookingsKey].results.forEach(association => {
-          bookingIds.push(association.id);
-        });
+        supabaseFound = true;
+        dataSource = 'supabase';
+      } else {
+        console.log(`📭 [SUPABASE MISS] No bookings in Supabase, falling back to HubSpot`);
       }
+    } catch (supabaseError) {
+      console.error(`⚠️ [SUPABASE ERROR] Failed to query bookings (non-blocking):`, supabaseError.message);
     }
 
+    // Step 3: Fallback to HubSpot if not in Supabase
+    if (!supabaseFound) {
+      console.log(`📧 [HUBSPOT] Fetching bookings from HubSpot for exam ${mockExamId}`);
 
-    // If there are no bookings, return empty result
-    let allBookings = [];
-    if (bookingIds.length === 0) {
-      console.log(`No bookings found for mock exam ${mockExamId}`);
-    } else {
-      // Batch fetch booking details (HubSpot batch read supports up to 100 objects)
-      const batchChunks = [];
-      for (let i = 0; i < bookingIds.length; i += 100) {
-        batchChunks.push(bookingIds.slice(i, i + 100));
-      }
+      // Get mock exam with associations to get all booking IDs
+      const mockExamWithAssociations = await hubspot.apiCall('GET',
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}`
+      );
 
-      for (const chunk of batchChunks) {
-        try {
-          const batchResponse = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
-            properties: [
-              'booking_id',
-              'name',
-              'email',
-              'student_id',
-              'dominant_hand',
-              'contact_id',
-              'attendance',
-              'attending_location',
-              'token_used',
-              'associated_contact_id',  // Required for token refund logic
-              'ndecc_exam_date',
-              'exam_date',
-              'mock_type',
-              'mock_exam_type',
-              'location',
-              'start_time',
-              'end_time',
-              'is_active',
-              'hs_createdate',
-              'hs_lastmodifieddate'
-            ],
-            inputs: chunk.map(id => ({ id }))
+      // Extract booking IDs from associations
+      const bookingIds = [];
+      if (mockExamWithAssociations.associations) {
+        // Find the bookings association key (flexible matching)
+        const bookingsKey = Object.keys(mockExamWithAssociations.associations).find(key =>
+          key === HUBSPOT_OBJECTS.bookings || key.includes('bookings')
+        );
+
+        if (bookingsKey && mockExamWithAssociations.associations[bookingsKey]?.results?.length > 0) {
+          mockExamWithAssociations.associations[bookingsKey].results.forEach(association => {
+            bookingIds.push(association.id);
           });
-
-          if (batchResponse.results) {
-            allBookings = allBookings.concat(batchResponse.results);
-          }
-        } catch (batchError) {
-          console.error(`Error fetching booking batch:`, batchError);
         }
       }
 
-      // Filter to include active and completed bookings (exclude cancelled/failed)
+      // If there are bookings, batch fetch them
+      if (bookingIds.length > 0) {
+        // Batch fetch booking details (HubSpot batch read supports up to 100 objects)
+        const batchChunks = [];
+        for (let i = 0; i < bookingIds.length; i += 100) {
+          batchChunks.push(bookingIds.slice(i, i + 100));
+        }
+
+        for (const chunk of batchChunks) {
+          try {
+            const batchResponse = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
+              properties: [
+                'booking_id',
+                'name',
+                'email',
+                'student_id',
+                'dominant_hand',
+                'contact_id',
+                'attendance',
+                'attending_location',
+                'token_used',
+                'associated_contact_id',
+                'ndecc_exam_date',
+                'exam_date',
+                'mock_type',
+                'mock_exam_type',
+                'location',
+                'start_time',
+                'end_time',
+                'is_active',
+                'hs_createdate',
+                'hs_lastmodifieddate'
+              ],
+              inputs: chunk.map(id => ({ id }))
+            });
+
+            if (batchResponse.results) {
+              allBookings = allBookings.concat(batchResponse.results);
+            }
+          } catch (batchError) {
+            console.error(`Error fetching booking batch:`, batchError);
+          }
+        }
+
+        // Auto-populate Supabase with bookings (fire-and-forget)
+        if (allBookings.length > 0) {
+          syncBookingsToSupabase(allBookings, mockExamId).catch(err => {
+            console.error(`⚠️ [SUPABASE SYNC] Failed to auto-populate bookings (non-blocking):`, err.message);
+          });
+          console.log(`✅ [HUBSPOT] Retrieved ${allBookings.length} bookings, auto-populating Supabase`);
+        }
+
+        dataSource = 'hubspot';
+      } else {
+        console.log(`📭 No bookings found for mock exam ${mockExamId}`);
+        dataSource = 'hubspot';
+      }
+    }
+
+    // Filter to include active and completed bookings (exclude cancelled/failed)
+    if (allBookings.length > 0) {
       const totalBookingsFetched = allBookings.length;
       allBookings = allBookings.filter(booking => {
         const status = booking.properties.is_active;
@@ -208,7 +266,7 @@ module.exports = async (req, res) => {
       console.log(`🔍 Filtered bookings: ${totalBookingsFetched} total → ${allBookings.length} active/completed`);
     }
 
-    // Step 3: Apply search filter if provided
+    // Step 4: Apply search filter if provided
     let filteredBookings = allBookings;
     if (searchTerm) {
       filteredBookings = allBookings.filter(booking => {
@@ -218,7 +276,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Step 4: Sort the bookings
+    // Step 5: Sort the bookings
     const sortedBookings = [...filteredBookings].sort((a, b) => {
       let aValue, bValue;
 
@@ -243,14 +301,14 @@ module.exports = async (req, res) => {
       return 0;
     });
 
-    // Step 5: Apply pagination
+    // Step 6: Apply pagination
     const totalBookings = sortedBookings.length;
     const totalPages = Math.ceil(totalBookings / limit);
     const startIndex = (page - 1) * limit;
     const endIndex = Math.min(startIndex + limit, totalBookings);
     const paginatedBookings = sortedBookings.slice(startIndex, endIndex);
 
-    // Step 6: Transform bookings into response format
+    // Step 7: Transform bookings into response format
     const transformedBookings = paginatedBookings.map(booking => {
       const props = booking.properties;
 
@@ -275,7 +333,7 @@ module.exports = async (req, res) => {
         attendance: props.attendance || '',
         attending_location: props.attending_location || '',
         token_used: props.token_used || '',
-        associated_contact_id: props.associated_contact_id || '',  // For token refund
+        associated_contact_id: props.associated_contact_id || '',
         is_active: props.is_active || '',
 
         // Add the missing property mappings
@@ -316,6 +374,7 @@ module.exports = async (req, res) => {
       meta: {
         timestamp: new Date().toISOString(),
         cached: false,
+        data_source: dataSource,
         exam_id: mockExamId,
         search_term: searchTerm || null,
         sort: {
@@ -327,7 +386,7 @@ module.exports = async (req, res) => {
 
     // Cache for 2 minutes (120 seconds)
     await cacheService.set(cacheKey, response, 120);
-    console.log(`💾 [Cached] ${transformedBookings.length} bookings for mock exam ${mockExamId} (2 min TTL)`);
+    console.log(`💾 [Cached] ${transformedBookings.length} bookings for mock exam ${mockExamId} (2 min TTL, source: ${dataSource})`);
 
     res.status(200).json(response);
 

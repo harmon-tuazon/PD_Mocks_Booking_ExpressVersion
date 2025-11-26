@@ -14,15 +14,17 @@ const {
   getContactCreditsFromSupabase,
   syncContactCreditsToSupabase
 } = require('../_shared/supabase-data');
+const { CacheService } = require('../_shared/cache');
 
 /**
  * POST /api/user/login
- * Authenticate student login with Supabase-first read strategy
+ * Authenticate student login with 4-tier caching strategy
  *
  * Flow:
- * 1. Try Supabase first (~50ms) - fast path
- * 2. Fallback to HubSpot (~500ms) if not in Supabase
- * 3. Auto-populate Supabase for future requests
+ * 1. Try Redis distributed cache first (~10-20ms) - fastest path
+ * 2. Try Supabase secondary DB (~50ms) - fast path
+ * 3. Fallback to HubSpot (~500ms) if not cached - source of truth
+ * 4. Auto-populate Redis and Supabase for future requests
  *
  * Returns: Student profile with all credit balances
  */
@@ -67,34 +69,59 @@ module.exports = async (req, res) => {
     let contact = null;
     let dataSource = null;
 
-    // PHASE 1: Try Supabase secondary database first (fast path ~50ms)
+    // Initialize cache service
+    const cache = new CacheService();
+    const cacheKey = `contact:credits:${sanitizedStudentId}:${sanitizedEmail}`;
+
+    // PHASE 0: Try Redis distributed cache first (fastest path ~10-20ms)
     try {
-      const supabaseContact = await getContactCreditsFromSupabase(sanitizedStudentId, sanitizedEmail);
-
-      if (supabaseContact) {
-        console.log(`✅ [SUPABASE LOGIN] Reading from secondary DB for student ${sanitizedStudentId}`);
-        dataSource = 'supabase';
-
-        // Convert Supabase format to HubSpot format for compatibility
-        contact = {
-          id: supabaseContact.hubspot_id,
-          properties: {
-            student_id: supabaseContact.student_id,
-            email: supabaseContact.email,
-            firstname: supabaseContact.firstname,
-            lastname: supabaseContact.lastname,
-            sj_credits: supabaseContact.sj_credits?.toString() || '0',
-            cs_credits: supabaseContact.cs_credits?.toString() || '0',
-            sjmini_credits: supabaseContact.sjmini_credits?.toString() || '0',
-            mock_discussion_token: supabaseContact.mock_discussion_token?.toString() || '0',
-            shared_mock_credits: supabaseContact.shared_mock_credits?.toString() || '0',
-            ndecc_exam_date: supabaseContact.ndecc_exam_date
-          }
-        };
+      const cachedContact = await cache.get(cacheKey);
+      if (cachedContact) {
+        console.log(`✅ [REDIS LOGIN] Reading from distributed cache for student ${sanitizedStudentId}`);
+        dataSource = 'redis';
+        contact = cachedContact;
       }
-    } catch (supabaseError) {
-      console.error('[SUPABASE ERROR] Failed to read from secondary DB during login:', supabaseError.message);
-      // Continue to HubSpot fallback
+    } catch (redisError) {
+      console.error('[REDIS ERROR] Failed to read from cache during login:', redisError.message);
+      // Continue to Supabase fallback
+    }
+
+    // PHASE 1: Try Supabase secondary database if not in Redis (fast path ~50ms)
+    if (!contact) {
+      try {
+        const supabaseContact = await getContactCreditsFromSupabase(sanitizedStudentId, sanitizedEmail);
+
+        if (supabaseContact) {
+          console.log(`✅ [SUPABASE LOGIN] Reading from secondary DB for student ${sanitizedStudentId}`);
+          dataSource = 'supabase';
+
+          // Convert Supabase format to HubSpot format for compatibility
+          contact = {
+            id: supabaseContact.hubspot_id,
+            properties: {
+              student_id: supabaseContact.student_id,
+              email: supabaseContact.email,
+              firstname: supabaseContact.firstname,
+              lastname: supabaseContact.lastname,
+              sj_credits: supabaseContact.sj_credits?.toString() || '0',
+              cs_credits: supabaseContact.cs_credits?.toString() || '0',
+              sjmini_credits: supabaseContact.sjmini_credits?.toString() || '0',
+              mock_discussion_token: supabaseContact.mock_discussion_token?.toString() || '0',
+              shared_mock_credits: supabaseContact.shared_mock_credits?.toString() || '0',
+              ndecc_exam_date: supabaseContact.ndecc_exam_date
+            }
+          };
+
+          // Cache in Redis for future requests (5-minute TTL)
+          await cache.set(cacheKey, contact, 5 * 60).catch(cacheError => {
+            console.error('[REDIS ERROR] Failed to cache Supabase contact:', cacheError.message);
+            // Non-blocking - continue even if Redis cache fails
+          });
+        }
+      } catch (supabaseError) {
+        console.error('[SUPABASE ERROR] Failed to read from secondary DB during login:', supabaseError.message);
+        // Continue to HubSpot fallback
+      }
     }
 
     // PHASE 2: Fallback to HubSpot (source of truth) if not in Supabase
@@ -125,6 +152,12 @@ module.exports = async (req, res) => {
       syncContactCreditsToSupabase(contact).catch(syncError => {
         console.error('[SYNC ERROR] Failed to cache contact during login:', syncError.message);
         // Non-blocking - don't fail the request if sync fails
+      });
+
+      // Cache in Redis for future requests (5-minute TTL)
+      await cache.set(cacheKey, contact, 5 * 60).catch(cacheError => {
+        console.error('[REDIS ERROR] Failed to cache HubSpot contact:', cacheError.message);
+        // Non-blocking - continue even if Redis cache fails
       });
     }
 

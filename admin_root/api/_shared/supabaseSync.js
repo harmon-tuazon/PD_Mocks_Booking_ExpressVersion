@@ -225,19 +225,43 @@ async function fetchAllContactsWithCredits() {
   ];
 
   do {
+    // CORRECT PATTERN: Multiple filterGroups with student_id AND one credit type in each
+    // Creates OR logic: (student_id AND sj > 0) OR (student_id AND cs > 0) OR ...
+    // This matches the migration script pattern
     const searchBody = {
       filterGroups: [
+        // Filter Group 1: Has student_id AND has SJ credits > 0
         {
           filters: [
-            { propertyName: 'student_id', operator: 'HAS_PROPERTY' }
+            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
+            { propertyName: 'sj_credits', operator: 'GT', value: '0' }
           ]
         },
+        // Filter Group 2: Has student_id AND has CS credits > 0
         {
           filters: [
-            { propertyName: 'sj_credits', operator: 'GT', value: '0' },
-            { propertyName: 'cs_credits', operator: 'GT', value: '0' },
-            { propertyName: 'sjmini_credits', operator: 'GT', value: '0' },
-            { propertyName: 'mock_discussion_token', operator: 'GT', value: '0' },
+            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
+            { propertyName: 'cs_credits', operator: 'GT', value: '0' }
+          ]
+        },
+        // Filter Group 3: Has student_id AND has Mini-mock credits > 0
+        {
+          filters: [
+            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
+            { propertyName: 'sjmini_credits', operator: 'GT', value: '0' }
+          ]
+        },
+        // Filter Group 4: Has student_id AND has Discussion token > 0
+        {
+          filters: [
+            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
+            { propertyName: 'mock_discussion_token', operator: 'GT', value: '0' }
+          ]
+        },
+        // Filter Group 5: Has student_id AND has Shared credits > 0
+        {
+          filters: [
+            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
             { propertyName: 'shared_mock_credits', operator: 'GT', value: '0' }
           ]
         }
@@ -264,6 +288,7 @@ async function fetchAllContactsWithCredits() {
 
   } while (after);
 
+  // No need for client-side filtering - HubSpot already filtered with the correct query
   return allContacts;
 }
 
@@ -320,58 +345,87 @@ async function syncAllData() {
     const exams = await fetchAllMockExams();
     totalExams = exams.length;
 
-    // Step 2: Sync exams to Supabase
-    for (let i = 0; i < exams.length; i++) {
-      const exam = exams[i];
-      try {
-        await syncExamToSupabase(exam);
-      } catch (error) {
-        console.error(`Failed to sync exam ${exam.id}: ${error.message}`);
-        errors.push({ type: 'exam', id: exam.id, error: error.message });
-      }
+    // Step 2: Sync exams to Supabase in parallel batches (OPTIMIZED)
+    const examBatchSize = 10;
+    for (let i = 0; i < exams.length; i += examBatchSize) {
+      const batch = exams.slice(i, i + examBatchSize);
+      await Promise.allSettled(
+        batch.map(async (exam) => {
+          try {
+            await syncExamToSupabase(exam);
+          } catch (error) {
+            console.error(`Failed to sync exam ${exam.id}: ${error.message}`);
+            errors.push({ type: 'exam', id: exam.id, error: error.message });
+          }
+        })
+      );
     }
 
-    // Step 3: Fetch and sync bookings for each exam
-    for (let i = 0; i < exams.length; i++) {
-      const exam = exams[i];
-      try {
-        const bookings = await fetchBookingsForExam(exam.id);
-        if (bookings.length > 0) {
-          await syncBookingsToSupabase(bookings, exam.id);
-          totalBookings += bookings.length;
+    // Step 3: Fetch and sync bookings in parallel (OPTIMIZED)
+    // Process bookings for multiple exams concurrently to reduce total time
+    const bookingBatchSize = 10;
+    for (let i = 0; i < exams.length; i += bookingBatchSize) {
+      const examBatch = exams.slice(i, i + bookingBatchSize);
+      
+      const bookingResults = await Promise.allSettled(
+        examBatch.map(async (exam) => {
+          try {
+            const bookings = await fetchBookingsForExam(exam.id);
+            if (bookings.length > 0) {
+              await syncBookingsToSupabase(bookings, exam.id);
+              return bookings.length;
+            }
+            return 0;
+          } catch (error) {
+            console.error(`Failed to sync bookings for exam ${exam.id}: ${error.message}`);
+            errors.push({ type: 'bookings', examId: exam.id, error: error.message });
+            return 0;
+          }
+        })
+      );
+
+      // Sum up bookings count from this batch
+      bookingResults.forEach(result => {
+        if (result.status === 'fulfilled') {
+          totalBookings += result.value;
         }
+      });
 
-        // Rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } catch (error) {
-        console.error(`Failed to sync bookings for exam ${exam.id}: ${error.message}`);
-        errors.push({ type: 'bookings', examId: exam.id, error: error.message });
-      }
+      // Small delay between batches to respect rate limits
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    // Step 4: Fetch and sync contact credits
+    // Step 4: Fetch and sync contact credits in parallel batches (OPTIMIZED)
     console.log('🔄 Starting contact credits sync...');
     try {
       const contacts = await fetchAllContactsWithCredits();
       totalContactCredits = contacts.length;
       console.log(`📊 Found ${totalContactCredits} contacts with credits to sync`);
 
-      for (let i = 0; i < contacts.length; i++) {
-        const contact = contacts[i];
-        try {
-          await syncContactCreditsToSupabase(contact);
+      // Process contacts in parallel batches
+      const contactBatchSize = 20;
+      for (let i = 0; i < contacts.length; i += contactBatchSize) {
+        const batch = contacts.slice(i, i + contactBatchSize);
+        
+        await Promise.allSettled(
+          batch.map(async (contact) => {
+            try {
+              await syncContactCreditsToSupabase(contact);
+            } catch (error) {
+              console.error(`Failed to sync contact ${contact.id}: ${error.message}`);
+              errors.push({ type: 'contact_credits', id: contact.id, error: error.message });
+            }
+          })
+        );
 
-          // Log progress every 50 contacts
-          if ((i + 1) % 50 === 0) {
-            console.log(`   Progress: ${i + 1}/${totalContactCredits} contacts synced`);
-          }
-        } catch (error) {
-          console.error(`Failed to sync contact ${contact.id}: ${error.message}`);
-          errors.push({ type: 'contact_credits', id: contact.id, error: error.message });
+        // Log progress every 100 contacts
+        if ((i + contactBatchSize) % 100 === 0 || (i + contactBatchSize) >= contacts.length) {
+          const progress = Math.min(i + contactBatchSize, contacts.length);
+          console.log(`   Progress: ${progress}/${totalContactCredits} contacts synced`);
         }
 
-        // Rate limiting
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // Small delay between batches
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       console.log(`✅ Contact credits sync completed: ${totalContactCredits} contacts synced`);

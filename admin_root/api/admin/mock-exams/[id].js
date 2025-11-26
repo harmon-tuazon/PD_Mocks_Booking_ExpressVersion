@@ -393,29 +393,88 @@ async function handleGetRequest(req, res) {
       });
     }
 
-    console.log(`📋 [Cache MISS] Fetching mock exam ${mockExamId} from HubSpot`);
+    console.log(`📋 [Cache MISS] Fetching mock exam ${mockExamId}`);
 
-    // Fetch mock exam from HubSpot with all required properties
-    let mockExam;
+    // Step 1: Try to fetch from Supabase first
+    const { getExamByIdFromSupabase } = require('../../_shared/supabase-data');
+    let mockExam = null;
+    let dataSource = 'unknown';
+    let supabaseFound = false;
+
     try {
-      // Fetch with extended properties including timestamps, address, and scheduled activation
-      const response = await hubspot.apiCall('GET',
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?properties=mock_type,exam_date,start_time,end_time,location,address,capacity,total_bookings,is_active,scheduled_activation_datetime,status,hs_createdate,hs_lastmodifieddate`
-      );
-      mockExam = response;
-    } catch (error) {
-      // Handle 404 specifically
-      if (error.message?.includes('404') || error.message?.includes('not found')) {
-        return res.status(404).json({
-          success: false,
-          error: 'Mock exam not found'
-        });
+      console.log(`🗄️ [SUPABASE] Fetching exam ${mockExamId}`);
+      const supabaseExam = await getExamByIdFromSupabase(mockExamId);
+
+      if (supabaseExam) {
+        console.log(`✅ [SUPABASE HIT] Found exam in Supabase`);
+        
+        // Transform Supabase data to HubSpot format
+        mockExam = {
+          id: supabaseExam.hubspot_id,
+          properties: {
+            mock_type: supabaseExam.mock_type,
+            exam_date: supabaseExam.exam_date,
+            start_time: supabaseExam.start_time,
+            end_time: supabaseExam.end_time,
+            location: supabaseExam.location,
+            address: supabaseExam.address,
+            capacity: supabaseExam.capacity,
+            total_bookings: supabaseExam.total_bookings,
+            is_active: supabaseExam.is_active,
+            scheduled_activation_datetime: supabaseExam.scheduled_activation_datetime,
+            status: supabaseExam.status,
+            hs_createdate: supabaseExam.created_at,
+            hs_lastmodifieddate: supabaseExam.updated_at
+          }
+        };
+        
+        supabaseFound = true;
+        dataSource = 'supabase';
+      } else {
+        console.log(`📭 [SUPABASE MISS] Exam not found in Supabase, falling back to HubSpot`);
       }
-      throw error;
+    } catch (supabaseError) {
+      console.error(`⚠️ [SUPABASE ERROR] Failed to query exam (non-blocking):`, supabaseError.message);
+    }
+
+    // Step 2: Fallback to HubSpot if not in Supabase
+    if (!supabaseFound) {
+      try {
+        console.log(`📧 [HUBSPOT] Fetching exam ${mockExamId}`);
+        // Fetch with extended properties including timestamps, address, and scheduled activation
+        const response = await hubspot.apiCall('GET',
+          `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?properties=mock_type,exam_date,start_time,end_time,location,address,capacity,total_bookings,is_active,scheduled_activation_datetime,status,hs_createdate,hs_lastmodifieddate`
+        );
+        mockExam = response;
+        dataSource = 'hubspot';
+
+        // Auto-populate Supabase with exam (fire-and-forget)
+        const { syncExamToSupabase } = require('../../_shared/supabase-data');
+        syncExamToSupabase({
+          id: mockExamId,
+          properties: mockExam.properties
+        }).catch(err => {
+          console.error(`⚠️ [SUPABASE SYNC] Failed to auto-populate (non-blocking):`, err.message);
+        });
+
+        console.log(`✅ [HUBSPOT] Retrieved exam, auto-populating Supabase`);
+      } catch (error) {
+        // Handle 404 specifically
+        if (error.message?.includes('404') || error.message?.includes('not found')) {
+          return res.status(404).json({
+            success: false,
+            error: 'Mock exam not found'
+          });
+        }
+        throw error;
+      }
     }
 
     // Build response using format helper
     const response = formatMockExamResponse(mockExam);
+
+    // Add data source to metadata
+    response.meta.data_source = dataSource;
 
     // If this is a Mock Discussion, fetch prerequisite associations
     if (mockExam.properties.mock_type === 'Mock Discussion') {
@@ -461,7 +520,7 @@ async function handleGetRequest(req, res) {
 
     // Cache the response (2 minutes TTL = 120 seconds)
     await cache.set(cacheKey, response, 120);
-    console.log(`💾 [Cached] Mock exam details ${mockExamId} for 2 minutes`);
+    console.log(`💾 [Cached] Mock exam details ${mockExamId} for 2 minutes (source: ${dataSource})`);
 
     res.status(200).json(response);
 

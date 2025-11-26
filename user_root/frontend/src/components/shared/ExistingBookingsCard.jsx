@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate, useLocation } from 'react-router-dom';
-import apiService from '../../services/api';
+import { useCachedBookings } from '../../hooks/useCachedBookings';
 
 const ExistingBookingsCard = ({
   studentId,
@@ -12,18 +12,21 @@ const ExistingBookingsCard = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [totalBookings, setTotalBookings] = useState(0);
   const [upcomingCount, setUpcomingCount] = useState(0);
   const lastFetchRef = useRef(0);
   const [refreshKey, setRefreshKey] = useState(0); // Force component refresh
 
-  // Fetch bookings from API
+  // Use the cached bookings hook (4-tier caching: Frontend → Redis → Supabase → HubSpot)
+  const { bookings: cachedBookings, loading, fetchBookings: fetchFromCache, invalidateCache } = useCachedBookings();
+
+  // Local bookings state for filtering
+  const [bookings, setBookings] = useState([]);
+
+  // Wrapper to fetch bookings with options
   const fetchBookings = useCallback(async (force = false) => {
     if (!studentId || !email) {
-      setLoading(false);
       return;
     }
 
@@ -34,45 +37,38 @@ const ExistingBookingsCard = ({
     }
     lastFetchRef.current = now;
 
-    setLoading(true);
     setError(null);
 
     try {
-      const response = await apiService.bookings.list({
-        student_id: studentId,
-        email: email,
+      await fetchFromCache(studentId, email, {
+        force: force,
         filter: 'upcoming',
-        limit: 10,
-        force: force
+        limit: 50
       });
-
-      if (!response.success) {
-        throw new Error(response.error || response.message || 'Failed to fetch bookings');
-      }
-
-      if (response.success) {
-        const allBookings = response.data.bookings || [];
-
-        // Filter to only show bookings where is_active === "Active"
-        const activeBookings = allBookings.filter(booking => {
-          const isActive = booking.is_active || booking.mock_exam?.is_active;
-          return isActive === 'Active' || isActive === 'active';
-        });
-
-        setBookings(activeBookings);
-        setUpcomingCount(activeBookings.length);
-        setTotalBookings(activeBookings.length);
-      } else {
-        throw new Error(response.error || 'Failed to fetch bookings');
-      }
     } catch (err) {
       console.error('[ExistingBookingsCard] Error fetching bookings:', err.message);
       setError('Unable to load bookings');
-      setBookings([]);
-    } finally {
-      setLoading(false);
     }
-  }, [studentId, email]);
+  }, [studentId, email, fetchFromCache]);
+
+  // Update local state when cached bookings change
+  useEffect(() => {
+    if (cachedBookings) {
+      // Filter to only show bookings where is_active === "Active"
+      const activeBookings = cachedBookings.filter(booking => {
+        const isActive = booking.is_active || booking.mock_exam?.is_active;
+        return isActive === 'Active' || isActive === 'active';
+      });
+
+      setBookings(activeBookings);
+      setUpcomingCount(activeBookings.length);
+      setTotalBookings(activeBookings.length);
+    } else {
+      setBookings([]);
+      setUpcomingCount(0);
+      setTotalBookings(0);
+    }
+  }, [cachedBookings]);
 
   // Fetch bookings on mount and when dependencies change
   useEffect(() => {
@@ -129,7 +125,10 @@ const ExistingBookingsCard = ({
         try {
           const bookingInfo = JSON.parse(e.newValue);
           if (bookingInfo.studentId === studentId) {
-            // Add delay for HubSpot sync
+            // Invalidate cache first
+            invalidateCache();
+
+            // Add delay for HubSpot sync, then force refresh
             setTimeout(() => {
               setRefreshKey(prev => prev + 1);
               fetchBookings(true);
@@ -151,6 +150,9 @@ const ExistingBookingsCard = ({
         try {
           const bookingInfo = JSON.parse(pendingRefresh);
           if (bookingInfo.studentId === studentId) {
+            // Invalidate cache first
+            invalidateCache();
+
             setTimeout(() => {
               setRefreshKey(prev => prev + 1);
               fetchBookings(true);
@@ -169,7 +171,7 @@ const ExistingBookingsCard = ({
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [studentId, fetchBookings]);
+  }, [studentId, fetchBookings, invalidateCache]);
 
   // Listen for custom events as backup mechanism
   useEffect(() => {
