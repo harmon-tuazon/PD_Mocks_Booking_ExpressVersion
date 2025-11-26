@@ -4,22 +4,32 @@
  */
 
 /**
- * Parse a YYYY-MM-DD date string without timezone conversion
+ * Parse a date string without timezone conversion
+ *
+ * Supports multiple formats:
+ * - YYYY-MM-DD (e.g., "2030-12-07")
+ * - ISO 8601 with timestamp (e.g., "2026-04-30T00:00:00+00:00")
  *
  * Problem: new Date("2030-12-07") interprets as midnight UTC
  * In EST/PST: 2030-12-07 00:00 UTC = 2030-12-06 19:00/16:00 local → shows Dec 6
  *
  * Solution: Parse components manually to create date in local timezone
  *
- * @param {string} dateString - Date in YYYY-MM-DD format
+ * @param {string} dateString - Date in YYYY-MM-DD or ISO 8601 format
  * @returns {Date} Date object in local timezone
  */
 export const parseDateString = (dateString) => {
   if (!dateString) return null;
 
   try {
+    // Handle ISO 8601 format with timestamp (e.g., "2026-04-30T00:00:00+00:00")
+    // Extract just the date part before the 'T'
+    const datePart = dateString.includes('T')
+      ? dateString.split('T')[0]
+      : dateString;
+
     // Split YYYY-MM-DD and parse as numbers
-    const [year, month, day] = dateString.split('-').map(Number);
+    const [year, month, day] = datePart.split('-').map(Number);
 
     // Create date in local timezone (month is 0-indexed)
     // This avoids the UTC midnight issue
