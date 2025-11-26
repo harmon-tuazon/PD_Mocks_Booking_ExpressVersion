@@ -9,7 +9,7 @@ import { useTokenEditMutation } from '../../hooks/useTokenEditMutation';
  * Displays trainee contact information and token balances in a card format
  * Uses 2-column grid layout for basic info with horizontal token badges below
  */
-const const TraineeInfoCard = ({ trainee }) => {
+const TraineeInfoCard = ({ trainee }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedTokens, setEditedTokens] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
