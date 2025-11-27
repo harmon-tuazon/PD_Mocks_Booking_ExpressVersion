@@ -54,7 +54,27 @@ const RebookPromptModal = ({ isOpen, booking, onClose, onRebook }) => {
   const formatDate = (dateString) => {
     if (!dateString) return '';
     try {
-      const date = new Date(dateString);
+      let date;
+
+      // Handle different date formats that HubSpot might return
+      if (typeof dateString === 'string' && dateString.includes('T')) {
+        // ISO format like "2025-09-26T00:00:00.000Z"
+        date = new Date(dateString);
+      } else if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // YYYY-MM-DD format - parse as local date to avoid timezone shift
+        const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
+        date = new Date(year, month - 1, day); // month is 0-indexed
+      } else {
+        // Try direct parsing
+        date = new Date(dateString);
+      }
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date:', dateString);
+        return dateString;
+      }
+
       return date.toLocaleDateString('en-US', {
         weekday: 'short',
         year: 'numeric',
@@ -62,6 +82,7 @@ const RebookPromptModal = ({ isOpen, booking, onClose, onRebook }) => {
         day: 'numeric'
       });
     } catch (error) {
+      console.error('Date formatting error:', error, 'input:', dateString);
       return dateString;
     }
   };
