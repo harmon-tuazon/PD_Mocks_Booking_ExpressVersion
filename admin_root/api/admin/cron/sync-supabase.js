@@ -12,7 +12,7 @@
  * - Can be manually triggered: curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain.com/api/admin/cron/sync-supabase
  **/
 
-const { syncAllData } = require('../../_shared/supabaseSync');
+const { syncAllData } = require('../../_shared/supabaseSync.optimized');
 
 module.exports = async (req, res) => {
   const startTime = Date.now();

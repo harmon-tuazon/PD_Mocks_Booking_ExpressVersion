@@ -14,7 +14,7 @@ export const COLUMN_DEFINITIONS = [
   { id: 'token_used', label: 'Token Used', defaultVisible: true, minWidth: '150px' },
   { id: 'booking_date', label: 'Booking Date', defaultVisible: true, minWidth: '180px' },
   { id: 'system_record_id', label: 'System Record ID', defaultVisible: false, minWidth: '150px' }
-];;;
+];
 
 // Trainee-only columns (not available in admin column selector, only shown in trainee dashboard)
 export const TRAINEE_ONLY_COLUMNS = [
@@ -23,10 +23,10 @@ export const TRAINEE_ONLY_COLUMNS = [
 
 // Fixed columns that are always visible (but not sticky - they scroll with the table)
 export const FIXED_COLUMNS = [
-  { id: 'name', label: 'Name', fixed: false, minWidth: '150px' },
-  { id: 'email', label: 'Email', fixed: false, minWidth: '200px' },
-  { id: 'student_id', label: 'Student ID', fixed: false, minWidth: '100px' }
-];;
+  { id: 'name', label: 'Name', fixed: true, minWidth: '150px' },
+  { id: 'email', label: 'Email', fixed: true, minWidth: '200px' },
+  { id: 'student_id', label: 'Student ID', fixed: true, minWidth: '100px' }
+];
 
 /**
  * Custom hook for managing column visibility in the bookings table
