@@ -10,13 +10,18 @@ const {
   rateLimitMiddleware,
   sanitizeInput
 } = require('../_shared/auth');
+const { syncContactCreditsToSupabase } = require('../_shared/supabase-data');
 
 /**
  * PUT /api/user/update-ndecc-date
- * Update a user's NDECC exam date in HubSpot
+ * Update a user's NDECC exam date in HubSpot and Supabase
  *
  * Authentication: User must provide student_id and email
  * Input validation: student_id, email, and ndecc_exam_date (YYYY-MM-DD, today or future)
+ *
+ * Updates:
+ * 1. HubSpot contact's ndecc_exam_date property (blocking)
+ * 2. Supabase hubspot_contact_credits table (non-blocking sync)
  *
  * @param {Object} req.body - Request body
  * @param {string} req.body.student_id - Student ID for authentication
@@ -96,7 +101,40 @@ module.exports = async function handler(req, res) {
 
     console.log(`✅ NDECC exam date updated successfully for contact ${contact.id}`);
 
-    // Step 3: Prepare success response
+    // Step 3: Sync to Supabase (non-blocking)
+    // Re-fetch the contact to get the updated data for Supabase sync
+    const updatedContactForSync = await hubspot.apiCall(
+      'GET',
+      `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contact.id}`,
+      null,
+      {
+        properties: [
+          'student_id',
+          'email',
+          'firstname',
+          'lastname',
+          'sj_credits',
+          'cs_credits',
+          'sjmini_credits',
+          'mock_discussion_token',
+          'shared_mock_credits',
+          'ndecc_exam_date',
+          'hs_lastmodifieddate'
+        ]
+      }
+    );
+
+    // Sync to Supabase (non-blocking, fire-and-forget)
+    syncContactCreditsToSupabase(updatedContactForSync.data)
+      .then(() => {
+        console.log(`✅ [SUPABASE SYNC] Contact ${contact.id} NDECC date synced to Supabase`);
+      })
+      .catch(supabaseError => {
+        console.error(`⚠️ [SUPABASE SYNC] Failed to sync contact ${contact.id} to Supabase (non-blocking):`, supabaseError.message);
+        // Don't block the response - Supabase will sync on next cron run
+      });
+
+    // Step 4: Prepare success response
     const responseData = {
       contact_id: contact.id,
       student_id: sanitizedStudentId,
