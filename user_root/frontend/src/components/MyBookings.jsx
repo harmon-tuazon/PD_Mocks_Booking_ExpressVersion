@@ -35,7 +35,7 @@ const MyBookings = () => {
 
   // UI state
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'calendar'
-  const [filter, setFilter] = useState('all'); // 'all' | 'upcoming' | 'past' | 'cancelled'
+  const [filter, setFilter] = useState('upcoming'); // 'all' | 'upcoming' | 'past' | 'cancelled' - default to upcoming
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalBookings, setTotalBookings] = useState(0);
@@ -172,7 +172,7 @@ const MyBookings = () => {
     setCredits(null);
     setStudentId('');
     setEmail('');
-    setFilter('all');
+    setFilter('upcoming');
     setViewMode('list');
   };
 
