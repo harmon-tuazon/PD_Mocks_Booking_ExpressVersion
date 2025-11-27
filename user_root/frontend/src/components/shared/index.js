@@ -10,3 +10,4 @@ export { default as InsufficientTokensError } from './InsufficientTokensError';
 export { default as InsufficientCreditsCard } from './InsufficientCreditsCard';
 export { default as PrerequisiteWarningModal } from './PrerequisiteWarningModal';
 export { default as NDECCExamDateModal } from './NDECCExamDateModal';
+export { default as RebookPromptModal } from './RebookPromptModal';

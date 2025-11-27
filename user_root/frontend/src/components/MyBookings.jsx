@@ -6,7 +6,7 @@ import BookingsCalendarView from './bookings/BookingsCalendarView';
 import CapacityBadge from './shared/CapacityBadge';
 import { ResponsiveLogo } from './shared/Logo';
 import ErrorDisplay from './shared/ErrorDisplay';
-import { DeleteBookingModal } from './shared';
+import { DeleteBookingModal, RebookPromptModal } from './shared';
 
 
 const MyBookings = () => {
@@ -50,6 +50,10 @@ const MyBookings = () => {
   const [bookingToDelete, setBookingToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  // Rebook modal state
+  const [rebookModalOpen, setRebookModalOpen] = useState(false);
+  const [cancelledBooking, setCancelledBooking] = useState(null);
 
   const ITEMS_PER_PAGE = 20;
 
@@ -231,12 +235,18 @@ const MyBookings = () => {
         window.dispatchEvent(event);
         console.log('📢 Dispatched custom bookingCancelled event');
 
-        // Close modal
+        // Store cancelled booking data for rebook prompt
+        setCancelledBooking(bookingToDelete);
+
+        // Close delete modal
         setDeleteModalOpen(false);
         setBookingToDelete(null);
 
         // Force refresh bookings list to show updated status - this will also refresh credits
         await fetchBookings(userSession.studentId, userSession.email, currentPage, true);
+
+        // Open rebook modal after successful cancellation
+        setRebookModalOpen(true);
       } else {
         throw new Error(response.message || 'Failed to cancel booking');
       }
@@ -255,6 +265,29 @@ const MyBookings = () => {
       setBookingToDelete(null);
       setDeleteError('');
     }
+  };
+
+  // Handle rebook navigation
+  const handleRebook = (mockType) => {
+    // Close rebook modal
+    setRebookModalOpen(false);
+    setCancelledBooking(null);
+
+    // Navigate to booking flow with type pre-filled
+    if (mockType === 'Mock Discussion') {
+      navigate('/book/discussions');
+    } else if (mockType) {
+      navigate(`/book/exams?type=${encodeURIComponent(mockType)}`);
+    } else {
+      // Fallback: start from exam type selection
+      navigate('/book/exam-types');
+    }
+  };
+
+  // Handle closing the rebook modal
+  const handleCloseRebookModal = () => {
+    setRebookModalOpen(false);
+    setCancelledBooking(null);
   };
 
 
@@ -1203,6 +1236,14 @@ const MyBookings = () => {
         error={deleteError}
         onClose={handleCloseDeleteModal}
         onConfirm={handleConfirmDelete}
+      />
+
+      {/* Rebook Prompt Modal */}
+      <RebookPromptModal
+        isOpen={rebookModalOpen}
+        booking={cancelledBooking}
+        onClose={handleCloseRebookModal}
+        onRebook={handleRebook}
       />
     </div>
   );
