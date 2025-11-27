@@ -84,35 +84,33 @@ const ExistingBookingsCard = ({
       setTimeout(() => {
         fetchBookings(true);
       }, 2000);
-    } else {
-      fetchBookings(true);
-    }
 
-    // Clear the refresh flag from location state to prevent unnecessary refetches
-    if (shouldRefresh && window.history.replaceState) {
-      window.history.replaceState({}, document.title);
+      // Clear the refresh flag from location state to prevent unnecessary refetches
+      if (window.history.replaceState) {
+        window.history.replaceState({}, document.title);
+      }
     }
   }, [location.pathname, location.state?.refreshBookings]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Refetch when page becomes visible (user switches tabs back)
+  // Refetch when page becomes visible (user switches tabs back) - debounced
   useEffect(() => {
+    let timeoutId;
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        fetchBookings(true);
+        // Debounce to prevent multiple rapid calls
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          fetchBookings(false); // Use cache first, don't force
+        }, 500);
       }
     };
 
-    const handleFocus = () => {
-      fetchBookings(true);
-    };
-
-    // Listen for visibility changes and window focus
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
 
     return () => {
+      clearTimeout(timeoutId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
     };
   }, [fetchBookings]);
 
@@ -198,23 +196,23 @@ const ExistingBookingsCard = ({
     };
   }, [studentId, fetchBookings]);
 
-  // Periodic polling for updates (every 30 seconds when visible)
+  // Periodic polling for updates (every 2 minutes when visible, non-forced)
   useEffect(() => {
     let intervalId;
 
     if (document.visibilityState === 'visible') {
-      // Start polling
+      // Start polling - much less aggressive, use cache first
       intervalId = setInterval(() => {
-        fetchBookings(true);
-      }, 30000); // 30 seconds
+        fetchBookings(false); // Use cache first, don't force refresh
+      }, 120000); // 2 minutes (reduced from 30 seconds)
     }
 
     const handleVisibilityForPolling = () => {
       if (document.visibilityState === 'visible' && !intervalId) {
         // Resume polling when page becomes visible
         intervalId = setInterval(() => {
-          fetchBookings(true);
-        }, 30000);
+          fetchBookings(false);
+        }, 120000);
       } else if (document.visibilityState === 'hidden' && intervalId) {
         // Stop polling when page is hidden
         clearInterval(intervalId);
@@ -346,10 +344,7 @@ const ExistingBookingsCard = ({
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
           d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">No upcoming bookings</p>
-      <p className="text-sm text-gray-500 dark:text-gray-400">
-        No upcoming exams scheduled
-      </p>
+      <p className="text-sm text-gray-500 dark:text-gray-400">No upcoming exams scheduled</p>
     </div>
   );
 
