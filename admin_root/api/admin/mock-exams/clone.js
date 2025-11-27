@@ -148,18 +148,49 @@ module.exports = async (req, res) => {
         mock_exam_name: `${overrides.mock_type || sourceProps.mock_type}-${overrides.location || sourceProps.location}-${overrides.exam_date}`
       };
 
-      // Convert start_time and end_time from HH:mm to Unix timestamp (required by HubSpot)
-      // Use the new exam_date (from overrides) for timestamp calculation
+      // Convert start_time and end_time to use the new exam_date
+      // The source times are Unix timestamps - we need to extract the TIME portion
+      // and combine it with the NEW exam_date
       const examDate = overrides.exam_date;
-      const startTime = overrides.start_time || sourceProps.start_time;
-      const endTime = overrides.end_time || sourceProps.end_time;
 
-      if (startTime && examDate) {
-        // Convert HH:mm format to timestamp using exam_date
-        clonedProperties.start_time = hubspot.convertToTimestamp(examDate, startTime).toString();
+      // Handle start_time
+      if (sourceProps.start_time && examDate) {
+        let timeString;
+
+        if (overrides.start_time) {
+          // If override provided, use it (could be HH:mm or timestamp)
+          timeString = overrides.start_time.includes(':')
+            ? overrides.start_time
+            : hubspot.extractTimeFromTimestamp(overrides.start_time);
+        } else {
+          // Extract time from source timestamp to preserve original time
+          timeString = hubspot.extractTimeFromTimestamp(sourceProps.start_time);
+        }
+
+        if (timeString) {
+          // Combine extracted time with new exam_date
+          clonedProperties.start_time = hubspot.convertToTimestamp(examDate, timeString).toString();
+        }
       }
-      if (endTime && examDate) {
-        clonedProperties.end_time = hubspot.convertToTimestamp(examDate, endTime).toString();
+
+      // Handle end_time
+      if (sourceProps.end_time && examDate) {
+        let timeString;
+
+        if (overrides.end_time) {
+          // If override provided, use it (could be HH:mm or timestamp)
+          timeString = overrides.end_time.includes(':')
+            ? overrides.end_time
+            : hubspot.extractTimeFromTimestamp(overrides.end_time);
+        } else {
+          // Extract time from source timestamp to preserve original time
+          timeString = hubspot.extractTimeFromTimestamp(sourceProps.end_time);
+        }
+
+        if (timeString) {
+          // Combine extracted time with new exam_date
+          clonedProperties.end_time = hubspot.convertToTimestamp(examDate, timeString).toString();
+        }
       }
 
       // Clear scheduled_activation_datetime if is_active changed from 'scheduled'

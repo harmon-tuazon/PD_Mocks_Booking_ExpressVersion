@@ -276,6 +276,43 @@ class HubSpotService {
   }
 
   /**
+   * Extract time string (HH:MM) from Unix timestamp
+   * Used when we need to preserve the time portion but change the date
+   *
+   * @param {string|number} timestamp - Unix timestamp in milliseconds
+   * @returns {string} Time in HH:MM format (e.g., "14:30")
+   */
+  extractTimeFromTimestamp(timestamp) {
+    if (!timestamp) {
+      return null;
+    }
+
+    // Convert to number if string
+    const ts = typeof timestamp === 'string' ? parseInt(timestamp) : timestamp;
+
+    if (isNaN(ts)) {
+      return null;
+    }
+
+    // Create Date object from timestamp
+    const date = new Date(ts);
+
+    // Extract hours and minutes in America/Toronto timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Toronto',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+
+    const parts = formatter.formatToParts(date);
+    const hours = parts.find(p => p.type === 'hour')?.value || '00';
+    const minutes = parts.find(p => p.type === 'minute')?.value || '00';
+
+    return `${hours}:${minutes}`;
+  }
+
+  /**
    * Search for available mock exams with optional filtering
    * This is a high-level search used by booking flow
    */
