@@ -123,6 +123,16 @@ module.exports = async (req, res) => {
       // Generate new unique mock_exam_id for this clone
       const newMockExamId = maxMockExamId + i + 1;
 
+      // Helper: Map human-readable is_active values to HubSpot format
+      const mapIsActiveToHubSpot = (value) => {
+        if (!value) return null;
+        const normalized = value.toLowerCase();
+        if (normalized === 'active') return 'true';
+        if (normalized === 'inactive') return 'false';
+        if (normalized === 'scheduled') return 'scheduled';
+        return value; // Return as-is if already in correct format
+      };
+
       // Build cloned properties by merging source + overrides
       const clonedProperties = {
         // Copy all source properties (already in clean format from frontend)
@@ -133,7 +143,7 @@ module.exports = async (req, res) => {
         ...(overrides.location && { location: overrides.location }),
         ...(overrides.mock_type && { mock_type: overrides.mock_type }),
         ...(overrides.capacity && { capacity: overrides.capacity.toString() }),
-        ...(overrides.is_active && { is_active: overrides.is_active }),
+        ...(overrides.is_active && { is_active: mapIsActiveToHubSpot(overrides.is_active) }),
         ...(overrides.scheduled_activation_datetime && {
           scheduled_activation_datetime: overrides.scheduled_activation_datetime
         }),
@@ -148,18 +158,71 @@ module.exports = async (req, res) => {
         mock_exam_name: `${overrides.mock_type || sourceProps.mock_type}-${overrides.location || sourceProps.location}-${overrides.exam_date}`
       };
 
-      // Convert start_time and end_time from HH:mm to Unix timestamp (required by HubSpot)
-      // Use the new exam_date (from overrides) for timestamp calculation
+      // Convert start_time and end_time to use the new exam_date
+      // The source times are Unix timestamps - we need to extract the TIME portion
+      // and combine it with the NEW exam_date
       const examDate = overrides.exam_date;
-      const startTime = overrides.start_time || sourceProps.start_time;
-      const endTime = overrides.end_time || sourceProps.end_time;
 
-      if (startTime && examDate) {
-        // Convert HH:mm format to timestamp using exam_date
-        clonedProperties.start_time = hubspot.convertToTimestamp(examDate, startTime).toString();
+      // Handle start_time
+      if (sourceProps.start_time && examDate) {
+        let timeString;
+
+        if (overrides.start_time) {
+          // If override provided, use it (could be HH:mm or timestamp)
+          timeString = overrides.start_time.includes(':')
+            ? overrides.start_time
+            : hubspot.extractTimeFromTimestamp(overrides.start_time);
+        } else {
+          // Extract time from source timestamp to preserve original time
+          timeString = hubspot.extractTimeFromTimestamp(sourceProps.start_time);
+        }
+
+        if (timeString) {
+          try {
+            // Combine extracted time with new exam_date
+            clonedProperties.start_time = hubspot.convertToTimestamp(examDate, timeString).toString();
+            console.log(`✅ [CLONE] Converted start_time: ${timeString} + ${examDate} → ${clonedProperties.start_time}`);
+          } catch (error) {
+            console.error(`❌ [CLONE] Failed to convert start_time:`, error);
+            // Fallback: keep original timestamp
+            clonedProperties.start_time = sourceProps.start_time;
+          }
+        } else {
+          console.warn(`⚠️ [CLONE] Could not extract time from start_time: ${sourceProps.start_time}`);
+          // Fallback: keep original timestamp
+          clonedProperties.start_time = sourceProps.start_time;
+        }
       }
-      if (endTime && examDate) {
-        clonedProperties.end_time = hubspot.convertToTimestamp(examDate, endTime).toString();
+
+      // Handle end_time
+      if (sourceProps.end_time && examDate) {
+        let timeString;
+
+        if (overrides.end_time) {
+          // If override provided, use it (could be HH:mm or timestamp)
+          timeString = overrides.end_time.includes(':')
+            ? overrides.end_time
+            : hubspot.extractTimeFromTimestamp(overrides.end_time);
+        } else {
+          // Extract time from source timestamp to preserve original time
+          timeString = hubspot.extractTimeFromTimestamp(sourceProps.end_time);
+        }
+
+        if (timeString) {
+          try {
+            // Combine extracted time with new exam_date
+            clonedProperties.end_time = hubspot.convertToTimestamp(examDate, timeString).toString();
+            console.log(`✅ [CLONE] Converted end_time: ${timeString} + ${examDate} → ${clonedProperties.end_time}`);
+          } catch (error) {
+            console.error(`❌ [CLONE] Failed to convert end_time:`, error);
+            // Fallback: keep original timestamp
+            clonedProperties.end_time = sourceProps.end_time;
+          }
+        } else {
+          console.warn(`⚠️ [CLONE] Could not extract time from end_time: ${sourceProps.end_time}`);
+          // Fallback: keep original timestamp
+          clonedProperties.end_time = sourceProps.end_time;
+        }
       }
 
       // Clear scheduled_activation_datetime if is_active changed from 'scheduled'

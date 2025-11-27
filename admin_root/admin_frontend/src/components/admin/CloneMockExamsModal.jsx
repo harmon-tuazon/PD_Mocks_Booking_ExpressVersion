@@ -80,13 +80,32 @@ const CloneMockExamsModal = ({
   // Helper to convert ISO timestamp or HH:mm to HH:mm format
   const normalizeTimeToHHMM = (timeValue) => {
     if (!timeValue) return '';
+
     // If already in HH:mm format, return as is
     if (/^\d{2}:\d{2}$/.test(timeValue)) return timeValue;
-    // If ISO format, extract HH:mm
+
+    // If ISO format (e.g., "2025-12-03T14:30:00Z"), extract HH:mm
     if (timeValue.includes('T')) {
       const match = timeValue.match(/T(\d{2}:\d{2})/);
       return match ? match[1] : '';
     }
+
+    // If Unix timestamp (milliseconds), convert to HH:mm
+    const timestamp = parseInt(timeValue);
+    if (!isNaN(timestamp) && timestamp > 1000000000000) { // Validate it's a reasonable timestamp
+      try {
+        const date = new Date(timestamp);
+        if (!isNaN(date.getTime())) {
+          // Extract HH:mm in local timezone
+          const hours = date.getHours().toString().padStart(2, '0');
+          const minutes = date.getMinutes().toString().padStart(2, '0');
+          return `${hours}:${minutes}`;
+        }
+      } catch (error) {
+        console.error('[normalizeTimeToHHMM] Error converting timestamp:', error);
+      }
+    }
+
     return timeValue;
   };
 
@@ -96,11 +115,25 @@ const CloneMockExamsModal = ({
 
     if (selectedSessions.length === 1) {
       const source = selectedSessions[0];
-      const sourceDate = new Date(source.exam_date);
-      sourceDate.setDate(sourceDate.getDate() + 7); // Default to +7 days
+
+      // Calculate default new date (+7 days from source)
+      let newExamDate = '';
+      if (source.exam_date) {
+        try {
+          const sourceDate = new Date(source.exam_date);
+          if (!isNaN(sourceDate.getTime())) {
+            sourceDate.setDate(sourceDate.getDate() + 7); // Default to +7 days
+            newExamDate = sourceDate.toISOString().split('T')[0];
+          }
+        } catch (error) {
+          console.error('[CloneModal] Error calculating new exam date:', error);
+          // Fallback to empty - user must select date
+          newExamDate = '';
+        }
+      }
 
       setFormData({
-        exam_date: sourceDate.toISOString().split('T')[0],
+        exam_date: newExamDate,
         location: source.location || KEEP_ORIGINAL,
         mock_type: source.mock_type || KEEP_ORIGINAL,
         capacity: source.capacity || '',

@@ -104,8 +104,13 @@ module.exports = async (req, res) => {
             : 0;
 
           // Add session to aggregate
+          // Include parent aggregate properties (mock_type, exam_date, location)
+          // so they're available when sessions are selected in bulk operations
           aggregateMap.get(key).sessions.push({
             id: exam.hubspot_id,
+            mock_type: exam.mock_type,       // For clone modal preview
+            exam_date: dateOnly,              // For clone modal preview
+            location: exam.location,          // For clone modal preview
             start_time: exam.start_time,
             end_time: exam.end_time,
             capacity: capacity,

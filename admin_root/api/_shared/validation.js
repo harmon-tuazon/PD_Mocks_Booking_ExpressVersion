@@ -815,15 +815,15 @@ const schemas = {
   clone: Joi.object({
     cloneSources: Joi.array()
       .items(Joi.object({
-        sourceSessionId: Joi.string().pattern(/^\\d+$/).required(),
+        sourceSessionId: Joi.string().pattern(/^\d+$/).required(),
         sourceProperties: Joi.object({
-          mock_type: Joi.string().required(),
-          location: Joi.string().required(),
-          exam_date: Joi.string().pattern(/^\\d{4}-\\d{2}-\\d{2}$/).required(),
-          capacity: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
-          start_time: Joi.string().required(),
-          end_time: Joi.string().required(),
-          is_active: Joi.string().valid('active', 'inactive', 'scheduled', 'true', 'false').required(),
+          mock_type: Joi.string().allow('').optional(),
+          location: Joi.string().allow('').optional(),
+          exam_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow('').optional(),
+          capacity: Joi.alternatives().try(Joi.string(), Joi.number()).allow('').optional(),
+          start_time: Joi.string().allow('').optional(),
+          end_time: Joi.string().allow('').optional(),
+          is_active: Joi.string().valid('active', 'inactive', 'scheduled', 'Active', 'Inactive', 'Scheduled', 'true', 'false').allow('').optional(),
           scheduled_activation_datetime: Joi.string().allow('', null).optional()
         }).required()
       }))
@@ -837,7 +837,7 @@ const schemas = {
 
     overrides: Joi.object({
       exam_date: Joi.string()
-        .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
+        .pattern(/^\d{4}-\d{2}-\d{2}$/)
         .required()
         .messages({
           'string.pattern.base': 'Date must be in YYYY-MM-DD format',
@@ -855,9 +855,9 @@ const schemas = {
 
       capacity: Joi.number().integer().min(1).max(100).optional().allow(''),
 
-      start_time: Joi.string().pattern(/^\\d{2}:\\d{2}$/).optional().allow(''),
+      start_time: Joi.string().pattern(/^\d{2}:\d{2}$/).optional().allow(''),
 
-      end_time: Joi.string().pattern(/^\\d{2}:\\d{2}$/).optional().allow(''),
+      end_time: Joi.string().pattern(/^\d{2}:\d{2}$/).optional().allow(''),
 
       is_active: Joi.string().valid('active', 'inactive', 'scheduled').optional().allow(''),
 
