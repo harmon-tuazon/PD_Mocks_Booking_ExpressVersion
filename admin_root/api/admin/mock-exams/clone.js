@@ -123,6 +123,16 @@ module.exports = async (req, res) => {
       // Generate new unique mock_exam_id for this clone
       const newMockExamId = maxMockExamId + i + 1;
 
+      // Helper: Map human-readable is_active values to HubSpot format
+      const mapIsActiveToHubSpot = (value) => {
+        if (!value) return null;
+        const normalized = value.toLowerCase();
+        if (normalized === 'active') return 'true';
+        if (normalized === 'inactive') return 'false';
+        if (normalized === 'scheduled') return 'scheduled';
+        return value; // Return as-is if already in correct format
+      };
+
       // Build cloned properties by merging source + overrides
       const clonedProperties = {
         // Copy all source properties (already in clean format from frontend)
@@ -133,7 +143,7 @@ module.exports = async (req, res) => {
         ...(overrides.location && { location: overrides.location }),
         ...(overrides.mock_type && { mock_type: overrides.mock_type }),
         ...(overrides.capacity && { capacity: overrides.capacity.toString() }),
-        ...(overrides.is_active && { is_active: overrides.is_active }),
+        ...(overrides.is_active && { is_active: mapIsActiveToHubSpot(overrides.is_active) }),
         ...(overrides.scheduled_activation_datetime && {
           scheduled_activation_datetime: overrides.scheduled_activation_datetime
         }),
