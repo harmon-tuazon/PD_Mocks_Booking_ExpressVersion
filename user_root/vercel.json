@@ -6,12 +6,6 @@
       "maxDuration": 60
     }
   },
-  "crons": [
-    {
-      "path": "/api/mock-exams/sync-capacity",
-      "schedule": "0 * * * *"
-    }
-  ],
   "headers": [
     {
       "source": "/assets/(.*)",
