@@ -65,7 +65,7 @@ async function fetchAllMockExams() {
   const properties = [
     'mock_exam_name', 'mock_type', 'exam_date', 'start_time', 'end_time',
     'location', 'capacity', 'total_bookings', 'is_active', 'scheduled_activation_datetime',
-    'createdate', 'hs_lastmodifieddate'
+    'hs_createdate', 'hs_lastmodifieddate'
   ];
 
   do {
@@ -115,10 +115,10 @@ async function fetchBookingsForExam(examId) {
   // Fetch booking details in batch
   const properties = [
     'booking_id', 'associated_mock_exam', 'associated_contact_id', 'student_id', 'name',
-    'student_email', 'is_active', 'attendance', 'attending_location',
+    'email', 'is_active', 'attendance', 'attending_location',
     'exam_date', 'dominant_hand', 'token_used', 'token_refunded_at', 'token_refund_admin',
     'mock_type', 'start_time', 'end_time', 'ndecc_exam_date', 'idempotency_key',
-    'createdate', 'hs_lastmodifieddate'
+    'hs_createdate', 'hs_lastmodifieddate'
   ];
 
   const batchResponse = await hubspotApiCall(
@@ -152,7 +152,7 @@ async function syncExamToSupabase(exam) {
     total_bookings: parseInt(props.total_bookings) || 0,
     is_active: props.is_active,
     scheduled_activation_datetime: props.scheduled_activation_datetime,
-    created_at: props.createdate,
+    created_at: props.hs_createdate,
     updated_at: props.hs_lastmodifieddate,
     synced_at: new Date().toISOString()
   };
@@ -181,7 +181,7 @@ async function syncBookingsToSupabase(bookings, examId) {
       associated_contact_id: props.associated_contact_id,
       student_id: props.student_id,
       name: props.name,
-      student_email: props.student_email,
+      student_email: props.email,
       is_active: props.is_active,
       attendance: props.attendance,
       attending_location: props.attending_location,
@@ -195,7 +195,7 @@ async function syncBookingsToSupabase(bookings, examId) {
       end_time: props.end_time,
       ndecc_exam_date: props.ndecc_exam_date,
       idempotency_key: props.idempotency_key,
-      created_at: props.createdate,
+      created_at: props.hs_createdate,
       updated_at: props.hs_lastmodifieddate,
       synced_at: new Date().toISOString()
     };
@@ -221,7 +221,7 @@ async function fetchAllContactsWithCredits() {
     'student_id', 'email', 'firstname', 'lastname',
     'sj_credits', 'cs_credits', 'sjmini_credits',
     'mock_discussion_token', 'shared_mock_credits',
-    'ndecc_exam_date', 'createdate', 'hs_lastmodifieddate'
+    'ndecc_exam_date', 'hs_createdate', 'hs_lastmodifieddate'
   ];
 
   do {
@@ -315,7 +315,7 @@ async function syncContactCreditsToSupabase(contact) {
     mock_discussion_token: parseInt(props.mock_discussion_token) || 0,
     shared_mock_credits: parseInt(props.shared_mock_credits) || 0,
     ndecc_exam_date: props.ndecc_exam_date,
-    created_at: props.createdate,
+    created_at: props.hs_createdate,
     updated_at: props.hs_lastmodifieddate,
     synced_at: new Date().toISOString()
   };
