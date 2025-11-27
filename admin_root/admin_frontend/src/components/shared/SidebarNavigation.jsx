@@ -206,7 +206,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
             {/* Version and Support Info */}
             <div className="mt-4 space-y-1">
               <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                PrepDoctors Admin v1.0.0
+                PrepDoctors Admin v1.5.0
               </div>
               <div className="text-xs text-gray-400 dark:text-gray-500 text-center">
                 © 2025 PrepDoctors
