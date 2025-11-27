@@ -280,36 +280,52 @@ class HubSpotService {
    * Used when we need to preserve the time portion but change the date
    *
    * @param {string|number} timestamp - Unix timestamp in milliseconds
-   * @returns {string} Time in HH:MM format (e.g., "14:30")
+   * @returns {string|null} Time in HH:MM format (e.g., "14:30") or null if invalid
    */
   extractTimeFromTimestamp(timestamp) {
     if (!timestamp) {
+      console.warn('[extractTimeFromTimestamp] Empty timestamp provided');
       return null;
     }
 
-    // Convert to number if string
-    const ts = typeof timestamp === 'string' ? parseInt(timestamp) : timestamp;
+    try {
+      // Convert to number if string
+      const ts = typeof timestamp === 'string' ? parseInt(timestamp) : timestamp;
 
-    if (isNaN(ts)) {
+      if (isNaN(ts)) {
+        console.warn('[extractTimeFromTimestamp] Invalid timestamp (NaN):', timestamp);
+        return null;
+      }
+
+      // Create Date object from timestamp
+      const date = new Date(ts);
+
+      // Validate date is valid
+      if (isNaN(date.getTime())) {
+        console.warn('[extractTimeFromTimestamp] Invalid date created from timestamp:', timestamp);
+        return null;
+      }
+
+      // Extract hours and minutes in America/Toronto timezone
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Toronto',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+
+      const parts = formatter.formatToParts(date);
+      const hours = parts.find(p => p.type === 'hour')?.value || '00';
+      const minutes = parts.find(p => p.type === 'minute')?.value || '00';
+
+      const timeString = `${hours}:${minutes}`;
+      console.log(`[extractTimeFromTimestamp] Extracted "${timeString}" from timestamp ${timestamp}`);
+
+      return timeString;
+    } catch (error) {
+      console.error('[extractTimeFromTimestamp] Error extracting time:', error, 'Timestamp:', timestamp);
       return null;
     }
-
-    // Create Date object from timestamp
-    const date = new Date(ts);
-
-    // Extract hours and minutes in America/Toronto timezone
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/Toronto',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-
-    const parts = formatter.formatToParts(date);
-    const hours = parts.find(p => p.type === 'hour')?.value || '00';
-    const minutes = parts.find(p => p.type === 'minute')?.value || '00';
-
-    return `${hours}:${minutes}`;
   }
 
   /**

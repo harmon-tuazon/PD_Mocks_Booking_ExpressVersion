@@ -168,8 +168,19 @@ module.exports = async (req, res) => {
         }
 
         if (timeString) {
-          // Combine extracted time with new exam_date
-          clonedProperties.start_time = hubspot.convertToTimestamp(examDate, timeString).toString();
+          try {
+            // Combine extracted time with new exam_date
+            clonedProperties.start_time = hubspot.convertToTimestamp(examDate, timeString).toString();
+            console.log(`✅ [CLONE] Converted start_time: ${timeString} + ${examDate} → ${clonedProperties.start_time}`);
+          } catch (error) {
+            console.error(`❌ [CLONE] Failed to convert start_time:`, error);
+            // Fallback: keep original timestamp
+            clonedProperties.start_time = sourceProps.start_time;
+          }
+        } else {
+          console.warn(`⚠️ [CLONE] Could not extract time from start_time: ${sourceProps.start_time}`);
+          // Fallback: keep original timestamp
+          clonedProperties.start_time = sourceProps.start_time;
         }
       }
 
@@ -188,8 +199,19 @@ module.exports = async (req, res) => {
         }
 
         if (timeString) {
-          // Combine extracted time with new exam_date
-          clonedProperties.end_time = hubspot.convertToTimestamp(examDate, timeString).toString();
+          try {
+            // Combine extracted time with new exam_date
+            clonedProperties.end_time = hubspot.convertToTimestamp(examDate, timeString).toString();
+            console.log(`✅ [CLONE] Converted end_time: ${timeString} + ${examDate} → ${clonedProperties.end_time}`);
+          } catch (error) {
+            console.error(`❌ [CLONE] Failed to convert end_time:`, error);
+            // Fallback: keep original timestamp
+            clonedProperties.end_time = sourceProps.end_time;
+          }
+        } else {
+          console.warn(`⚠️ [CLONE] Could not extract time from end_time: ${sourceProps.end_time}`);
+          // Fallback: keep original timestamp
+          clonedProperties.end_time = sourceProps.end_time;
         }
       }
 
