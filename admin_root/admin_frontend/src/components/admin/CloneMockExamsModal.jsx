@@ -136,9 +136,9 @@ const CloneMockExamsModal = ({
         exam_date: newExamDate,
         location: source.location || KEEP_ORIGINAL,
         mock_type: source.mock_type || KEEP_ORIGINAL,
-        capacity: source.capacity || '',
-        start_time: normalizeTimeToHHMM(source.start_time),
-        end_time: normalizeTimeToHHMM(source.end_time),
+        capacity: '', // Always start empty - user must explicitly enter to override
+        start_time: '', // Always start empty - user must explicitly enter to override
+        end_time: '', // Always start empty - user must explicitly enter to override
         is_active: source.is_active || KEEP_ORIGINAL,
         scheduled_activation_datetime: source.scheduled_activation_datetime || ''
       });

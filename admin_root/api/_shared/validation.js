@@ -676,7 +676,7 @@ const schemas = {
   // Schema for bulk toggle status (Admin)
   bulkToggleStatus: Joi.object({
     sessionIds: Joi.array()
-      .items(Joi.string().pattern(/^\\d+$/))
+      .items(Joi.string().pattern(/^\d+$/))
       .min(1)
       .max(100)
       .required()
@@ -691,7 +691,7 @@ const schemas = {
   // Schema for bulk update mock exams (Admin)
   bulkUpdate: Joi.object({
     sessionIds: Joi.array()
-      .items(Joi.string().pattern(/^\\d+$/))
+      .items(Joi.string().pattern(/^\d+$/))
       .min(1)
       .max(100)
       .required()
@@ -799,7 +799,7 @@ const schemas = {
   // Schema for batch delete sessions (Admin)
   batchDeleteSessions: Joi.object({
     sessionIds: Joi.array()
-      .items(Joi.string().pattern(/^\\d+$/))
+      .items(Joi.string().pattern(/^\d+$/))
       .min(1)
       .max(100)
       .required()
@@ -901,7 +901,7 @@ const schemas = {
       .items(
         Joi.object({
           bookingId: Joi.string()
-            .pattern(/^\\d+$/)
+            .pattern(/^\d+$/)
             .required()
             .messages({
               'string.pattern.base': 'Booking ID must be numeric',
@@ -942,7 +942,7 @@ const schemas = {
       .items(
         Joi.object({
           id: Joi.string()
-            .pattern(/^\\d+$/)
+            .pattern(/^\d+$/)
             .required()
             .messages({
               'string.pattern.base': 'Booking ID must be numeric',
@@ -955,7 +955,7 @@ const schemas = {
               'string.base': 'Token used must be a string'
             }),
           associated_contact_id: Joi.string()
-            .pattern(/^\\d+$/)
+            .pattern(/^\d+$/)
             .allow('')
             .optional()
             .messages({
