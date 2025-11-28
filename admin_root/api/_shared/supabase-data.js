@@ -261,6 +261,17 @@ async function getActiveBookingsCountFromSupabase(examId) {
 async function syncBookingToSupabase(booking, examId) {
   const props = booking.properties || booking;
 
+  // Transform dominant_hand boolean to string
+  let dominantHandValue = null;
+  if (props.dominant_hand === 'true' || props.dominant_hand === true) {
+    dominantHandValue = 'right hand';
+  } else if (props.dominant_hand === 'false' || props.dominant_hand === false) {
+    dominantHandValue = 'left hand';
+  } else if (props.dominant_hand === 'right hand' || props.dominant_hand === 'left hand') {
+    // Already in correct format
+    dominantHandValue = props.dominant_hand;
+  }
+
   const record = {
     hubspot_id: booking.id,
     booking_id: props.booking_id,
@@ -273,7 +284,7 @@ async function syncBookingToSupabase(booking, examId) {
     attendance: props.attendance,
     attending_location: props.attending_location,
     exam_date: props.exam_date,
-    dominant_hand: props.dominant_hand,
+    dominant_hand: dominantHandValue,
     token_used: props.token_used,
     token_refunded_at: props.token_refunded_at ? new Date(parseInt(props.token_refunded_at)).toISOString() : null,
     token_refund_admin: props.token_refund_admin,

@@ -33,8 +33,8 @@ const BookingRow = ({
   const formatDominantHand = (hand) => {
     if (!hand) return 'N/A';
     const handLower = hand.toLowerCase();
-    if (handLower === 'right' || handLower === 'r') return 'Right';
-    if (handLower === 'left' || handLower === 'l') return 'Left';
+    if (handLower === 'right hand' || handLower === 'right' || handLower === 'r') return 'Right Hand';
+    if (handLower === 'left hand' || handLower === 'left' || handLower === 'l') return 'Left Hand';
     return hand;
   };
 

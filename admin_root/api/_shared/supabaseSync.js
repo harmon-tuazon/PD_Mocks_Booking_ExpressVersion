@@ -174,6 +174,15 @@ async function syncBookingsToSupabase(bookings, examId) {
 
   const records = bookings.map(booking => {
     const props = booking.properties;
+    
+    // Transform dominant_hand boolean to string
+    let dominantHandValue = null;
+    if (props.dominant_hand === 'true' || props.dominant_hand === true) {
+      dominantHandValue = 'right hand';
+    } else if (props.dominant_hand === 'false' || props.dominant_hand === false) {
+      dominantHandValue = 'left hand';
+    }
+    
     return {
       hubspot_id: booking.id,
       booking_id: props.booking_id,
@@ -186,7 +195,7 @@ async function syncBookingsToSupabase(bookings, examId) {
       attendance: props.attendance,
       attending_location: props.attending_location,
       exam_date: props.exam_date,
-      dominant_hand: props.dominant_hand,
+      dominant_hand: dominantHandValue,
       token_used: props.token_used,
       token_refunded_at: props.token_refunded_at ? new Date(parseInt(props.token_refunded_at)).toISOString() : null,
       token_refund_admin: props.token_refund_admin,
