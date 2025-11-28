@@ -551,6 +551,11 @@ module.exports = module.exports = module.exports = async function handler(req, r
 
     // SUPABASE SYNC: Sync booking to Supabase for read optimization
     try {
+      // CRITICAL FIX: For Clinical Skills, use mock exam's location instead of user input
+      const locationForSupabase = mock_type === 'Clinical Skills'
+        ? (mockExam.properties.location || null)
+        : formattedLocation;
+
       const bookingForSync = {
         id: createdBookingId,
         properties: {
@@ -562,7 +567,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
           student_email: sanitizedEmail,
           is_active: 'Active',
           attendance: null,
-          attending_location: formattedLocation,
+          attending_location: locationForSupabase,
           exam_date: exam_date,
           dominant_hand: dominant_hand || null,
           token_used: tokenUsed || null,
