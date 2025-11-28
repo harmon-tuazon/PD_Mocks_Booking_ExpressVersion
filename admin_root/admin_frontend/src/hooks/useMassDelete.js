@@ -87,11 +87,11 @@ const useMassDelete = () => {
 
       // Optimistically update the cache by removing deleted sessions
       if (deleted && deleted.length > 0) {
-        // Update mock-exams-list cache by removing deleted sessions
-        queryClient.setQueriesData(['mock-exams-list'], (oldData) => {
+        // Update mockExams cache by removing deleted sessions (matches useMockExamsData query key)
+        queryClient.setQueriesData({ queryKey: ['mockExams'] }, (oldData) => {
           if (!oldData) return oldData;
 
-          console.log('🔄 [MASS DELETE] Optimistically removing sessions from mock-exams-list cache');
+          console.log('🔄 [MASS DELETE] Optimistically removing sessions from mockExams cache');
 
           return {
             ...oldData,

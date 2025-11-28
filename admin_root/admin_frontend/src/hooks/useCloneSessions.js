@@ -104,11 +104,11 @@ const useCloneSessions = () => {
 
       // Optimistically update the cache with new cloned sessions
       if (results.successful && results.successful.length > 0) {
-        // Update mock-exams-list cache by adding new sessions
-        queryClient.setQueriesData(['mock-exams-list'], (oldData) => {
+        // Update mockExams cache by adding new sessions (matches useMockExamsData query key)
+        queryClient.setQueriesData({ queryKey: ['mockExams'] }, (oldData) => {
           if (!oldData) return oldData;
 
-          console.log('🔄 [CLONE] Updating mock-exams-list cache with new sessions');
+          console.log('🔄 [CLONE] Updating mockExams cache with new sessions');
 
           // Transform API response to match frontend data structure
           const newSessions = results.successful.map(session => ({
