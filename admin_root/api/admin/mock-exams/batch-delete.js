@@ -489,21 +489,31 @@ async function batchArchiveSessions(sessionIds) {
         { inputs: chunk.map(id => ({ id })) }
       );
       console.log(`🔧 [batchArchiveSessions] HubSpot API response received:`, {
+        status: response.status || 'unknown',
         hasResults: !!response.results,
         resultsCount: response.results?.length || 0,
         hasErrors: !!response.errors,
-        errorsCount: response.errors?.length || 0
+        errorsCount: response.errors?.length || 0,
+        fullResponse: response
       });
 
-      // Process successful deletions
-      if (response.results) {
+      // HubSpot batch archive API may return empty response on success
+      // If no errors and API call succeeded, assume all in chunk were deleted
+      if (response.results && response.results.length > 0) {
+        // Standard response with results
         for (const result of response.results) {
           results.successful.push(result.id);
+        }
+      } else if (!response.errors || response.errors.length === 0) {
+        // No results but also no errors - API succeeded, assume all deleted
+        console.log(`🔧 [batchArchiveSessions] No results returned but no errors either - assuming success for ${chunk.length} sessions`);
+        for (const sessionId of chunk) {
+          results.successful.push(sessionId);
         }
       }
 
       // Process partial failures
-      if (response.errors) {
+      if (response.errors && response.errors.length > 0) {
         for (const error of response.errors) {
           results.failed.push({
             sessionId: error.context?.id || 'unknown',

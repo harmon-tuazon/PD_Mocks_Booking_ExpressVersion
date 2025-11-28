@@ -116,7 +116,7 @@ const CloneMockExamsModal = ({
         capacity: KEEP_ORIGINAL, // Use sentinel value instead of empty string
         start_time: KEEP_ORIGINAL, // Use sentinel value instead of empty string
         end_time: KEEP_ORIGINAL, // Use sentinel value instead of empty string
-        is_active: source.is_active || KEEP_ORIGINAL,
+        is_active: KEEP_ORIGINAL, // Use sentinel value instead of empty string
         scheduled_activation_datetime: source.scheduled_activation_datetime || ''
       });
     } else {
