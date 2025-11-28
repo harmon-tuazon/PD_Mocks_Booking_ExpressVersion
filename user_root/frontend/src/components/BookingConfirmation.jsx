@@ -16,18 +16,18 @@ const BookingConfirmation = () => {
   // Import the hook and get user session
   const { credits, loading: creditsLoading, fetchCredits } = useCachedCredits();
 
-  // Fetch fresh credits on mount
+  // CRITICAL FIX: Fetch fresh credits on mount WITHOUT dependency on bookingData
+  // This ensures credits are ALWAYS refreshed when confirmation page loads
   useEffect(() => {
     const userData = getUserSession();
-    if (userData && bookingData.mockType) {
-      console.log('🔄 [BookingConfirmation] Fetching fresh credit data for:', {
-        studentId: userData.studentId,
-        mockType: bookingData.mockType
+    if (userData) {
+      console.log('🔄 [BookingConfirmation] Fetching fresh credit data on mount for:', {
+        studentId: userData.studentId
       });
-      // CRITICAL FIX: Force refresh to bypass cache and get updated token values
+      // Force refresh to bypass cache and get updated token values
       fetchCredits(userData.studentId, userData.email, true);
     }
-  }, [bookingData.mockType, fetchCredits]);
+  }, []); // Empty dependency array - only run on mount
 
   // Listen for cache invalidation to refresh token display
   // NOTE: We ONLY listen to creditsInvalidated to avoid duplicate API calls

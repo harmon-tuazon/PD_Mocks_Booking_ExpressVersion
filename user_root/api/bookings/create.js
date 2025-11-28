@@ -415,7 +415,8 @@ module.exports = module.exports = module.exports = async function handler(req, r
             cs_credits: supabaseContact.cs_credits?.toString() || '0',
             sjmini_credits: supabaseContact.sjmini_credits?.toString() || '0',
             mock_discussion_token: supabaseContact.mock_discussion_token?.toString() || '0',
-            shared_mock_credits: supabaseContact.shared_mock_credits?.toString() || '0'
+            shared_mock_credits: supabaseContact.shared_mock_credits?.toString() || '0',
+            ndecc_exam_date: supabaseContact.ndecc_exam_date || null
           }
         };
       }
@@ -429,7 +430,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
       console.log(`⚠️ [HUBSPOT FALLBACK] Reading from source of truth for student ${student_id}`);
 
       // Build properties list based on mock type for efficiency
-      const baseProperties = ['student_id', 'email'];
+      const baseProperties = ['student_id', 'email', 'ndecc_exam_date'];
       let creditProperties = [];
 
       switch (mock_type) {
@@ -576,7 +577,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
           mock_type: mock_type,
           start_time: mockExam.properties?.start_time || null,
           end_time: mockExam.properties?.end_time || null,
-          ndecc_exam_date: mockExam.properties?.ndecc_exam_date || null,
+          ndecc_exam_date: contact.properties?.ndecc_exam_date || null,
           createdate: new Date().toISOString()
         }
       };
