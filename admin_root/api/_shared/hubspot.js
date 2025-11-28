@@ -289,16 +289,27 @@ class HubSpotService {
     }
 
     try {
-      // Convert to number if string
-      const ts = typeof timestamp === 'string' ? parseInt(timestamp) : timestamp;
+      // Handle both ISO strings (2026-01-21T22:00:00Z) and numeric timestamps
+      let date;
 
-      if (isNaN(ts)) {
-        console.warn('[extractTimeFromTimestamp] Invalid timestamp (NaN):', timestamp);
-        return null;
+      if (typeof timestamp === 'string') {
+        // Check if it's an ISO string (contains 'T' or '-')
+        if (timestamp.includes('T') || timestamp.includes('-')) {
+          // Parse as ISO string
+          date = new Date(timestamp);
+        } else {
+          // Parse as numeric string
+          const ts = parseInt(timestamp);
+          if (isNaN(ts)) {
+            console.warn('[extractTimeFromTimestamp] Invalid timestamp (NaN):', timestamp);
+            return null;
+          }
+          date = new Date(ts);
+        }
+      } else {
+        // Numeric timestamp
+        date = new Date(timestamp);
       }
-
-      // Create Date object from timestamp
-      const date = new Date(ts);
 
       // Validate date is valid
       if (isNaN(date.getTime())) {
