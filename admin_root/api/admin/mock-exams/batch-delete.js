@@ -212,12 +212,49 @@ module.exports = async (req, res) => {
     let supabaseSynced = false;
     if (results.deleted.length > 0) {
       try {
+        // CRITICAL: Delete associated bookings BEFORE deleting exams to avoid FK constraint violations
+        console.log(`🗑️ [BATCH-DELETE] Deleting associated bookings from Supabase for ${results.deleted.length} exams...`);
+
+        const bookingDeletes = results.deleted.map(async (sessionId) => {
+          try {
+            // Delete all bookings (including cancelled) for this exam session
+            const { data: supabase } = require('../_shared/supabase');
+            const { error } = await supabase.supabaseAdmin
+              .from('hubspot_bookings')
+              .delete()
+              .eq('associated_mock_exam', sessionId);
+
+            if (error) {
+              console.error(`❌ [BATCH-DELETE] Failed to delete bookings for exam ${sessionId}:`, error.message);
+              // Don't throw - continue with other deletions
+            } else {
+              console.log(`✅ [BATCH-DELETE] Deleted bookings for exam ${sessionId} from Supabase`);
+            }
+          } catch (error) {
+            console.error(`❌ [BATCH-DELETE] Error deleting bookings for exam ${sessionId}:`, error.message);
+          }
+        });
+
+        await Promise.allSettled(bookingDeletes);
+        console.log(`✅ [BATCH-DELETE] Finished deleting associated bookings from Supabase`);
+
+        // Now delete the exams themselves
+        console.log(`🗑️ [BATCH-DELETE] Deleting ${results.deleted.length} exams from Supabase...`);
         const supabaseDeletes = results.deleted.map(sessionId =>
           deleteExamFromSupabase(sessionId)
         );
 
         const supabaseResults = await Promise.allSettled(supabaseDeletes);
         const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
+
+        // Log individual failures for debugging
+        supabaseResults.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            const sessionId = results.deleted[index];
+            console.error(`❌ [BATCH-DELETE] Failed to delete exam ${sessionId} from Supabase:`, result.reason);
+          }
+        });
+
         console.log(`✅ [BATCH-DELETE] Deleted ${syncedCount}/${results.deleted.length} exams from Supabase`);
         supabaseSynced = syncedCount === results.deleted.length;
       } catch (supabaseError) {
