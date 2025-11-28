@@ -352,7 +352,7 @@ async function fetchModifiedContactsWithCredits(sinceTimestamp) {
   const allContacts = [];
   let after = undefined;
   const properties = [
-    'student_id', 'email', 'firstname', 'lastname', 'phone',
+    'student_id', 'email', 'firstname', 'lastname',
     'sj_credits', 'cs_credits', 'sjmini_credits',
     'mock_discussion_token', 'shared_mock_credits',
     'ndecc_exam_date', 'hs_createdate', 'hs_lastmodifieddate'
@@ -484,7 +484,6 @@ async function syncContactCreditsToSupabase(contact) {
     email: props.email?.toLowerCase(),
     firstname: props.firstname,
     lastname: props.lastname,
-    phone: props.phone,
     sj_credits: parseInt(props.sj_credits) || 0,
     cs_credits: parseInt(props.cs_credits) || 0,
     sjmini_credits: parseInt(props.sjmini_credits) || 0,
