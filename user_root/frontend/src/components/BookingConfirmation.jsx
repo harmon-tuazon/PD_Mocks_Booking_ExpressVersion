@@ -29,6 +29,36 @@ const BookingConfirmation = () => {
     }
   }, [bookingData.mockType, fetchCredits]);
 
+  // Listen for cache invalidation to refresh token display
+  // NOTE: We ONLY listen to creditsInvalidated to avoid duplicate API calls
+  // MyBookings dispatches BOTH bookingCancelled AND creditsInvalidated
+  // Listening to both would cause 2x API calls and trigger rate limiting
+  useEffect(() => {
+    const userData = getUserSession();
+
+    const handleCreditsInvalidated = () => {
+      console.log('📢 [BookingConfirmation] Received creditsInvalidated event');
+
+      if (userData) {
+        console.log('🔄 [BookingConfirmation] Refreshing credits after cache invalidation...');
+        // Force refresh to get updated token values
+        fetchCredits(userData.studentId, userData.email, true);
+      }
+    };
+
+    // NOTE: No localStorage signal check needed for BookingConfirmation
+    // This page is only reached after booking creation, not cancellation
+    // Cancellations happen in MyBookings and are handled by creditsInvalidated event
+
+    // Listen for custom events (only creditsInvalidated)
+    // NOTE: bookingCancelled is handled by creditsInvalidated to avoid duplicate calls
+    window.addEventListener('creditsInvalidated', handleCreditsInvalidated);
+
+    return () => {
+      window.removeEventListener('creditsInvalidated', handleCreditsInvalidated);
+    };
+  }, [fetchCredits]);
+
   // Extract fresh credit breakdown from cache
   const freshCreditBreakdown = credits?.[bookingData.mockType]?.credit_breakdown;
 

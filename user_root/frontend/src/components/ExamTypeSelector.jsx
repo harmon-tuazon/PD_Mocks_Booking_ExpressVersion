@@ -43,7 +43,10 @@ const ExamTypeSelector = () => {
     }
   }, []);
 
-  // Listen for booking creation events to refresh token display
+  // Listen for cache invalidation to refresh token display
+  // NOTE: We ONLY listen to creditsInvalidated to avoid duplicate API calls
+  // MyBookings dispatches BOTH bookingCancelled AND creditsInvalidated
+  // Listening to both would cause 2x API calls and trigger rate limiting
   useEffect(() => {
     const handleBookingCreated = (event) => {
       const { studentId, email } = event.detail || {};
@@ -51,41 +54,60 @@ const ExamTypeSelector = () => {
       console.log('📢 [ExamTypeSelector] Received bookingCreated event:', event.detail);
 
       if (userSession && studentId === userSession.studentId) {
-        console.log('🔄 [ExamTypeSelector] Refreshing credits after booking...');
+        console.log('🔄 [ExamTypeSelector] Refreshing credits after booking creation...');
         // Force refresh to get updated token values
         fetchCredits(studentId, email, true);
       }
     };
 
-    // Also check localStorage for refresh signal (backup mechanism)
-    const checkRefreshSignal = () => {
-      const refreshSignal = localStorage.getItem('bookingCreated');
-      if (refreshSignal && userSession) {
+    const handleCreditsInvalidated = () => {
+      console.log('📢 [ExamTypeSelector] Received creditsInvalidated event');
+
+      if (userSession) {
+        console.log('🔄 [ExamTypeSelector] Refreshing credits after cache invalidation...');
+        // Force refresh to get updated token values
+        fetchCredits(userSession.studentId, userSession.email, true);
+      }
+    };
+
+    // Also check localStorage for refresh signals (backup mechanism)
+    const checkRefreshSignals = () => {
+      if (!userSession) return;
+
+      // Check for booking creation signal
+      const bookingCreatedSignal = localStorage.getItem('bookingCreated');
+      if (bookingCreatedSignal) {
         try {
-          const signal = JSON.parse(refreshSignal);
+          const signal = JSON.parse(bookingCreatedSignal);
           const signalAge = Date.now() - signal.timestamp;
 
           // Only process if signal is less than 5 seconds old and for current user
           if (signalAge < 5000 && signal.studentId === userSession.studentId) {
-            console.log('🔄 [ExamTypeSelector] Processing localStorage refresh signal:', signal);
+            console.log('🔄 [ExamTypeSelector] Processing localStorage bookingCreated signal:', signal);
             fetchCredits(signal.studentId, signal.email, true);
             // Clear the signal after processing
             localStorage.removeItem('bookingCreated');
           }
         } catch (e) {
-          console.error('Error parsing refresh signal:', e);
+          console.error('Error parsing bookingCreated signal:', e);
         }
       }
+
+      // NOTE: We don't check bookingCancelled signal because creditsInvalidated handles it
+      // This prevents duplicate API calls that cause 429 rate limiting errors
     };
 
-    // Check for localStorage signal on mount
-    checkRefreshSignal();
+    // Check for localStorage signals on mount
+    checkRefreshSignals();
 
-    // Listen for custom event
+    // Listen for custom events (only bookingCreated and creditsInvalidated)
+    // NOTE: bookingCancelled is handled by creditsInvalidated to avoid duplicate calls
     window.addEventListener('bookingCreated', handleBookingCreated);
+    window.addEventListener('creditsInvalidated', handleCreditsInvalidated);
 
     return () => {
       window.removeEventListener('bookingCreated', handleBookingCreated);
+      window.removeEventListener('creditsInvalidated', handleCreditsInvalidated);
     };
   }, [userSession, fetchCredits]);
 

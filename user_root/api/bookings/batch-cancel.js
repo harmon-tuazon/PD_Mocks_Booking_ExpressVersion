@@ -94,7 +94,8 @@ async function cancelSingleBooking(hubspot, bookingData) {
       soft_delete: false,
       note_created: false,
       bookings_decremented: false,
-      credits_restored: false
+      credits_restored: false,
+      cache_invalidated: false
     }
   };
 
@@ -203,7 +204,7 @@ async function cancelSingleBooking(hubspot, bookingData) {
       }
     }
 
-    // Step 8: Decrement Redis counter and trigger webhook sync
+    // Step 8: Redis operations - Decrement counter AND invalidate duplicate detection cache
     let bookingsDecremented = false;
     if (mockExamId) {
       try {
@@ -224,6 +225,23 @@ async function cancelSingleBooking(hubspot, bookingData) {
         } else {
           newCount = await redis.decr(counterKey);
           console.log(`✅ Redis counter decremented for exam ${mockExamId}: ${counterBefore} → ${newCount}`);
+        }
+
+        // CRITICAL FIX: Invalidate duplicate detection cache (allows rebooking same date)
+        const exam_date = mockExamDetails?.exam_date || bookingProperties.exam_date;
+        if (contactId && exam_date) {
+          const redisKey = `booking:${contactId}:${exam_date}`;
+          console.log(`🔍 [REDIS] Invalidating duplicate cache key: "${redisKey}"`);
+
+          const deletedCount = await redis.del(redisKey);
+          if (deletedCount > 0) {
+            console.log(`✅ [REDIS] Successfully invalidated duplicate cache: ${redisKey}`);
+            result.actions_completed.cache_invalidated = true;
+          } else {
+            console.log(`ℹ️ [REDIS] No cache entry found for key: ${redisKey}`);
+          }
+        } else {
+          console.warn(`⚠️ [REDIS] Cannot invalidate cache - missing contactId or exam_date`);
         }
 
         // Trigger HubSpot workflow via webhook (async, non-blocking)

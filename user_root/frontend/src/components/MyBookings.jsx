@@ -7,10 +7,16 @@ import CapacityBadge from './shared/CapacityBadge';
 import { ResponsiveLogo } from './shared/Logo';
 import ErrorDisplay from './shared/ErrorDisplay';
 import { DeleteBookingModal, RebookPromptModal } from './shared';
+import { useCachedBookings } from '../hooks/useCachedBookings';
+import useCachedCredits from '../hooks/useCachedCredits';
 
 
 const MyBookings = () => {
   const navigate = useNavigate();
+
+  // Import cache invalidation functions
+  const { invalidateCache: invalidateBookingsCache } = useCachedBookings();
+  const { invalidateCache: invalidateCreditsCache } = useCachedCredits();
 
   // Exam types for credit display
   const examTypes = [
@@ -244,6 +250,11 @@ const MyBookings = () => {
 
         // Force refresh bookings list to show updated status - this will also refresh credits
         await fetchBookings(userSession.studentId, userSession.email, currentPage, true);
+
+        // CRITICAL FIX: Invalidate both bookings AND credits caches to prevent stale time conflict checks
+        console.log('🔄 [CACHE] Invalidating bookings and credits caches after cancellation');
+        invalidateBookingsCache();
+        invalidateCreditsCache();
 
         // Open rebook modal after successful cancellation
         setRebookModalOpen(true);
