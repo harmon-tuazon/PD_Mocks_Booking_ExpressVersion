@@ -43,6 +43,52 @@ const ExamTypeSelector = () => {
     }
   }, []);
 
+  // Listen for booking creation events to refresh token display
+  useEffect(() => {
+    const handleBookingCreated = (event) => {
+      const { studentId, email } = event.detail || {};
+
+      console.log('📢 [ExamTypeSelector] Received bookingCreated event:', event.detail);
+
+      if (userSession && studentId === userSession.studentId) {
+        console.log('🔄 [ExamTypeSelector] Refreshing credits after booking...');
+        // Force refresh to get updated token values
+        fetchCredits(studentId, email, true);
+      }
+    };
+
+    // Also check localStorage for refresh signal (backup mechanism)
+    const checkRefreshSignal = () => {
+      const refreshSignal = localStorage.getItem('bookingCreated');
+      if (refreshSignal && userSession) {
+        try {
+          const signal = JSON.parse(refreshSignal);
+          const signalAge = Date.now() - signal.timestamp;
+
+          // Only process if signal is less than 5 seconds old and for current user
+          if (signalAge < 5000 && signal.studentId === userSession.studentId) {
+            console.log('🔄 [ExamTypeSelector] Processing localStorage refresh signal:', signal);
+            fetchCredits(signal.studentId, signal.email, true);
+            // Clear the signal after processing
+            localStorage.removeItem('bookingCreated');
+          }
+        } catch (e) {
+          console.error('Error parsing refresh signal:', e);
+        }
+      }
+    };
+
+    // Check for localStorage signal on mount
+    checkRefreshSignal();
+
+    // Listen for custom event
+    window.addEventListener('bookingCreated', handleBookingCreated);
+
+    return () => {
+      window.removeEventListener('bookingCreated', handleBookingCreated);
+    };
+  }, [userSession, fetchCredits]);
+
   const handleSelectType = (type) => {
     navigate(`/book/exams?type=${encodeURIComponent(type)}`);
   };

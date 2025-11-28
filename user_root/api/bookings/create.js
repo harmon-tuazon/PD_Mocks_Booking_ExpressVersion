@@ -4,7 +4,12 @@ const { HubSpotService, HUBSPOT_OBJECTS } = require('../_shared/hubspot');
 const { schemas } = require('../_shared/validation');
 const { getCache } = require('../_shared/cache');
 const RedisLockService = require('../_shared/redis');
-const { syncBookingToSupabase, updateExamBookingCountInSupabase, updateContactCreditsInSupabase } = require('../_shared/supabase-data');
+const {
+  syncBookingToSupabase,
+  updateExamBookingCountInSupabase,
+  updateContactCreditsInSupabase,
+  getContactCreditsFromSupabase
+} = require('../_shared/supabase-data');
 const {
   setCorsHeaders,
   handleOptionsRequest,
@@ -390,39 +395,72 @@ module.exports = module.exports = module.exports = async function handler(req, r
       throw error;
     }
 
-    // Step 3: Verify contact and credits (double-check)
-    // Build properties list based on mock type for efficiency
-    const baseProperties = ['student_id', 'email'];
-    let creditProperties = [];
+    // Step 3: Verify contact and credits (Supabase-first for performance)
+    let contact = null;
 
-    switch (mock_type) {
-      case 'Mock Discussion':
-        creditProperties = ['mock_discussion_token'];
-        break;
-      case 'Situational Judgment':
-        creditProperties = ['sj_credits', 'shared_mock_credits'];
-        break;
-      case 'Clinical Skills':
-        creditProperties = ['cs_credits', 'shared_mock_credits'];
-        break;
-      case 'Mini-mock':
-        creditProperties = ['sjmini_credits'];
-        break;
-      default:
-        // Fallback: fetch all credit properties
-        creditProperties = ['sj_credits', 'cs_credits', 'sjmini_credits', 'mock_discussion_token', 'shared_mock_credits'];
+    // PHASE 1: Try Supabase secondary database first (fast path ~50ms)
+    try {
+      const supabaseContact = await getContactCreditsFromSupabase(student_id, email);
+
+      if (supabaseContact && supabaseContact.hubspot_id === contact_id) {
+        console.log(`✅ [SUPABASE HIT] Reusing cached credit data from validate-credits for student ${student_id}`);
+
+        // Convert Supabase format to HubSpot format for compatibility
+        contact = {
+          id: supabaseContact.hubspot_id,
+          properties: {
+            student_id: supabaseContact.student_id,
+            email: supabaseContact.email,
+            sj_credits: supabaseContact.sj_credits?.toString() || '0',
+            cs_credits: supabaseContact.cs_credits?.toString() || '0',
+            sjmini_credits: supabaseContact.sjmini_credits?.toString() || '0',
+            mock_discussion_token: supabaseContact.mock_discussion_token?.toString() || '0',
+            shared_mock_credits: supabaseContact.shared_mock_credits?.toString() || '0'
+          }
+        };
+      }
+    } catch (supabaseError) {
+      console.error('[SUPABASE ERROR] Failed to read from secondary DB:', supabaseError.message);
+      // Continue to HubSpot fallback
     }
 
-    const properties = [...baseProperties, ...creditProperties].join(',');
-    const contact = await hubspot.apiCall('GET',
-      `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contact_id}?properties=${properties}`
-    );
-
+    // PHASE 2: Fallback to HubSpot (source of truth) if not in Supabase
     if (!contact) {
-      const error = new Error('Contact not found');
-      error.status = 404;
-      error.code = 'CONTACT_NOT_FOUND';
-      throw error;
+      console.log(`⚠️ [HUBSPOT FALLBACK] Reading from source of truth for student ${student_id}`);
+
+      // Build properties list based on mock type for efficiency
+      const baseProperties = ['student_id', 'email'];
+      let creditProperties = [];
+
+      switch (mock_type) {
+        case 'Mock Discussion':
+          creditProperties = ['mock_discussion_token'];
+          break;
+        case 'Situational Judgment':
+          creditProperties = ['sj_credits', 'shared_mock_credits'];
+          break;
+        case 'Clinical Skills':
+          creditProperties = ['cs_credits', 'shared_mock_credits'];
+          break;
+        case 'Mini-mock':
+          creditProperties = ['sjmini_credits'];
+          break;
+        default:
+          // Fallback: fetch all credit properties
+          creditProperties = ['sj_credits', 'cs_credits', 'sjmini_credits', 'mock_discussion_token', 'shared_mock_credits'];
+      }
+
+      const properties = [...baseProperties, ...creditProperties].join(',');
+      contact = await hubspot.apiCall('GET',
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contact_id}?properties=${properties}`
+      );
+
+      if (!contact) {
+        const error = new Error('Contact not found');
+        error.status = 404;
+        error.code = 'CONTACT_NOT_FOUND';
+        throw error;
+      }
     }
 
     // Calculate available credits

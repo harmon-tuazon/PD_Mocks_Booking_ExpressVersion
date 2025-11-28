@@ -24,7 +24,8 @@ const BookingConfirmation = () => {
         studentId: userData.studentId,
         mockType: bookingData.mockType
       });
-      fetchCredits(userData.studentId, userData.email);
+      // CRITICAL FIX: Force refresh to bypass cache and get updated token values
+      fetchCredits(userData.studentId, userData.email, true);
     }
   }, [bookingData.mockType, fetchCredits]);
 
