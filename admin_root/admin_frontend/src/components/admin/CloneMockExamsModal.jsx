@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/date-picker';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Label } from '@/components/ui/label';
@@ -39,6 +38,16 @@ const ACTIVE_STATES = [
   { value: 'inactive', label: 'Inactive' },
   { value: 'scheduled', label: 'Scheduled' }
 ];
+
+// Capacity options (1-100)
+const CAPACITY_OPTIONS = Array.from({ length: 100 }, (_, i) => i + 1);
+
+// Time options (00:00 to 23:30 in 30-minute increments)
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
+  const hours = Math.floor(i / 2);
+  const minutes = (i % 2) * 30;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+});
 
 // Special value for "Keep original" - can't use empty string with shadcn Select
 const KEEP_ORIGINAL = '__KEEP_ORIGINAL__';
@@ -77,38 +86,6 @@ const CloneMockExamsModal = ({
 
   const cloneMutation = useCloneSessions();
 
-  // Helper to convert ISO timestamp or HH:mm to HH:mm format
-  const normalizeTimeToHHMM = (timeValue) => {
-    if (!timeValue) return '';
-
-    // If already in HH:mm format, return as is
-    if (/^\d{2}:\d{2}$/.test(timeValue)) return timeValue;
-
-    // If ISO format (e.g., "2025-12-03T14:30:00Z"), extract HH:mm
-    if (timeValue.includes('T')) {
-      const match = timeValue.match(/T(\d{2}:\d{2})/);
-      return match ? match[1] : '';
-    }
-
-    // If Unix timestamp (milliseconds), convert to HH:mm
-    const timestamp = parseInt(timeValue);
-    if (!isNaN(timestamp) && timestamp > 1000000000000) { // Validate it's a reasonable timestamp
-      try {
-        const date = new Date(timestamp);
-        if (!isNaN(date.getTime())) {
-          // Extract HH:mm in local timezone
-          const hours = date.getHours().toString().padStart(2, '0');
-          const minutes = date.getMinutes().toString().padStart(2, '0');
-          return `${hours}:${minutes}`;
-        }
-      } catch (error) {
-        console.error('[normalizeTimeToHHMM] Error converting timestamp:', error);
-      }
-    }
-
-    return timeValue;
-  };
-
   // Pre-populate form when single session selected
   useEffect(() => {
     if (!isOpen) return;
@@ -136,9 +113,9 @@ const CloneMockExamsModal = ({
         exam_date: newExamDate,
         location: source.location || KEEP_ORIGINAL,
         mock_type: source.mock_type || KEEP_ORIGINAL,
-        capacity: '', // Always start empty - user must explicitly enter to override
-        start_time: '', // Always start empty - user must explicitly enter to override
-        end_time: '', // Always start empty - user must explicitly enter to override
+        capacity: KEEP_ORIGINAL, // Use sentinel value instead of empty string
+        start_time: KEEP_ORIGINAL, // Use sentinel value instead of empty string
+        end_time: KEEP_ORIGINAL, // Use sentinel value instead of empty string
         is_active: source.is_active || KEEP_ORIGINAL,
         scheduled_activation_datetime: source.scheduled_activation_datetime || ''
       });
@@ -148,9 +125,9 @@ const CloneMockExamsModal = ({
         exam_date: '',
         location: KEEP_ORIGINAL,
         mock_type: KEEP_ORIGINAL,
-        capacity: '',
-        start_time: '',
-        end_time: '',
+        capacity: KEEP_ORIGINAL,
+        start_time: KEEP_ORIGINAL,
+        end_time: KEEP_ORIGINAL,
         is_active: KEEP_ORIGINAL,
         scheduled_activation_datetime: ''
       });
@@ -215,8 +192,9 @@ const CloneMockExamsModal = ({
       }
     }
 
-    // Validate time range if both provided
-    if (formData.start_time && formData.end_time) {
+    // Validate time range if both provided and not KEEP_ORIGINAL
+    if (formData.start_time && formData.start_time !== KEEP_ORIGINAL &&
+        formData.end_time && formData.end_time !== KEEP_ORIGINAL) {
       const start = new Date(`2000-01-01T${formData.start_time}`);
       const end = new Date(`2000-01-01T${formData.end_time}`);
       if (start >= end) {
@@ -229,8 +207,8 @@ const CloneMockExamsModal = ({
       errors.scheduled_activation_datetime = 'Scheduled activation datetime is required when status is scheduled';
     }
 
-    // Capacity must be positive if provided
-    if (formData.capacity && parseInt(formData.capacity) <= 0) {
+    // Capacity must be positive if provided and not KEEP_ORIGINAL
+    if (formData.capacity && formData.capacity !== KEEP_ORIGINAL && parseInt(formData.capacity) <= 0) {
       errors.capacity = 'Capacity must be a positive number';
     }
 
@@ -260,9 +238,15 @@ const CloneMockExamsModal = ({
     if (formData.mock_type && formData.mock_type !== KEEP_ORIGINAL) {
       overrides.mock_type = formData.mock_type;
     }
-    if (formData.capacity) overrides.capacity = parseInt(formData.capacity);
-    if (formData.start_time) overrides.start_time = formData.start_time;
-    if (formData.end_time) overrides.end_time = formData.end_time;
+    if (formData.capacity && formData.capacity !== KEEP_ORIGINAL) {
+      overrides.capacity = parseInt(formData.capacity);
+    }
+    if (formData.start_time && formData.start_time !== KEEP_ORIGINAL) {
+      overrides.start_time = formData.start_time;
+    }
+    if (formData.end_time && formData.end_time !== KEEP_ORIGINAL) {
+      overrides.end_time = formData.end_time;
+    }
     if (formData.is_active && formData.is_active !== KEEP_ORIGINAL) {
       overrides.is_active = formData.is_active;
     }
@@ -441,25 +425,22 @@ const CloneMockExamsModal = ({
 
                           {/* Capacity */}
                           <div>
-                            <Label htmlFor="capacity">
-                              Capacity
-                              {selectedSessions.length === 1 && selectedSessions[0].capacity && (
-                                <span className="ml-1 text-xs text-gray-500 dark:text-gray-400 font-normal">
-                                  (original: {selectedSessions[0].capacity})
-                                </span>
-                              )}
-                            </Label>
-                            <Input
-                              type="number"
-                              id="capacity"
-                              min="1"
-                              max="100"
+                            <Label htmlFor="capacity">Capacity</Label>
+                            <Select
                               value={formData.capacity}
-                              onChange={(e) => handleFieldChange('capacity', e.target.value)}
-                              placeholder="Leave empty to keep original"
-                              className="mt-1"
+                              onValueChange={(value) => handleFieldChange('capacity', value)}
                               disabled={cloneMutation.isPending}
-                            />
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Keep original" />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-60">
+                                <SelectItem value={KEEP_ORIGINAL}>Keep original</SelectItem>
+                                {CAPACITY_OPTIONS.map(num => (
+                                  <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             {validationErrors.capacity && (
                               <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                 {validationErrors.capacity}
@@ -469,23 +450,22 @@ const CloneMockExamsModal = ({
 
                           {/* Start Time */}
                           <div>
-                            <Label htmlFor="start_time">
-                              Start Time
-                              {selectedSessions.length === 1 && selectedSessions[0].start_time && (
-                                <span className="ml-1 text-xs text-gray-500 dark:text-gray-400 font-normal">
-                                  (original: {normalizeTimeToHHMM(selectedSessions[0].start_time)})
-                                </span>
-                              )}
-                            </Label>
-                            <Input
-                              type="time"
-                              id="start_time"
+                            <Label htmlFor="start_time">Start Time</Label>
+                            <Select
                               value={formData.start_time}
-                              onChange={(e) => handleFieldChange('start_time', e.target.value)}
-                              placeholder="Leave empty to keep original"
-                              className="mt-1"
+                              onValueChange={(value) => handleFieldChange('start_time', value)}
                               disabled={cloneMutation.isPending}
-                            />
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Keep original" />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-60">
+                                <SelectItem value={KEEP_ORIGINAL}>Keep original</SelectItem>
+                                {TIME_OPTIONS.map(time => (
+                                  <SelectItem key={time} value={time}>{time}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             {validationErrors.start_time && (
                               <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                 {validationErrors.start_time}
@@ -495,23 +475,22 @@ const CloneMockExamsModal = ({
 
                           {/* End Time */}
                           <div>
-                            <Label htmlFor="end_time">
-                              End Time
-                              {selectedSessions.length === 1 && selectedSessions[0].end_time && (
-                                <span className="ml-1 text-xs text-gray-500 dark:text-gray-400 font-normal">
-                                  (original: {normalizeTimeToHHMM(selectedSessions[0].end_time)})
-                                </span>
-                              )}
-                            </Label>
-                            <Input
-                              type="time"
-                              id="end_time"
+                            <Label htmlFor="end_time">End Time</Label>
+                            <Select
                               value={formData.end_time}
-                              onChange={(e) => handleFieldChange('end_time', e.target.value)}
-                              placeholder="Leave empty to keep original"
-                              className="mt-1"
+                              onValueChange={(value) => handleFieldChange('end_time', value)}
                               disabled={cloneMutation.isPending}
-                            />
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Keep original" />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-60">
+                                <SelectItem value={KEEP_ORIGINAL}>Keep original</SelectItem>
+                                {TIME_OPTIONS.map(time => (
+                                  <SelectItem key={time} value={time}>{time}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
 
                           {/* Status */}
