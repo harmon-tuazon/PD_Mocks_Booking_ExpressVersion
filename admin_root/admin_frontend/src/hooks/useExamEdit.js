@@ -118,22 +118,39 @@ export function useExamEdit(examData) {
     },
     onSuccess: async (response) => {
       try {
-        // Invalidate queries to mark them stale
-        queryClient.invalidateQueries(['mockExam', examData.id]);
-        queryClient.invalidateQueries(['mockExams']);
-        queryClient.invalidateQueries(['mockExamMetrics']);
-        queryClient.invalidateQueries(['mockExamAggregates']);
+        // Extract updated properties from API response
+        const updatedProperties = response?.mockExam?.properties || response?.data?.properties || {};
 
-        // Wait for fresh data to be fetched
-        const freshExamData = await queryClient.fetchQuery(['mockExam', examData.id]);
+        // OPTIMISTIC UPDATE: Immediately update detail cache (no network wait)
+        queryClient.setQueryData(['mockExam', examData.id], (oldData) => {
+          return {
+            ...oldData,
+            data: {
+              ...oldData?.data,
+              ...updatedProperties,
+              id: examData.id
+            }
+          };
+        });
 
-        // Extract complete updated data from fresh query result
-        const updatedProperties = freshExamData?.data?.properties || freshExamData?.data || {};
+        // OPTIMISTIC UPDATE: Update all list caches immediately
+        queryClient.setQueriesData(['mockExams'], (oldData) => {
+          if (!oldData?.data) return oldData;
 
-        // Update local form state with complete fresh data
+          return {
+            ...oldData,
+            data: oldData.data.map(exam =>
+              exam.id === examData.id
+                ? { ...exam, ...updatedProperties }
+                : exam
+            )
+          };
+        });
+
+        // Update local form state with response data
         const updatedFormData = { ...updatedProperties };
 
-        // Preserve computed fields and prerequisite data
+        // Preserve computed fields
         if (updatedProperties.booked_count !== undefined || updatedProperties.total_bookings !== undefined) {
           updatedFormData.booked_count = updatedProperties.booked_count || updatedProperties.total_bookings || 0;
           updatedFormData.total_bookings = updatedProperties.total_bookings || updatedProperties.booked_count || 0;
@@ -152,27 +169,29 @@ export function useExamEdit(examData) {
           updatedFormData.scheduled_activation_datetime = updatedProperties.scheduled_activation_datetime;
         }
 
-        // Preserve prerequisite data if available
-        if (freshExamData?.data?.prerequisite_exam_ids) {
-          updatedFormData.prerequisite_exam_ids = freshExamData.data.prerequisite_exam_ids;
-        }
-        if (freshExamData?.data?.prerequisite_exams) {
-          updatedFormData.prerequisite_exams = freshExamData.data.prerequisite_exams;
-        }
+        // Preserve prerequisite data
+        updatedFormData.prerequisite_exam_ids = updatedProperties.prerequisite_exam_ids || [];
+        updatedFormData.prerequisite_exams = updatedProperties.prerequisite_exams || [];
 
         setFormData(updatedFormData);
         originalDataRef.current = { ...updatedFormData };
 
-        // NOW safe to exit edit mode - React Query has fresh data
+        // Exit edit mode IMMEDIATELY (no waiting for network)
         setIsEditing(false);
         setIsDirty(false);
         validation.resetValidation();
 
         // Show success message
         notify.success('Mock exam updated successfully');
+
+        // Invalidate metrics only (background refresh)
+        queryClient.invalidateQueries(['mockExamsMetrics']);
+        queryClient.invalidateQueries(['mockExamAggregates']);
+        queryClient.invalidateQueries(['mock-exam-aggregates']);
+
       } catch (error) {
-        console.error('Error refreshing exam data after save:', error);
-        notify.error('Saved but failed to refresh display. Please reload the page.');
+        console.error('Error updating cache after save:', error);
+        notify.error('Saved but failed to update display. Please reload the page.');
       }
     },
     onError: (error) => {
