@@ -181,6 +181,10 @@ module.exports = async (req, res) => {
       console.log(`⚡ [BATCH-DELETE] Deleting ${deletableSessions.length} sessions...`);
 
       const deleteResults = await batchArchiveSessions(deletableSessions);
+      console.log(`✅ [BATCH-DELETE] HubSpot deletion complete. Results:`, {
+        successful: deleteResults.successful.length,
+        failed: deleteResults.failed.length
+      });
 
       // Process successful deletions
       for (const sessionId of deleteResults.successful) {
@@ -199,6 +203,8 @@ module.exports = async (req, res) => {
         summary.failed++;
         summary.errors++;
       }
+
+      console.log(`📊 [BATCH-DELETE] Processed deletion results. Total deleted: ${results.deleted.length}, Total failed: ${results.failed.length}`);
     } else {
       console.log(`⚠️ [BATCH-DELETE] No deletable sessions found`);
     }
@@ -211,7 +217,10 @@ module.exports = async (req, res) => {
 
     // Step 4.5: Sync deletions to Supabase
     let supabaseSynced = false;
+    console.log(`🔍 [BATCH-DELETE] Checking if Supabase sync needed. Deleted count: ${results.deleted.length}`);
+
     if (results.deleted.length > 0) {
+      console.log(`🔍 [BATCH-DELETE] Starting Supabase sync for ${results.deleted.length} deleted exams...`);
       try {
         // CRITICAL: Delete associated bookings BEFORE deleting exams to avoid FK constraint violations
         console.log(`🗑️ [BATCH-DELETE] Deleting associated bookings from Supabase for ${results.deleted.length} exams...`);
@@ -462,6 +471,7 @@ async function fetchSessionsBatch(sessionIds) {
  * Returns { successful: string[], failed: object[] }
  */
 async function batchArchiveSessions(sessionIds) {
+  console.log(`🔧 [batchArchiveSessions] Starting deletion of ${sessionIds.length} sessions`);
   const results = {
     successful: [],
     failed: []
@@ -470,6 +480,7 @@ async function batchArchiveSessions(sessionIds) {
   // Split into chunks of 100 (HubSpot batch limit)
   for (let i = 0; i < sessionIds.length; i += HUBSPOT_BATCH_SIZE) {
     const chunk = sessionIds.slice(i, i + HUBSPOT_BATCH_SIZE);
+    console.log(`🔧 [batchArchiveSessions] Processing chunk ${i / HUBSPOT_BATCH_SIZE + 1} with ${chunk.length} sessions`);
 
     try {
       const response = await hubspot.apiCall(
@@ -477,6 +488,12 @@ async function batchArchiveSessions(sessionIds) {
         `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/archive`,
         { inputs: chunk.map(id => ({ id })) }
       );
+      console.log(`🔧 [batchArchiveSessions] HubSpot API response received:`, {
+        hasResults: !!response.results,
+        resultsCount: response.results?.length || 0,
+        hasErrors: !!response.errors,
+        errorsCount: response.errors?.length || 0
+      });
 
       // Process successful deletions
       if (response.results) {
@@ -496,7 +513,7 @@ async function batchArchiveSessions(sessionIds) {
         }
       }
     } catch (error) {
-      console.error(`Error deleting session batch:`, error);
+      console.error(`❌ [batchArchiveSessions] Error deleting session batch:`, error);
 
       // Mark all items in this chunk as failed
       for (const sessionId of chunk) {
@@ -509,6 +526,10 @@ async function batchArchiveSessions(sessionIds) {
     }
   }
 
+  console.log(`🔧 [batchArchiveSessions] Deletion complete. Returning results:`, {
+    successful: results.successful.length,
+    failed: results.failed.length
+  });
   return results;
 }
 

@@ -76,9 +76,9 @@ const CloneMockExamsModal = ({
     exam_date: '',
     location: KEEP_ORIGINAL,
     mock_type: KEEP_ORIGINAL,
-    capacity: '',
-    start_time: '',
-    end_time: '',
+    capacity: KEEP_ORIGINAL,
+    start_time: KEEP_ORIGINAL,
+    end_time: KEEP_ORIGINAL,
     is_active: KEEP_ORIGINAL,
     scheduled_activation_datetime: ''
   });

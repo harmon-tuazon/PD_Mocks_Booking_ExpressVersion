@@ -109,20 +109,10 @@ module.exports = async (req, res) => {
       const currentEndTimestamp = currentProps.end_time;
 
       if (currentStartTimestamp && currentEndTimestamp) {
-        // Extract time components from current timestamps (in America/Toronto timezone)
-        const extractTime = (timestamp) => {
-          const date = new Date(parseInt(timestamp));
-          return date.toLocaleTimeString('en-US', {
-            hour12: false,
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            timeZone: 'America/Toronto'
-          });
-        };
-
-        const startTime = extractTime(currentStartTimestamp);
-        const endTime = extractTime(currentEndTimestamp);
+        // Extract time components from current timestamps using hubspotService helper
+        // This handles both ISO strings and numeric timestamps correctly
+        const startTime = hubspotService.extractTimeFromTimestamp(currentStartTimestamp);
+        const endTime = hubspotService.extractTimeFromTimestamp(currentEndTimestamp);
 
         console.log('🕐 [UPDATE] Extracted times from current timestamps:', { startTime, endTime });
 

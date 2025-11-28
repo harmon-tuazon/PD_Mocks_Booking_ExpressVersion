@@ -615,13 +615,13 @@ const schemas = {
         'any.required': 'Scheduled activation datetime is required when status is scheduled'
       }),
     start_time: Joi.string()
-      .pattern(/^([01]\\d|2[0-3]):([0-5]\\d)$/)
+      .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
       .optional()
       .messages({
         'string.pattern.base': 'Start time must be in HH:MM format (24-hour)'
       }),
     end_time: Joi.string()
-      .pattern(/^([01]\\d|2[0-3]):([0-5]\\d)$/)
+      .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
       .optional()
       .messages({
         'string.pattern.base': 'End time must be in HH:MM format (24-hour)'
