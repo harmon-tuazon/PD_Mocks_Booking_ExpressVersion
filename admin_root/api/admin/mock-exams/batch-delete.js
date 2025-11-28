@@ -53,6 +53,7 @@ const { validationMiddleware } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
 const { deleteExamFromSupabase } = require('../../_shared/supabase-data');
+const { supabaseAdmin } = require('../../_shared/supabase');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -218,7 +219,6 @@ module.exports = async (req, res) => {
         const bookingDeletes = results.deleted.map(async (sessionId) => {
           try {
             // Delete all bookings (including cancelled) for this exam session
-            const { supabaseAdmin } = require('../_shared/supabase');
             const { error } = await supabaseAdmin
               .from('hubspot_bookings')
               .delete()
