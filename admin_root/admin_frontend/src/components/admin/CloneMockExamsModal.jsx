@@ -441,7 +441,14 @@ const CloneMockExamsModal = ({
 
                           {/* Capacity */}
                           <div>
-                            <Label htmlFor="capacity">Capacity</Label>
+                            <Label htmlFor="capacity">
+                              Capacity
+                              {selectedSessions.length === 1 && selectedSessions[0].capacity && (
+                                <span className="ml-1 text-xs text-gray-500 dark:text-gray-400 font-normal">
+                                  (original: {selectedSessions[0].capacity})
+                                </span>
+                              )}
+                            </Label>
                             <Input
                               type="number"
                               id="capacity"
@@ -449,7 +456,7 @@ const CloneMockExamsModal = ({
                               max="100"
                               value={formData.capacity}
                               onChange={(e) => handleFieldChange('capacity', e.target.value)}
-                              placeholder="Keep original"
+                              placeholder="Leave empty to keep original"
                               className="mt-1"
                               disabled={cloneMutation.isPending}
                             />
@@ -462,13 +469,20 @@ const CloneMockExamsModal = ({
 
                           {/* Start Time */}
                           <div>
-                            <Label htmlFor="start_time">Start Time</Label>
+                            <Label htmlFor="start_time">
+                              Start Time
+                              {selectedSessions.length === 1 && selectedSessions[0].start_time && (
+                                <span className="ml-1 text-xs text-gray-500 dark:text-gray-400 font-normal">
+                                  (original: {normalizeTimeToHHMM(selectedSessions[0].start_time)})
+                                </span>
+                              )}
+                            </Label>
                             <Input
                               type="time"
                               id="start_time"
                               value={formData.start_time}
                               onChange={(e) => handleFieldChange('start_time', e.target.value)}
-                              placeholder="Keep original"
+                              placeholder="Leave empty to keep original"
                               className="mt-1"
                               disabled={cloneMutation.isPending}
                             />
@@ -481,13 +495,20 @@ const CloneMockExamsModal = ({
 
                           {/* End Time */}
                           <div>
-                            <Label htmlFor="end_time">End Time</Label>
+                            <Label htmlFor="end_time">
+                              End Time
+                              {selectedSessions.length === 1 && selectedSessions[0].end_time && (
+                                <span className="ml-1 text-xs text-gray-500 dark:text-gray-400 font-normal">
+                                  (original: {normalizeTimeToHHMM(selectedSessions[0].end_time)})
+                                </span>
+                              )}
+                            </Label>
                             <Input
                               type="time"
                               id="end_time"
                               value={formData.end_time}
                               onChange={(e) => handleFieldChange('end_time', e.target.value)}
-                              placeholder="Keep original"
+                              placeholder="Leave empty to keep original"
                               className="mt-1"
                               disabled={cloneMutation.isPending}
                             />
