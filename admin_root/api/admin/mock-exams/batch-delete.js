@@ -218,8 +218,8 @@ module.exports = async (req, res) => {
         const bookingDeletes = results.deleted.map(async (sessionId) => {
           try {
             // Delete all bookings (including cancelled) for this exam session
-            const { data: supabase } = require('../_shared/supabase');
-            const { error } = await supabase.supabaseAdmin
+            const { supabaseAdmin } = require('../_shared/supabase');
+            const { error } = await supabaseAdmin
               .from('hubspot_bookings')
               .delete()
               .eq('associated_mock_exam', sessionId);
