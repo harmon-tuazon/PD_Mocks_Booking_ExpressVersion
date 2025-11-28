@@ -40,7 +40,7 @@ const { validationMiddleware } = require('../../../_shared/validation');
 const { getCache } = require('../../../_shared/cache');
 const hubspot = require('../../../_shared/hubspot');
 const RedisLockService = require('../../../_shared/redis');
-const { updateBookingStatusInSupabase } = require('../../../_shared/supabase-data');
+const { updateBookingStatusInSupabase, updateExamBookingCountInSupabase } = require('../../../_shared/supabase-data');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -385,6 +385,19 @@ module.exports = async (req, res) => {
         const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
         console.log(`✅ [CANCEL] Synced ${syncedCount}/${results.successful.length} cancellations to Supabase`);
         supabaseSynced = syncedCount === results.successful.length;
+
+        // CRITICAL FIX: Sync decremented exam total_bookings count to Supabase
+        if (finalExamCount !== null) {
+          process.nextTick(async () => {
+            try {
+              await updateExamBookingCountInSupabase(mockExamId, finalExamCount);
+              console.log(`✅ [SUPABASE] Synced exam ${mockExamId} total_bookings to ${finalExamCount}`);
+            } catch (syncError) {
+              console.error(`❌ [SUPABASE] Failed to sync exam count:`, syncError.message);
+              // Non-blocking - cron job will reconcile within 2 hours
+            }
+          });
+        }
       } catch (supabaseError) {
         console.error('❌ Supabase cancellation sync failed:', supabaseError.message);
         // Continue - HubSpot is source of truth
