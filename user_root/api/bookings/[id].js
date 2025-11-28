@@ -44,7 +44,7 @@ const {
   rateLimitMiddleware,
   sanitizeInput
 } = require('../_shared/auth');
-const { updateBookingStatusInSupabase, updateContactCreditsInSupabase } = require('../_shared/supabase-data');
+const { updateBookingStatusInSupabase, updateContactCreditsInSupabase, updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
 
 // Handler function for GET /api/bookings/[id]
 async function handler(req, res) {
@@ -643,6 +643,15 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
           } else {
             console.error(`❌ [WEBHOOK] All retry attempts failed: ${result.message}`);
             console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
+          }
+
+          // CRITICAL FIX: Sync decremented exam total_bookings count to Supabase
+          try {
+            await updateExamBookingCountInSupabase(mockExamId, newCount);
+            console.log(`✅ [SUPABASE] Synced exam ${mockExamId} total_bookings to ${newCount}`);
+          } catch (syncError) {
+            console.error(`❌ [SUPABASE] Failed to sync exam count:`, syncError.message);
+            // Non-blocking - cron job will reconcile within 2 hours
           }
         });
       } else {
