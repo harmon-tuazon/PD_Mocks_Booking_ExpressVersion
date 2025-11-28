@@ -66,6 +66,9 @@ async function hubspotApiCall(method, endpoint, body = null) {
 /**
  * Get or create sync metadata table
  * Tracks last successful sync timestamp for incremental syncs
+ *
+ * GRACEFUL DEGRADATION: If sync_metadata table doesn't exist or has permission issues,
+ * returns null to trigger full sync instead of failing
  */
 async function getLastSyncTimestamp(syncType) {
   try {
@@ -75,37 +78,84 @@ async function getLastSyncTimestamp(syncType) {
       .eq('sync_type', syncType)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-      throw error;
+    // Handle common error codes:
+    // PGRST116 = No rows found (acceptable, first sync)
+    // 42P01 = Table doesn't exist
+    // 42501 = Permission denied
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No previous sync found, start fresh
+        console.log(`ℹ️ No previous ${syncType} sync found - performing full sync`);
+        return null;
+      }
+
+      if (error.code === '42P01') {
+        console.warn(`⚠️ sync_metadata table doesn't exist - performing full sync`);
+        console.warn(`   Run: admin_root/api/_shared/supabaseSync.optimized.js sync-metadata-table.sql to create it`);
+        return null;
+      }
+
+      if (error.code === '42501') {
+        console.warn(`⚠️ Permission denied for sync_metadata table - performing full sync`);
+        console.warn(`   Check RLS policies and service role permissions`);
+        return null;
+      }
+
+      // Unknown error, log but continue with full sync
+      console.warn(`⚠️ Could not fetch last sync timestamp for ${syncType}: ${error.message} (code: ${error.code})`);
+      return null;
     }
 
     return data?.last_sync_timestamp || null;
   } catch (error) {
-    console.warn(`⚠️ Could not fetch last sync timestamp for ${syncType}: ${error.message}`);
+    console.warn(`⚠️ Unexpected error fetching sync timestamp for ${syncType}: ${error.message}`);
     return null;
   }
 }
 
 /**
  * Update last sync timestamp
+ *
+ * GRACEFUL DEGRADATION: If sync_metadata table doesn't exist or has permission issues,
+ * logs warning but doesn't fail - next sync will be a full sync
  */
 async function updateLastSyncTimestamp(syncType, timestamp) {
-  const { error } = await supabaseAdmin
-    .from('sync_metadata')
-    .upsert({
-      sync_type: syncType,
-      last_sync_timestamp: timestamp,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'sync_type' });
+  try {
+    const { error } = await supabaseAdmin
+      .from('sync_metadata')
+      .upsert({
+        sync_type: syncType,
+        last_sync_timestamp: timestamp,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'sync_type' });
 
-  if (error) {
-    console.error(`❌ Failed to update sync timestamp for ${syncType}: ${error.message}`);
+    if (error) {
+      // Log warning but don't fail - graceful degradation
+      if (error.code === '42P01') {
+        console.warn(`⚠️ Cannot update sync timestamp - sync_metadata table doesn't exist`);
+      } else if (error.code === '42501') {
+        console.warn(`⚠️ Cannot update sync timestamp - permission denied`);
+      } else {
+        console.warn(`⚠️ Failed to update sync timestamp for ${syncType}: ${error.message}`);
+      }
+    } else {
+      console.log(`✅ Updated ${syncType} sync timestamp to ${new Date(timestamp).toISOString()}`);
+    }
+  } catch (error) {
+    console.warn(`⚠️ Unexpected error updating sync timestamp for ${syncType}: ${error.message}`);
   }
 }
 
 /**
  * OPTIMIZED: Fetch only modified mock exams since last sync
  * Uses hs_lastmodifieddate filter for incremental sync
+ *
+ * IMPORTANT: exam_date is a STRING property in HubSpot, not a date property
+ * Therefore we CANNOT use comparison operators like GTE/LTE on it
+ * Instead we:
+ * 1. Use hs_lastmodifieddate for incremental sync (timestamp property)
+ * 2. Use hs_createdate for filtering recent exams (timestamp property)
+ * 3. Filter by actual exam_date in application code after fetching if needed
  */
 async function fetchModifiedMockExams(sinceTimestamp) {
   const allExams = [];
@@ -116,50 +166,48 @@ async function fetchModifiedMockExams(sinceTimestamp) {
     'hs_createdate', 'hs_lastmodifieddate'
   ];
 
-  // Calculate cutoff date (only sync exams from 30 days ago onwards to skip old exams)
+  // Calculate cutoff timestamp (30 days ago) for hs_createdate filter
+  // This helps reduce the dataset by excluding very old exams
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const cutoffTimestamp = thirtyDaysAgo.getTime();
+  const cutoffTimestamp = thirtyDaysAgo.getTime(); // Unix timestamp in milliseconds
 
   do {
-    const filterGroups = [];
+    const filters = [];
 
-    // Filter 1: Modified since last sync (if we have a timestamp)
+    // Filter 1: Modified since last sync (incremental sync)
     if (sinceTimestamp) {
-      filterGroups.push({
-        filters: [
-          {
-            propertyName: 'hs_lastmodifieddate',
-            operator: 'GTE',
-            value: sinceTimestamp.toString()
-          },
-          // Only recent exams (skip old exams that won't change)
-          {
-            propertyName: 'exam_date',
-            operator: 'GTE',
-            value: thirtyDaysAgo.toISOString().split('T')[0]
-          }
-        ]
-      });
-    } else {
-      // First sync: Get all recent exams
-      filterGroups.push({
-        filters: [
-          {
-            propertyName: 'exam_date',
-            operator: 'GTE',
-            value: thirtyDaysAgo.toISOString().split('T')[0]
-          }
-        ]
+      filters.push({
+        propertyName: 'hs_lastmodifieddate',
+        operator: 'GTE',
+        value: sinceTimestamp.toString()
       });
     }
 
+    // Filter 2: Only fetch exams created in last 30 days OR modified recently
+    // This prevents syncing ancient exams that will never change
+    // Use hs_createdate (datetime property) instead of exam_date (string property)
+    if (!sinceTimestamp) {
+      // On full sync, only get exams created in last 30 days
+      filters.push({
+        propertyName: 'hs_createdate',
+        operator: 'GTE',
+        value: cutoffTimestamp.toString()
+      });
+    }
+    // Note: If doing incremental sync, we already filtered by hs_lastmodifieddate
+    // so we don't need the createdate filter (modified exams might be old but recently updated)
+
     const searchBody = {
-      filterGroups,
       properties,
       limit: 100,
       sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'DESCENDING' }]
     };
+
+    // Add filters only if we have any
+    if (filters.length > 0) {
+      searchBody.filterGroups = [{ filters }];
+    }
 
     if (after) {
       searchBody.after = after;
@@ -179,7 +227,7 @@ async function fetchModifiedMockExams(sinceTimestamp) {
 
   } while (after);
 
-  console.log(`📊 Incremental sync: Found ${allExams.length} modified exams ${sinceTimestamp ? 'since ' + new Date(parseInt(sinceTimestamp)).toISOString() : '(initial sync)'}`);
+  console.log(`📊 Incremental sync: Found ${allExams.length} modified exams ${sinceTimestamp ? 'since ' + new Date(parseInt(sinceTimestamp)).toISOString() : '(initial sync - last 30 days)'}`);
 
   return allExams;
 }
@@ -480,9 +528,15 @@ async function syncAllData() {
     const lastExamSync = await getLastSyncTimestamp('mock_exams');
     const lastContactSync = await getLastSyncTimestamp('contact_credits');
 
-    console.log(`🔄 Starting incremental sync...`);
-    console.log(`   Last exam sync: ${lastExamSync ? new Date(parseInt(lastExamSync)).toISOString() : 'Never (full sync)'}`);
+    const syncMode = (lastExamSync && lastContactSync) ? 'incremental' : 'full';
+    console.log(`🔄 Starting ${syncMode} sync...`);
+    console.log(`   Last exam sync: ${lastExamSync ? new Date(parseInt(lastExamSync)).toISOString() : 'Never (full sync - last 30 days)'}`);
     console.log(`   Last contact sync: ${lastContactSync ? new Date(parseInt(lastContactSync)).toISOString() : 'Never (full sync)'}`);
+
+    if (!lastExamSync || !lastContactSync) {
+      console.log(`ℹ️ Note: sync_metadata table may not exist. To enable incremental syncing:`);
+      console.log(`   Run: PRDs/supabase/sync-metadata-table.sql in Supabase SQL Editor`);
+    }
 
     // Step 1: Fetch only MODIFIED exams since last sync
     const exams = await fetchModifiedMockExams(lastExamSync);

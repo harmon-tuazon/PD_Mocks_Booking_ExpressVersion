@@ -204,6 +204,42 @@ export function useCachedCredits() {
 }
 
 /**
+ * Standalone cache invalidation function for components that don't use the hook
+ * Use this when you need to invalidate cache without hook state management
+ *
+ * CRITICAL: This is used by BookingForm to invalidate cache before navigation
+ * ensuring ExamTypeSelector and other components fetch fresh data
+ *
+ * @example
+ * import { invalidateCreditsCache } from '../hooks/useCachedCredits';
+ * // After booking creation, before navigation
+ * invalidateCreditsCache();
+ * navigate('/confirmation');
+ */
+export const invalidateCreditsCache = () => {
+  console.log('🔄 [STANDALONE CACHE INVALIDATION] Clearing all credits cache layers');
+
+  // Clear module-level cache
+  creditCache = null;
+  lastFetchTime = null;
+  ongoingRequest = null;
+
+  // CRITICAL: Clear localStorage cache
+  // This ensures components that check localStorage on mount get fresh data
+  localStorage.removeItem('creditCache');
+
+  // Update all active subscribers (mounted components using the hook)
+  subscribers.forEach(setState => {
+    setState(null);
+  });
+
+  // Dispatch global event for components to react
+  window.dispatchEvent(new CustomEvent('creditsInvalidated'));
+
+  console.log('✅ [STANDALONE CACHE INVALIDATION] Complete - all cache layers cleared');
+};
+
+/**
  * Reset cache for testing purposes
  * @private
  */

@@ -819,6 +819,27 @@ module.exports = module.exports = module.exports = async function handler(req, r
       // Continue - cache invalidation failure shouldn't block booking creation
     }
 
+    // CRITICAL: Invalidate contact credits cache after booking creation
+    // This ensures frontend useCachedCredits hook doesn't return stale data
+    try {
+      const cache = getCache();
+      const creditsCachePattern = `contact:credits:${student_id}:*`;
+
+      const creditsInvalidatedCount = await cache.deletePattern(creditsCachePattern);
+
+      if (creditsInvalidatedCount > 0) {
+        console.log(`✅ [Credits Cache Invalidation] Invalidated ${creditsInvalidatedCount} credits cache entries for student ${student_id}`);
+      } else {
+        console.log(`ℹ️ [Credits Cache Invalidation] No credits cache entries found (pattern: "${creditsCachePattern}")`);
+      }
+    } catch (creditsCacheError) {
+      console.error('❌ Credits cache invalidation failed:', {
+        error: creditsCacheError.message,
+        stack: creditsCacheError.stack
+      });
+      // Non-blocking - continue even if Redis cache invalidation fails
+    }
+
     return res.status(201).json(createSuccessResponse(responseData, 'Booking created successfully'));
 
   } catch (error) {

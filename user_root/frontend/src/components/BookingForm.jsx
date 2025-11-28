@@ -10,6 +10,7 @@ import LocationSelector from './shared/LocationSelector';
 import ErrorDisplay from './shared/ErrorDisplay';
 import TimeConflictWarning from './shared/TimeConflictWarning';
 import { formatDate } from '../services/api';
+import { invalidateCreditsCache } from '../hooks/useCachedCredits';
 
 import { getUserSession, clearUserSession } from '../utils/auth';
 const BookingForm = () => {
@@ -139,6 +140,12 @@ const BookingForm = () => {
       const event = new CustomEvent('bookingCreated', { detail: refreshSignal });
       window.dispatchEvent(event);
       console.log('📢 Dispatched custom bookingCreated event');
+
+      // CRITICAL: Invalidate credits cache before navigation
+      // This ensures ExamTypeSelector and other components fetch fresh data
+      // Backend has already invalidated Redis cache, now we clear frontend cache
+      invalidateCreditsCache();
+      console.log('🔄 [BookingForm] Credits cache invalidated before navigation');
 
       // Use a fallback booking ID if the one from the result is undefined
       const fallbackBookingId = result.bookingId || `booking-${Date.now()}`;
