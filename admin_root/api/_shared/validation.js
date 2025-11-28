@@ -221,7 +221,7 @@ const schemas = {
         'any.required': 'Mock type is required'
       }),
     exam_date: Joi.string()
-      .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
       .required()
       .messages({
         'string.pattern.base': 'Exam date must be in YYYY-MM-DD format',
@@ -324,7 +324,7 @@ const schemas = {
           'any.required': 'Mock type is required'
         }),
       exam_date: Joi.string()
-        .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
+        .pattern(/^\d{4}-\d{2}-\d{2}$/)
         .required()
         .messages({
           'string.pattern.base': 'Exam date must be in YYYY-MM-DD format',
@@ -566,7 +566,7 @@ const schemas = {
         'any.only': 'Mock type must be one of: Situational Judgment, Clinical Skills, Mini-mock, or Mock Discussion'
       }),
     exam_date: Joi.string()
-      .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
       .optional()
       .messages({
         'string.pattern.base': 'Exam date must be in YYYY-MM-DD format'
@@ -734,7 +734,7 @@ const schemas = {
         }),
 
       exam_date: Joi.string()
-        .pattern(/^\\d{4}-\\d{2}-\\d{2}$/)
+        .pattern(/^\d{4}-\d{2}-\d{2}$/)
         .optional()
         .allow('')
         .messages({
