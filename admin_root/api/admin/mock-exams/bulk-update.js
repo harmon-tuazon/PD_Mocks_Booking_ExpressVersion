@@ -4,7 +4,7 @@
  *
  * Features:
  * - Update multiple session properties (location, mock_type, capacity, exam_date, is_active, scheduled_activation_datetime)
- * - Automatic filtering of sessions with bookings (total_bookings > 0)
+ * - Validates capacity constraints when updating sessions with bookings
  * - Auto-regeneration of mock_exam_name when components change
  * - Intelligent clearing of scheduled_activation_datetime when status changes from 'scheduled'
  * - Batch processing with HubSpot API (100 sessions per batch)
@@ -111,13 +111,9 @@ module.exports = async (req, res) => {
       const currentProps = session.properties;
       const totalBookings = parseInt(currentProps.total_bookings) || 0;
 
-      // Block sessions with existing bookings
+      // Log warning if editing session with bookings (for audit purposes)
       if (totalBookings > 0) {
-        invalidSessions.push({
-          id: sessionId,
-          reason: `Session has ${totalBookings} booking(s) and cannot be bulk edited`
-        });
-        continue;
+        console.log(`⚠️ [BULK-UPDATE] Editing session ${sessionId} with ${totalBookings} existing booking(s)`);
       }
 
       // Check capacity constraint if capacity is being updated
