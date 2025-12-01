@@ -69,6 +69,8 @@ async function createMockExamHandler(req, res) {
     try {
       await syncExamToSupabase({
         id: result.id,
+        createdAt: result.createdAt,  // HubSpot returns this at top level
+        updatedAt: result.updatedAt,  // HubSpot returns this at top level
         properties: result.properties
       });
       console.log(`✅ Exam synced to Supabase`);

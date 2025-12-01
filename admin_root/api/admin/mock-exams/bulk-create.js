@@ -127,6 +127,8 @@ async function bulkCreateMockExamsHandler(req, res) {
         const syncResults = await Promise.allSettled(
           mockExamsArray.map(exam => syncExamToSupabase({
             id: exam.id,
+            createdAt: exam.createdAt,  // From batch create response
+            updatedAt: exam.updatedAt,  // From batch create response
             properties: exam.properties
           }))
         );

@@ -295,6 +295,8 @@ async function handlePatchRequest(req, res) {
     try {
       await syncExamToSupabase({
         id: mockExamId,
+        createdAt: refreshedExam.createdAt,  // From getMockExam response
+        updatedAt: refreshedExam.updatedAt,  // From getMockExam response
         properties: refreshedExam.properties
       });
       console.log(`✅ [EDIT] Exam ${mockExamId} synced to Supabase`);
@@ -452,6 +454,8 @@ async function handleGetRequest(req, res) {
         const { syncExamToSupabase } = require('../../_shared/supabase-data');
         syncExamToSupabase({
           id: mockExamId,
+          createdAt: mockExam.createdAt,  // From HubSpot GET response
+          updatedAt: mockExam.updatedAt,  // From HubSpot GET response
           properties: mockExam.properties
         }).catch(err => {
           console.error(`⚠️ [SUPABASE SYNC] Failed to auto-populate (non-blocking):`, err.message);

@@ -298,6 +298,8 @@ module.exports = async (req, res) => {
         const supabaseUpdates = results.successful.map(exam =>
           syncExamToSupabase({
             id: exam.id,
+            createdAt: exam.createdAt,  // From batch create response (defensive fallback in sync function)
+            updatedAt: exam.updatedAt,  // From batch create response (defensive fallback in sync function)
             properties: exam.properties
           })
         );

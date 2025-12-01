@@ -227,7 +227,11 @@ module.exports = async (req, res) => {
         );
 
         if (response.results) {
+          // Store full objects for Supabase sync (includes createdAt/updatedAt)
           results.successful.push(...response.results.map(r => r.id));
+          // Store full response objects for later use
+          results.successfulObjects = results.successfulObjects || [];
+          results.successfulObjects.push(...response.results);
           console.log(`✅ [BULK-UPDATE] Chunk ${chunkNumber} successful: ${response.results.length} sessions updated`);
         }
 
@@ -262,13 +266,14 @@ module.exports = async (req, res) => {
     let supabaseSynced = false;
     if (results.successful.length > 0) {
       try {
-        const supabaseUpdates = results.successful.map(sessionId => {
-          const update = validUpdates.find(u => u.id === sessionId);
-          return syncExamToSupabase({
-            id: sessionId,
-            properties: update.properties
-          });
-        });
+        const supabaseUpdates = results.successfulObjects.map(examObject =>
+          syncExamToSupabase({
+            id: examObject.id,
+            createdAt: examObject.createdAt,  // From batch update response (defensive fallback in sync function)
+            updatedAt: examObject.updatedAt,  // From batch update response (defensive fallback in sync function)
+            properties: examObject.properties
+          })
+        );
 
         const supabaseResults = await Promise.allSettled(supabaseUpdates);
         const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
