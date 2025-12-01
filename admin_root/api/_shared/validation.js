@@ -284,14 +284,14 @@ const schemas = {
         'date.min': 'Scheduled activation date must be today or in the future'
       }),
     start_time: Joi.string()
-      .pattern(/^([01]\\d|2[0-3]):([0-5]\\d)$/)
+      .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
       .required()
       .messages({
         'string.pattern.base': 'Start time must be in HH:MM format (24-hour)',
         'any.required': 'Start time is required'
       }),
     end_time: Joi.string()
-      .pattern(/^([01]\\d|2[0-3]):([0-5]\\d)$/)
+      .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
       .required()
       .messages({
         'string.pattern.base': 'End time must be in HH:MM format (24-hour)',
@@ -391,14 +391,14 @@ const schemas = {
       .items(
         Joi.object({
           start_time: Joi.string()
-            .pattern(/^([01]\\d|2[0-3]):([0-5]\\d)$/)
+            .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
             .required()
             .messages({
               'string.pattern.base': 'Start time must be in HH:MM format (24-hour)',
               'any.required': 'Start time is required for each time slot'
             }),
           end_time: Joi.string()
-            .pattern(/^([01]\\d|2[0-3]):([0-5]\\d)$/)
+            .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
             .required()
             .messages({
               'string.pattern.base': 'End time must be in HH:MM format (24-hour)',
