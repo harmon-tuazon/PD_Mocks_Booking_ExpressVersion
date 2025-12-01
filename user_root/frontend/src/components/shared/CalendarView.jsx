@@ -3,6 +3,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday
 import { FiLock } from 'react-icons/fi';
 import { formatTimeRange } from '../../services/api';
 import { checkPrerequisites } from '../../utils/prerequisiteHelpers';
+import CapacityBadge from './CapacityBadge';
 
 const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -224,6 +225,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [] }) 
               {/* Mobile: shorter max height, Desktop: taller */}
               <div className="space-y-3 max-h-64 md:max-h-96 overflow-y-auto">
                 {selectedSessions
+                  .filter(session => session.available_slots > 0)  // Filter out full sessions
                   .sort((a, b) => {
                     // Sort by start_time chronologically
                     const timeA = a.start_time || '00:00';
@@ -241,13 +243,11 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [] }) 
                       <h4 className="text-sm sm:text-xs font-subheading font-semibold text-navy-800 dark:text-gray-100">
                         {formatTimeRange(session)}
                       </h4>
-                      <div className={`px-2 py-1 rounded-full text-xs font-subheading font-medium border self-start sm:self-auto ${
-                        session.is_active
-                          ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-400 border-teal-200 dark:border-teal-700'
-                          : 'bg-gray-100 dark:bg-gray-700/30 text-gray-800 dark:text-gray-400 border-gray-200 dark:border-gray-600'
-                      }`}>
-                        {session.is_active ? 'Active' : 'Inactive'}
-                      </div>
+                      <CapacityBadge
+                        availableSlots={session.available_slots}
+                        capacity={session.capacity}
+                        size="normal"
+                      />
                     </div>
 
                     {/* Prerequisites Badge */}
