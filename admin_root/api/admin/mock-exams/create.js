@@ -17,6 +17,11 @@ const { syncExamToSupabase } = require('../../_shared/supabase-data');
  */
 async function createMockExamHandler(req, res) {
   try {
+    // DEBUG: Log raw request body to diagnose time format issues
+    console.log('🔍 [DEBUG] Raw request body received:', JSON.stringify(req.body, null, 2));
+    console.log('🔍 [DEBUG] Time values - start_time:', req.body.start_time, 'end_time:', req.body.end_time);
+    console.log('🔍 [DEBUG] Time value types - start_time type:', typeof req.body.start_time, 'end_time type:', typeof req.body.end_time);
+
     // Validate request body
     const validatedData = await validateInput(req.body, 'mockExamCreation');
 
