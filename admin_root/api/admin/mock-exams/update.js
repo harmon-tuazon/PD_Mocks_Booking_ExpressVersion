@@ -210,6 +210,8 @@ module.exports = async (req, res) => {
     try {
       await syncExamToSupabase({
         id: mockExamId,
+        createdAt: updatedMockExam.createdAt,  // From update response
+        updatedAt: updatedMockExam.updatedAt,  // From update response
         properties: updatedMockExam.properties
       });
       console.log(`✅ Mock exam ${mockExamId} synced to Supabase`);

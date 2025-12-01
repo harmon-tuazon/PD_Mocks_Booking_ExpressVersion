@@ -4,7 +4,7 @@
  *
  * Features:
  * - Update multiple session properties (location, mock_type, capacity, exam_date, is_active, scheduled_activation_datetime)
- * - Automatic filtering of sessions with bookings (total_bookings > 0)
+ * - Validates capacity constraints when updating sessions with bookings
  * - Auto-regeneration of mock_exam_name when components change
  * - Intelligent clearing of scheduled_activation_datetime when status changes from 'scheduled'
  * - Batch processing with HubSpot API (100 sessions per batch)
@@ -111,13 +111,9 @@ module.exports = async (req, res) => {
       const currentProps = session.properties;
       const totalBookings = parseInt(currentProps.total_bookings) || 0;
 
-      // Block sessions with existing bookings
+      // Log warning if editing session with bookings (for audit purposes)
       if (totalBookings > 0) {
-        invalidSessions.push({
-          id: sessionId,
-          reason: `Session has ${totalBookings} booking(s) and cannot be bulk edited`
-        });
-        continue;
+        console.log(`⚠️ [BULK-UPDATE] Editing session ${sessionId} with ${totalBookings} existing booking(s)`);
       }
 
       // Check capacity constraint if capacity is being updated
@@ -227,7 +223,11 @@ module.exports = async (req, res) => {
         );
 
         if (response.results) {
+          // Store full objects for Supabase sync (includes createdAt/updatedAt)
           results.successful.push(...response.results.map(r => r.id));
+          // Store full response objects for later use
+          results.successfulObjects = results.successfulObjects || [];
+          results.successfulObjects.push(...response.results);
           console.log(`✅ [BULK-UPDATE] Chunk ${chunkNumber} successful: ${response.results.length} sessions updated`);
         }
 
@@ -262,13 +262,14 @@ module.exports = async (req, res) => {
     let supabaseSynced = false;
     if (results.successful.length > 0) {
       try {
-        const supabaseUpdates = results.successful.map(sessionId => {
-          const update = validUpdates.find(u => u.id === sessionId);
-          return syncExamToSupabase({
-            id: sessionId,
-            properties: update.properties
-          });
-        });
+        const supabaseUpdates = results.successfulObjects.map(examObject =>
+          syncExamToSupabase({
+            id: examObject.id,
+            createdAt: examObject.createdAt,  // From batch update response (defensive fallback in sync function)
+            updatedAt: examObject.updatedAt,  // From batch update response (defensive fallback in sync function)
+            properties: examObject.properties
+          })
+        );
 
         const supabaseResults = await Promise.allSettled(supabaseUpdates);
         const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;

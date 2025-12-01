@@ -541,6 +541,14 @@ module.exports = module.exports = module.exports = async function handler(req, r
     // Add conditional fields based on exam type
     if (mock_type === 'Clinical Skills') {
       bookingData.dominantHand = dominant_hand;
+
+      // CRITICAL FIX: For Clinical Skills, default attending_location to mock exam's location
+      // Clinical Skills bookings don't ask for user location preference in the booking form,
+      // so we automatically use the mock exam's location to ensure consistency between
+      // HubSpot and Supabase. This prevents null values from overwriting Supabase data during cron sync.
+      bookingData.attendingLocation = mockExam.properties.location || null;
+      console.log(`✅ [Clinical Skills] Defaulting attending_location to exam location: ${bookingData.attendingLocation}`);
+
     } else if (mock_type === 'Situational Judgment' || mock_type === 'Mini-mock') {
       bookingData.attendingLocation = formattedLocation;
     }
@@ -552,10 +560,9 @@ module.exports = module.exports = module.exports = async function handler(req, r
 
     // SUPABASE SYNC: Sync booking to Supabase for read optimization
     try {
-      // CRITICAL FIX: For Clinical Skills, use mock exam's location instead of user input
-      const locationForSupabase = mock_type === 'Clinical Skills'
-        ? (mockExam.properties.location || null)
-        : formattedLocation;
+      // Since we now set attending_location correctly in bookingData above,
+      // we can use the created booking's attending_location property directly
+      const locationForSupabase = createdBooking.properties.attending_location || null;
 
       const bookingForSync = {
         id: createdBookingId,

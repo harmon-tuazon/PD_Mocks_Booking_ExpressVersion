@@ -53,6 +53,26 @@ export function useCachedCredits() {
    * @returns {Promise<void>}
    */
   const fetchCredits = async (studentId, email, force = false) => {
+    // STEP 0: Check for persistent invalidation flag
+    // This flag survives navigation and event timing issues
+    // Expires after 10 seconds to prevent infinite force-refresh loops
+    const invalidationFlag = localStorage.getItem('creditCacheInvalidated');
+    if (invalidationFlag) {
+      const flagTimestamp = parseInt(invalidationFlag, 10);
+      const flagAge = Date.now() - flagTimestamp;
+
+      // If flag is less than 10 seconds old, force refresh
+      if (flagAge < 10000) {
+        console.log(`🚨 [CACHE] Invalidation flag detected (age: ${flagAge}ms), forcing refresh`);
+        force = true;
+        localStorage.removeItem('creditCacheInvalidated');
+      } else {
+        // Flag is stale, remove it
+        console.log(`🗑️ [CACHE] Stale invalidation flag detected (age: ${flagAge}ms), removing`);
+        localStorage.removeItem('creditCacheInvalidated');
+      }
+    }
+
     // STEP 1: Check localStorage for pre-populated cache from login endpoint
     if (!force && !creditCache) {
       try {
@@ -186,6 +206,11 @@ export function useCachedCredits() {
     // CRITICAL FIX: Clear localStorage cache to prevent stale data
     localStorage.removeItem('creditCache');
 
+    // Set persistent invalidation flag for cross-navigation cache invalidation
+    // This ensures components that mount after navigation force-refresh their data
+    localStorage.setItem('creditCacheInvalidated', Date.now().toString());
+    console.log('🚩 [CACHE] Invalidation flag set for persistent cache busting');
+
     // Update all subscribers to reflect cache clear
     subscribers.forEach(setState => {
       setState(null);
@@ -227,6 +252,11 @@ export const invalidateCreditsCache = () => {
   // CRITICAL: Clear localStorage cache
   // This ensures components that check localStorage on mount get fresh data
   localStorage.removeItem('creditCache');
+
+  // Set persistent invalidation flag for cross-navigation cache invalidation
+  // This ensures components that mount after navigation force-refresh their data
+  localStorage.setItem('creditCacheInvalidated', Date.now().toString());
+  console.log('🚩 [CACHE] Invalidation flag set for persistent cache busting');
 
   // Update all active subscribers (mounted components using the hook)
   subscribers.forEach(setState => {
