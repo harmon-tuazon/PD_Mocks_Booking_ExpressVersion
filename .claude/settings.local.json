@@ -46,7 +46,8 @@
       "mcp__serena__think_about_task_adherence",
       "mcp__vercel__list_deployments",
       "Bash(node:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": []

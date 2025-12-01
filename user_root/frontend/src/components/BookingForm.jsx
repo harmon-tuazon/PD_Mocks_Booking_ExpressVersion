@@ -13,6 +13,31 @@ import { formatDate } from '../services/api';
 import { invalidateCreditsCache } from '../hooks/useCachedCredits';
 
 import { getUserSession, clearUserSession } from '../utils/auth';
+
+// API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+
+/**
+ * Convert timestamp to relative time (e.g., "just now", "5 seconds ago")
+ */
+const getTimeAgo = (timestamp) => {
+  if (!timestamp) return '';
+
+  const now = new Date();
+  const then = new Date(timestamp);
+  const diffMs = now - then;
+  const diffSec = Math.floor(diffMs / 1000);
+
+  if (diffSec < 5) return 'just now';
+  if (diffSec < 60) return `${diffSec} seconds ago`;
+
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin === 1) return '1 minute ago';
+  if (diffMin < 60) return `${diffMin} minutes ago`;
+
+  return 'a while ago';
+};
+
 const BookingForm = () => {
   const { mockExamId } = useParams();
   const location = useLocation();
@@ -48,6 +73,10 @@ const BookingForm = () => {
   const [dominantHand, setDominantHand] = useState(null);
   const [attendingLocation, setAttendingLocation] = useState(null);
 
+  // Capacity polling state
+  const [lastCapacityCheck, setLastCapacityCheck] = useState(null);
+  const [capacityCheckInterval, setCapacityCheckInterval] = useState(null);
+
   // Determine which field is needed based on exam type
   const isClinicalSkills = mockType === 'Clinical Skills';
   const isLocationBased = ['Situational Judgment', 'Mini-mock'].includes(mockType);
@@ -82,6 +111,59 @@ const BookingForm = () => {
     });
   }, [mockExamId, mockType, examDate, startTime, endTime, updateBookingData]);
 
+  // Background polling for capacity updates (every 10 seconds)
+  useEffect(() => {
+    // Only poll when on details step (after credits verified)
+    if (step !== 'details' || !mockExamId) {
+      return;
+    }
+
+    const checkCapacity = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/mock-exams/${mockExamId}/capacity`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          console.error('Capacity check failed:', response.status);
+          return;
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          setLastCapacityCheck(new Date());
+
+          // If session became full, alert user and navigate back
+          if (result.data.is_full) {
+            alert('This session just became full. Please select another date.');
+            navigate(`/book/exams?type=${encodeURIComponent(mockType)}`);
+          }
+        }
+      } catch (error) {
+        // Silently log errors, don't disrupt UX
+        console.error('Background capacity check error:', error);
+      }
+    };
+
+    // Initial check
+    checkCapacity();
+
+    // Set up polling interval (every 10 seconds)
+    const interval = setInterval(checkCapacity, 10000);
+    setCapacityCheckInterval(interval);
+
+    // Cleanup on unmount
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [step, mockExamId, mockType, navigate]);
+
   const handleSubmitBooking = async (e) => {
     e.preventDefault();
 
@@ -94,6 +176,32 @@ const BookingForm = () => {
     if (isLocationBased && !attendingLocation) {
       alert('Please select your attending location');
       return;
+    }
+
+    // PRE-SUBMISSION CAPACITY CHECK: Final validation before booking
+    try {
+      const capacityResponse = await fetch(`${API_BASE}/mock-exams/${mockExamId}/capacity`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (capacityResponse.ok) {
+        const capacityResult = await capacityResponse.json();
+
+        if (capacityResult.success && capacityResult.data?.is_full) {
+          alert('This session just became full. Please select another date.');
+          navigate(`/book/exams?type=${encodeURIComponent(mockType)}`);
+          return;
+        }
+      } else {
+        console.warn('Pre-submission capacity check failed:', capacityResponse.status);
+        // Continue with booking - backend will catch it
+      }
+    } catch (capacityError) {
+      console.error('Pre-submission capacity check error:', capacityError);
+      // Continue with booking - backend will catch it
     }
 
     // Create booking payload with all required information
@@ -438,6 +546,18 @@ const BookingForm = () => {
                       onChange={setAttendingLocation}
                       required
                     />
+                  </div>
+                )}
+
+                {/* Availability Check Indicator */}
+                {lastCapacityCheck && (
+                  <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center justify-center">
+                    <svg className="w-4 h-4 mr-1.5 text-green-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span>
+                      Last availability check: {getTimeAgo(lastCapacityCheck)}
+                    </span>
                   </div>
                 )}
 

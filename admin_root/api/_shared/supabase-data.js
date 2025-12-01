@@ -381,21 +381,33 @@ async function syncExamToSupabase(exam) {
     capacity: parseInt(props.capacity) || 0,
     total_bookings: parseInt(props.total_bookings) || 0,
     is_active: props.is_active || null,
-    // Convert empty string to null for TIMESTAMPTZ column
-    scheduled_activation_datetime: props.scheduled_activation_datetime || null,
+    // Convert Unix timestamp (milliseconds) to ISO string for Supabase TIMESTAMPTZ
+    scheduled_activation_datetime: props.scheduled_activation_datetime
+      ? (typeof props.scheduled_activation_datetime === 'string' && props.scheduled_activation_datetime.includes('T')
+          ? props.scheduled_activation_datetime // Already ISO format
+          : new Date(parseInt(props.scheduled_activation_datetime)).toISOString()) // Convert Unix timestamp
+      : null,
     // Defensive timestamps with multiple fallbacks
     created_at: createdAt,
     updated_at: updatedAt,
     synced_at: now
   };
 
-  const { error } = await supabaseAdmin
+  const { error, data } = await supabaseAdmin
     .from('hubspot_mock_exams')
-    .upsert(record, { onConflict: 'hubspot_id' });
+    .upsert(record, { onConflict: 'hubspot_id' })
+    .select(); // Add .select() to get returned data
 
   if (error) {
     console.error(`❌ Supabase exam sync error:`, error.message);
+    console.error(`❌ Error details:`, JSON.stringify(error, null, 2));
     throw error;
+  }
+
+  // Verify upsert actually worked
+  if (!data || data.length === 0) {
+    console.error(`⚠️ Supabase upsert returned no data for exam ${exam.id} - record may have been deleted`);
+    console.error(`⚠️ Record attempted to sync:`, JSON.stringify(record, null, 2));
   }
 
   console.log(`✅ Synced exam ${exam.id} to Supabase`);

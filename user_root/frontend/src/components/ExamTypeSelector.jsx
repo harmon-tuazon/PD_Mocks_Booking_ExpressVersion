@@ -15,21 +15,21 @@ const ExamTypeSelector = () => {
       description: 'Test your situational decision-making skills with scenario-based simulations.',
       icon: '/assets/SJ-icon.svg',
       color: 'primary',
-      duration: '2 hours',
+      duration: '2 hours and 30 mins',
     },
     {
       type: 'Clinical Skills',
       description: 'Demonstrate your practical clinical abilities skills in simulated cases.',
       icon: '/assets/CS-icon.svg',
       color: 'success',
-      duration: '3 hours',
+      duration: '8 hours and 30 mins',
     },
     {
       type: 'Mini-mock',
       description: 'Quick practice session to test your knowledge and prepare for full-length exams.',
       icon: '/assets/minimock-icon.svg',
       color: 'warning',
-      duration: '1 hour',
+      duration: '1 hour and 30 mins',
     },
   ];
 
