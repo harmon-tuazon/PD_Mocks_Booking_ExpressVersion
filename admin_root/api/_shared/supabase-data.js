@@ -363,23 +363,30 @@ async function syncBookingsToSupabase(bookings, examId) {
  */
 async function syncExamToSupabase(exam) {
   const props = exam.properties || exam;
+  const now = new Date().toISOString();
+
+  // Defensive: Extract timestamps with multiple fallback layers
+  // Priority: HubSpot top-level → properties (multiple formats) → current time
+  const createdAt = exam.createdAt || props.hs_createdate || props.createdate || props.created_at || now;
+  const updatedAt = exam.updatedAt || props.hs_lastmodifieddate || props.lastmodifieddate || props.updated_at || now;
 
   const record = {
     hubspot_id: exam.id,
-    mock_exam_name: props.mock_exam_name,
-    mock_type: props.mock_type,
-    exam_date: props.exam_date,
-    start_time: props.start_time,
-    end_time: props.end_time,
-    location: props.location,
+    mock_exam_name: props.mock_exam_name || null,
+    mock_type: props.mock_type || null,
+    exam_date: props.exam_date || null,
+    start_time: props.start_time || null,
+    end_time: props.end_time || null,
+    location: props.location || null,
     capacity: parseInt(props.capacity) || 0,
     total_bookings: parseInt(props.total_bookings) || 0,
-    is_active: props.is_active,
+    is_active: props.is_active || null,
     // Convert empty string to null for TIMESTAMPTZ column
     scheduled_activation_datetime: props.scheduled_activation_datetime || null,
-    created_at: props.createdate || props.created_at,
-    updated_at: props.hs_lastmodifieddate || props.updated_at,
-    synced_at: new Date().toISOString()
+    // Defensive timestamps with multiple fallbacks
+    created_at: createdAt,
+    updated_at: updatedAt,
+    synced_at: now
   };
 
   const { error } = await supabaseAdmin
