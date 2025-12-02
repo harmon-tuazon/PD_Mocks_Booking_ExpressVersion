@@ -9,6 +9,7 @@ import LoggedInUserCard from './shared/LoggedInUserCard';
 import LocationSelector from './shared/LocationSelector';
 import ErrorDisplay from './shared/ErrorDisplay';
 import TimeConflictWarning from './shared/TimeConflictWarning';
+import SessionFullModal from './shared/SessionFullModal';
 import { formatDate } from '../services/api';
 import { invalidateCreditsCache } from '../hooks/useCachedCredits';
 
@@ -77,6 +78,9 @@ const BookingForm = () => {
   const [lastCapacityCheck, setLastCapacityCheck] = useState(null);
   const [capacityCheckInterval, setCapacityCheckInterval] = useState(null);
 
+  // Session full modal state
+  const [showSessionFullModal, setShowSessionFullModal] = useState(false);
+
   // Determine which field is needed based on exam type
   const isClinicalSkills = mockType === 'Clinical Skills';
   const isLocationBased = ['Situational Judgment', 'Mini-mock'].includes(mockType);
@@ -137,10 +141,9 @@ const BookingForm = () => {
         if (result.success && result.data) {
           setLastCapacityCheck(new Date());
 
-          // If session became full, alert user and navigate back
+          // If session became full, show modal to user
           if (result.data.is_full) {
-            alert('This session just became full. Please select another date.');
-            navigate(`/book/exams?type=${encodeURIComponent(mockType)}`);
+            setShowSessionFullModal(true);
           }
         }
       } catch (error) {
@@ -152,8 +155,8 @@ const BookingForm = () => {
     // Initial check
     checkCapacity();
 
-    // Set up polling interval (every 10 seconds)
-    const interval = setInterval(checkCapacity, 10000);
+    // Set up polling interval (every 2 seconds for responsive UX)
+    const interval = setInterval(checkCapacity, 2000);
     setCapacityCheckInterval(interval);
 
     // Cleanup on unmount
@@ -191,8 +194,7 @@ const BookingForm = () => {
         const capacityResult = await capacityResponse.json();
 
         if (capacityResult.success && capacityResult.data?.is_full) {
-          alert('This session just became full. Please select another date.');
-          navigate(`/book/exams?type=${encodeURIComponent(mockType)}`);
+          setShowSessionFullModal(true);
           return;
         }
       } else {
@@ -270,6 +272,12 @@ const BookingForm = () => {
     navigate('/login');
   };
 
+  // Handle session full modal - navigate to exam selection
+  const handleSelectAnotherSession = () => {
+    setShowSessionFullModal(false);
+    navigate(`/book/exams?type=${encodeURIComponent(mockType)}`);
+  };
+
   if (!userSession) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex items-center justify-center">
@@ -327,6 +335,14 @@ const BookingForm = () => {
         expiryMinutes={15}
         onExpire={handleSessionExpire}
         onExtend={() => console.log('Session extended')}
+      />
+
+      {/* Session Full Modal */}
+      <SessionFullModal
+        isOpen={showSessionFullModal}
+        mockType={mockType}
+        examDate={examDate}
+        onSelectAnother={handleSelectAnotherSession}
       />
 
       <div className="container-brand-sm py-12">

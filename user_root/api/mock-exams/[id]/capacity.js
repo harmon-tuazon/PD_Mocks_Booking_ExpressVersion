@@ -1,6 +1,6 @@
 require('dotenv').config();
-const { HubSpotService } = require('../../_shared/hubspot');
 const RedisLockService = require('../../_shared/redis');
+const { supabaseAdmin } = require('../../_shared/supabase');
 const {
   setCorsHeaders,
   handleOptionsRequest,
@@ -54,56 +54,45 @@ module.exports = async (req, res) => {
       );
     }
 
-    // Initialize services
+    // Initialize Redis
     const redis = new RedisLockService();
-    const hubspot = new HubSpotService();
 
     let capacity = 0;
     let totalBookings = 0;
 
-    // TIER 1: Try Redis first (real-time, authoritative source ~5ms)
+    // TIER 1: Try Redis first for bookings count (real-time, authoritative ~5ms)
     const redisBookings = await redis.get(`exam:${mockExamId}:bookings`);
 
+    // TIER 2: Get capacity from Supabase (fast ~50ms, no HubSpot API call)
+    const { data: examData, error: supabaseError } = await supabaseAdmin
+      .from('hubspot_mock_exams')
+      .select('capacity, total_bookings')
+      .eq('hubspot_id', mockExamId)
+      .single();
+
+    if (supabaseError || !examData) {
+      console.error(`❌ Failed to fetch exam from Supabase:`, supabaseError?.message);
+      await redis.close();
+      return res.status(404).json(
+        createErrorResponse(new Error('Mock exam not found'))
+      );
+    }
+
+    capacity = parseInt(examData.capacity) || 0;
+
     if (redisBookings !== null) {
-      // Redis has the booking count, just need capacity from HubSpot
+      // Redis has authoritative booking count
       totalBookings = parseInt(redisBookings);
-      console.log(`📊 Redis cache hit: exam:${mockExamId}:bookings = ${totalBookings}`);
-
-      // Fetch capacity from HubSpot (single property, fast)
-      try {
-        const mockExam = await hubspot.getMockExam(mockExamId);
-        capacity = parseInt(mockExam.data?.properties?.capacity || mockExam.properties?.capacity) || 0;
-      } catch (hubspotError) {
-        console.error(`❌ Failed to fetch capacity from HubSpot:`, hubspotError.message);
-        // Close Redis connection before throwing
-        await redis.close();
-        return res.status(404).json(
-          createErrorResponse(new Error('Mock exam not found'))
-        );
-      }
+      console.log(`📊 Redis hit: exam:${mockExamId}:bookings = ${totalBookings}, capacity from Supabase = ${capacity}`);
     } else {
-      // TIER 2: Redis cache miss - fetch from HubSpot and seed Redis
-      console.log(`📊 Redis cache miss: fetching from HubSpot for exam:${mockExamId}`);
+      // Redis cache miss - use Supabase value and seed Redis
+      totalBookings = parseInt(examData.total_bookings) || 0;
+      console.log(`📊 Redis miss: using Supabase total_bookings = ${totalBookings}`);
 
-      try {
-        const mockExam = await hubspot.getMockExam(mockExamId);
-        const mockExamData = mockExam.data || mockExam;
-
-        capacity = parseInt(mockExamData.properties.capacity) || 0;
-        totalBookings = parseInt(mockExamData.properties.total_bookings) || 0;
-
-        // Seed Redis with current HubSpot value (TTL: 30 days for self-healing)
-        const TTL_30_DAYS = 30 * 24 * 60 * 60; // 2,592,000 seconds
-        await redis.setex(`exam:${mockExamId}:bookings`, TTL_30_DAYS, totalBookings);
-        console.log(`📊 Redis cache seeded: exam:${mockExamId}:bookings = ${totalBookings} (TTL: 30 days)`);
-      } catch (hubspotError) {
-        console.error(`❌ Failed to fetch mock exam from HubSpot:`, hubspotError.message);
-        // Close Redis connection before throwing
-        await redis.close();
-        return res.status(404).json(
-          createErrorResponse(new Error('Mock exam not found'))
-        );
-      }
+      // Seed Redis with Supabase value (TTL: 30 days for self-healing)
+      const TTL_30_DAYS = 30 * 24 * 60 * 60;
+      await redis.setex(`exam:${mockExamId}:bookings`, TTL_30_DAYS, totalBookings);
+      console.log(`📊 Redis seeded: exam:${mockExamId}:bookings = ${totalBookings}`);
     }
 
     // Close Redis connection
