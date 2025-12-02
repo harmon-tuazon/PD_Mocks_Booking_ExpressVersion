@@ -12,19 +12,29 @@ const SessionRow = ({
   isSelected = false
 }) => {
 
-  // Format ISO timestamp to readable time (e.g., "2:00 PM")
-  const formatTime = (timeString) => {
-    if (!timeString) return '--';
+  // Format timestamp to readable time (e.g., "2:00 PM")
+  // Handles: Unix timestamps (numbers), ISO strings, and pre-formatted strings
+  const formatTime = (timeValue) => {
+    if (!timeValue) return '--';
 
     try {
       // If it's already formatted (e.g., "2:00 PM"), return as-is
-      if (timeString.includes('AM') || timeString.includes('PM')) {
-        return timeString;
+      if (typeof timeValue === 'string' && (timeValue.includes('AM') || timeValue.includes('PM'))) {
+        return timeValue;
       }
 
-      // Parse ISO timestamp (e.g., "2025-09-26T16:00:00Z")
-      const date = new Date(timeString);
-      if (isNaN(date.getTime())) return timeString;
+      let date;
+
+      // Handle Unix timestamp (number or numeric string like "1766410200000")
+      if (typeof timeValue === 'number' || (typeof timeValue === 'string' && /^\d+$/.test(timeValue))) {
+        const timestamp = typeof timeValue === 'number' ? timeValue : parseInt(timeValue, 10);
+        date = new Date(timestamp);
+      } else {
+        // Parse ISO timestamp (e.g., "2025-09-26T16:00:00Z")
+        date = new Date(timeValue);
+      }
+
+      if (isNaN(date.getTime())) return String(timeValue);
 
       // Format to readable time
       return date.toLocaleTimeString('en-US', {
@@ -33,8 +43,8 @@ const SessionRow = ({
         hour12: true
       });
     } catch (error) {
-      console.error('Error formatting time:', timeString, error);
-      return timeString;
+      console.error('Error formatting time:', timeValue, error);
+      return String(timeValue);
     }
   };
 

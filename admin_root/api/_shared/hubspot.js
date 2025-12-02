@@ -1275,9 +1275,9 @@ class HubSpotService {
       }
 
       if (status) {
-        // Map frontend status values to HubSpot filters
+        // Map frontend status values to HubSpot storage values
         // Frontend sends: "active", "inactive", or "scheduled"
-        // HubSpot now uses three-state string values: "active", "inactive", "scheduled"
+        // HubSpot stores: "true", "false", or "scheduled" (see update.js lines 146-167)
 
         if (status === 'scheduled') {
           // For scheduled: is_active='scheduled'
@@ -1287,18 +1287,18 @@ class HubSpotService {
             value: 'scheduled'
           });
         } else if (status === 'active') {
-          // For active: is_active='active'
+          // For active: is_active='true' (HubSpot stores 'true' string, not 'active')
           filters.push({
             propertyName: 'is_active',
             operator: 'EQ',
-            value: 'active'
+            value: 'true'
           });
         } else if (status === 'inactive') {
-          // For inactive: is_active='inactive'
+          // For inactive: is_active='false' (HubSpot stores 'false' string, not 'inactive')
           filters.push({
             propertyName: 'is_active',
             operator: 'EQ',
-            value: 'inactive'
+            value: 'false'
           });
         }
       }

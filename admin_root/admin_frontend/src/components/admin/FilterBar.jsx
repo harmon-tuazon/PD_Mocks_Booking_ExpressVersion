@@ -120,6 +120,22 @@ const FilterBar = ({
           </Select>
         </div>
 
+        {/* Date Range Filter - Frontend only (Upcoming vs All) */}
+        <div className="min-w-[120px]">
+          <Select
+            value={filters.filter_date_range || 'upcoming'}
+            onValueChange={(value) => onFilterChange('filter_date_range', value)}
+          >
+            <SelectTrigger title="Date Range">
+              <SelectValue placeholder="Upcoming" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="upcoming">Upcoming</SelectItem>
+              <SelectItem value="all">All Dates</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Reset Button - Compact with Badge */}
         <button
           onClick={onReset}

@@ -74,12 +74,23 @@ function MockExamsDashboard() {
     enabled: viewMode === 'list'
   });
 
+  // Helper: Get today's date in YYYY-MM-DD format for frontend filtering
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+
   // Extract data and pagination info
+  // Apply frontend date range filter (upcoming vs all) for list view
   const mockExamsData = useMemo(() => {
     if (!mockExamsResponse) return [];
     // Defensive: Ensure data is an array
-    return Array.isArray(mockExamsResponse.data) ? mockExamsResponse.data : [];
-  }, [mockExamsResponse]);
+    const data = Array.isArray(mockExamsResponse.data) ? mockExamsResponse.data : [];
+
+    // Apply frontend date range filter
+    if (filters.filter_date_range === 'upcoming') {
+      return data.filter(exam => exam.exam_date >= today);
+    }
+
+    return data;
+  }, [mockExamsResponse, filters.filter_date_range, today]);
 
   const paginationInfo = useMemo(() => {
     if (!mockExamsResponse?.pagination) {
@@ -102,13 +113,19 @@ function MockExamsDashboard() {
     enabled: viewMode === 'aggregate'
   });
 
-  // Client-side sorted aggregates
+  // Client-side filtered and sorted aggregates
   // This ensures sorting doesn't trigger API calls
   const sortedAggregates = useMemo(() => {
     if (!aggregatesData || !Array.isArray(aggregatesData)) return [];
 
+    // First, apply frontend date range filter
+    let filtered = aggregatesData;
+    if (filters.filter_date_range === 'upcoming') {
+      filtered = aggregatesData.filter(aggregate => aggregate.exam_date >= today);
+    }
+
     // Create a copy to avoid mutating original array
-    const sorted = [...aggregatesData];
+    const sorted = [...filtered];
 
     // Map backend sort names to frontend column names for matching
     const columnMap = {
@@ -145,7 +162,7 @@ function MockExamsDashboard() {
     });
 
     return sorted;
-  }, [aggregatesData, filters.sort_by, filters.sort_order]);
+  }, [aggregatesData, filters.sort_by, filters.sort_order, filters.filter_date_range, today]);
 
   // Client-side paginated aggregates
   const paginatedAggregates = useMemo(() => {
