@@ -157,30 +157,30 @@ const FilterBar = ({
         {/* Spacer */}
         <div className="flex-grow" />
 
-        {/* View Mode Toggle - Compact */}
-        <div className="flex items-center gap-1">
+        {/* View Mode Toggle */}
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => onViewModeChange('list')}
-            className={`inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+            className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
               viewMode === 'list'
                 ? 'bg-primary-600 dark:bg-primary-500 text-white shadow-sm'
                 : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}
             title="List View"
           >
-            <ListBulletIcon className="h-3.5 w-3.5 mr-1" />
+            <ListBulletIcon className="h-4 w-4 mr-1.5" />
             List
           </button>
           <button
             onClick={() => onViewModeChange('aggregate')}
-            className={`inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+            className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
               viewMode === 'aggregate'
                 ? 'bg-primary-600 dark:bg-primary-500 text-white shadow-sm'
                 : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}
             title="Group View"
           >
-            <Squares2X2Icon className="h-3.5 w-3.5 mr-1" />
+            <Squares2X2Icon className="h-4 w-4 mr-1.5" />
             Group
           </button>
         </div>
