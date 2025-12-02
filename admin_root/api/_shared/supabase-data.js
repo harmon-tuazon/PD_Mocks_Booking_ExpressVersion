@@ -160,10 +160,12 @@ async function getExamsFromSupabase(filters = {}) {
 
   if (filters.is_active) {
     // Map filter values to Supabase stored values
-    // 'active' or 'Yes' → 'true', others pass through
+    // 'active' or 'Yes' → 'true', 'inactive' → 'false', others pass through
     let activeValue = filters.is_active;
     if (activeValue === 'active' || activeValue === 'Yes') {
       activeValue = 'true';
+    } else if (activeValue === 'inactive') {
+      activeValue = 'false';
     }
     query = query.eq('is_active', activeValue);
   }
