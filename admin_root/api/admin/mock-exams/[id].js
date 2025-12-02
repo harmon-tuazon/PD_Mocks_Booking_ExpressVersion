@@ -297,6 +297,16 @@ async function handlePatchRequest(req, res) {
         ...propertiesToUpdate         // Includes all updates
       };
 
+      // Ensure mock_exam_name is always populated for Supabase sync
+      // Generate it if missing (could be null from HubSpot if never set)
+      if (!propertiesForSync.mock_exam_name) {
+        const mockType = propertiesForSync.mock_type || currentExam.properties.mock_type;
+        const location = propertiesForSync.location || currentExam.properties.location;
+        const examDate = propertiesForSync.exam_date || currentExam.properties.exam_date;
+        propertiesForSync.mock_exam_name = `${mockType}-${location}-${examDate}`;
+        console.log('📝 [EDIT] Generated missing mock_exam_name for Supabase sync:', propertiesForSync.mock_exam_name);
+      }
+
       await syncExamToSupabase({
         id: mockExamId,
         createdAt: currentExam.createdAt,
