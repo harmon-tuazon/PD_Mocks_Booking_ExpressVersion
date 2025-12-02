@@ -158,8 +158,10 @@ export function useTableFilters(initialFilters = {}) {
         }
       }
     });
+    // For aggregates view, fetch all results to enable client-side sorting/pagination
+    params.limit = 500;
     return params;
-  }, [filters]);
+  }, [filters]);;
 
   return {
     filters,
