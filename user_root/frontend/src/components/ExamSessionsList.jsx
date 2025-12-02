@@ -556,15 +556,10 @@ const ExamSessionsList = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-3">
-                            <CapacityBadge
-                              availableSlots={exam.available_slots}
-                              capacity={exam.capacity}
-                            />
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                              {exam.available_slots} of {exam.capacity} slots
-                            </span>
-                          </div>
+                          <CapacityBadge
+                            availableSlots={exam.available_slots}
+                            capacity={exam.capacity}
+                          />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <button
@@ -614,9 +609,6 @@ const ExamSessionsList = () => {
                       <div className="flex items-center gap-2">
                         <LocationIcon />
                         <span>{exam.location}</span>
-                      </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        {exam.available_slots} of {exam.capacity} slots available
                       </div>
                     </div>
 

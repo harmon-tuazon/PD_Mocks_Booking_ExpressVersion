@@ -26,9 +26,9 @@ async function activateScheduledSessions() {
   const startTime = Date.now();
 
   try {
-    console.log(`🔍 [SCHEDULED-ACTIVATION] Querying for sessions to activate...`);
+    console.log(`🔍 [SCHEDULED-ACTIVATION] Querying Supabase for sessions to activate...`);
 
-    // Query HubSpot for sessions that need activation
+    // Query Supabase for sessions that need activation
     const sessionsToActivate = await findOverdueSessions();
 
     console.log(`📊 [SCHEDULED-ACTIVATION] Found ${sessionsToActivate.length} session(s) to activate`);
@@ -43,10 +43,12 @@ async function activateScheduledSessions() {
       };
     }
 
-    // Activate sessions in batches
+    // Activate sessions in batches (HubSpot update)
     const results = await batchActivateSessions(sessionsToActivate);
 
-    // Sync activated sessions to Supabase (direct update, no re-fetch needed)
+    // Sync activated sessions to Supabase
+    // CRITICAL: Use original session properties + updated is_active
+    // HubSpot batch response only contains updated fields, not all properties!
     let supabaseSynced = 0;
     if (results.successful.length > 0) {
       console.log(`🔄 [SCHEDULED-ACTIVATION] Syncing ${results.successful.length} activated exams to Supabase...`);
@@ -56,19 +58,22 @@ async function activateScheduledSessions() {
 
       for (const successfulResult of results.successful) {
         try {
-          // Get original session data
+          // Get original session data (contains all properties from Supabase query)
           const originalSession = sessionMap.get(successfulResult.id);
           if (!originalSession) {
             console.warn(`⚠️ [SCHEDULED-ACTIVATION] Session ${successfulResult.id} not found in original data`);
             continue;
           }
 
-          // Build exam object with updated is_active property (no HubSpot API call needed!)
+          // FIXED: Merge original properties with update
+          // Original session has all properties (capacity, mock_type, etc.)
+          // Only override is_active and clear scheduled_activation_datetime
           const updatedExam = {
             id: successfulResult.id,
             properties: {
-              ...successfulResult.properties, // Properties from HubSpot batch update response
-              is_active: 'true' // We know it's now active
+              ...originalSession.properties,  // All original properties (capacity, mock_type, etc.)
+              is_active: 'true',              // Now active
+              scheduled_activation_datetime: null  // Clear the scheduled datetime
             }
           };
 
@@ -110,54 +115,51 @@ async function activateScheduledSessions() {
 }
 
 /**
- * Query HubSpot for sessions that are overdue for activation
- * @returns {Promise<Array>} Array of session objects
+ * Query Supabase for sessions that are overdue for activation
+ * Uses Supabase instead of HubSpot for better read performance (~50ms vs ~500ms)
+ * @returns {Promise<Array>} Array of session objects in HubSpot format
  */
 async function findOverdueSessions() {
-  const now = Date.now(); // Current timestamp in milliseconds
-
-  const searchRequest = {
-    filterGroups: [{
-      filters: [
-        {
-          propertyName: 'is_active',
-          operator: 'EQ',
-          value: 'scheduled'
-        },
-        {
-          propertyName: 'scheduled_activation_datetime',
-          operator: 'LTE',
-          value: now.toString()
-        },
-        {
-          propertyName: 'scheduled_activation_datetime',
-          operator: 'HAS_PROPERTY'
-        }
-      ]
-    }],
-    properties: [
-      'is_active',
-      'scheduled_activation_datetime',
-      'mock_type',
-      'exam_date',
-      'start_time',
-      'end_time',
-      'location',
-      'capacity'
-    ],
-    limit: 100 // Process up to 100 per execution
-  };
+  const now = new Date().toISOString(); // Current time in ISO format for Supabase
 
   try {
-    const hubspot = new HubSpotService();
-    const response = await hubspot.apiCall('POST',
-      `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/search`,
-      searchRequest
-    );
+    // Query Supabase instead of HubSpot for better performance
+    const { supabaseAdmin } = require('./supabase');
+    
+    const { data, error } = await supabaseAdmin
+      .from('hubspot_mock_exams')
+      .select('*')
+      .eq('is_active', 'scheduled')
+      .not('scheduled_activation_datetime', 'is', null)
+      .lte('scheduled_activation_datetime', now)
+      .limit(100);
 
-    return response.results || [];
+    if (error) {
+      console.error('Error querying Supabase for overdue sessions:', error);
+      throw error;
+    }
+
+    // Transform Supabase records to match HubSpot format expected by batchActivateSessions
+    const sessions = (data || []).map(record => ({
+      id: record.hubspot_id,
+      properties: {
+        is_active: record.is_active,
+        scheduled_activation_datetime: record.scheduled_activation_datetime,
+        mock_type: record.mock_type,
+        mock_exam_name: record.mock_exam_name,
+        exam_date: record.exam_date,
+        start_time: record.start_time,
+        end_time: record.end_time,
+        location: record.location,
+        capacity: record.capacity?.toString(),
+        total_bookings: record.total_bookings?.toString()
+      }
+    }));
+
+    console.log(`📊 [SCHEDULED-ACTIVATION] Found ${sessions.length} sessions from Supabase`);
+    return sessions;
   } catch (error) {
-    console.error('Error querying overdue sessions:', error);
+    console.error('Error querying overdue sessions from Supabase:', error);
     throw error;
   }
 }
