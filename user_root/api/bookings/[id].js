@@ -45,6 +45,7 @@ const {
   sanitizeInput
 } = require('../_shared/auth');
 const { updateBookingStatusInSupabase, updateContactCreditsInSupabase, updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
+const { getCache } = require('../_shared/cache');
 
 // Handler function for GET /api/bookings/[id]
 async function handler(req, res) {
@@ -177,7 +178,7 @@ async function handler(req, res) {
 
     // Handle DELETE request
     if (req.method === 'DELETE') {
-      return await handleDeleteRequest(req, res, hubspot, sanitizedBookingId, contactId, contact, reason);
+      return await handleDeleteRequest(req, res, hubspot, sanitizedBookingId, contactId, contact, reason, sanitizedStudentId);
     }
 
   } catch (error) {
@@ -377,7 +378,7 @@ async function handleGetRequest(req, res, hubspot, bookingId, contactId, contact
  * Handle DELETE request for booking cancellation (ENHANCED)
  * Includes note creation and association removal
  */
-async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, contact, reason) {
+async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, contact, reason, studentId) {
   try {
     console.log('🗑️ [DELETE] Processing enhanced booking cancellation:', {
       bookingId,
@@ -482,6 +483,7 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
     // Step 6: Trigger webhook to sync total_bookings (will be done after Redis decrement)
     // Webhook will be triggered after Redis counter is updated in Step 7.5
     let bookingsDecremented = false;
+    let creditsCacheInvalidated = false;
 
     // Step 6.5: Restore credits to contact
     let creditsRestored = null;
@@ -691,6 +693,32 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
         });
       }
 
+      // 3. CRITICAL: Invalidate contact credits cache (ensures frontend gets fresh token data)
+      // This is the same pattern used in booking creation (create.js)
+      if (studentId) {
+        try {
+          const cache = getCache();
+          const creditsCachePattern = `contact:credits:${studentId}:*`;
+          const creditsInvalidatedCount = await cache.deletePattern(creditsCachePattern);
+
+          if (creditsInvalidatedCount > 0) {
+            console.log(`✅ [Credits Cache Invalidation] Invalidated ${creditsInvalidatedCount} credits cache entries for student ${studentId} after cancellation`);
+            creditsCacheInvalidated = true;
+          } else {
+            console.log(`ℹ️ [Credits Cache Invalidation] No credits cache entries found (pattern: "${creditsCachePattern}")`);
+            creditsCacheInvalidated = true; // Still considered success - cache was empty
+          }
+        } catch (creditsCacheError) {
+          console.error('❌ Credits cache invalidation failed:', {
+            error: creditsCacheError.message,
+            stack: creditsCacheError.stack
+          });
+          // Non-blocking - continue even if Redis cache invalidation fails
+        }
+      } else {
+        console.warn('⚠️ [Credits Cache] Cannot invalidate credits cache - missing studentId');
+      }
+
       await redis.close();
       console.log(`🔍 [REDIS DEBUG] Redis connection closed successfully`);
     } catch (redisError) {
@@ -715,6 +743,7 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
         note_created: noteCreated,
         bookings_decremented: bookingsDecremented,
         credits_restored: !!creditsRestored,
+        credits_cache_invalidated: creditsCacheInvalidated,
         supabase_synced: supabaseSynced
       },
       ...(creditsRestored ? { credit_restoration: creditsRestored } : {}),
