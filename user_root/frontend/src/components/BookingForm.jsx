@@ -340,8 +340,6 @@ const BookingForm = () => {
       {/* Session Full Modal */}
       <SessionFullModal
         isOpen={showSessionFullModal}
-        mockType={mockType}
-        examDate={examDate}
         onSelectAnother={handleSelectAnotherSession}
       />
 
