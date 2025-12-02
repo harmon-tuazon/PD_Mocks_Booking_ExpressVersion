@@ -690,6 +690,7 @@ const schemas = {
 
   // Schema for bulk update mock exams (Admin)
   bulkUpdate: Joi.object({
+    // Session IDs to update
     sessionIds: Joi.array()
       .items(Joi.string().pattern(/^\d+$/))
       .min(1)
@@ -702,6 +703,7 @@ const schemas = {
         'any.required': 'Session IDs are required'
       }),
 
+    // Updates to apply to all sessions
     updates: Joi.object({
       location: Joi.string()
         .valid('Mississauga', 'Mississauga - B9', 'Mississauga - Lab D',
@@ -792,7 +794,8 @@ const schemas = {
         'object.min': 'At least one update field must be provided',
         'custom.noUpdatesProvided': 'Please update at least one field',
         'custom.scheduledDateRequired': 'Scheduled activation datetime is required when status is scheduled',
-        'custom.scheduledDatePast': 'Scheduled activation datetime must be in the future'
+        'custom.scheduledDatePast': 'Scheduled activation datetime must be in the future',
+        'any.required': 'Updates object is required'
       })
   }).options({ stripUnknown: true }),
 

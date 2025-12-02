@@ -76,23 +76,47 @@ module.exports = async (req, res) => {
       });
     });
 
-    const { sessionIds, updates } = req.validatedData;
+    const { sessionIds, updates, sessions: sessionsWithState } = req.validatedData;
+
+    // Extract session IDs and updates from either format
+    let targetSessionIds;
+    let cleanedUpdates;
+
+    if (sessionsWithState) {
+      // New format: sessions array (extract IDs and updates)
+      targetSessionIds = sessionsWithState.map(s => s.id);
+      // For bulk updates, all sessions get the same updates (from first session or updates field)
+      cleanedUpdates = sessionsWithState[0]?.updates || {};
+      console.log(`📝 [BULK-UPDATE] Extracted ${targetSessionIds.length} session IDs from sessions array`);
+    } else {
+      // Legacy format: sessionIds + updates
+      targetSessionIds = sessionIds;
+      cleanedUpdates = updates || {};
+      console.log(`📝 [BULK-UPDATE] Using ${targetSessionIds.length} session IDs with updates`);
+    }
 
     // Remove empty string values from updates
-    const cleanedUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
+    cleanedUpdates = Object.entries(cleanedUpdates).reduce((acc, [key, value]) => {
       if (value !== '' && value !== null && value !== undefined) {
         acc[key] = value;
       }
       return acc;
     }, {});
 
-    console.log(`📝 [BULK-UPDATE] Processing ${sessionIds.length} sessions with updates:`, cleanedUpdates);
+    // Always fetch current state from HubSpot (simplifies code, avoids frontend pass-through complexity)
+    console.log(`🔍 [BULK-UPDATE] Fetching ${targetSessionIds.length} sessions from HubSpot...`);
+    const fetchedSessions = await hubspot.batchFetchMockExams(targetSessionIds);
 
-    // Step 3: Fetch current state of all sessions
-    console.log(`🔍 [BULK-UPDATE] Fetching ${sessionIds.length} sessions from HubSpot...`);
-    const sessions = await hubspot.batchFetchMockExams(sessionIds);
+    // Transform to processing format
+    const processSessions = fetchedSessions.map(session => ({
+      id: session.id,
+      currentState: session.properties,
+      updates: cleanedUpdates,
+      // Keep original HubSpot response for timestamps
+      _hubspotRecord: session
+    }));
 
-    if (!sessions || sessions.length === 0) {
+    if (!processSessions || processSessions.length === 0) {
       return res.status(404).json({
         success: false,
         error: {
@@ -106,10 +130,19 @@ module.exports = async (req, res) => {
     const validUpdates = [];
     const invalidSessions = [];
 
-    for (const session of sessions) {
-      const sessionId = session.id;
-      const currentProps = session.properties;
+    for (const sessionData of processSessions) {
+      const sessionId = sessionData.id;
+      const currentProps = sessionData.currentState;
+      const sessionUpdates = sessionData.updates || {};
       const totalBookings = parseInt(currentProps.total_bookings) || 0;
+
+      // Remove empty string values from updates
+      const cleanedSessionUpdates = Object.entries(sessionUpdates).reduce((acc, [key, value]) => {
+        if (value !== '' && value !== null && value !== undefined) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
 
       // Log warning if editing session with bookings (for audit purposes)
       if (totalBookings > 0) {
@@ -117,8 +150,8 @@ module.exports = async (req, res) => {
       }
 
       // Check capacity constraint if capacity is being updated
-      if (cleanedUpdates.capacity !== undefined) {
-        const newCapacity = parseInt(cleanedUpdates.capacity);
+      if (cleanedSessionUpdates.capacity !== undefined) {
+        const newCapacity = parseInt(cleanedSessionUpdates.capacity);
         if (newCapacity < totalBookings) {
           invalidSessions.push({
             id: sessionId,
@@ -132,28 +165,28 @@ module.exports = async (req, res) => {
       const properties = {};
 
       // Copy cleaned updates
-      Object.assign(properties, cleanedUpdates);
+      Object.assign(properties, cleanedSessionUpdates);
 
       // Step 5: Auto-regenerate mock_exam_name if components changed
-      if (cleanedUpdates.mock_type || cleanedUpdates.location || cleanedUpdates.exam_date) {
-        const mockType = cleanedUpdates.mock_type || currentProps.mock_type;
-        const location = cleanedUpdates.location || currentProps.location;
-        const examDate = cleanedUpdates.exam_date || currentProps.exam_date;
+      if (cleanedSessionUpdates.mock_type || cleanedSessionUpdates.location || cleanedSessionUpdates.exam_date) {
+        const mockType = cleanedSessionUpdates.mock_type || currentProps.mock_type;
+        const location = cleanedSessionUpdates.location || currentProps.location;
+        const examDate = cleanedSessionUpdates.exam_date || currentProps.exam_date;
 
         properties.mock_exam_name = `${mockType}-${location}-${examDate}`;
         console.log(`📝 [BULK-UPDATE] Regenerated mock_exam_name for session ${sessionId}: ${properties.mock_exam_name}`);
       }
 
       // Step 6: Clear scheduled_activation_datetime if status changed from 'scheduled' to something else
-      if (cleanedUpdates.is_active && cleanedUpdates.is_active !== 'scheduled') {
+      if (cleanedSessionUpdates.is_active && cleanedSessionUpdates.is_active !== 'scheduled') {
         // Convert frontend values to HubSpot format
         let hubspotValue;
-        if (cleanedUpdates.is_active === 'active') {
+        if (cleanedSessionUpdates.is_active === 'active') {
           hubspotValue = 'true';
-        } else if (cleanedUpdates.is_active === 'inactive') {
+        } else if (cleanedSessionUpdates.is_active === 'inactive') {
           hubspotValue = 'false';
         } else {
-          hubspotValue = cleanedUpdates.is_active;
+          hubspotValue = cleanedSessionUpdates.is_active;
         }
         properties.is_active = hubspotValue;
 
@@ -162,7 +195,7 @@ module.exports = async (req, res) => {
           properties.scheduled_activation_datetime = '';
           console.log(`📝 [BULK-UPDATE] Clearing scheduled_activation_datetime for session ${sessionId}`);
         }
-      } else if (cleanedUpdates.is_active === 'scheduled') {
+      } else if (cleanedSessionUpdates.is_active === 'scheduled') {
         // Keep 'scheduled' as is for HubSpot
         properties.is_active = 'scheduled';
       }
@@ -174,7 +207,8 @@ module.exports = async (req, res) => {
 
       validUpdates.push({
         id: sessionId,
-        properties
+        properties,
+        currentState: currentProps  // Store for Supabase sync
       });
     }
 
@@ -185,7 +219,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({
         success: true,
         summary: {
-          total: sessionIds.length,
+          total: targetSessionIds.length,
           updated: 0,
           failed: invalidSessions.length,
           skipped: invalidSessions.length
@@ -259,17 +293,26 @@ module.exports = async (req, res) => {
     }
 
     // Step 8.5: Sync updates to Supabase
+    // Use already-fetched session data (from batchFetchMockExams at line 108)
+    // This avoids redundant fetches or frontend pass-through complexity
     let supabaseSynced = false;
     if (results.successful.length > 0) {
       try {
-        const supabaseUpdates = results.successfulObjects.map(examObject =>
-          syncExamToSupabase({
+        const supabaseUpdates = results.successfulObjects.map(examObject => {
+          // Find the corresponding session data to get currentState (already fetched from HubSpot)
+          const sessionData = validUpdates.find(s => s.id === examObject.id);
+          const propertiesForSync = {
+            ...sessionData?.currentState,     // From HubSpot fetch at line 108
+            ...examObject.properties          // Updated values from batch update
+          };
+
+          return syncExamToSupabase({
             id: examObject.id,
-            createdAt: examObject.createdAt,  // From batch update response (defensive fallback in sync function)
-            updatedAt: examObject.updatedAt,  // From batch update response (defensive fallback in sync function)
-            properties: examObject.properties
-          })
-        );
+            createdAt: examObject.createdAt,
+            updatedAt: examObject.updatedAt,
+            properties: propertiesForSync
+          });
+        });
 
         const supabaseResults = await Promise.allSettled(supabaseUpdates);
         const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
@@ -299,7 +342,7 @@ module.exports = async (req, res) => {
 
     // Step 10: Build response
     const summary = {
-      total: sessionIds.length,
+      total: targetSessionIds.length,
       updated: results.successful.length,
       failed: results.failed.length + invalidSessions.length,
       skipped: invalidSessions.length

@@ -114,6 +114,8 @@ export function useExamEdit(examData) {
       if (!examData?.id) {
         throw new Error('Mock exam ID is required');
       }
+
+      // Send only the updates - backend already fetches current state for business logic
       return await mockExamsApi.update(examData.id, updates);
     },
     onSuccess: async (response) => {

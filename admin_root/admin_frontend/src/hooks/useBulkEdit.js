@@ -1,7 +1,6 @@
 /**
  * useBulkEdit Hook
  * Handles bulk editing of mock exam sessions with optimistic UI updates
- * Includes automatic cache updates and error handling
  *
  * Features:
  * - React Query mutation for bulk updates
@@ -28,8 +27,8 @@ const useBulkEdit = () => {
     /**
      * Mutation function to bulk update multiple sessions
      * @param {Object} params - Object containing sessionIds and updates
-     * @param {Array<string>} params.sessionIds - Array of HubSpot Mock Exam IDs to update
-     * @param {Object} params.updates - Object with fields to update (empty values are ignored)
+     * @param {Array<string>} params.sessionIds - Array of HubSpot Mock Exam IDs
+     * @param {Object} params.updates - Updates to apply to all sessions
      */
     mutationFn: async ({ sessionIds, updates }) => {
       if (!sessionIds || sessionIds.length === 0) {
@@ -43,6 +42,7 @@ const useBulkEdit = () => {
       console.log(`✏️ [BULK EDIT] Requesting update of ${sessionIds.length} sessions`);
       console.log(`📝 [BULK EDIT] Updates:`, updates);
 
+      // Send sessionIds + updates - backend fetches current state from HubSpot
       const response = await adminApi.post('/admin/mock-exams/bulk-update', {
         sessionIds,
         updates

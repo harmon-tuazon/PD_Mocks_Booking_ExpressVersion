@@ -287,17 +287,21 @@ async function handlePatchRequest(req, res) {
       // Don't fail the update if note creation fails
     });
 
-    // Fetch the updated exam with all properties for response
-    const refreshedExam = await hubspot.getMockExam(mockExamId);
-
     // Sync to Supabase
+    // Use existing currentExam (already fetched at line 156 for validation)
+    // This avoids redundant re-fetches or frontend pass-through complexity
     let supabaseSynced = false;
     try {
+      const propertiesForSync = {
+        ...currentExam.properties,    // Already have this from initial fetch
+        ...propertiesToUpdate         // Includes all updates
+      };
+
       await syncExamToSupabase({
         id: mockExamId,
-        createdAt: refreshedExam.createdAt,  // From getMockExam response
-        updatedAt: refreshedExam.updatedAt,  // From getMockExam response
-        properties: refreshedExam.properties
+        createdAt: currentExam.createdAt,
+        updatedAt: updatedExam.updatedAt,
+        properties: propertiesForSync
       });
       console.log(`✅ [EDIT] Exam ${mockExamId} synced to Supabase`);
       supabaseSynced = true;
@@ -305,6 +309,14 @@ async function handlePatchRequest(req, res) {
       console.error('❌ Supabase exam sync failed:', supabaseError.message);
       // Continue - HubSpot is source of truth
     }
+
+    // Create refreshedExam from existing data + updates (no extra fetch needed)
+    const refreshedExam = {
+      id: mockExamId,
+      properties: { ...currentExam.properties, ...propertiesToUpdate },
+      createdAt: currentExam.createdAt,
+      updatedAt: updatedExam.updatedAt
+    };
 
     // Return success response
     res.status(200).json({

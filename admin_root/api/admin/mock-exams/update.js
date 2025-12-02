@@ -206,13 +206,20 @@ module.exports = async (req, res) => {
     const updatedMockExam = await hubspot.updateMockExam(mockExamId, properties);
 
     // Sync update to Supabase
+    // Use existing currentMockExam (already fetched at line 76 for business logic)
+    // This avoids redundant re-fetches or frontend pass-through complexity
     let supabaseSynced = false;
     try {
+      const propertiesForSync = {
+        ...currentMockExam.properties,  // Already have this from line 76 fetch
+        ...properties                   // Includes all calculated updates
+      };
+
       await syncExamToSupabase({
         id: mockExamId,
-        createdAt: updatedMockExam.createdAt,  // From update response
-        updatedAt: updatedMockExam.updatedAt,  // From update response
-        properties: updatedMockExam.properties
+        createdAt: currentMockExam.createdAt,
+        updatedAt: updatedMockExam.updatedAt,
+        properties: propertiesForSync
       });
       console.log(`✅ Mock exam ${mockExamId} synced to Supabase`);
       supabaseSynced = true;
