@@ -715,7 +715,7 @@ class HubSpotService {
   async getMockExam(mockExamId) {
     try {
       const response = await this.apiCall('GET',
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?properties=mock_type,exam_date,start_time,end_time,location,capacity,total_bookings,is_active`
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?properties=mock_type,exam_date,start_time,end_time,location,capacity,total_bookings,is_active,mock_exam_name,scheduled_activation_datetime`
       );
       return response;
     } catch (error) {
@@ -1713,7 +1713,7 @@ class HubSpotService {
     try {
       // Get mock exam details with associations and full properties in a single call
       const mockExamResponse = await this.apiCall('GET',
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}&properties=mock_type,exam_date,start_time,end_time,capacity,total_bookings,location,is_active,hs_createdate,hs_lastmodifieddate`
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?associations=${HUBSPOT_OBJECTS.bookings}&properties=mock_type,exam_date,start_time,end_time,capacity,total_bookings,location,is_active,mock_exam_name,scheduled_activation_datetime,hs_createdate,hs_lastmodifieddate`
       );
 
       // Extract mock exam data (no need for separate getMockExam call!)
@@ -1920,7 +1920,7 @@ class HubSpotService {
             properties: [
               'mock_type', 'exam_date', 'start_time', 'end_time',
               'capacity', 'total_bookings', 'location', 'is_active',
-              'scheduled_activation_datetime',
+              'mock_exam_name', 'scheduled_activation_datetime',
               'hs_createdate', 'hs_lastmodifieddate'
             ],
             inputs: batchIds.map(id => ({ id }))
