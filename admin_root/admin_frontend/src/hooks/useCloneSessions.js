@@ -102,58 +102,24 @@ const useCloneSessions = () => {
         );
       }
 
-      // Optimistically update the cache with new cloned sessions
+      // Invalidate all related queries to force refetch with fresh data
+      // This ensures both list view and aggregate view show updated data
       if (results.successful && results.successful.length > 0) {
-        // Update mockExams cache by adding new sessions (matches useMockExamsData query key)
-        queryClient.setQueriesData({ queryKey: ['mockExams'] }, (oldData) => {
-          if (!oldData) return oldData;
+        console.log(`✨ [CLONE] ${results.successful.length} sessions cloned - invalidating caches`);
 
-          console.log('🔄 [CLONE] Updating mockExams cache with new sessions');
+        // Invalidate mockExams queries (list view) - uses parameterized keys like ['mockExams', '{"page":1}']
+        queryClient.invalidateQueries({ queryKey: ['mockExams'] });
 
-          // Transform API response to match frontend data structure
-          const newSessions = results.successful.map(session => ({
-            id: session.id,
-            ...session.properties,
-            // Ensure all required fields exist
-            mock_exam_id: session.properties.mock_exam_id || session.id,
-            exam_date: session.properties.exam_date || '',
-            location: session.properties.location || '',
-            mock_type: session.properties.mock_type || '',
-            capacity: session.properties.capacity || '0',
-            current_bookings: '0', // New sessions start with 0 bookings
-            start_time: session.properties.start_time || '',
-            end_time: session.properties.end_time || '',
-            is_active: session.properties.is_active || 'active',
-            scheduled_activation_datetime: session.properties.scheduled_activation_datetime || ''
-          }));
+        // Invalidate aggregates queries (group view)
+        queryClient.invalidateQueries({ queryKey: ['mock-exam-aggregates'] });
 
-          // Add new sessions to the beginning of the list (most recent first)
-          return {
-            ...oldData,
-            mockExams: [...newSessions, ...oldData.mockExams],
-            total: oldData.total + newSessions.length
-          };
-        });
-
-        // Update aggregates cache to reflect new sessions
-        queryClient.setQueriesData(['mock-exam-aggregates'], (oldData) => {
-          if (!oldData) return oldData;
-
-          console.log('🔄 [CLONE] Updating aggregates cache');
-
-          return {
-            ...oldData,
-            totalSessions: (oldData.totalSessions || 0) + results.successful.length
-          };
-        });
-
-        console.log(`✨ [CLONE] Cache updated with ${results.successful.length} new sessions`);
+        // Invalidate infinite scroll queries if used
+        queryClient.invalidateQueries({ queryKey: ['mockExamsInfinite'] });
       }
 
-      // Only invalidate metrics queries (which need server calculation)
-      // This is more efficient than invalidating everything
-      queryClient.invalidateQueries(['mockExamsMetrics']);
-      queryClient.invalidateQueries(['metrics']);
+      // Also invalidate metrics queries
+      queryClient.invalidateQueries({ queryKey: ['mockExamsMetrics'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics'] });
     },
 
     /**

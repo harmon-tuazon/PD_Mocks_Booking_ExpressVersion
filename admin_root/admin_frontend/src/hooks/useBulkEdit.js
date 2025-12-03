@@ -87,40 +87,29 @@ const useBulkEdit = () => {
         console.error('❌ [BULK EDIT] Failed updates:', data.details?.failed);
       }
 
-      // Optimistically update the cache with edited sessions
+      // Invalidate all related queries to force refetch with fresh data
+      // This ensures both list view and aggregate view show updated data
       if (data.details?.updated && data.details.updated.length > 0) {
-        // Update mock-exams-list cache by applying the updates to specific sessions
-        queryClient.setQueriesData(['mock-exams-list'], (oldData) => {
-          if (!oldData) return oldData;
+        console.log(`✨ [BULK EDIT] ${data.details.updated.length} sessions updated - invalidating caches`);
 
-          console.log('🔄 [BULK EDIT] Updating mock-exams-list cache with edited sessions');
+        // Invalidate mockExams queries (list view) - uses parameterized keys like ['mockExams', '{"page":1}']
+        queryClient.invalidateQueries({ queryKey: ['mockExams'] });
 
-          const updatedSessionIds = new Set(data.details.updated);
+        // Invalidate aggregates queries (group view)
+        queryClient.invalidateQueries({ queryKey: ['mock-exam-aggregates'] });
 
-          // Apply updates to sessions that were successfully updated
-          const updatedMockExams = oldData.mockExams.map(session => {
-            if (updatedSessionIds.has(session.id)) {
-              return {
-                ...session,
-                ...updates // Apply the updates directly
-              };
-            }
-            return session;
-          });
+        // Invalidate infinite scroll queries if used
+        queryClient.invalidateQueries({ queryKey: ['mockExamsInfinite'] });
 
-          return {
-            ...oldData,
-            mockExams: updatedMockExams
-          };
+        // Invalidate individual exam detail queries for updated sessions
+        data.details.updated.forEach(sessionId => {
+          queryClient.invalidateQueries({ queryKey: ['mockExamDetails', sessionId] });
         });
-
-        console.log(`✨ [BULK EDIT] Cache updated with ${data.details.updated.length} edited sessions`);
       }
 
-      // Only invalidate metrics queries (which need server calculation)
-      // This is more efficient than invalidating everything
-      queryClient.invalidateQueries(['mockExamsMetrics']);
-      queryClient.invalidateQueries(['metrics']);
+      // Also invalidate metrics queries
+      queryClient.invalidateQueries({ queryKey: ['mockExamsMetrics'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics'] });
     },
 
     /**

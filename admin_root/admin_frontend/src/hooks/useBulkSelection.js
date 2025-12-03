@@ -131,13 +131,14 @@ const useBulkSelection = (sessions = [], overrideTotalCount = null) => {
       const result = response.data;
       setOperationResult(result);
 
-      // Invalidate queries to refetch data
+      // Invalidate all related queries to force refetch with fresh data
+      // Use correct query keys that match the actual hooks
       await Promise.all([
-        queryClient.invalidateQueries(['mock-exams']),
-        queryClient.invalidateQueries(['mock-exams-list']),
-        queryClient.invalidateQueries(['aggregates']),
-        queryClient.invalidateQueries(['mock-exam-aggregates']),
-        queryClient.invalidateQueries(['metrics'])
+        queryClient.invalidateQueries({ queryKey: ['mockExams'] }),
+        queryClient.invalidateQueries({ queryKey: ['mock-exam-aggregates'] }),
+        queryClient.invalidateQueries({ queryKey: ['mockExamsInfinite'] }),
+        queryClient.invalidateQueries({ queryKey: ['mockExamsMetrics'] }),
+        queryClient.invalidateQueries({ queryKey: ['metrics'] })
       ]);
 
       return result;
