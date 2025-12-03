@@ -13,6 +13,43 @@ import { getUserSession } from '../../utils/auth';
  * - Proper content area adjustment
  * - Authentication-aware layout
  */
+
+const SUPPORT_FORM_URL = 'https://rve7i.share.hsforms.com/2xIiXXRfGRz-Lmi8eMWjD_g';
+
+/**
+ * Floating Support Button Component
+ * Opens support form in a new tab
+ */
+const FloatingSupportButton = () => {
+  const handleClick = () => {
+    window.open(SUPPORT_FORM_URL, '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white font-medium rounded-full shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 group"
+      aria-label="Get help or support"
+      title="Need help? Contact support"
+    >
+      <svg 
+        className="w-5 h-5" 
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24"
+      >
+        <path 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
+          strokeWidth={2} 
+          d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+        />
+      </svg>
+      <span className="hidden sm:inline">Help</span>
+    </button>
+  );
+};
+
 const MainLayout = ({ children }) => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -91,6 +128,9 @@ const MainLayout = ({ children }) => {
           {children}
         </main>
       </div>
+
+      {/* Floating Support Button - Only show when authenticated */}
+      {showSidebar && <FloatingSupportButton />}
     </div>
   );
 };
