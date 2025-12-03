@@ -8,15 +8,15 @@ import { TimePickerSelect } from '@/components/ui/time-picker';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 
-const TimeSlotBuilder = ({ timeSlots, onChange, capacityMode = 'global', globalCapacity = 15 }) => {
+const TimeSlotBuilder = ({ timeSlots, onChange, capacityMode = 'global', globalCapacity = '' }) => {
   const [errors, setErrors] = useState({});
 
   /**
    * Add a new empty time slot
    */
   const addTimeSlot = () => {
-    // Default to 15 if globalCapacity is empty/falsy
-    const defaultCapacity = globalCapacity || 15;
+    // Use globalCapacity or empty string for new slots
+    const defaultCapacity = globalCapacity || '';
     onChange([...timeSlots, { start_time: '', end_time: '', capacity: defaultCapacity }]);
   };
 
@@ -190,9 +190,9 @@ const TimeSlotBuilder = ({ timeSlots, onChange, capacityMode = 'global', globalC
                     type="number"
                     min="1"
                     max="100"
-                    value={slot.capacity || globalCapacity}
-                    onChange={(e) => updateTimeSlot(index, 'capacity', parseInt(e.target.value) || 0)}
-                    placeholder="15"
+                    value={slot.capacity}
+                    onChange={(e) => updateTimeSlot(index, 'capacity', parseInt(e.target.value) || '')}
+                    placeholder="Enter capacity"
                     className="w-full"
                   />
                 </div>

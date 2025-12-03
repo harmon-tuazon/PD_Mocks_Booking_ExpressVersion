@@ -46,14 +46,14 @@ function MockExams() {
   const [formData, setFormData] = useState({
     mock_type: 'Situational Judgment',
     exam_date: '',
-    capacity: 15,
+    capacity: '',
     location: 'Mississauga',
     is_active: 'true', // String values: 'true' | 'false' | 'scheduled' (matching HubSpot)
     activation_mode: 'immediate', // NEW: 'immediate' | 'scheduled'
     scheduled_activation_datetime: null // NEW: ISO datetime string in UTC
   });
   const [capacityMode, setCapacityMode] = useState('global'); // 'global' or 'per-slot'
-  const [timeSlots, setTimeSlots] = useState([{ start_time: '', end_time: '', capacity: 15 }]);
+  const [timeSlots, setTimeSlots] = useState([{ start_time: '', end_time: '', capacity: '' }]);
 
   // Mutation for single creation
   const createSingleMutation = useMutation({
@@ -148,13 +148,13 @@ function MockExams() {
     setFormData({
       mock_type: 'Situational Judgment',
       exam_date: '',
-      capacity: 15,
+      capacity: '',
       location: 'Mississauga',
       is_active: 'true', // String value matching HubSpot
       activation_mode: 'immediate',
       scheduled_activation_datetime: null
     });
-    setTimeSlots([{ start_time: '', end_time: '', capacity: 15 }]);
+    setTimeSlots([{ start_time: '', end_time: '', capacity: '' }]);
     setCapacityMode('global');
   };
 
