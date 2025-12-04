@@ -256,7 +256,36 @@ async function getActiveBookingsCountFromSupabase(examId) {
 // ============== WRITE SYNC OPERATIONS (after HubSpot write) ==============
 
 /**
+ * Parse timestamp value from HubSpot (handles empty strings, null, undefined)
+ */
+function parseTimestamp(value) {
+  if (!value || value === '' || value === 'null' || value === 'undefined') {
+    return null;
+  }
+  const parsed = parseInt(value);
+  if (isNaN(parsed)) {
+    return null;
+  }
+  try {
+    return new Date(parsed).toISOString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parse date/string value (handles empty strings)
+ */
+function parseDateString(value) {
+  if (!value || value === '' || value === 'null' || value === 'undefined') {
+    return null;
+  }
+  return value;
+}
+
+/**
  * Sync booking to Supabase after HubSpot write
+ * Property mappings aligned with scripts/sync-bookings-hubspot-to-supabase.js
  * @param {object} booking - Booking object from HubSpot
  * @param {string} examId - Mock exam ID
  */
@@ -264,7 +293,7 @@ async function syncBookingToSupabase(booking, examId) {
   const props = booking.properties || booking;
 
   // Transform dominant_hand boolean to string
-  let dominantHandValue = null;
+  let dominantHandValue = props.dominant_hand || null;
   if (props.dominant_hand === 'true' || props.dominant_hand === true) {
     dominantHandValue = 'right hand';
   } else if (props.dominant_hand === 'false' || props.dominant_hand === false) {
@@ -276,26 +305,27 @@ async function syncBookingToSupabase(booking, examId) {
 
   const record = {
     hubspot_id: booking.id,
-    booking_id: props.booking_id,
-    associated_mock_exam: examId || props.associated_mock_exam || props.mock_exam_id,
-    associated_contact_id: props.associated_contact_id || props.contact_id,
-    student_id: props.student_id,
-    name: props.name || props.student_name,
-    student_email: props.student_email || props.email,
-    is_active: props.is_active,
-    attendance: props.attendance,
-    attending_location: props.attending_location,
-    exam_date: props.exam_date,
+    booking_id: props.booking_id || null,
+    associated_mock_exam: examId || props.associated_mock_exam || props.mock_exam_id || null,
+    associated_contact_id: props.associated_contact_id || props.contact_id || null,
+    student_id: props.student_id || null,
+    name: props.name || props.student_name || null,
+    student_email: props.student_email || props.email || null,
+    is_active: props.is_active || null,
+    attendance: props.attendance || null,
+    attending_location: props.attending_location || props.location || null,
+    exam_date: parseDateString(props.exam_date),
     dominant_hand: dominantHandValue,
-    token_used: props.token_used,
-    token_refunded_at: props.token_refunded_at ? new Date(parseInt(props.token_refunded_at)).toISOString() : null,
-    token_refund_admin: props.token_refund_admin,
-    start_time: props.start_time,
-    end_time: props.end_time,
-    ndecc_exam_date: props.ndecc_exam_date,
-    idempotency_key: props.idempotency_key,
-    created_at: props.createdate || props.created_at,
-    updated_at: props.hs_lastmodifieddate || props.updated_at,
+    token_used: props.token_used || null,
+    token_refunded_at: parseTimestamp(props.token_refunded_at),
+    token_refund_admin: props.token_refund_admin || null,
+    mock_type: props.mock_type || null,
+    start_time: props.start_time || null,
+    end_time: props.end_time || null,
+    ndecc_exam_date: parseDateString(props.ndecc_exam_date),
+    idempotency_key: props.idempotency_key || null,
+    created_at: parseDateString(props.createdate || props.hs_createdate || props.created_at),
+    updated_at: parseDateString(props.hs_lastmodifieddate || props.updated_at),
     synced_at: new Date().toISOString()
   };
 
@@ -313,6 +343,7 @@ async function syncBookingToSupabase(booking, examId) {
 
 /**
  * Sync multiple bookings to Supabase
+ * Property mappings aligned with scripts/sync-bookings-hubspot-to-supabase.js
  * @param {Array} bookings - Array of booking objects
  * @param {string} examId - Mock exam ID
  */
@@ -321,28 +352,40 @@ async function syncBookingsToSupabase(bookings, examId) {
 
   const records = bookings.map(booking => {
     const props = booking.properties || booking;
+
+    // Transform dominant_hand boolean to string
+    let dominantHandValue = props.dominant_hand || null;
+    if (props.dominant_hand === 'true' || props.dominant_hand === true) {
+      dominantHandValue = 'right hand';
+    } else if (props.dominant_hand === 'false' || props.dominant_hand === false) {
+      dominantHandValue = 'left hand';
+    } else if (props.dominant_hand === 'right hand' || props.dominant_hand === 'left hand') {
+      dominantHandValue = props.dominant_hand;
+    }
+
     return {
       hubspot_id: booking.id,
-      booking_id: props.booking_id,
-      associated_mock_exam: examId || props.associated_mock_exam || props.mock_exam_id,
-      associated_contact_id: props.associated_contact_id || props.contact_id,
-      student_id: props.student_id,
-      name: props.name || props.student_name,
-      student_email: props.student_email || props.email,
-      is_active: props.is_active,
-      attendance: props.attendance,
-      attending_location: props.attending_location,
-      exam_date: props.exam_date,
-      dominant_hand: props.dominant_hand,
-      token_used: props.token_used,
-      token_refunded_at: props.token_refunded_at,
-      token_refund_admin: props.token_refund_admin,
-      start_time: props.start_time,
-      end_time: props.end_time,
-      ndecc_exam_date: props.ndecc_exam_date,
-      idempotency_key: props.idempotency_key,
-      created_at: props.createdate || props.created_at,
-      updated_at: props.hs_lastmodifieddate || props.updated_at,
+      booking_id: props.booking_id || null,
+      associated_mock_exam: examId || props.associated_mock_exam || props.mock_exam_id || null,
+      associated_contact_id: props.associated_contact_id || props.contact_id || null,
+      student_id: props.student_id || null,
+      name: props.name || props.student_name || null,
+      student_email: props.student_email || props.email || null,
+      is_active: props.is_active || null,
+      attendance: props.attendance || null,
+      attending_location: props.attending_location || props.location || null,
+      exam_date: parseDateString(props.exam_date),
+      dominant_hand: dominantHandValue,
+      token_used: props.token_used || null,
+      token_refunded_at: parseTimestamp(props.token_refunded_at),
+      token_refund_admin: props.token_refund_admin || null,
+      mock_type: props.mock_type || null,
+      start_time: props.start_time || null,
+      end_time: props.end_time || null,
+      ndecc_exam_date: parseDateString(props.ndecc_exam_date),
+      idempotency_key: props.idempotency_key || null,
+      created_at: parseDateString(props.createdate || props.hs_createdate || props.created_at),
+      updated_at: parseDateString(props.hs_lastmodifieddate || props.updated_at),
       synced_at: new Date().toISOString()
     };
   });

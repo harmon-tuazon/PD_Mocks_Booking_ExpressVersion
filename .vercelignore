@@ -96,3 +96,7 @@ package-lock.json
 
 # Environment variables backup
 .env.backup
+
+
+# Misc.
+hubspot_scripts/

@@ -104,3 +104,7 @@ CLAUDE.node_modules
 existing_bookings.csv
 existing_bookings_mapped.csv
 mock_exams_updated.csv
+
+
+# Misc.
+hubspot_scripts/
