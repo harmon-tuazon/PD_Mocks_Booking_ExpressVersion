@@ -30,9 +30,18 @@
 
 | Change | Current | New |
 |--------|---------|-----|
-| Lookup method | student_id + email → Supabase → HubSpot fallback | student_id + email → Supabase ONLY |
-| Return ID | hubspot_id | id (existing UUID) |
-| HubSpot fallback | Yes | No (Supabase is authoritative) |
+| Lookup method | student_id + email → Supabase → HubSpot fallback | **NO CHANGE** - Keep current architecture |
+| Return ID | hubspot_id | **NO CHANGE** - Keep returning hubspot_id |
+| HubSpot fallback | Yes | **YES** - Maintain fallback for reliability |
+
+**DECISION: MAINTAIN CURRENT ARCHITECTURE**
+
+The current validate-credits flow works well:
+1. Try Supabase first (fast, ~50ms)
+2. Fallback to HubSpot if not found (slower, ~500ms)
+3. Auto-populate Supabase on cache miss
+
+No changes needed for Sprint 1-3.
 
 ### User Root - Booking Cancellation
 
@@ -40,17 +49,57 @@
 
 | Change | Current | New |
 |--------|---------|-----|
-| Booking lookup | By hubspot_id | By booking_id or id (UUID) |
+| Booking lookup | By hubspot_id only | **Cascading lookup**: hubspot_id → id (UUID) → booking_id |
 | Credit restore | HubSpot blocking | Supabase blocking |
 | HubSpot sync | Blocking | Background |
 
+**DECISION: CASCADING BOOKING LOOKUP**
+
+The `[id].js` endpoint should support multiple ID types for backwards compatibility:
+
+```
+Priority 1: hubspot_id (if populated) - for existing bookings
+Priority 2: id (UUID) - for new Supabase-first bookings
+Priority 3: booking_id (BK-...) - human-readable fallback
+```
+
 ---
 
-## New Files to Create
+## Files to Modify
+
+### Extend Existing `_shared/supabase-data.js` (Supabase RPC Wrappers Only)
+
+Rather than creating new files, extend the existing `supabase-data.js` in each root with **Supabase RPC wrapper functions only**:
+
+| File Path | New Functions to Add |
+|-----------|---------------------|
+| `user_root/api/_shared/supabase-data.js` | `createBookingAtomic()`, `cancelBookingAtomic()`, `checkIdempotencyKey()`, `getBookingCascading()`, `getContactCredits()` |
+| `admin_root/api/_shared/supabase-data.js` | `getBookingCascading()` (for refund service) |
+
+**Important**: Business logic helpers remain inline in their respective endpoint files.
+
+**Current Helper Function Locations** (NO CHANGES - keep as-is):
+
+| Helper Function | Location | Notes |
+|-----------------|----------|-------|
+| `generateIdempotencyKey(data)` | `bookings/create.js` | Returns `idem_{hash}` |
+| `generateIdempotencyKey(data)` | `mock-discussions/create-booking.js` | Returns `idem_disc_{hash}` (different prefix) |
+| `getCreditFieldToDeduct(mockType, creditBreakdown)` | `bookings/create.js` | Determines which credit field to use |
+| `mapCreditFieldToTokenUsed(creditField)` | `bookings/create.js` | Maps credit field to token name |
+| `formatBookingDate(dateString)` | `bookings/create.js` | Formats date as "Month Day, Year" |
+| `formatBookingDate(dateString)` | `mock-discussions/create-booking.js` | Same function (duplicated) |
+| `handleDeleteRequest(req, res)` | `bookings/[id].js` | Cancellation handler |
+| `handleGetRequest(req, res)` | `bookings/[id].js` | Get booking handler |
+| `cancelSingleBooking(bookingId, hubspot, redis)` | `bookings/batch-cancel.js` | Single booking cancel helper |
+
+**Note on Duplication**: `formatBookingDate()` is duplicated between `create.js` and `create-booking.js`. This is acceptable for now since both files have slightly different overall logic. Future optimization could extract to `_shared/utils.js` if desired, but NOT as part of this migration.
+
+The `supabase-data.js` file is only for **Supabase client operations** (queries, RPC calls, syncs), not business logic.
+
+### New Cron File
 
 | File Path | Purpose |
 |-----------|---------|
-| `user_root/api/_shared/supabase-transactions.js` | Atomic transaction wrappers |
 | `admin_root/api/admin/cron/batch-sync-hubspot.js` | Batch sync cron (every 2 hours) |
 
 ---
@@ -135,17 +184,14 @@ module.exports = { MIGRATION_FLAGS };
 
 ---
 
-## Supabase Transaction Wrapper
+## Extend Existing supabase-data.js
 
-**File: `user_root/api/_shared/supabase-transactions.js`**
+**Add to: `user_root/api/_shared/supabase-data.js`**
+
+Add the following functions to the existing file (which already has `supabaseAdmin` initialized):
 
 ```javascript
-const { createClient } = require('@supabase/supabase-js');
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// ============== SUPABASE-FIRST ATOMIC OPERATIONS ==============
 
 /**
  * Create booking atomically via RPC
@@ -303,54 +349,93 @@ async function getContactCredits(studentId, email) {
   return data;
 }
 
-module.exports = {
-  createBookingAtomic,
-  cancelBookingAtomic,
-  checkIdempotencyKey,
-  getContactCredits
-};
+/**
+ * Get booking with cascading lookup
+ * Priority: hubspot_id → id (UUID) → booking_id
+ *
+ * @param {string} identifier - The booking identifier (could be any of the 3 types)
+ * @returns {Promise<Object|null>} Booking record or null
+ */
+async function getBookingCascading(identifier) {
+  if (!identifier) return null;
+
+  console.log('[SUPABASE] Cascading booking lookup:', { identifier });
+
+  // Determine identifier type and build query
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+  const isBookingId = /^BK-/.test(identifier);
+  const isHubSpotId = /^\d+$/.test(identifier);  // HubSpot IDs are numeric strings
+
+  let booking = null;
+
+  // Priority 1: Try as hubspot_id (if it looks like a HubSpot ID)
+  if (isHubSpotId) {
+    const { data, error } = await supabase
+      .from('hubspot_bookings')
+      .select('*')
+      .eq('hubspot_id', identifier)
+      .single();
+
+    if (!error && data) {
+      console.log('[SUPABASE] Found by hubspot_id:', identifier);
+      return data;
+    }
+  }
+
+  // Priority 2: Try as id (UUID)
+  if (isUUID) {
+    const { data, error } = await supabase
+      .from('hubspot_bookings')
+      .select('*')
+      .eq('id', identifier)
+      .single();
+
+    if (!error && data) {
+      console.log('[SUPABASE] Found by id (UUID):', identifier);
+      return data;
+    }
+  }
+
+  // Priority 3: Try as booking_id (BK-...)
+  if (isBookingId || !booking) {
+    const { data, error } = await supabase
+      .from('hubspot_bookings')
+      .select('*')
+      .eq('booking_id', identifier)
+      .single();
+
+    if (!error && data) {
+      console.log('[SUPABASE] Found by booking_id:', identifier);
+      return data;
+    }
+  }
+
+  // Not found in any lookup
+  console.warn('[SUPABASE] Booking not found with identifier:', identifier);
+  return null;
+}
+
+// Add to existing module.exports:
+//   createBookingAtomic,
+//   cancelBookingAtomic,
+//   checkIdempotencyKey,
+//   getContactCredits,
+//   getBookingCascading
 ```
 
 ---
 
 ## Updated Credit Validation
 
-**File: `user_root/api/mock-exams/validate-credits.js`** (changes only)
+**File: `user_root/api/mock-exams/validate-credits.js`**
 
-```javascript
-const { getContactCredits } = require('../_shared/supabase-transactions');
-const { MIGRATION_FLAGS } = require('../../../config/feature-flags');
+**NO CHANGES REQUIRED** - Keep current implementation.
 
-async function validateCredits(studentId, email) {
-  // Try Supabase first (always)
-  let contact = await getContactCredits(studentId, email);
-
-  if (!contact && !MIGRATION_FLAGS.SUPABASE_ONLY_READ) {
-    // Fallback to HubSpot (only during migration)
-    console.warn('[VALIDATE] Contact not in Supabase, checking HubSpot...');
-    contact = await getContactFromHubSpot(studentId, email);
-
-    if (contact) {
-      // Auto-populate Supabase for next time
-      await syncContactToSupabase(contact);
-    }
-  }
-
-  if (!contact) {
-    throw new Error('Contact not found');
-  }
-
-  // Return id (UUID) instead of hubspot_id
-  return {
-    contact_id: contact.id,  // UUID, not hubspot_id
-    sj_credits: contact.sj_credits || 0,
-    cs_credits: contact.cs_credits || 0,
-    sjmini_credits: contact.sjmini_credits || 0,
-    mock_discussion_token: contact.mock_discussion_token || 0,
-    shared_mock_credits: contact.shared_mock_credits || 0
-  };
-}
-```
+The existing flow already works optimally:
+1. Supabase lookup first (fast path)
+2. HubSpot fallback if not found
+3. Auto-populate Supabase on cache miss
+4. Returns `hubspot_id` (keep as-is for compatibility)
 
 ---
 
@@ -358,23 +443,30 @@ async function validateCredits(studentId, email) {
 
 **File: `user_root/api/bookings/create.js`** (key changes)
 
+**Note**: The existing helper functions (`generateIdempotencyKey`, `getCreditFieldToDeduct`, `mapCreditFieldToTokenUsed`, `formatBookingDate`) remain in the file - they're already defined there. Only the Supabase RPC calls are imported from `supabase-data.js`.
+
 ```javascript
-const { createBookingAtomic, checkIdempotencyKey } = require('../_shared/supabase-transactions');
-const { generateBookingId, generateIdempotencyKey } = require('../_shared/utils');
+// ADD this import (Supabase RPC wrappers)
+const { createBookingAtomic, checkIdempotencyKey } = require('../_shared/supabase-data');
+
+// KEEP existing imports
+const { syncBookingToSupabase, updateExamBookingCountInSupabase, ... } = require('../_shared/supabase-data');
+
+// KEEP existing inline helper functions (already in file)
+// - generateIdempotencyKey(data)
+// - getCreditFieldToDeduct(mockType, creditBreakdown)
+// - mapCreditFieldToTokenUsed(creditField)
+// - formatBookingDate(dateString)
 
 module.exports = async (req, res) => {
   try {
     const { studentId, studentEmail, mockExamId, ... } = req.body;
 
-    // Generate idempotency key
-    const idempotencyKey = generateIdempotencyKey(
-      studentId,
-      mockExamId,
-      examDate,
-      mockType
-    );
+    // Generate idempotency key (USES EXISTING HELPER - no change)
+    const idempotencyKey = generateIdempotencyKey(validatedData);
 
-    // Check for duplicate (Supabase-first, ~5ms vs HubSpot ~200ms)
+    // CHANGE: Check for duplicate via Supabase RPC (~5ms vs HubSpot ~200ms)
+    // REPLACES: const existingBooking = await hubspot.findBookingByIdempotencyKey(idempotencyKey);
     const existingBooking = await checkIdempotencyKey(idempotencyKey);
     if (existingBooking && existingBooking.is_active === 'Active') {
       console.log('[BOOKING] Idempotent request - returning cached response');
@@ -388,13 +480,17 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Generate booking ID
-    const bookingId = generateBookingId();
+    // Generate booking ID (USES EXISTING PATTERN - no change)
+    const formattedDate = formatBookingDate(exam_date);
+    const bookingId = `${mock_type}-${student_id}-${formattedDate}`;
 
-    // Calculate new credit value
+    // Calculate credit field (USES EXISTING HELPER - no change)
+    const creditField = getCreditFieldToDeduct(mock_type, creditBreakdown);
+    const tokenUsed = mapCreditFieldToTokenUsed(creditField);
     const newCreditValue = currentCredits - 1;
 
-    // Atomic create (Supabase transaction)
+    // CHANGE: Atomic create via Supabase RPC
+    // REPLACES: const createdBooking = await hubspot.createBooking(bookingData);
     const result = await createBookingAtomic({
       bookingId,
       studentId,
@@ -409,25 +505,19 @@ module.exports = async (req, res) => {
       newCreditValue
     });
 
-    if (result.idempotent) {
-      return res.status(200).json({
-        success: true,
-        message: result.message
-      });
-    }
-
-    // Increment Redis counter (existing pattern)
+    // Increment Redis counter (EXISTING PATTERN - no change)
     await redis.incr(`exam:${mockExamId}:bookings`);
 
-    // Trigger webhook for HubSpot sync (existing non-blocking pattern)
+    // Trigger webhook for HubSpot sync (EXISTING PATTERN - no change)
     // This updates total_bookings in HubSpot
 
+    // CHANGE: Return UUID instead of hubspot_id
     return res.status(201).json({
       success: true,
       data: {
         booking_id: bookingId,
         booking_record_id: bookingId,  // Use booking_id, not hubspot_id
-        id: result.data.booking_id     // UUID
+        id: result.data.booking_id     // UUID from Supabase
       }
     });
 
@@ -440,6 +530,89 @@ module.exports = async (req, res) => {
   }
 };
 ```
+
+---
+
+## Updated Booking Cancellation
+
+**File: `user_root/api/bookings/[id].js`** (key changes)
+
+Uses cascading lookup: `hubspot_id` → `id` (UUID) → `booking_id`
+
+```javascript
+const { cancelBookingAtomic, getBookingCascading, getContactCredits } = require('../_shared/supabase-data');
+
+module.exports = async (req, res) => {
+  try {
+    const { id } = req.query;  // Could be hubspot_id, UUID, or booking_id
+
+    // Cascading lookup: hubspot_id → id (UUID) → booking_id
+    const booking = await getBookingCascading(id);
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found'
+      });
+    }
+
+    // Check if already cancelled
+    if (booking.is_active === 'Cancelled') {
+      return res.status(200).json({
+        success: true,
+        message: 'Booking already cancelled',
+        idempotent: true
+      });
+    }
+
+    // Get credit field and calculate restored value
+    const creditField = getCreditFieldForMockType(booking.mock_type);
+    const contact = await getContactCredits(booking.student_id, booking.student_email);
+    const restoredValue = (contact[creditField] || 0) + 1;
+
+    // Atomic cancel (Supabase transaction) - uses UUID
+    const result = await cancelBookingAtomic({
+      bookingId: booking.id,  // Always use UUID for RPC
+      creditField,
+      restoredCreditValue: restoredValue
+    });
+
+    // Decrement Redis counter (existing pattern)
+    await redis.decr(`exam:${booking.associated_mock_exam}:bookings`);
+
+    // Trigger webhook for HubSpot sync (existing non-blocking pattern)
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        booking_id: booking.booking_id,
+        id: booking.id,
+        hubspot_id: booking.hubspot_id  // May be null for new bookings
+      }
+    });
+
+  } catch (error) {
+    console.error('[BOOKING] Cancellation failed:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+```
+
+### Cascading Lookup Logic
+
+| Input Format | Detection | Lookup Column |
+|--------------|-----------|---------------|
+| `123456789` | `/^\d+$/` | `hubspot_id` |
+| `a1b2c3d4-...` | UUID regex | `id` |
+| `BK-20251203-ABC` | `/^BK-/` | `booking_id` |
+
+**Why this order?**
+1. **hubspot_id first**: Existing bookings (created before migration) have hubspot_id populated
+2. **id (UUID) second**: New Supabase-first bookings may not have hubspot_id yet
+3. **booking_id last**: Human-readable fallback, always populated
 
 ---
 
@@ -568,22 +741,188 @@ async function getCreditsWithFallback(studentId, email) {
 
 ---
 
+## Mock Discussions Support
+
+### Overview
+
+Mock discussions are a separate booking type that uses the same underlying `hubspot_bookings` table but with different:
+- Credit field: `mock_discussion_token`
+- Booking ID format: `"Mock Discussion-{StudentID}-{FormattedDate}"`
+- Idempotency key prefix: `idem_disc_{hash}`
+
+### Files to Modify
+
+| File | Current State | Required Changes |
+|------|---------------|------------------|
+| `user_root/api/mock-discussions/create-booking.js` | HubSpot-first | Supabase-first via `create_booking_atomic` RPC |
+| `user_root/api/mock-discussions/validate-credits.js` | Supabase + HubSpot fallback | **NO CHANGE** - Keep current architecture |
+| `user_root/api/mock-discussions/available.js` | Supabase-first | **NO CHANGE** - Already optimized |
+
+### RPC Compatibility
+
+The existing `create_booking_atomic` RPC already supports mock discussions:
+
+```javascript
+// Mock exam booking
+await createBookingAtomic({
+  bookingId: 'BK-20251203-ABC123',
+  creditField: 'sj_credits',  // or 'cs_credits', 'sjmini_credits', 'shared_mock_credits'
+  ...
+});
+
+// Mock DISCUSSION booking - same RPC, different credit field
+await createBookingAtomic({
+  bookingId: 'Mock Discussion-STU001-2025-12-03',  // Different format
+  creditField: 'mock_discussion_token',  // Discussion-specific token
+  ...
+});
+```
+
+### Booking ID Format Differences
+
+| Type | Format | Example |
+|------|--------|---------|
+| Mock Exam | `BK-{YYYYMMDD}-{RandomCode}` | `BK-20251203-XY7K2M` |
+| Mock Discussion | `Mock Discussion-{StudentID}-{FormattedDate}` | `Mock Discussion-STU001-2025-12-03` |
+
+### Idempotency Key Differences
+
+| Type | Format | Example |
+|------|--------|---------|
+| Mock Exam | `idem_{hash}` | `idem_a1b2c3d4e5f6` |
+| Mock Discussion | `idem_disc_{hash}` | `idem_disc_a1b2c3d4e5f6` |
+
+Both formats are supported by the existing `check_idempotency_key` RPC and cascading lookup functions.
+
+### Updated Mock Discussion Creation
+
+**File: `user_root/api/mock-discussions/create-booking.js`** (key changes)
+
+**Note**: Similar to `create.js`, the existing helper functions (`generateIdempotencyKey`, `formatBookingDate`) remain inline in this file. Only the Supabase RPC calls are imported.
+
+```javascript
+// ADD this import (Supabase RPC wrappers)
+const { createBookingAtomic, checkIdempotencyKey } = require('../../_shared/supabase-data');
+
+// KEEP existing imports
+const { syncBookingToSupabase, updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
+
+// KEEP existing inline helper functions (already in file)
+// - generateIdempotencyKey(data) - returns idem_disc_{hash}
+// - formatBookingDate(dateString)
+
+module.exports = async (req, res) => {
+  try {
+    const { studentId, studentEmail, sessionId, attendingLocation, ... } = req.body;
+
+    // Generate mock discussion idempotency key (USES EXISTING HELPER - no change)
+    const idempotencyKey = generateIdempotencyKey(validatedData);  // Returns: idem_disc_{hash}
+
+    // CHANGE: Check for duplicate via Supabase RPC
+    // REPLACES: const existingBooking = await hubspot.findBookingByIdempotencyKey(idempotencyKey);
+    const existingBooking = await checkIdempotencyKey(idempotencyKey);
+    if (existingBooking && existingBooking.is_active === 'Active') {
+      return res.status(200).json({
+        success: true,
+        message: 'Booking already exists',
+        data: {
+          booking_id: existingBooking.booking_id,
+          id: existingBooking.id
+        }
+      });
+    }
+
+    // Generate mock discussion booking ID (USES EXISTING PATTERN - no change)
+    const formattedDate = formatBookingDate(exam_date);
+    const bookingId = `Mock Discussion-${studentId}-${formattedDate}`;
+
+    // CHANGE: Atomic create via Supabase RPC
+    // REPLACES: const createdBooking = await hubspot.createBooking(bookingData);
+    const result = await createBookingAtomic({
+      bookingId,
+      studentId,
+      studentEmail,
+      mockExamId: sessionId,
+      studentName,
+      tokenUsed: 'mock_discussion_token',
+      attendingLocation,
+      dominantHand: null,
+      idempotencyKey,
+      creditField: 'mock_discussion_token',
+      newCreditValue: currentCredits - 1
+    });
+
+    // CHANGE: Return UUID instead of hubspot_id
+    return res.status(201).json({
+      success: true,
+      data: {
+        booking_id: bookingId,
+        booking_record_id: bookingId,  // Use booking_id, not hubspot_id
+        id: result.data.booking_id     // UUID from Supabase
+      }
+    });
+
+  } catch (error) {
+    console.error('[DISCUSSION] Creation failed:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+```
+
+### Validate Credits - NO CHANGE
+
+**File: `user_root/api/mock-discussions/validate-credits.js`**
+
+The current implementation already works optimally:
+1. Uses Supabase lookup by `student_id` + `email`
+2. Checks `mock_discussion_token` credit field
+3. Falls back to HubSpot if not found
+4. Auto-populates Supabase on cache miss
+
+No changes needed - same architecture as mock exam validation.
+
+### Refund Service Compatibility
+
+**File: `admin_root/api/_shared/refund.js`**
+
+The refund service already supports mock discussions via the `tokenType` parameter:
+
+```javascript
+// Current implementation already handles:
+async function refundToken(bookingId, adminEmail, tokenType) {
+  // tokenType can be:
+  // - 'sj_credits', 'cs_credits', 'sjmini_credits', 'shared_mock_credits' (mock exams)
+  // - 'mock_discussion_token' (discussions)
+
+  // ... existing logic works for all token types
+}
+```
+
+**No changes needed** - the cascading lookup and credit restore logic applies to all token types.
+
+---
+
 ## Sprint 2-3 Checklist
 
 ### Sprint 2: Read Migration
-- [ ] Create `supabase-transactions.js`
-- [ ] Update `validate-credits.js` to return id (UUID)
-- [ ] Update `user/login.js` to return id (UUID)
-- [ ] Remove HubSpot fallback from credit validation
-- [ ] Update booking lookup to accept id (UUID) or booking_id
-- [ ] Deploy with `SUPABASE_ONLY_READ=true`
-- [ ] Monitor for errors
+- [ ] Extend existing `_shared/supabase-data.js` with new helper functions
+- [ ] Add `getBookingCascading()` function to existing `supabase-data.js`
+- [ ] **NO CHANGE**: Keep `validate-credits.js` as-is (Supabase + HubSpot fallback)
+- [ ] Update `[id].js` to use cascading booking lookup (hubspot_id → id → booking_id)
+- [ ] Test cascading lookup with all three ID types
+- [ ] Deploy and monitor for errors
 
 ### Sprint 3: Write Migration
 - [ ] Update `create.js` to use Supabase atomic transaction
 - [ ] Update `[id].js` cancellation to use Supabase atomic transaction
+- [ ] Update `mock-discussions/create-booking.js` to use Supabase atomic transaction
 - [ ] Implement idempotency check via Supabase RPC
 - [ ] Test booking creation with hubspot_id = NULL
+- [ ] Test mock discussion creation with hubspot_id = NULL
+- [ ] Test cancellation with hubspot_id, UUID, and booking_id inputs
 - [ ] Deploy with `SUPABASE_PRIMARY_WRITE=true`
 - [ ] Monitor for errors
 
