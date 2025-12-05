@@ -157,30 +157,20 @@ The `supabase-data.js` file is only for **Supabase client operations** (queries,
 
 ---
 
-## Feature Flags
+## Migration Approach
 
-```javascript
-// config/feature-flags.js
+**No feature flags.** We use a simple phased deployment approach:
 
-const MIGRATION_FLAGS = {
-  // Phase 2: Read from Supabase only (no HubSpot fallback)
-  SUPABASE_ONLY_READ: process.env.FF_SUPABASE_ONLY_READ === 'true',
+| Phase | Action | Rollback |
+|-------|--------|----------|
+| Sprint 2 | Migrate read endpoints → Deploy → Verify | `git revert` + redeploy (~2 min) |
+| Sprint 3 | Migrate write endpoints → Deploy → Verify | `git revert` + redeploy (~2 min) |
+| Sprint 4 | Remove HubSpot fallbacks → Deploy → Verify | `git revert` + redeploy (~2 min) |
 
-  // Phase 3: Write to Supabase first
-  SUPABASE_PRIMARY_WRITE: process.env.FF_SUPABASE_PRIMARY_WRITE === 'true',
-
-  // Phase 3: Background HubSpot sync
-  HUBSPOT_BACKGROUND_SYNC: process.env.FF_HUBSPOT_BACKGROUND_SYNC === 'true',
-
-  // Rollback flag - revert to HubSpot-first
-  HUBSPOT_SOURCE_OF_TRUTH: process.env.FF_HUBSPOT_SOURCE_OF_TRUTH === 'true',
-
-  // Use existing id (UUID) as primary identifier
-  USE_UUID_PRIMARY: process.env.FF_USE_UUID_PRIMARY === 'true'
-};
-
-module.exports = { MIGRATION_FLAGS };
-```
+**Why no feature flags?**
+- Small team, small user base - granular toggles add unnecessary complexity
+- Vercel deploys are fast (~2 minutes) - rollback is trivial
+- YAGNI - we aren't gonna need runtime toggle control
 
 ---
 
@@ -725,19 +715,25 @@ module.exports = async (req, res) => {
 ## Graceful Degradation
 
 ```javascript
-// If Supabase is unavailable, temporarily fall back to HubSpot
+// If Supabase is unavailable, fall back to HubSpot
+// This is a simple try-catch pattern, no feature flags needed
 async function getCreditsWithFallback(studentId, email) {
   try {
-    return await getContactCredits(studentId, email);
+    const credits = await getContactCredits(studentId, email);
+    if (credits) return credits;
+
+    // Not found in Supabase - try HubSpot and auto-populate
+    console.log('[FALLBACK] Contact not in Supabase, checking HubSpot');
+    return await getCreditsFromHubSpotAndSync(studentId, email);
   } catch (error) {
-    if (MIGRATION_FLAGS.HUBSPOT_SOURCE_OF_TRUTH) {
-      console.warn('[FALLBACK] Supabase unavailable, using HubSpot');
-      return await getCreditsFromHubSpot(studentId, email);
-    }
-    throw error;
+    console.error('[ERROR] Supabase query failed:', error.message);
+    // Last resort: try HubSpot directly
+    return await getCreditsFromHubSpot(studentId, email);
   }
 }
 ```
+
+**Rollback procedure**: If migration causes issues, `git revert` the commits and redeploy. No runtime flags needed.
 
 ---
 
@@ -782,8 +778,8 @@ await createBookingAtomic({
 
 | Type | Format | Example |
 |------|--------|---------|
-| Mock Exam | `BK-{YYYYMMDD}-{RandomCode}` | `BK-20251203-XY7K2M` |
-| Mock Discussion | `Mock Discussion-{StudentID}-{FormattedDate}` | `Mock Discussion-STU001-2025-12-03` |
+| Mock Exam | `{mock_type}-{student_id}-{formatted exam_date}` | `Clinical Skills-1599999-October 23, 2026` |
+| Mock Discussion | `Mock Discussion-{StudentID}-{FormattedDate}` | `Mock Discussion-159999-October 23, 2026` |
 
 ### Idempotency Key Differences
 
@@ -923,8 +919,8 @@ async function refundToken(bookingId, adminEmail, tokenType) {
 - [ ] Test booking creation with hubspot_id = NULL
 - [ ] Test mock discussion creation with hubspot_id = NULL
 - [ ] Test cancellation with hubspot_id, UUID, and booking_id inputs
-- [ ] Deploy with `SUPABASE_PRIMARY_WRITE=true`
-- [ ] Monitor for errors
+- [ ] Deploy and verify
+- [ ] Monitor for errors (rollback via `git revert` if needed)
 
 ---
 
