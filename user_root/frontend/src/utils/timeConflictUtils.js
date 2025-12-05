@@ -152,7 +152,7 @@ export const formatConflictMessage = (conflictingBooking) => {
     }
   }
 
-  // Format times
+  // Format times - use Toronto timezone for consistency across all users
   let timeStr = '';
   if (startTime && endTime) {
     try {
@@ -161,12 +161,14 @@ export const formatConflictMessage = (conflictingBooking) => {
 
       if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
         const startTimeStr = start.toLocaleTimeString('en-US', {
+          timeZone: 'America/Toronto',
           hour: 'numeric',
           minute: '2-digit',
           hour12: true
         });
 
         const endTimeStr = end.toLocaleTimeString('en-US', {
+          timeZone: 'America/Toronto',
           hour: 'numeric',
           minute: '2-digit',
           hour12: true

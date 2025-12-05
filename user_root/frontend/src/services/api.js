@@ -307,12 +307,14 @@ export const formatTime = (dateString) => {
   // Handle UTC timestamps properly
   const date = new Date(dateString);
 
-  // Convert UTC to local time for display
+  // Always display times in Toronto timezone for consistency
+  // This ensures all users see the same time regardless of their browser timezone
+  // Mock exams are scheduled in Toronto time, so we display them as such
   return date.toLocaleTimeString('en-US', {
+    timeZone: 'America/Toronto',
     hour: 'numeric',
     minute: '2-digit',
     hour12: true
-    // Use user's local timezone instead of hardcoded Toronto
   });
 };
 // Format time range for exam sessions (start_time - end_time)

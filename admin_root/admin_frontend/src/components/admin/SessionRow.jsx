@@ -36,8 +36,9 @@ const SessionRow = ({
 
       if (isNaN(date.getTime())) return String(timeValue);
 
-      // Format to readable time
+      // Format to readable time - use Toronto timezone for consistency
       return date.toLocaleTimeString('en-US', {
+        timeZone: 'America/Toronto',
         hour: 'numeric',
         minute: '2-digit',
         hour12: true
