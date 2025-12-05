@@ -16,7 +16,7 @@ Prioritize reusing old components, endpoints, functions, logic, etc. when they a
 1. **PRD-Driven Development**: Comprehensive plans ensuring 7-10 confidence scores
 2. **Specialized Developer Agents**: Each writes specific code types (NOT runtime functions)
 3. **5-Phase Workflow**: Guaranteed progression from idea to production
-4. **HubSpot-Centric Architecture**: No databases, HubSpot is the single source of truth
+4. **Supabase-First Architecture**: Supabase as primary source of truth with HubSpot for admin writes and legacy operations
 5. **Vercel Driven Hosting**: Assume that hosting is generally using Vercel with a special emphasis on serverless architecture and design
 6. **Leveraging MCPs**: MANDATORY - Always use MCPs when applicable:
    - **Serena MCP**: For ALL code generation, refactoring, and IDE assistance
@@ -181,7 +181,7 @@ execute-prd PRDs/[feature-name].md
 ### Core Development Philosophy
 
 #### KISS (Keep It Simple, Stupid)
-Simplicity is paramount in our HubSpot-centric architecture. Choose HubSpot's built-in features over custom solutions. Simple solutions are easier to maintain in a serverless environment.
+Simplicity is paramount in our Supabase-first architecture. Choose Supabase's built-in features and PostgreSQL capabilities over complex custom solutions. Simple solutions are easier to maintain in a serverless environment.
 
 #### YAGNI (You Aren't Gonna Need It)
 Avoid building functionality on speculation. Our payment app has proven that minimal, focused features work best. Implement only what's needed now.
@@ -191,11 +191,14 @@ Prioritize reusing old components, endpoints, functions, logic, etc. when they a
 
 ### Design Principles
 
-- **API-First Architecture**: HubSpot as source of truth with Supabase as read-optimized secondary database
-- **Two-Tier Database Architecture**: HubSpot (write operations + source of truth) → Supabase (read optimization for high-frequency queries)
+- **Supabase-First Architecture**: Supabase as primary source of truth for all read operations and user writes (target: 100% by Q4 2025)
+- **Two-Tier Database Architecture**:
+  - **Supabase**: Primary database for reads (100% complete) and user writes (in progress - 80% complete)
+  - **HubSpot**: Legacy system for admin writes (attendance, cancellations) with automatic Supabase sync
+  - **Migration Status**: Admin reads 100% migrated to Supabase-first; User writes migrating from HubSpot → Supabase
 - **Stateless by Design**: Every Vercel function execution is independent
 - **Error-First Callbacks**: Always handle errors as the first parameter in callbacks
-- **Async by Default**: Use async/await for all API calls to HubSpot, Supabase, and Stripe
+- **Async by Default**: Use async/await for all API calls to Supabase, HubSpot, and Stripe
 - **Fail Fast**: Validate inputs early using Joi schemas
 - **Security First**: Never trust user input, always validate with existing validation.js patterns
 
@@ -217,30 +220,47 @@ find . -name "*.js"
 rg --files -g "*.js"
 ```
 
-### HubSpot-Centric Guidelines
+### Supabase-First Architecture Guidelines
 
-1. **HubSpot as Single Source of Truth with Supabase Secondary Database**
-   - HubSpot is the authoritative source for all data writes
-   - Supabase serves as read-optimized secondary database for high-frequency queries (contact credits)
-   - Write-through pattern: Write to HubSpot → Immediately sync to Supabase (non-blocking)
-   - Read pattern: Try Supabase first → Fallback to HubSpot if not found → Auto-populate Supabase
-   - Never modify Supabase without updating HubSpot first
+**Migration Status: 80% Complete (Admin Reads: 100% | User Writes: In Progress)**
 
-2. **Supabase Sync Strategy**
-   - Immediate sync after all credit-changing operations (non-blocking, fire-and-forget)
-   - Cron job every 2 hours to sync exams, bookings, and contact credits
-   - Auto-populate on read misses to build Supabase cache
-   - Always fetch all credit properties to prevent partial overwrites
+1. **Supabase as Primary Source of Truth**
+   - **Read Operations (100% Complete)**: All read queries use Supabase-first pattern
+     - Admin reads: List exams, get exam details, fetch bookings (ALL migrated)
+     - User reads: Available credits, exam schedules, booking history
+   - **Write Operations (80% Complete)**:
+     - ✅ User writes migrating to Supabase-first (booking creation, credit usage)
+     - 🔄 Admin writes still use HubSpot-first (attendance, cancellations, exam edits)
+   - **Data Flow Pattern**:
+     - **Reads**: Redis Cache → Supabase → HubSpot Fallback + Auto-Populate
+     - **User Writes (Target)**: Supabase → HubSpot Sync (fire-and-forget)
+     - **Admin Writes (Current)**: HubSpot → Supabase Sync (fire-and-forget)
 
-3. **Deal Timeline for Audit Trail**
+2. **Cron Job Reconciliation (HubSpot → Supabase)**
+   - **Purpose**: Sync manual HubSpot UI changes to Supabase every 2 hours
+   - **Why HubSpot → Supabase Direction**:
+     - Admin operations still write to HubSpot first
+     - Admins can manually edit exams/bookings in HubSpot UI
+     - Cron job reconciles these manual changes to keep Supabase synchronized
+     - **Note**: Direction stays HubSpot → Supabase until admin writes migrate to Supabase-first
+   - **Incremental Sync**: Uses `hs_lastmodifieddate` to fetch only changed records
+   - **Auto-populate on Read Miss**: If Supabase query returns no data, fetch from HubSpot and populate Supabase
+
+3. **Supabase Sync Strategy**
+   - Immediate sync after all mutations (non-blocking, fire-and-forget)
+   - Cron job every 2 hours: Exams, bookings, contact credits (incremental sync)
+   - Auto-populate on cache misses to build Supabase dataset
+   - Always fetch all properties to prevent partial overwrites
+
+4. **Deal Timeline for Audit Trail (HubSpot)**
    - Log all business events as formatted notes
    - Use consistent icons (✅ ❌ 🔁 📊)
    - Include structured data in note HTML
 
-4. **Property-Based State Management**
-   - Use existing properties before creating new ones
-   - Batch property updates for efficiency
-   - Validate property values match HubSpot enumeration
+5. **Property-Based State Management**
+   - Use existing columns/properties before creating new ones
+   - Batch updates for efficiency (Supabase bulk upserts, HubSpot batch API)
+   - Validate property values match database/CRM constraints
 1. **Function Timeout Awareness**
    - Maximum 60 seconds per function execution
    - Design for quick response times
@@ -258,10 +278,11 @@ rg --files -g "*.js"
 
 ### Testing Requirements
 
-- Test HubSpot integration with dry-run modes
-- Mock external API calls in unit tests
-- Always test with production-like data volumes
-- Validate API endpoints and data integrity in tests
+- Test Supabase queries with realistic data volumes
+- Test HubSpot integration with dry-run modes for admin operations
+- Mock external API calls (Supabase, HubSpot, Stripe) in unit tests
+- Validate API endpoints and data integrity across both databases
+- Test cache invalidation and sync behavior
 
 ### Security Requirements
 
@@ -481,31 +502,37 @@ vercel --prod                           # Deploy to production
 
 ## Critical Integration Points
 
-### HubSpot CRM (Source of Truth)
-- Private app authentication via `HS_PRIVATE_APP_TOKEN`
-- Custom objects (Object Type ID):
-  - Transactions (`2-47045790`)
+### Supabase (Primary Database - 80% Migration Complete)
+- **Authentication**: Service role via `SUPABASE_SERVICE_ROLE_KEY`
+- **Primary Tables** (synced bidirectionally with HubSpot):
+  - `hubspot_contact_credits`: Contact credit balances (sj_credits, cs_credits, sjmini_credits, mock_discussion_token, shared_mock_credits)
+  - `hubspot_mock_exams`: Mock exam sessions (capacity, bookings, dates, times, scheduled activation)
+  - `hubspot_bookings`: Student bookings (attendance, tokens used, refunds, associations)
+  - `sync_metadata`: Last sync timestamps for incremental syncing
+- **Performance**: ~50ms Supabase queries vs ~500ms HubSpot API calls (10x faster)
+- **Read Strategy (100% Complete)**: Redis → Supabase → HubSpot fallback + auto-populate
+- **Write Strategy (In Progress)**:
+  - User writes: Targeting Supabase-first → HubSpot sync
+  - Admin writes: Currently HubSpot-first → Supabase sync
+- **Cron Sync**: Every 2 hours (HubSpot → Supabase) for reconciliation
+- **Fire-and-Forget Sync**: Immediate non-blocking sync after all mutations
+
+### HubSpot CRM (Legacy System - Admin Write Authority)
+- **Authentication**: Private app via `HS_PRIVATE_APP_TOKEN`
+- **Custom Objects** (Object Type IDs):
+  - Bookings (`2-50158943`) - Admin writes
+  - Mock Exams (`2-50158913`) - Admin writes
+  - Contacts (`0-1`) - Credit updates
+  - Transactions (`2-47045790`) - Payment records
   - Payment Schedules (`2-47381547`)
   - Credit Notes (`2-41609496`)
-  - Contacts (`0-1`)
   - Deals (`0-3`)
   - Courses (`0-410`)
   - Campus Venues (`2-41607847`)
   - Enrollments (`2-41701559`)
   - Lab Stations (`2-41603799`)
-  - Bookings (`2-50158943`)
-  - Mock Exams (`2-50158913`)
-
-### Supabase (Read-Optimized Secondary Database)
-- Service role authentication via `SUPABASE_SERVICE_ROLE_KEY`
-- Secondary database tables (synced from HubSpot):
-  - `hubspot_contact_credits`: Contact credit balances (sj_credits, cs_credits, sjmini_credits, mock_discussion_token, shared_mock_credits)
-  - `hubspot_mock_exams`: Mock exam sessions (capacity, bookings, dates, times)
-  - `hubspot_bookings`: Student bookings (attendance, tokens used, refunds)
-- Read-first strategy: ~50ms vs ~500ms HubSpot API calls
-- Auto-populate on cache miss
-- Cron sync every 2 hours
-- Immediate sync after credit mutations
+- **Role**: Admin write operations, deal timeline audit logs, manual UI edits by admins
+- **Migration Target**: Eventually become read-only audit trail (Q4 2025)
 
 ## Input Validation Standards
 
@@ -550,7 +577,18 @@ catch (error) {
 
 ### Batch Operations
 ```javascript
-// ✅ Good - Batch API calls
+// ✅ Good - Batch Supabase upserts (preferred for reads/writes)
+const records = exams.map(exam => ({
+  hubspot_id: exam.id,
+  mock_type: exam.properties.mock_type,
+  exam_date: exam.properties.exam_date,
+  // ... other fields
+}));
+await supabaseAdmin
+  .from('hubspot_mock_exams')
+  .upsert(records, { onConflict: 'hubspot_id' });
+
+// ✅ Good - Batch HubSpot API calls (for admin writes)
 const batchUpdate = schedules.map(schedule => ({
   id: schedule.id,
   properties: { status: 'processed' }
@@ -696,7 +734,9 @@ HubSpot_Automation_System:
 - NEVER use synchronous I/O operations
 - ALWAYS validate inputs with Joi schemas
 - NEVER store secrets in code
-- ALWAYS use HubSpot as the single source of truth
+- **ALWAYS use Supabase-first pattern for reads** (Redis → Supabase → HubSpot fallback)
+- **Admin writes**: Use HubSpot-first with Supabase sync (until migration complete)
+- **User writes**: Target Supabase-first with HubSpot sync (migration in progress)
 
 ## Agent Development Team
 
