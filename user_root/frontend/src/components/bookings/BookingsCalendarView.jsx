@@ -103,31 +103,8 @@ const BookingsCalendarView = ({ bookings, onCancelBooking, isLoading, error }) =
     }
   };
 
-  const formatTime = (timeString) => {
-    if (!timeString) return '';
-    try {
-      // Handle ISO timestamp format
-      if (timeString.includes('T') || timeString.includes('-')) {
-        const date = new Date(timeString);
-        const hour = date.getHours();
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-        return `${displayHour}:${minutes} ${ampm}`;
-      }
-      // Handle HH:MM format
-      const [hours, minutes] = timeString.split(':');
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      return `${displayHour}:${minutes} ${ampm}`;
-    } catch (error) {
-      return timeString;
-    }
-  };
-
   // Format time range for display using the API service function
-  // This function properly handles ISO timestamps from HubSpot
+  // This uses Toronto timezone for consistency across all users
   const formatBookingTimeRange = (booking) => {
     return formatTimeRange(booking);
   };
