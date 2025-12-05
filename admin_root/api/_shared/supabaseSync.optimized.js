@@ -621,53 +621,27 @@ async function syncAllData() {
       }
     }
 
-    // Step 4: Fetch and sync MODIFIED contact credits since last sync
-    console.log('🔄 Starting incremental contact credits sync...');
-    try {
-      const contacts = await fetchModifiedContactsWithCredits(lastContactSync);
-      totalContactCredits = contacts.length;
-
-      if (contacts.length === 0) {
-        console.log('✨ No modified contacts found - skipping contact credits sync');
-      } else {
-        console.log(`📊 Found ${totalContactCredits} modified contacts to sync`);
-
-        // Process contacts in parallel batches
-        const contactBatchSize = 20;
-        for (let i = 0; i < contacts.length; i += contactBatchSize) {
-          const batch = contacts.slice(i, i + contactBatchSize);
-
-          await Promise.allSettled(
-            batch.map(async (contact) => {
-              try {
-                await syncContactCreditsToSupabase(contact);
-              } catch (error) {
-                console.error(`Failed to sync contact ${contact.id}: ${error.message}`);
-                errors.push({ type: 'contact_credits', id: contact.id, error: error.message });
-              }
-            })
-          );
-
-          // Log progress
-          if ((i + contactBatchSize) % 100 === 0 || (i + contactBatchSize) >= contacts.length) {
-            const progress = Math.min(i + contactBatchSize, contacts.length);
-            console.log(`   Progress: ${progress}/${totalContactCredits} contacts synced`);
-          }
-
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-
-        console.log(`✅ Contact credits sync completed: ${totalContactCredits} contacts synced`);
-      }
-    } catch (error) {
-      console.error(`❌ Failed to sync contact credits: ${error.message}`);
-      errors.push({ type: 'contact_credits_fetch', error: error.message });
-    }
+    // Step 4: Contact Credits Sync - REMOVED (Hybrid Sync Architecture)
+    // ⚠️ Credits are now synced via two unidirectional flows:
+    //   1. User Operations: Supabase → HubSpot (real-time webhook < 1s after booking/cancel)
+    //   2. Admin Operations: HubSpot → Supabase (fire-and-forget sync in tokens.js:96-98)
+    //
+    // Why removed from cron:
+    //   - Prevents race conditions: User books at 01:59:50 (credits 5→4, webhook triggers),
+    //     Cron runs at 02:00:00 reading HubSpot before webhook processes (still 5),
+    //     Cron would overwrite Supabase (4→5) ❌ allowing double-bookings
+    //   - Triple redundancy: Admin fire-and-forget (immediate) + User webhook (< 1s) + Cron
+    //   - Bidirectional conflict: User ops (Supabase→HubSpot) vs Cron (HubSpot→Supabase)
+    //   - Admin updates already covered by fire-and-forget sync
+    //
+    // See: PRDs/supabase/supabase_SOT_migrations/04-cron-batch-sync.md (lines 68-84)
+    //
+    console.log('⏭️ Skipping contact credits sync (handled by webhook/fire-and-forget only)');
 
     // Step 5: Update last sync timestamps (only if no critical errors)
-    if (errors.filter(e => e.type === 'exam' || e.type === 'contact_credits_fetch').length === 0) {
+    if (errors.filter(e => e.type === 'exam').length === 0) {
       await updateLastSyncTimestamp('mock_exams', syncTimestamp);
-      await updateLastSyncTimestamp('contact_credits', syncTimestamp);
+      // Note: contact_credits timestamp update removed (credits not synced via cron)
       console.log(`✅ Updated sync timestamps to ${new Date(syncTimestamp).toISOString()}`);
     } else {
       console.warn(`⚠️ Skipping timestamp update due to ${errors.length} errors`);
@@ -681,10 +655,11 @@ async function syncAllData() {
         sync_mode: lastExamSync ? 'incremental' : 'full',
         exams_synced: totalExams,
         bookings_synced: totalBookings,
-        contact_credits_synced: totalContactCredits,
+        // contact_credits_synced removed - credits synced via webhook/fire-and-forget only
         errors_count: errors.length,
         duration_seconds: duration,
-        completed_at: new Date().toISOString()
+        completed_at: new Date().toISOString(),
+        note: 'Credits synced via webhook/fire-and-forget only (see hybrid sync architecture)'
       },
       errors: errors.length > 0 ? errors : undefined
     };

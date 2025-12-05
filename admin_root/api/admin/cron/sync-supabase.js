@@ -1,15 +1,23 @@
 /**
  * GET /api/admin/cron/sync-supabase
  * Vercel Cron Job - Sync mock exams and bookings from HubSpot to Supabase
+ * ⚠️ NOTE: Contact credits are NOT synced via this cron (see hybrid sync architecture)
  *
- * Schedule: Runs every 2 hours (0 2 * * *) - configured in vercel.json
- * Purpose: Keeps Supabase tables synchronized with HubSpot data
+ * Schedule: Runs every 2 hours (0 */2 * * *) - configured in vercel.json
+ * Purpose: Keeps Supabase exams & bookings synchronized with HubSpot data
+ *
+ * Hybrid Sync Architecture:
+ * - Exams & Bookings: HubSpot → Supabase (this cron, every 2 hours)
+ * - Credits (User ops): Supabase → HubSpot (real-time webhook < 1s after booking/cancel)
+ * - Credits (Admin ops): HubSpot → Supabase (fire-and-forget sync after token updates)
  *
  * Security: Requires CRON_SECRET from Vercel (set in environment variables)
  *
  * Usage:
  * - Automatically triggered by Vercel every 2 hours
  * - Can be manually triggered: curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain.com/api/admin/cron/sync-supabase
+ *
+ * See: PRDs/supabase/supabase_SOT_migrations/04-cron-batch-sync.md
  **/
 
 const { syncAllData } = require('../../_shared/supabaseSync.optimized');
