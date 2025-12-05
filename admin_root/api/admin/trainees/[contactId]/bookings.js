@@ -22,7 +22,8 @@ const hubspot = require('../../../_shared/hubspot');
 const {
   getBookingsByContactFromSupabase,
   getContactByIdFromSupabase,
-  syncBookingsToSupabase
+  syncBookingsToSupabase,
+  syncContactToSupabase
 } = require('../../../_shared/supabase-data');
 
 // HubSpot Object Type IDs

@@ -92,7 +92,6 @@ async function syncContactToSupabase(contact) {
     email: props.email?.toLowerCase(),
     firstname: props.firstname,
     lastname: props.lastname,
-    phone: props.phone,
     sj_credits: parseInt(props.sj_credits) || 0,
     cs_credits: parseInt(props.cs_credits) || 0,
     sjmini_credits: parseInt(props.sjmini_credits) || 0,
@@ -590,7 +589,6 @@ module.exports = {
   getContactByEmailFromSupabase,
   getContactByStudentIdFromSupabase,
   getContactByIdFromSupabase,
-  syncContactToSupabase,
   // Booking reads
   getBookingsFromSupabase,
   getBookingsByContactFromSupabase,
@@ -599,6 +597,7 @@ module.exports = {
   getBookingByIdFromSupabase,
   getActiveBookingsCountFromSupabase,
   // Write syncs
+  syncContactToSupabase,
   syncBookingToSupabase,
   syncBookingsToSupabase,
   syncExamToSupabase,

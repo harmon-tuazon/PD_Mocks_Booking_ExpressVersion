@@ -47,7 +47,8 @@
       "mcp__vercel__list_deployments",
       "Bash(node:*)",
       "Bash(curl:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
