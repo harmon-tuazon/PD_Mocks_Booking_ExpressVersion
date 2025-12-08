@@ -511,6 +511,7 @@ async function updateExamBookingCountInSupabase(examId, totalBookings = null, op
       if (error) {
         // If RPC function doesn't exist, fallback to manual fetch-update-set
         console.warn(`⚠️ RPC function not available, using fallback method`);
+        console.warn(`⚠️ RPC Error details:`, JSON.stringify(error, null, 2));
 
         // Fetch current value
         const { data: exam, error: fetchError } = await supabaseAdmin
