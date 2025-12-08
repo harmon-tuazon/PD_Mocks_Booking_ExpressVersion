@@ -629,6 +629,14 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
           console.log(`✅ Redis counter decremented for exam ${mockExamId}: ${counterBefore} → ${newCount}`);
         }
 
+        // SUPABASE SYNC: Atomically decrement exam booking count in Supabase
+        try {
+          await updateExamBookingCountInSupabase(mockExamId, null, 'decrement');
+        } catch (supabaseError) {
+          console.error(`⚠️ Supabase exam count sync failed (non-blocking):`, supabaseError.message);
+          // Fallback is built into the function - it will fetch and update if RPC fails
+        }
+
         // Trigger HubSpot workflow via webhook (async, non-blocking)
         const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
 
@@ -645,17 +653,6 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
           } else {
             console.error(`❌ [WEBHOOK] All retry attempts failed: ${result.message}`);
             console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
-          }
-
-          // CRITICAL FIX: Atomically decrement exam total_bookings count in Supabase
-          console.log(`🔍 [SYNC DEBUG] About to call updateExamBookingCountInSupabase for exam ${mockExamId}`);
-          try {
-            await updateExamBookingCountInSupabase(mockExamId, null, 'decrement');
-            console.log(`✅ [SUPABASE] Atomically decremented exam ${mockExamId} total_bookings`);
-          } catch (syncError) {
-            console.error(`❌ [SUPABASE] Failed to sync exam count:`, syncError);
-            console.error(`❌ [SUPABASE] Error stack:`, syncError.stack);
-            // Non-blocking - cron job will reconcile within 2 hours
           }
         });
       } else {
