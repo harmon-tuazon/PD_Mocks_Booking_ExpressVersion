@@ -648,11 +648,13 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
           }
 
           // CRITICAL FIX: Atomically decrement exam total_bookings count in Supabase
+          console.log(`🔍 [SYNC DEBUG] About to call updateExamBookingCountInSupabase for exam ${mockExamId}`);
           try {
             await updateExamBookingCountInSupabase(mockExamId, null, 'decrement');
             console.log(`✅ [SUPABASE] Atomically decremented exam ${mockExamId} total_bookings`);
           } catch (syncError) {
-            console.error(`❌ [SUPABASE] Failed to sync exam count:`, syncError.message);
+            console.error(`❌ [SUPABASE] Failed to sync exam count:`, syncError);
+            console.error(`❌ [SUPABASE] Error stack:`, syncError.stack);
             // Non-blocking - cron job will reconcile within 2 hours
           }
         });
