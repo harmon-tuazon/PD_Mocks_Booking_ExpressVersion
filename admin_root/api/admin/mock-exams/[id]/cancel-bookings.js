@@ -387,24 +387,32 @@ module.exports = async (req, res) => {
       console.log(`🗑️ [CANCEL] Caches invalidated for mock exam ${mockExamId}`);
     }
 
-    // Sync cancellations to Supabase
+    // Sync cancellations to Supabase (including skipped bookings that are already cancelled)
     let supabaseSynced = false;
-    if (results.successful.length > 0) {
+    const allCancelledBookings = [
+      ...results.successful.map(r => r.bookingId),
+      ...results.skipped.filter(r => r.currentStatus === 'Cancelled').map(r => r.bookingId)
+    ];
+
+    if (allCancelledBookings.length > 0) {
       try {
-        const supabaseUpdates = results.successful.map(result =>
-          updateBookingStatusInSupabase(result.bookingId, 'Cancelled')
+        console.log(`🔄 [SUPABASE] Syncing ${allCancelledBookings.length} cancelled bookings (${results.successful.length} newly cancelled + ${results.skipped.length} already cancelled)`);
+
+        const supabaseUpdates = allCancelledBookings.map(bookingId =>
+          updateBookingStatusInSupabase(bookingId, 'Cancelled')
         );
 
         const supabaseResults = await Promise.allSettled(supabaseUpdates);
         const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
-        console.log(`✅ [CANCEL] Synced ${syncedCount}/${results.successful.length} cancellations to Supabase`);
-        supabaseSynced = syncedCount === results.successful.length;
+        console.log(`✅ [CANCEL] Synced ${syncedCount}/${allCancelledBookings.length} cancellations to Supabase`);
+        supabaseSynced = syncedCount === allCancelledBookings.length;
 
         // SUPABASE SYNC: Atomically decrement exam booking count in Supabase
-        const cancelledCount = results.successful.length;
-        if (cancelledCount > 0) {
+        // Only decrement for newly cancelled bookings (not already-cancelled ones)
+        const newlyCancelledCount = results.successful.length;
+        if (newlyCancelledCount > 0) {
           try {
-            await updateExamBookingCountInSupabase(mockExamId, null, 'decrement', cancelledCount);
+            await updateExamBookingCountInSupabase(mockExamId, null, 'decrement', newlyCancelledCount);
           } catch (supabaseError) {
             console.error(`⚠️ Supabase exam count sync failed (non-blocking):`, supabaseError.message);
             // Fallback is built into the function - it will fetch and update if RPC fails
