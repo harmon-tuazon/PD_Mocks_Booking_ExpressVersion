@@ -20,7 +20,10 @@ const { HubSpotService, HUBSPOT_OBJECTS } = require('../../_shared/hubspot');
 const { validateInput } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const RedisLockService = require('../../_shared/redis');
-const { syncBookingToSupabase } = require('../../_shared/supabase-data');
+const {
+  syncBookingToSupabase,
+  updateExamBookingCountInSupabase
+} = require('../../_shared/supabase-data');
 
 module.exports = async (req, res) => {
   let bookingCreated = false;
@@ -243,6 +246,14 @@ module.exports = async (req, res) => {
     // Increment Redis counter immediately (real-time)
     const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
     console.log(`✅ [ADMIN BOOKING] Redis counter incremented: ${totalBookings} → ${newTotalBookings}`);
+
+    // SUPABASE SYNC: Atomically increment exam booking count in Supabase
+    try {
+      await updateExamBookingCountInSupabase(mock_exam_id, null, 'increment');
+    } catch (supabaseError) {
+      console.error(`⚠️ Supabase exam count sync failed (non-blocking):`, supabaseError.message);
+      // Fallback is built into the function - it will fetch and update if RPC fails
+    }
 
     // Trigger HubSpot workflow via webhook (async, non-blocking)
     const { HubSpotWebhookService } = require('../../_shared/hubspot-webhook');
