@@ -386,12 +386,13 @@ module.exports = async (req, res) => {
         console.log(`✅ [CANCEL] Synced ${syncedCount}/${results.successful.length} cancellations to Supabase`);
         supabaseSynced = syncedCount === results.successful.length;
 
-        // CRITICAL FIX: Sync decremented exam total_bookings count to Supabase
-        if (finalExamCount !== null) {
+        // CRITICAL FIX: Atomically decrement exam total_bookings count in Supabase
+        const cancelledCount = results.successful.length;
+        if (cancelledCount > 0) {
           process.nextTick(async () => {
             try {
-              await updateExamBookingCountInSupabase(mockExamId, finalExamCount);
-              console.log(`✅ [SUPABASE] Synced exam ${mockExamId} total_bookings to ${finalExamCount}`);
+              await updateExamBookingCountInSupabase(mockExamId, null, 'decrement', cancelledCount);
+              console.log(`✅ [SUPABASE] Atomically decremented exam ${mockExamId} total_bookings by ${cancelledCount}`);
             } catch (syncError) {
               console.error(`❌ [SUPABASE] Failed to sync exam count:`, syncError.message);
               // Non-blocking - cron job will reconcile within 2 hours
