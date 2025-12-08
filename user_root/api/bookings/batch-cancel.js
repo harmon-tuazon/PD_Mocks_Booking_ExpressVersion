@@ -357,18 +357,15 @@ async function cancelSingleBooking(hubspot, bookingData) {
       return result;
     }
 
-    // Step 11: SUPABASE SYNC - Update booking status and exam count
+    // Step 11: SUPABASE SYNC - Update booking status and atomically decrement exam count
     try {
       // Update booking status in Supabase
       await updateBookingStatusInSupabase(bookingId, 'Cancelled');
 
-      // Update exam booking count if we have mockExamId
+      // Atomically decrement exam booking count if we have mockExamId
       if (mockExamId) {
-        const redis = new RedisLockService();
-        const counterKey = `exam:${mockExamId}:bookings`;
-        const currentCount = parseInt(await redis.get(counterKey)) || 0;
-        await updateExamBookingCountInSupabase(mockExamId, currentCount);
-        await redis.close();
+        await updateExamBookingCountInSupabase(mockExamId, null, 'decrement');
+        console.log(`✅ [SUPABASE] Atomically decremented exam ${mockExamId} total_bookings`);
       }
 
       console.log(`✅ Supabase synced for cancelled booking ${bookingId}`);
