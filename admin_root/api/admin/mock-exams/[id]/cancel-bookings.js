@@ -386,18 +386,15 @@ module.exports = async (req, res) => {
         console.log(`✅ [CANCEL] Synced ${syncedCount}/${results.successful.length} cancellations to Supabase`);
         supabaseSynced = syncedCount === results.successful.length;
 
-        // CRITICAL FIX: Atomically decrement exam total_bookings count in Supabase
+        // SUPABASE SYNC: Atomically decrement exam booking count in Supabase
         const cancelledCount = results.successful.length;
         if (cancelledCount > 0) {
-          process.nextTick(async () => {
-            try {
-              await updateExamBookingCountInSupabase(mockExamId, null, 'decrement', cancelledCount);
-              console.log(`✅ [SUPABASE] Atomically decremented exam ${mockExamId} total_bookings by ${cancelledCount}`);
-            } catch (syncError) {
-              console.error(`❌ [SUPABASE] Failed to sync exam count:`, syncError.message);
-              // Non-blocking - cron job will reconcile within 2 hours
-            }
-          });
+          try {
+            await updateExamBookingCountInSupabase(mockExamId, null, 'decrement', cancelledCount);
+          } catch (supabaseError) {
+            console.error(`⚠️ Supabase exam count sync failed (non-blocking):`, supabaseError.message);
+            // Fallback is built into the function - it will fetch and update if RPC fails
+          }
         }
       } catch (supabaseError) {
         console.error('❌ Supabase cancellation sync failed:', supabaseError.message);
