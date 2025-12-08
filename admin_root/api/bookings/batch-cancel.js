@@ -29,7 +29,11 @@ const Joi = require('joi');
 const { HubSpotService, HUBSPOT_OBJECTS } = require('../_shared/hubspot');
 const { requireAdmin } = require('../admin/middleware/requireAdmin');
 const RedisLockService = require('../_shared/redis');
-const { updateContactCreditsInSupabase } = require('../_shared/supabase-data');
+const {
+  updateContactCreditsInSupabase,
+  updateBookingStatusInSupabase,
+  updateExamBookingCountInSupabase
+} = require('../_shared/supabase-data');
 
 // Validation schema for batch cancellation
 const batchCancelSchema = Joi.object({
@@ -286,6 +290,15 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
       return result;
     }
 
+    // Step 9.5: Sync booking cancellation to Supabase
+    try {
+      await updateBookingStatusInSupabase(bookingId, 'Cancelled');
+      console.log(`✅ [SUPABASE] Updated booking ${bookingId} status to Cancelled`);
+    } catch (supabaseError) {
+      console.error(`⚠️ [SUPABASE] Failed to sync booking status (non-blocking):`, supabaseError.message);
+      // Non-blocking - cron will reconcile
+    }
+
     // Step 10: Clear Redis duplicate detection cache (ENHANCED LOGGING)
     console.log(`🔍 [REDIS DEBUG] Starting cache invalidation for booking ${bookingId}`);
     console.log(`🔍 [REDIS DEBUG] - Redis instance exists: ${!!redis}`);
@@ -337,6 +350,15 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
             newCount = await redis.decr(counterKey);
             console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);
             console.log(`✅ [REDIS] Decremented exam counter for ${mockExamId}: ${counterBefore} → ${newCount}`);
+          }
+
+          // SUPABASE SYNC: Atomically decrement exam booking count in Supabase
+          try {
+            await updateExamBookingCountInSupabase(mockExamId, null, 'decrement');
+            console.log(`✅ [SUPABASE] Atomically decremented exam ${mockExamId} total_bookings`);
+          } catch (supabaseError) {
+            console.error(`⚠️ [SUPABASE] Exam count sync failed (non-blocking):`, supabaseError.message);
+            // Fallback is built into the function - cron will reconcile
           }
 
           // Trigger HubSpot workflow via webhook (async, non-blocking)
