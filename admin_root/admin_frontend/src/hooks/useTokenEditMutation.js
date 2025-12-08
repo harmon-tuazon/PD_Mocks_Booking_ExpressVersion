@@ -7,7 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { traineeApi } from '../services/adminApi';
 import toast from 'react-hot-toast';
 
-export const useTokenEditMutation = (contactId) => {
+export const useTokenEditMutation = (contactId, searchQuery) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -20,13 +20,13 @@ export const useTokenEditMutation = (contactId) => {
 
     onMutate: async (tokens) => {
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries(['trainee-search']);
+      await queryClient.cancelQueries(['trainee-search', searchQuery]);
 
       // Snapshot the previous value
-      const previousData = queryClient.getQueryData(['trainee-search']);
+      const previousData = queryClient.getQueryData(['trainee-search', searchQuery]);
 
       // Optimistically update to the new value
-      queryClient.setQueryData(['trainee-search'], (old) => {
+      queryClient.setQueryData(['trainee-search', searchQuery], (old) => {
         if (!old?.data?.contacts) return old;
 
         return {
@@ -34,7 +34,7 @@ export const useTokenEditMutation = (contactId) => {
           data: {
             ...old.data,
             contacts: old.data.contacts.map(contact =>
-              contact.contactId === contactId
+              contact.id === contactId
                 ? {
                     ...contact,
                     tokens: {
@@ -58,7 +58,7 @@ export const useTokenEditMutation = (contactId) => {
     onError: (error, tokens, context) => {
       // Rollback to the previous value if mutation fails
       if (context?.previousData) {
-        queryClient.setQueryData(['trainee-search'], context.previousData);
+        queryClient.setQueryData(['trainee-search', searchQuery], context.previousData);
       }
 
       // Show error toast
@@ -76,9 +76,6 @@ export const useTokenEditMutation = (contactId) => {
     },
 
     onSuccess: (data) => {
-      // Invalidate and refetch relevant queries
-      queryClient.invalidateQueries(['trainee-search']);
-
       // Also invalidate specific trainee queries if they exist
       if (contactId) {
         queryClient.invalidateQueries(['trainee', contactId]);
@@ -99,7 +96,7 @@ export const useTokenEditMutation = (contactId) => {
     onSettled: () => {
       // Always refetch trainee search data after mutation completes
       // This ensures data consistency regardless of success/failure
-      queryClient.invalidateQueries(['trainee-search']);
+      queryClient.invalidateQueries(['trainee-search', searchQuery]);
     }
   });
 };

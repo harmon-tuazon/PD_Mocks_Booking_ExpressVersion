@@ -9,14 +9,14 @@ import { useTokenEditMutation } from '../../hooks/useTokenEditMutation';
  * Displays trainee contact information and token balances in a card format
  * Uses 2-column grid layout for basic info with horizontal token badges below
  */
-const TraineeInfoCard = ({ trainee }) => {
+const TraineeInfoCard = ({ trainee, searchQuery }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedTokens, setEditedTokens] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSavedTokens, setLastSavedTokens] = useState(null);
 
   // Import the token edit mutation hook
-  const tokenEditMutation = useTokenEditMutation(trainee?.contactId);
+  const tokenEditMutation = useTokenEditMutation(trainee?.contactId, searchQuery);
 
   // Initialize edited tokens when trainee changes or edit mode is entered
   useEffect(() => {

@@ -149,7 +149,7 @@ function TraineeDashboard() {
         {trainee && (
           <>
             {/* Trainee Information Card */}
-            <TraineeInfoCard trainee={trainee} />
+            <TraineeInfoCard trainee={trainee} searchQuery={submittedSearch} />
 
             {/* Bookings Section */}
             <BookingsSection
