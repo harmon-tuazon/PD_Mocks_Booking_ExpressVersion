@@ -462,10 +462,10 @@ module.exports = async function handler(req, res) {
     const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
     console.log(`✅ Redis counter incremented: exam:${mock_exam_id}:bookings = ${newTotalBookings}`);
 
-    // Sync exam booking count to Supabase (non-blocking)
+    // Sync exam booking count to Supabase (non-blocking, atomic increment)
     try {
-      await updateExamBookingCountInSupabase(mock_exam_id, newTotalBookings);
-      console.log(`✅ Exam ${mock_exam_id} booking count synced to Supabase: ${newTotalBookings}`);
+      await updateExamBookingCountInSupabase(mock_exam_id, null, 'increment');
+      console.log(`✅ Exam ${mock_exam_id} booking count atomically incremented in Supabase`);
     } catch (supabaseError) {
       console.error('❌ Failed to sync exam booking count to Supabase:', supabaseError.message);
       // Continue - Redis is authoritative for counts

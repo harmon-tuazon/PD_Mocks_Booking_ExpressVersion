@@ -654,11 +654,12 @@ module.exports = module.exports = module.exports = async function handler(req, r
     await redis.expire(`exam:${mock_exam_id}:bookings`, TTL_30_DAYS);
     console.log(`✅ Redis counter incremented: exam:${mock_exam_id}:bookings = ${newTotalBookings} (TTL: 30 days)`);
 
-    // SUPABASE SYNC: Update exam booking count in Supabase
+    // SUPABASE SYNC: Atomically increment exam booking count in Supabase
     try {
-      await updateExamBookingCountInSupabase(mock_exam_id, newTotalBookings);
+      await updateExamBookingCountInSupabase(mock_exam_id, null, 'increment');
     } catch (supabaseError) {
       console.error(`⚠️ Supabase exam count sync failed (non-blocking):`, supabaseError.message);
+      // Fallback is built into the function - it will fetch and update if RPC fails
     }
 
     // Trigger HubSpot workflow via webhook (async, non-blocking)

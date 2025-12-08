@@ -647,10 +647,10 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
             console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
           }
 
-          // CRITICAL FIX: Sync decremented exam total_bookings count to Supabase
+          // CRITICAL FIX: Atomically decrement exam total_bookings count in Supabase
           try {
-            await updateExamBookingCountInSupabase(mockExamId, newCount);
-            console.log(`✅ [SUPABASE] Synced exam ${mockExamId} total_bookings to ${newCount}`);
+            await updateExamBookingCountInSupabase(mockExamId, null, 'decrement');
+            console.log(`✅ [SUPABASE] Atomically decremented exam ${mockExamId} total_bookings`);
           } catch (syncError) {
             console.error(`❌ [SUPABASE] Failed to sync exam count:`, syncError.message);
             // Non-blocking - cron job will reconcile within 2 hours
