@@ -169,15 +169,21 @@ module.exports = async (req, res) => {
       skipped: []
     };
 
+    console.log(`🔍 [DEBUG] Initializing updates array...`);
+
     // Validate and prepare updates using bookings array from frontend
     const updates = [];
     const bookingDetailsForAudit = [];
 
+    console.log(`🔍 [DEBUG] Starting booking validation loop for ${bookings.length} bookings...`);
+
     for (const booking of bookings) {
+      console.log(`🔍 [DEBUG] Processing booking ${booking.id}...`);
       const bookingData = bookingDataMap.get(booking.id);
 
       // Check if booking exists
       if (!bookingData) {
+        console.log(`❌ [DEBUG] Booking ${booking.id} not found in bookingDataMap`);
         results.failed.push({
           bookingId: booking.id,
           error: 'Booking not found',
@@ -186,8 +192,11 @@ module.exports = async (req, res) => {
         continue;
       }
 
+      console.log(`🔍 [DEBUG] Booking ${booking.id} status: ${bookingData.is_active}`);
+
       // Check if already cancelled (idempotent)
       if (bookingData.is_active === 'Cancelled') {
+        console.log(`⏭️ [DEBUG] Booking ${booking.id} already cancelled, skipping`);
         results.skipped.push({
           bookingId: booking.id,
           reason: 'Already cancelled',
@@ -195,6 +204,8 @@ module.exports = async (req, res) => {
         });
         continue;
       }
+
+      console.log(`✅ [DEBUG] Booking ${booking.id} ready for cancellation`);
 
       // Prepare update
       updates.push({
@@ -212,8 +223,11 @@ module.exports = async (req, res) => {
       });
     }
 
+    console.log(`🔍 [DEBUG] Finished validation loop. Updates: ${updates.length}, Failed: ${results.failed.length}, Skipped: ${results.skipped.length}`);
+
     // Process updates in batches
     if (updates.length > 0) {
+      console.log(`🔍 [DEBUG] Entering processCancellations...`);
       console.log(`⚡ [CANCEL] Processing ${updates.length} cancellations...`);
 
       const updateResults = await processCancellations(updates);
