@@ -337,10 +337,18 @@ async function updateExamBookingCountInSupabase(examId, totalBookings = null, op
     if (operation === 'increment' || operation === 'decrement') {
       // ATOMIC OPERATION: Use PostgreSQL increment/decrement
       const operator = operation === 'increment' ? '+' : '-';
+      const actualDelta = operation === 'increment' ? delta : -delta;
+
+      console.log(`🔍 [RPC DEBUG] Calling increment_exam_bookings with:`, {
+        examId,
+        operation,
+        delta,
+        actualDelta
+      });
 
       const { data, error } = await supabaseAdmin.rpc('increment_exam_bookings', {
         p_exam_id: examId,
-        p_delta: operation === 'increment' ? delta : -delta
+        p_delta: actualDelta
       });
 
       if (error) {
@@ -377,7 +385,7 @@ async function updateExamBookingCountInSupabase(examId, totalBookings = null, op
         return;
       }
 
-      console.log(`✅ ${operation === 'increment' ? 'Incremented' : 'Decremented'} exam ${examId} total_bookings in Supabase (atomic)`);
+      console.log(`✅ ${operation === 'increment' ? 'Incremented' : 'Decremented'} exam ${examId} total_bookings in Supabase (atomic) - new value: ${data}`);
     } else {
       // ABSOLUTE SET: Set exact value (legacy behavior)
       const { error } = await supabaseAdmin
