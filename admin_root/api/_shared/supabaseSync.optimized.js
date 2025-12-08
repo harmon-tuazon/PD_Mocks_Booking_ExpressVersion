@@ -271,10 +271,10 @@ async function fetchBookingsForExam(examId) {
 
 /**
  * Sync exam to Supabase
- * NOTE: total_bookings is NOT synced from HubSpot (can be stale)
- * Instead, it will be auto-calculated from actual bookings count in Supabase
+ * NOTE: total_bookings is NOT synced - it's managed by atomic increment/decrement operations
+ * The cron job does NOT update total_bookings to avoid overwriting real-time counts
  */
-async function syncExamToSupabase(exam, actualBookingsCount = null) {
+async function syncExamToSupabase(exam) {
   const props = exam.properties;
 
   const record = {
@@ -286,18 +286,13 @@ async function syncExamToSupabase(exam, actualBookingsCount = null) {
     end_time: props.end_time,
     location: props.location,
     capacity: parseInt(props.capacity) || 0,
-    // Do NOT sync total_bookings from HubSpot - calculate from actual bookings
+    // Do NOT sync total_bookings - it's managed by atomic operations in booking endpoints
     is_active: props.is_active,
     scheduled_activation_datetime: props.scheduled_activation_datetime || null,
     created_at: props.hs_createdate,
     updated_at: props.hs_lastmodifieddate,
     synced_at: new Date().toISOString()
   };
-
-  // If actual bookings count is provided, use it
-  if (actualBookingsCount !== null) {
-    record.total_bookings = actualBookingsCount;
-  }
 
   const { error } = await supabaseAdmin
     .from('hubspot_mock_exams')
@@ -581,10 +576,24 @@ async function syncAllData() {
     if (exams.length === 0) {
       console.log('✨ No modified exams found - skipping exam sync');
     } else {
-      // Step 2 & 3: Fetch bookings first, then sync exams WITH accurate total_bookings count
-      const bookingBatchSize = 10;
-      const examBookingCounts = new Map(); // Store actual bookings count per exam
+      // Step 2: Sync exams to Supabase (WITHOUT total_bookings - managed by atomic operations)
+      const examBatchSize = 10;
+      for (let i = 0; i < exams.length; i += examBatchSize) {
+        const batch = exams.slice(i, i + examBatchSize);
+        await Promise.allSettled(
+          batch.map(async (exam) => {
+            try {
+              await syncExamToSupabase(exam);
+            } catch (error) {
+              console.error(`Failed to sync exam ${exam.id}: ${error.message}`);
+              errors.push({ type: 'exam', id: exam.id, error: error.message });
+            }
+          })
+        );
+      }
 
+      // Step 3: Fetch and sync bookings ONLY for modified exams
+      const bookingBatchSize = 10;
       for (let i = 0; i < exams.length; i += bookingBatchSize) {
         const examBatch = exams.slice(i, i + bookingBatchSize);
 
@@ -592,11 +601,6 @@ async function syncAllData() {
           examBatch.map(async (exam) => {
             try {
               const bookings = await fetchBookingsForExam(exam.id);
-              const activeBookings = bookings.filter(b => b.properties.is_active === 'Active');
-
-              // Store actual active bookings count for this exam
-              examBookingCounts.set(exam.id, activeBookings.length);
-
               if (bookings.length > 0) {
                 await syncBookingsToSupabase(bookings, exam.id);
                 return bookings.length;
@@ -605,7 +609,6 @@ async function syncAllData() {
             } catch (error) {
               console.error(`Failed to sync bookings for exam ${exam.id}: ${error.message}`);
               errors.push({ type: 'bookings', examId: exam.id, error: error.message });
-              examBookingCounts.set(exam.id, 0); // Default to 0 on error
               return 0;
             }
           })
@@ -618,23 +621,6 @@ async function syncAllData() {
         });
 
         await new Promise(resolve => setTimeout(resolve, 200));
-      }
-
-      // Step 4: Sync exams WITH calculated total_bookings from actual bookings
-      const examBatchSize = 10;
-      for (let i = 0; i < exams.length; i += examBatchSize) {
-        const batch = exams.slice(i, i + examBatchSize);
-        await Promise.allSettled(
-          batch.map(async (exam) => {
-            try {
-              const actualBookingsCount = examBookingCounts.get(exam.id) || 0;
-              await syncExamToSupabase(exam, actualBookingsCount);
-            } catch (error) {
-              console.error(`Failed to sync exam ${exam.id}: ${error.message}`);
-              errors.push({ type: 'exam', id: exam.id, error: error.message });
-            }
-          })
-        );
       }
     }
 
