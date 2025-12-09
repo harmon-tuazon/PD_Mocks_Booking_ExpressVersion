@@ -34,6 +34,8 @@ const ExamTypeSelector = () => {
   ];
 
   // Load user session and fetch credit information
+  // CRITICAL FIX: Empty dependency array to run only once on mount
+  // fetchCredits function reference changes on every render, causing infinite loop
   useEffect(() => {
     const userData = getUserSession();
     if (userData) {
@@ -45,7 +47,7 @@ const ExamTypeSelector = () => {
     } else {
       console.log('⚠️ [ExamTypeSelector] No user session found');
     }
-  }, [fetchCredits]);
+  }, []); // ✅ FIXED: Empty array - run only once on mount
 
   // Listen for cache invalidation to refresh token display
   // NOTE: We ONLY listen to creditsInvalidated to avoid duplicate API calls
