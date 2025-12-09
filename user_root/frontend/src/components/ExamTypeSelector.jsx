@@ -38,8 +38,9 @@ const ExamTypeSelector = () => {
     const userData = getUserSession();
     if (userData) {
       setUserSession(userData);
-      // Fetch credit info using the cached hook
-      fetchCredits(userData.studentId, userData.email);
+      // Force fresh fetch on page load to ensure latest credits are displayed
+      // This prevents showing stale cached data when credits change in HubSpot
+      fetchCredits(userData.studentId, userData.email, true);
     }
   }, []);
 
