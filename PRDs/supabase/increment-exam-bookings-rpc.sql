@@ -18,7 +18,11 @@
 --
 -- Returns: The NEW total_bookings value after increment/decrement
 --
--- Safety: Prevents negative counts (minimum value: 0)
+-- Safety:
+--   - Prevents negative counts (minimum value: 0)
+--   - SECURITY DEFINER: Runs with function owner's privileges
+--   - SET search_path: Explicitly sets schema to hubspot_sync and pg_temp
+--     (prevents search path hijacking attacks)
 -- =========================================================================
 
 CREATE OR REPLACE FUNCTION increment_exam_bookings(
@@ -27,6 +31,8 @@ CREATE OR REPLACE FUNCTION increment_exam_bookings(
 )
 RETURNS INTEGER
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = hubspot_sync, pg_temp
 AS $$
 DECLARE
   v_new_count INTEGER;
