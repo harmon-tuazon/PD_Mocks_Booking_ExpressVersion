@@ -40,9 +40,12 @@ const ExamTypeSelector = () => {
       setUserSession(userData);
       // Force fresh fetch on page load to ensure latest credits are displayed
       // This prevents showing stale cached data when credits change in HubSpot
+      console.log('🚀 [ExamTypeSelector] Calling fetchCredits with force=true');
       fetchCredits(userData.studentId, userData.email, true);
+    } else {
+      console.log('⚠️ [ExamTypeSelector] No user session found');
     }
-  }, []);
+  }, [fetchCredits]);
 
   // Listen for cache invalidation to refresh token display
   // NOTE: We ONLY listen to creditsInvalidated to avoid duplicate API calls
