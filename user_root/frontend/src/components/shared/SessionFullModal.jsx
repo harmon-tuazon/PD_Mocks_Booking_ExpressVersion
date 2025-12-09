@@ -106,7 +106,7 @@ const SessionFullModal = ({
           </div>
 
           {/* Footer */}
-          <div className="bg-yellow-100 dark:bg-yellow-900/30 px-4 py-3 sm:px-6">
+          <div className="bg-yellow-100 dark:bg-yellow-900/30 px-4 py-3 sm:px-6 space-y-2">
             <button
               type="button"
               ref={buttonRef}
@@ -117,6 +117,18 @@ const SessionFullModal = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               Select Another Session
+            </button>
+
+            {/* Get Help Button */}
+            <button
+              type="button"
+              onClick={() => window.open('https://rve7i.share.hsforms.com/2xIiXXRfGRz-Lmi8eMWjD_g', '_blank', 'noopener,noreferrer')}
+              className="w-full inline-flex justify-center items-center rounded-md border border-yellow-300 dark:border-yellow-600 shadow-sm px-4 py-2 bg-white dark:bg-yellow-900/20 text-base font-medium text-yellow-700 dark:text-yellow-300 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:text-sm transition-colors duration-200"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Get Help
             </button>
           </div>
         </div>

@@ -128,7 +128,7 @@ const InsufficientCreditsCard = ({ mockType = 'mock exam', onContactSupport, cla
             </button>
           </div>
 
-          {/* Primary Action Button */}
+          {/* Primary Action Buttons */}
           <div className="space-y-4 mb-8">
             <button
               onClick={handleContactRedirect}
@@ -139,6 +139,18 @@ const InsufficientCreditsCard = ({ mockType = 'mock exam', onContactSupport, cla
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
               </svg>
               Contact Academic Advisors
+            </button>
+
+            {/* Get Help Button */}
+            <button
+              onClick={() => window.open('https://rve7i.share.hsforms.com/2xIiXXRfGRz-Lmi8eMWjD_g', '_blank', 'noopener,noreferrer')}
+              className="btn-brand-secondary dark:bg-dark-hover dark:border-dark-border dark:text-gray-200 dark:hover:bg-dark-card w-full btn-large inline-flex items-center justify-center"
+              aria-label="Get help or support"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Get Help
             </button>
           </div>
 
