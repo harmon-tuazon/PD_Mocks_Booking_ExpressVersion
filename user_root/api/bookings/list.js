@@ -17,7 +17,11 @@ const {
   rateLimitMiddleware,
   sanitizeInput
 } = require('../_shared/auth');
-const { getBookingsByContactFromSupabase, getExamByIdFromSupabase } = require('../_shared/supabase-data');
+const {
+  getBookingsByContactFromSupabase,
+  getExamByIdFromSupabase,
+  getContactCreditsFromSupabase
+} = require('../_shared/supabase-data');
 
 /**
  * Main handler for listing bookings
@@ -89,44 +93,84 @@ async function handler(req, res) {
     const sanitizedStudentId = sanitizeInput(student_id);
     const sanitizedEmail = sanitizeInput(email);
 
-    // Initialize HubSpot service for authentication
+    // Initialize HubSpot service (only for fallback)
     const hubspot = new HubSpotService();
 
-    // Step 1: Authenticate user via HubSpot contact search
-    // HubSpot remains the source of truth for authentication
-    console.log('🔐 Authenticating user via HubSpot...');
+    // Step 1: Authenticate user via Supabase (fast path ~50ms)
+    // Falls back to HubSpot if not found in Supabase
+    console.log('🔐 Authenticating user via Supabase...');
 
-    const contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail);
+    let contact = null;
+    let contactId = null;
+    let contactHsObjectId = null;
+    let credits = null;
 
-    if (!contact) {
-      console.error('❌ Contact not found:', {
-        student_id: sanitizedStudentId,
-        email: sanitizedEmail
-      });
-      const error = new Error('Authentication failed. Please check your Student ID and email.');
-      error.status = 401;
-      error.code = 'AUTH_FAILED';
-      throw error;
+    try {
+      // Try Supabase first (fast, no HubSpot API call)
+      const supabaseContact = await getContactCreditsFromSupabase(sanitizedStudentId, sanitizedEmail);
+
+      if (supabaseContact) {
+        console.log(`✅ Contact authenticated from Supabase: ${supabaseContact.hubspot_id} - ${supabaseContact.firstname} ${supabaseContact.lastname}`);
+
+        contactId = supabaseContact.hubspot_id;
+        contactHsObjectId = supabaseContact.hubspot_id;
+
+        // Extract credits from Supabase
+        credits = {
+          sj_credits: parseInt(supabaseContact.sj_credits) || 0,
+          cs_credits: parseInt(supabaseContact.cs_credits) || 0,
+          sjmini_credits: parseInt(supabaseContact.sjmini_credits) || 0,
+          shared_mock_credits: parseInt(supabaseContact.shared_mock_credits) || 0
+        };
+
+        // Create contact object for compatibility
+        contact = {
+          id: supabaseContact.hubspot_id,
+          properties: {
+            firstname: supabaseContact.firstname,
+            lastname: supabaseContact.lastname,
+            student_id: supabaseContact.student_id,
+            email: supabaseContact.email,
+            hs_object_id: supabaseContact.hubspot_id,
+            ...credits
+          }
+        };
+      }
+    } catch (supabaseError) {
+      console.warn('⚠️ Supabase authentication failed, falling back to HubSpot:', supabaseError.message);
     }
 
-    const contactId = contact.id;
-    console.log(`✅ Contact authenticated: ${contactId} - ${contact.properties.firstname} ${contact.properties.lastname}`, {
-      contactId,
-      studentId: contact.properties.student_id,
-      email: contact.properties.email,
-      hs_object_id: contact.properties.hs_object_id
-    });
+    // Fallback to HubSpot if not found in Supabase
+    if (!contact) {
+      console.log('🔄 Supabase lookup failed, trying HubSpot (slow path ~500ms)...');
 
-    // Extract credits information
-    const credits = {
-      sj_credits: parseInt(contact.properties.sj_credits) || 0,
-      cs_credits: parseInt(contact.properties.cs_credits) || 0,
-      sjmini_credits: parseInt(contact.properties.sjmini_credits) || 0,
-      shared_mock_credits: parseInt(contact.properties.shared_mock_credits) || 0
-    };
+      contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail);
 
-    // Step 2: Get contact's HubSpot object ID for associations API
-    const contactHsObjectId = contact.properties.hs_object_id || contactId;
+      if (!contact) {
+        console.error('❌ Contact not found in either Supabase or HubSpot:', {
+          student_id: sanitizedStudentId,
+          email: sanitizedEmail
+        });
+        const error = new Error('Authentication failed. Please check your Student ID and email.');
+        error.status = 401;
+        error.code = 'AUTH_FAILED';
+        throw error;
+      }
+
+      contactId = contact.id;
+      contactHsObjectId = contact.properties.hs_object_id || contactId;
+
+      console.log(`✅ Contact authenticated from HubSpot: ${contactId} - ${contact.properties.firstname} ${contact.properties.lastname}`);
+
+      // Extract credits from HubSpot
+      credits = {
+        sj_credits: parseInt(contact.properties.sj_credits) || 0,
+        cs_credits: parseInt(contact.properties.cs_credits) || 0,
+        sjmini_credits: parseInt(contact.properties.sjmini_credits) || 0,
+        shared_mock_credits: parseInt(contact.properties.shared_mock_credits) || 0
+      };
+    }
+
     console.log(`🔗 Using contact HubSpot object ID: ${contactHsObjectId}`);
 
     // Step 3: Get bookings using the improved associations-focused approach
