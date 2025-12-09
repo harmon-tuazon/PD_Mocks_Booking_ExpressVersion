@@ -58,7 +58,7 @@
   "crons": [
     {
       "path": "/api/admin/cron/activate-scheduled-exams",
-      "schedule": "0 5,17 * * *"
+      "schedule": "0 18 * * *"
     },
     {
       "path": "/api/admin/cron/sync-supabase",

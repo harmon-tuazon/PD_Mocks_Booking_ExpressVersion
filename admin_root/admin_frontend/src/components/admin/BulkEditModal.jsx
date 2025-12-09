@@ -1,15 +1,16 @@
 /**
  * BulkEditModal Component
  *
- * Modal for bulk editing multiple mock exam sessions with smart filtering and validation.
+ * Modal for bulk editing multiple mock exam sessions with validation and warnings.
  *
  * Features:
- * - **Smart Filtering**: Automatically separates sessions into editable (0 bookings) and blocked (>0 bookings)
+ * - **All Sessions Editable**: Sessions with bookings can now be edited (shows warning banner)
  * - **6 Editable Fields**: location, mock_type, capacity, exam_date, is_active, scheduled_activation_datetime
  * - **Empty Field Behavior**: Fields left blank are NOT updated (preserves existing values)
  * - **Auto-Regeneration**: mock_exam_name regenerated when mock_type, location, or exam_date changes
- * - **Confirmation Safety**: User must type count of editable sessions to proceed
- * - **Preview Table**: Shows first 10 editable + 5 blocked sessions with visual indicators
+ * - **Confirmation Safety**: User must type count of sessions to proceed
+ * - **Preview Table**: Shows first 10 sessions with visual indicators for sessions with bookings
+ * - **Booking Warnings**: Yellow highlight for sessions with existing bookings
  * - **Loading States**: Disables inputs during submission, shows spinner
  * - **Real-time Validation**: Inline error messages for invalid inputs
  * - **Keyboard Support**: ESC to close (if not submitting), Tab navigation, Enter in confirmation
@@ -31,7 +32,7 @@
  * @param {Function} props.onClose - Handler to close modal
  * @param {Array<Object>} props.selectedSessions - Array of selected session objects
  * @param {string} props.selectedSessions[].id - HubSpot session ID
- * @param {string|number} props.selectedSessions[].total_bookings - Number of bookings (determines if editable)
+ * @param {string|number} props.selectedSessions[].total_bookings - Number of bookings (for warning display)
  * @param {string} props.selectedSessions[].mock_type - Current mock type
  * @param {string} props.selectedSessions[].location - Current location
  * @param {string} props.selectedSessions[].exam_date - Current exam date
@@ -78,13 +79,11 @@ const BulkEditModal = ({
 
   const editMutation = useBulkEdit();
 
-  // Filter sessions based on bookings
-  const editableSessions = useMemo(() =>
-    selectedSessions.filter(s => !s.total_bookings || parseInt(s.total_bookings) === 0),
-    [selectedSessions]
-  );
+  // All sessions are now editable (removed booking restriction)
+  const editableSessions = useMemo(() => selectedSessions, [selectedSessions]);
 
-  const blockedSessions = useMemo(() =>
+  // Track sessions with bookings for warning display
+  const sessionsWithBookings = useMemo(() =>
     selectedSessions.filter(s => s.total_bookings && parseInt(s.total_bookings) > 0),
     [selectedSessions]
   );
@@ -232,11 +231,10 @@ const BulkEditModal = ({
 
   // Get preview sessions (first 10)
   const previewSessions = useMemo(() => {
-    const allSessions = [...editableSessions, ...blockedSessions];
-    return allSessions.slice(0, 10);
-  }, [editableSessions, blockedSessions]);
+    return editableSessions.slice(0, 10);
+  }, [editableSessions]);
 
-  const remainingCount = editableSessions.length + blockedSessions.length - previewSessions.length;
+  const remainingCount = editableSessions.length - previewSessions.length;
 
   // Helper function to get status display
   const getStatusDisplay = (session) => {
@@ -308,39 +306,39 @@ const BulkEditModal = ({
                       {/* Session breakdown */}
                       <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-3">
                         <p className="text-sm text-gray-700 dark:text-gray-300">
-                          <span className="font-semibold text-green-600 dark:text-green-400">
+                          <span className="font-semibold text-blue-600 dark:text-blue-400">
                             {editableSessions.length}
                           </span>{' '}
-                          session{editableSessions.length !== 1 ? 's' : ''} can be edited
-                          {blockedSessions.length > 0 && (
+                          session{editableSessions.length !== 1 ? 's' : ''} will be edited
+                          {sessionsWithBookings.length > 0 && (
                             <>
-                              {', '}
-                              <span className="font-semibold text-red-600 dark:text-red-400">
-                                {blockedSessions.length}
+                              {' ('}
+                              <span className="font-semibold text-yellow-600 dark:text-yellow-400">
+                                {sessionsWithBookings.length}
                               </span>{' '}
-                              session{blockedSessions.length !== 1 ? 's have' : ' has'} bookings (cannot edit)
+                              with existing bookings)
                             </>
                           )}
                         </p>
                       </div>
 
-                      {/* Warning banner for blocked sessions */}
-                      {blockedSessions.length > 0 && (
+                      {/* Warning banner for sessions with bookings */}
+                      {sessionsWithBookings.length > 0 && (
                         <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-600 dark:border-yellow-400 p-3">
                           <div className="flex">
                             <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mr-2 flex-shrink-0" />
                             <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                              Sessions with existing bookings cannot be edited and will be skipped.
+                              {sessionsWithBookings.length} session{sessionsWithBookings.length !== 1 ? 's have' : ' has'} existing bookings. Editing will affect booked sessions.
                             </p>
                           </div>
                         </div>
                       )}
 
-                      {/* Empty state if no editable sessions */}
+                      {/* Empty state if no sessions selected (shouldn't happen) */}
                       {editableSessions.length === 0 ? (
                         <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-600 dark:border-red-400 p-4">
                           <p className="text-sm text-red-800 dark:text-red-300 font-medium">
-                            All selected sessions have bookings and cannot be edited.
+                            No sessions selected for editing.
                           </p>
                         </div>
                       ) : (
@@ -518,11 +516,10 @@ const BulkEditModal = ({
                                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
                                     {previewSessions.map((session) => {
                                       const hasBookings = session.total_bookings && parseInt(session.total_bookings) > 0;
-                                      const isEditable = !hasBookings;
                                       return (
                                         <tr
                                           key={session.id}
-                                          className={hasBookings ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20'}
+                                          className={hasBookings ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}
                                         >
                                           <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
                                             {session.mock_type || 'N/A'}
@@ -541,11 +538,11 @@ const BulkEditModal = ({
                                           </td>
                                           <td className="px-3 py-2 text-xs">
                                             <span className={`inline-flex px-2 text-xs font-semibold leading-5 rounded-full ${
-                                              isEditable
-                                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                                                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                                              hasBookings
+                                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                                : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
                                             }`}>
-                                              {isEditable ? getStatusDisplay(session) : 'Has bookings'}
+                                              {hasBookings ? `${session.total_bookings} bookings` : getStatusDisplay(session)}
                                             </span>
                                           </td>
                                         </tr>
