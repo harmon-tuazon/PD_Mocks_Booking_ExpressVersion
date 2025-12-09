@@ -174,7 +174,44 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ============================================================
+-- Step 4: Drop Old Triggers (if they exist)
+-- ============================================================
+
+DROP TRIGGER IF EXISTS bookings_audit_trigger ON hubspot_sync.hubspot_bookings;
+DROP TRIGGER IF EXISTS contact_credits_audit_trigger ON hubspot_sync.hubspot_contact_credits;
+DROP TRIGGER IF EXISTS exams_audit_trigger ON hubspot_sync.hubspot_mock_exams;
+
+-- ============================================================
+-- Step 5: Create New Triggers with Enhanced Logging
+-- ============================================================
+
+-- Trigger for hubspot_bookings
+CREATE TRIGGER bookings_audit_trigger
+AFTER INSERT OR UPDATE OR DELETE ON hubspot_sync.hubspot_bookings
+FOR EACH ROW EXECUTE FUNCTION hubspot_sync.log_booking_changes();
+
+-- Trigger for hubspot_contact_credits
+CREATE TRIGGER contact_credits_audit_trigger
+AFTER INSERT OR UPDATE OR DELETE ON hubspot_sync.hubspot_contact_credits
+FOR EACH ROW EXECUTE FUNCTION hubspot_sync.log_contact_credits_changes();
+
+-- Trigger for hubspot_mock_exams
+CREATE TRIGGER exams_audit_trigger
+AFTER INSERT OR UPDATE OR DELETE ON hubspot_sync.hubspot_mock_exams
+FOR EACH ROW EXECUTE FUNCTION hubspot_sync.log_exam_changes();
+
+-- ============================================================
 -- Verification
+-- ============================================================
+
+-- Check triggers are installed
+SELECT trigger_name, event_manipulation, event_object_table
+FROM information_schema.triggers
+WHERE trigger_schema = 'hubspot_sync'
+  AND trigger_name LIKE '%audit%';
+
+-- ============================================================
+-- Original Verification (Columns)
 -- ============================================================
 
 -- Check columns were added
