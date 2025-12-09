@@ -10,8 +10,8 @@ let lastFetchTime = null;
 let subscribers = new Set();
 let ongoingRequest = null;
 
-// Cache duration: 1 minute
-const CACHE_DURATION = 60000; // 1 minute in milliseconds
+// Cache duration: 15 seconds (users don't stay long in platform)
+const CACHE_DURATION = 15000; // 15 seconds in milliseconds
 
 /**
  * Custom hook for managing cached credit data across components
