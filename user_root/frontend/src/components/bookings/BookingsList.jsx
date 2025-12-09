@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { FiCalendar, FiClock, FiMapPin, FiHash, FiEye, FiX, FiAlertCircle } from 'react-icons/fi';
 import { DeleteBookingModal } from '../shared';
 import { formatTimeRange } from '../../services/api';
+import { getTimezoneLabel, formatTimezoneForDisplay } from '../../utils/timezoneHelpers';
 
 const BookingsList = ({
   bookings = [],
@@ -34,8 +35,12 @@ const BookingsList = ({
   // Format time range for display using the API service function
   // This function properly handles ISO timestamps from HubSpot
   const formatBookingTimeRange = (booking) => {
-    // Pass the booking object to the API service formatTimeRange function
-    return formatTimeRange(booking);
+    // Get timezone label based on mock type and location
+    const timezone = getTimezoneLabel(booking.mock_type, booking.location);
+    const timezoneDisplay = formatTimezoneForDisplay(timezone);
+
+    // Pass the booking object and timezone label to the API service formatTimeRange function
+    return formatTimeRange(booking, timezoneDisplay);
   };
 
   // Determine booking status

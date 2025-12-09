@@ -9,6 +9,7 @@ import { getUserSession } from '../utils/auth';
 import useCachedCredits from '../hooks/useCachedCredits';
 import LocationFilter from './shared/LocationFilter';
 import BookingTimeWarningModal from './shared/BookingTimeWarningModal';
+import { getTimezoneLabel, formatTimezoneForDisplay } from '../utils/timezoneHelpers';
 
 const ExamSessionsList = () => {
   const [searchParams] = useSearchParams();
@@ -543,7 +544,7 @@ const ExamSessionsList = () => {
                           <div className="flex items-center">
                             <ClockIcon />
                             <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                              {formatTimeRange(exam)}
+                              {formatTimeRange(exam, formatTimezoneForDisplay(getTimezoneLabel(mockType, exam.location)))}
                             </span>
                           </div>
                         </td>
@@ -604,7 +605,7 @@ const ExamSessionsList = () => {
                     <div className="space-y-2 text-sm font-body text-gray-700 dark:text-gray-300">
                       <div className="flex items-center gap-2">
                         <ClockIcon />
-                        <span>{formatTimeRange(exam)}</span>
+                        <span>{formatTimeRange(exam, formatTimezoneForDisplay(getTimezoneLabel(mockType, exam.location)))}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <LocationIcon />
@@ -680,6 +681,7 @@ const ExamSessionsList = () => {
           <CalendarView
             exams={filteredExams}
             onExamSelect={handleSelectExam}
+            mockType={mockType}
           />
         )}
       </div>

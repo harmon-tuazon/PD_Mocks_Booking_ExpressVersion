@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { FiAlertCircle, FiX, FiCalendar, FiClock, FiMapPin, FiRefreshCw } from 'react-icons/fi';
 import { formatTimeRange } from '../../services/api';
+import { getTimezoneLabel, formatTimezoneForDisplay } from '../../utils/timezoneHelpers';
 
 const DeleteBookingModal = ({
   isOpen,
@@ -153,7 +154,7 @@ const DeleteBookingModal = ({
                     {/* Time Range */}
                     <div className="flex items-start gap-2 text-sm text-gray-600">
                       <FiClock className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                      <div>{formatTimeRange(booking)}</div>
+                      <div>{formatTimeRange(booking, formatTimezoneForDisplay(getTimezoneLabel(booking.mock_type, booking.location)))}</div>
                     </div>
 
                     {/* Location */}

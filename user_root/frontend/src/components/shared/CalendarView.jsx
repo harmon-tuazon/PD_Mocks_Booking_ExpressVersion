@@ -3,9 +3,10 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday
 import { FiLock } from 'react-icons/fi';
 import { formatTimeRange } from '../../services/api';
 import { checkPrerequisites } from '../../utils/prerequisiteHelpers';
+import { getTimezoneLabel, formatTimezoneForDisplay } from '../../utils/timezoneHelpers';
 import CapacityBadge from './CapacityBadge';
 
-const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [] }) => {
+const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [], mockType = 'Situational Judgment' }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedSessions, setSelectedSessions] = useState([]);
@@ -241,7 +242,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [] }) 
                     {/* Mobile: stack vertically, Desktop: side by side */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                       <h4 className="text-sm sm:text-xs font-subheading font-semibold text-navy-800 dark:text-gray-100">
-                        {formatTimeRange(session)}
+                        {formatTimeRange(session, formatTimezoneForDisplay(getTimezoneLabel(mockType, session.location)))}
                       </h4>
                       <CapacityBadge
                         availableSlots={session.available_slots}

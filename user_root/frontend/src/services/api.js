@@ -318,18 +318,20 @@ export const formatTime = (dateString) => {
   });
 };
 // Format time range for exam sessions (start_time - end_time)
-export const formatTimeRange = (exam) => {
+// Optionally append timezone label if provided
+export const formatTimeRange = (exam, timezoneLabel = null) => {
   if (!exam) return '';
+
+  let timeRange = '';
 
   // If we have start_time and end_time, use them
   if (exam.start_time && exam.end_time) {
     const startTime = formatTime(exam.start_time);
     const endTime = formatTime(exam.end_time);
-    return `${startTime} - ${endTime}`;
+    timeRange = `${startTime} - ${endTime}`;
   }
-
   // Fallback: if we only have exam_date, create a reasonable time range
-  if (exam.exam_date) {
+  else if (exam.exam_date) {
     // For YYYY-MM-DD format, append a time to avoid timezone issues
     const dateStr = exam.exam_date.includes('T') ? exam.exam_date : `${exam.exam_date}T09:00:00`;
     const startDate = new Date(dateStr);
@@ -337,10 +339,18 @@ export const formatTimeRange = (exam) => {
 
     const startTime = formatTime(startDate);
     const endTime = formatTime(endDate);
-    return `${startTime} - ${endTime}`;
+    timeRange = `${startTime} - ${endTime}`;
+  }
+  else {
+    return 'Time TBD';
   }
 
-  return 'Time TBD';
+  // Append timezone label if provided
+  if (timezoneLabel) {
+    timeRange += ` ${timezoneLabel}`;
+  }
+
+  return timeRange;
 };
 
 // Helper to get booking ID for display

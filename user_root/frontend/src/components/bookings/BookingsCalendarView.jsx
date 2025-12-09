@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, isBefore, startOfDay, parseISO, isAfter } from 'date-fns';
 import { formatBookingNumber, getBookingStatus, normalizeBooking, formatTimeRange } from '../../services/api';
+import { getTimezoneLabel, formatTimezoneForDisplay } from '../../utils/timezoneHelpers';
 
 const BookingsCalendarView = ({ bookings, onCancelBooking, isLoading, error }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -106,7 +107,11 @@ const BookingsCalendarView = ({ bookings, onCancelBooking, isLoading, error }) =
   // Format time range for display using the API service function
   // This uses Toronto timezone for consistency across all users
   const formatBookingTimeRange = (booking) => {
-    return formatTimeRange(booking);
+    // Get timezone label based on mock type and location
+    const timezone = getTimezoneLabel(booking.mock_type, booking.location);
+    const timezoneDisplay = formatTimezoneForDisplay(timezone);
+
+    return formatTimeRange(booking, timezoneDisplay);
   };
 
   const getStatusBadge = (booking) => {
