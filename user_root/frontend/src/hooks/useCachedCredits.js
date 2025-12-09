@@ -10,8 +10,8 @@ let lastFetchTime = null;
 let subscribers = new Set();
 let ongoingRequest = null;
 
-// Cache duration: 5 minutes
-const CACHE_DURATION = 300000; // 5 minutes in milliseconds
+// Cache duration: 1 minute
+const CACHE_DURATION = 60000; // 1 minute in milliseconds
 
 /**
  * Custom hook for managing cached credit data across components
@@ -53,6 +53,8 @@ export function useCachedCredits() {
    * @returns {Promise<void>}
    */
   const fetchCredits = async (studentId, email, force = false) => {
+    console.log(`📊 [CACHE] fetchCredits called - force: ${force}, hasCreditCache: ${!!creditCache}, lastFetchTime: ${lastFetchTime ? new Date(lastFetchTime).toISOString() : 'never'}`);
+
     // STEP 0: Check for persistent invalidation flag
     // This flag survives navigation and event timing issues
     // Expires after 10 seconds to prevent infinite force-refresh loops
@@ -111,19 +113,26 @@ export function useCachedCredits() {
       const cacheAge = Date.now() - lastFetchTime;
       if (cacheAge < CACHE_DURATION) {
         // Cache is still fresh, use it
+        console.log(`✅ [CACHE] Using fresh cache (age: ${cacheAge}ms)`);
         setCredits(creditCache);
         return;
       }
+      console.log(`⏰ [CACHE] Cache expired (age: ${cacheAge}ms, max: ${CACHE_DURATION}ms)`);
     }
 
-    // If there's an ongoing request, return it to prevent race conditions
-    if (ongoingRequest) {
+    // If there's an ongoing request and not forced, return it to prevent race conditions
+    // If forced, skip the ongoing request and make a new one
+    if (!force && ongoingRequest) {
+      console.log(`⏳ [CACHE] Waiting for ongoing request`);
       try {
         await ongoingRequest;
         return;
       } catch (error) {
         // Continue to make a new request if the ongoing one failed
+        console.log(`❌ [CACHE] Ongoing request failed, making new request`);
       }
+    } else if (force && ongoingRequest) {
+      console.log(`🔄 [CACHE] Force refresh - skipping ongoing request`);
     }
 
     // Set loading state for all subscribers
@@ -136,12 +145,21 @@ export function useCachedCredits() {
     // Create the request promise
     const requestPromise = (async () => {
       try {
+        console.log(`🌐 [CACHE] Fetching fresh credits from API for ${studentId}`);
+
         // OPTIMIZATION: Use login endpoint instead of 4 parallel validate-credits calls
         // This reduces API calls from 4 to 1 and is 80% faster (~50ms vs ~500ms)
         const loginResponse = await apiService.user.login(studentId, email);
 
         // Transform the login response to match expected cache structure
         const newCreditData = transformLoginCreditsToCache(loginResponse.data);
+
+        console.log(`✅ [CACHE] Fresh credits fetched:`, {
+          'Situational Judgment': newCreditData['Situational Judgment']?.credit_breakdown?.specific_credits || 0,
+          'Clinical Skills': newCreditData['Clinical Skills']?.credit_breakdown?.specific_credits || 0,
+          'Mini-mock': newCreditData['Mini-mock']?.credit_breakdown?.specific_credits || 0,
+          'Shared': newCreditData['Situational Judgment']?.credit_breakdown?.shared_credits || 0
+        });
 
         // Update module-level cache
         creditCache = newCreditData;
