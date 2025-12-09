@@ -13,6 +13,7 @@ import useCachedCredits from '../hooks/useCachedCredits';
 import { useCachedBookings } from '../hooks/useCachedBookings';
 import LocationFilter from '../components/shared/LocationFilter';
 import { checkPrerequisites, getMissingPrerequisites } from '../utils/prerequisiteHelpers';
+import { getTimezoneLabel } from '../utils/timezoneHelpers';
 
 const MockDiscussions = () => {
   const navigate = useNavigate();
@@ -537,7 +538,7 @@ const MockDiscussions = () => {
                           <div className="flex items-center">
                             <ClockIcon />
                             <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                              {formatTimeRange(discussion)}
+                              {formatTimeRange(discussion, getTimezoneLabel(mockType, discussion.location))}
                             </span>
                           </div>
                         </td>
@@ -625,7 +626,7 @@ const MockDiscussions = () => {
                     <div className="space-y-2 text-sm font-body text-gray-700 dark:text-gray-300">
                       <div className="flex items-center gap-2">
                         <ClockIcon />
-                        <span>{formatTimeRange(discussion)}</span>
+                        <span>{formatTimeRange(discussion, getTimezoneLabel(mockType, discussion.location))}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <LocationIcon />
