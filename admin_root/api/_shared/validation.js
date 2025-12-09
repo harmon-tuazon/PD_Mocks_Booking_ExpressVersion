@@ -744,11 +744,11 @@ const schemas = {
         }),
 
       is_active: Joi.string()
-        .valid('active', 'inactive', 'scheduled')
+        .valid('active', 'inactive', 'scheduled', 'true', 'false')
         .optional()
         .allow('')
         .messages({
-          'any.only': 'Status must be one of: active, inactive, or scheduled'
+          'any.only': 'Status must be one of: active, inactive, scheduled, true, or false'
         }),
 
       scheduled_activation_datetime: Joi.date()
