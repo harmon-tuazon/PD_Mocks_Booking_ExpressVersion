@@ -150,12 +150,12 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     }
 
     try {
-      // Fetch credits from cache or API
-      await fetchCredits(studentId, email);
-      
-      // Extract the specific mock type data from the cache
-      const result = credits?.[bookingData.mockType];
-      
+      // Fetch credits from API and get returned data directly
+      const fetchedCredits = await fetchCredits(studentId, email);
+
+      // Extract the specific mock type data from the fetched credits
+      const result = fetchedCredits?.[bookingData.mockType];
+
       if (!result) {
         throw new Error('Unable to verify credits. Please try again.');
       }

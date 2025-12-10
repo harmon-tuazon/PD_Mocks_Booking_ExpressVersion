@@ -22,7 +22,7 @@ export function useCachedCredits() {
    *
    * @param {string} studentId - The student's ID
    * @param {string} email - The student's email
-   * @returns {Promise<void>}
+   * @returns {Promise<Object>} The fetched credit data
    */
   const fetchCredits = async (studentId, email) => {
     setLoading(true);
@@ -44,6 +44,7 @@ export function useCachedCredits() {
       });
 
       setCredits(newCreditData);
+      return newCreditData; // Return the data for immediate use
     } catch (error) {
       console.error('Error fetching credits:', error);
       throw error;
