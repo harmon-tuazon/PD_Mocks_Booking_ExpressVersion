@@ -408,8 +408,8 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
       // Invalidate the cache and immediately fetch fresh credits
       invalidateCache();
 
-      // Fetch fresh credits immediately to update localStorage and all components
-      fetchCredits(mergedData.studentId, mergedData.email, true).catch(err => {
+      // Fetch fresh credits immediately to update all components
+      fetchCredits(mergedData.studentId, mergedData.email).catch(err => {
         console.error('Failed to refresh credits after booking:', err);
         // Non-blocking - booking already succeeded
       });

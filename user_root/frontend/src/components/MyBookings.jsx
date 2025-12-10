@@ -56,6 +56,7 @@ const MyBookings = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [bookingToDelete, setBookingToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRescheduling, setIsRescheduling] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
   // Rebook modal state
@@ -298,38 +299,59 @@ const MyBookings = () => {
       }
 
       if (bookingToReschedule) {
-        const objectId = bookingToReschedule.id;
-          
-        console.log('🔍 Extracted objectId:', objectId);
+        setIsRescheduling(true);
+        setRebookModalOpen(false);
 
-        await apiService.bookings.cancelBooking(objectId, {
-            student_id: userSession.studentId,
-            email: userSession.email,
-            contact_id: userSession.contactId
-        });
+        // Navigate to booking flow with type pre-filled
+        if (mockType === 'Mock Discussion') {
+          navigate('/book/discussions');
+        } else if (mockType) {
+          navigate(`/book/exams?type=${encodeURIComponent(mockType)}`);
+        } else {
+          // Fallback: start from exam type selection
+          navigate('/book/exam-types');
+        }
 
-        //refresh bookings list
-        await fetchBookings(userSession.studentId, userSession.email, currentPage, true);
+         setTimeout(async () => {
+          try {
+            await apiService.bookings.cancelBooking(objectId, {
+              student_id: userSession.studentId,
+              email: userSession.email,
+              contact_id: userSession.contactId
+            });
 
-      }
+            console.log('✅ Reschedule cancellation completed in background');
 
-      // close rebook modal and reset state
-      setRebookModalOpen(false);
-      setCancelledBooking(null);
-      setBookingToReschedule(null);
+            // Invalidate caches to refresh data
+            await fetchBookings(userSession.studentId, userSession.email, currentPage, true);
+            invalidateCreditsCache();
 
+          } catch (backgroundError) {
+            console.error('❌ Background cancellation failed:', backgroundError);
+            // User is already on new page, just log the error
+            // Could show a toast notification here if available
+          } finally {
+            setIsRescheduling(false);
+            setCancelledBooking(null);
+            setBookingToReschedule(null);
+          }
+        }, 0);
 
-      // Navigate to booking flow with type pre-filled
-      if (mockType === 'Mock Discussion') {
-        navigate('/book/discussions');
-      } else if (mockType) {
-        navigate(`/book/exams?type=${encodeURIComponent(mockType)}`);
-      } else {
-        // Fallback: start from exam type selection
-        navigate('/book/exam-types');
-      }
+        // For post-cancel rebook (booking already cancelled)
+        setRebookModalOpen(false);
+        setCancelledBooking(null);
+        setBookingToReschedule(null);
+
+        if (mockType === 'Mock Discussion') {
+          navigate('/book/discussions');
+        } else if (mockType) {
+          navigate(`/book/exams?type=${encodeURIComponent(mockType)}`);
+        } else {
+          navigate('/book/exam-types');
+        }
     }
-    catch (error) {
+  
+  } catch (error) {
       console.error('Error during reschedule:', error);
       // Close modal and reset state on error
       setRebookModalOpen(false);
@@ -337,6 +359,7 @@ const MyBookings = () => {
       setBookingToReschedule(null);
       // Optionally show error to user
       setDeleteError(error.message || 'Failed to reschedule booking')
+      setIsRescheduling(false);
   };
 }
   // Handle closing the rebook modal
@@ -1320,6 +1343,7 @@ const MyBookings = () => {
         booking={cancelledBooking || bookingToReschedule}
         onClose={handleCloseRebookModal}
         onRebook={handleRebook}
+        isProcessing={isRescheduling}
       />
     </div>
   );

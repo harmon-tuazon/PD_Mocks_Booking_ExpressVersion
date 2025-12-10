@@ -24,8 +24,8 @@ const BookingConfirmation = () => {
       console.log('🔄 [BookingConfirmation] Fetching fresh credit data on mount for:', {
         studentId: userData.studentId
       });
-      // Force refresh to bypass cache and get updated token values
-      fetchCredits(userData.studentId, userData.email, true);
+      // Fetch updated token values
+      fetchCredits(userData.studentId, userData.email);
     }
   }, []); // Empty dependency array - only run on mount
 
@@ -41,8 +41,8 @@ const BookingConfirmation = () => {
 
       if (userData) {
         console.log('🔄 [BookingConfirmation] Refreshing credits after cache invalidation...');
-        // Force refresh to get updated token values
-        fetchCredits(userData.studentId, userData.email, true);
+        // Refresh to get updated token values
+        fetchCredits(userData.studentId, userData.email);
       }
     };
 

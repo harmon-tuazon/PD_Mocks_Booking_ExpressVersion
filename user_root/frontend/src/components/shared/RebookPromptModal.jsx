@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { FiRefreshCw, FiX } from 'react-icons/fi';
 
-const RebookPromptModal = ({ isOpen, booking, onClose, onRebook }) => {
+const RebookPromptModal = ({ isOpen, booking, onClose, onRebook, isProcessing}) => {
   const modalRef = useRef(null);
   const yesButtonRef = useRef(null);
 
@@ -122,7 +122,7 @@ const RebookPromptModal = ({ isOpen, booking, onClose, onRebook }) => {
                 </h3>
                 <div className="mt-2">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    You've cancelled your <span className="font-semibold">{examType}</span> booking
+                    You're about to reschedule your <span className="font-semibold">{examType}</span> booking
                     {examDate && <> for <span className="font-semibold">{formatDate(examDate)}</span></>}.
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
@@ -137,6 +137,7 @@ const RebookPromptModal = ({ isOpen, booking, onClose, onRebook }) => {
                 className="hidden sm:block absolute top-3 right-3 bg-white dark:bg-dark-card rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-primary-400"
                 onClick={onClose}
                 aria-label="Close rebook modal"
+                disabled={isProcessing}
               >
                 <span className="sr-only">Close</span>
                 <FiX className="h-5 w-5" aria-hidden="true" />
@@ -147,20 +148,24 @@ const RebookPromptModal = ({ isOpen, booking, onClose, onRebook }) => {
           {/* Footer */}
           <div className="bg-gray-50 dark:bg-dark-bg px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-3">
             <button
-              type="button"
-              ref={yesButtonRef}
-              onClick={handleYesClick}
-              className="w-full sm:w-auto inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 dark:bg-primary-600 dark:hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-primary-400 sm:ml-3 sm:text-sm transition-colors duration-200"
-            >
-              Yes, Find New Time
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="mt-3 w-full sm:mt-0 sm:w-auto inline-flex justify-center rounded-md border border-gray-300 dark:border-dark-border shadow-sm px-4 py-2 bg-white dark:bg-dark-hover text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-card focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-primary-400 sm:text-sm transition-colors duration-200"
-            >
-              No, Thanks
-            </button>
+                type="button"
+                ref={yesButtonRef}
+                onClick={handleYesClick}
+                disabled={isProcessing}
+                className="w-full sm:w-auto inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 dark:bg-primary-600 dark:hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-primary-400 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:text-sm transition-colors duration-200"
+              >
+                {isProcessing ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                  </span>
+                ) : (
+                  'Yes, Find New Time'
+                )}
+              </button>
           </div>
         </div>
       </div>
@@ -178,11 +183,15 @@ RebookPromptModal.propTypes = {
     examDate: PropTypes.string
   }),
   onClose: PropTypes.func.isRequired,
-  onRebook: PropTypes.func.isRequired
+  onRebook: PropTypes.func.isRequired,
+  isProcessing: PropTypes.bool
+
 };
 
 RebookPromptModal.defaultProps = {
-  booking: null
+  booking: null,
+  isProcessing: false
+
 };
 
 export default RebookPromptModal;

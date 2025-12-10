@@ -68,8 +68,8 @@ const ExamSessionsList = () => {
 
       if (userSession && studentId === userSession.studentId) {
         console.log('🔄 [ExamSessionsList] Refreshing credits after booking creation...');
-        // Force refresh to get updated token values
-        fetchCredits(studentId, email, true);
+        // Refresh to get updated token values
+        fetchCredits(studentId, email);
       }
     };
 
@@ -78,8 +78,8 @@ const ExamSessionsList = () => {
 
       if (userSession) {
         console.log('🔄 [ExamSessionsList] Refreshing credits after cache invalidation...');
-        // Force refresh to get updated token values
-        fetchCredits(userSession.studentId, userSession.email, true);
+        // Refresh to get updated token values
+        fetchCredits(userSession.studentId, userSession.email);
       }
     };
 
@@ -97,7 +97,7 @@ const ExamSessionsList = () => {
           // Only process if signal is less than 5 seconds old and for current user
           if (signalAge < 5000 && signal.studentId === userSession.studentId) {
             console.log('🔄 [ExamSessionsList] Processing localStorage bookingCreated signal:', signal);
-            fetchCredits(signal.studentId, signal.email, true);
+            fetchCredits(signal.studentId, signal.email);
             // Clear the signal after processing
             localStorage.removeItem('bookingCreated');
           }

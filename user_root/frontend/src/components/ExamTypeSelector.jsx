@@ -40,10 +40,9 @@ const ExamTypeSelector = () => {
     const userData = getUserSession();
     if (userData) {
       setUserSession(userData);
-      // Force fresh fetch on page load to ensure latest credits are displayed
-      // This prevents showing stale cached data when credits change in HubSpot
-      console.log('🚀 [ExamTypeSelector] Calling fetchCredits with force=true');
-      fetchCredits(userData.studentId, userData.email, true);
+      // Fetch fresh credits on page load
+      console.log('🚀 [ExamTypeSelector] Calling fetchCredits');
+      fetchCredits(userData.studentId, userData.email);
     } else {
       console.log('⚠️ [ExamTypeSelector] No user session found');
     }
@@ -61,8 +60,8 @@ const ExamTypeSelector = () => {
 
       if (userSession && studentId === userSession.studentId) {
         console.log('🔄 [ExamTypeSelector] Refreshing credits after booking creation...');
-        // Force refresh to get updated token values
-        fetchCredits(studentId, email, true);
+        // Refresh to get updated token values
+        fetchCredits(studentId, email);
       }
     };
 
@@ -71,8 +70,8 @@ const ExamTypeSelector = () => {
 
       if (userSession) {
         console.log('🔄 [ExamTypeSelector] Refreshing credits after cache invalidation...');
-        // Force refresh to get updated token values
-        fetchCredits(userSession.studentId, userSession.email, true);
+        // Refresh to get updated token values
+        fetchCredits(userSession.studentId, userSession.email);
       }
     };
 
@@ -90,7 +89,7 @@ const ExamTypeSelector = () => {
           // Only process if signal is less than 5 seconds old and for current user
           if (signalAge < 5000 && signal.studentId === userSession.studentId) {
             console.log('🔄 [ExamTypeSelector] Processing localStorage bookingCreated signal:', signal);
-            fetchCredits(signal.studentId, signal.email, true);
+            fetchCredits(signal.studentId, signal.email);
             // Clear the signal after processing
             localStorage.removeItem('bookingCreated');
           }
