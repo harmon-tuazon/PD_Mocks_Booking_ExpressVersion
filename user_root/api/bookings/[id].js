@@ -718,6 +718,30 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
         console.warn('⚠️ [Credits Cache] Cannot invalidate credits cache - missing studentId');
       }
 
+      // 4. CRITICAL: Invalidate bookings list cache (ensures frontend gets fresh booking data)
+      // This prevents time conflict warnings for cancelled bookings during immediate rebook
+      if (contactId) {
+        try {
+          const cache = getCache();
+          const bookingsCachePattern = `bookings:contact:${contactId}:*`;
+          const bookingsInvalidatedCount = await cache.deletePattern(bookingsCachePattern);
+
+          if (bookingsInvalidatedCount > 0) {
+            console.log(`✅ [Bookings Cache Invalidation] Invalidated ${bookingsInvalidatedCount} bookings cache entries for contact ${contactId} after cancellation`);
+          } else {
+            console.log(`ℹ️ [Bookings Cache Invalidation] No bookings cache entries found (pattern: "${bookingsCachePattern}")`);
+          }
+        } catch (bookingsCacheError) {
+          console.error('❌ Bookings cache invalidation failed:', {
+            error: bookingsCacheError.message,
+            stack: bookingsCacheError.stack
+          });
+          // Non-blocking - continue even if cache invalidation fails
+        }
+      } else {
+        console.warn('⚠️ [Bookings Cache] Cannot invalidate bookings cache - missing contactId');
+      }
+
       await redis.close();
       console.log(`🔍 [REDIS DEBUG] Redis connection closed successfully`);
     } catch (redisError) {
