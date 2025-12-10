@@ -3,7 +3,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday
 import { formatBookingNumber, getBookingStatus, normalizeBooking, formatTimeRange } from '../../services/api';
 import { getTimezoneLabel, formatTimezoneForDisplay } from '../../utils/timezoneHelpers';
 
-const BookingsCalendarView = ({ bookings, onCancelBooking, isLoading, error }) => {
+const BookingsCalendarView = ({ bookings, onCancelBooking,  onRescheduleBooking, isLoading, error }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedBookings, setSelectedBookings] = useState([]);
@@ -308,20 +308,28 @@ const BookingsCalendarView = ({ bookings, onCancelBooking, isLoading, error }) =
                             </div>
                           )}
                         </div>
-
-                        {canCancel && (
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onCancelBooking(booking);
-                              }}
-                              className="w-full text-center text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 py-1.5 rounded-md transition-colors"
-                            >
-                              Cancel Booking
-                            </button>
-                          </div>
-                        )}
+                      {canCancel && (
+                        <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRescheduleBooking(booking);
+                            }}
+                            className="w-full text-center text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 py-1.5 rounded-md transition-colors"
+                          >
+                            Reschedule
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCancelBooking(booking);
+                            }}
+                            className="w-full text-center text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 py-1.5 rounded-md transition-colors"
+                          >
+                            Cancel 
+                          </button>
+                        </div>
+                      )}
                       </div>
                     );
                   })}

@@ -9,6 +9,7 @@ import ErrorDisplay from './shared/ErrorDisplay';
 import { DeleteBookingModal, RebookPromptModal } from './shared';
 import { useCachedBookings } from '../hooks/useCachedBookings';
 import useCachedCredits from '../hooks/useCachedCredits';
+import { object } from 'prop-types';
 
 
 const MyBookings = () => {
@@ -60,6 +61,7 @@ const MyBookings = () => {
   // Rebook modal state
   const [rebookModalOpen, setRebookModalOpen] = useState(false);
   const [cancelledBooking, setCancelledBooking] = useState(null);
+  const [bookingToReschedule, setBookingToReschedule] = useState(null); 
 
   const ITEMS_PER_PAGE = 20;
 
@@ -278,23 +280,63 @@ const MyBookings = () => {
     }
   };
 
+  const handleRescheduleClick = (booking) => {
+    const normalizedBooking = normalizeBooking(bookings);
+    setBookingToReschedule(normalizedBooking);
+    setRebookModalOpen(true);
+  }
+
   // Handle rebook navigation
-  const handleRebook = (mockType) => {
-    // Close rebook modal
-    setRebookModalOpen(false);
-    setCancelledBooking(null);
+  const handleRebook = async (mockType) => {
+    try {
+      const bookingToProcess = bookingToReschedule || cancelledBooking
 
-    // Navigate to booking flow with type pre-filled
-    if (mockType === 'Mock Discussion') {
-      navigate('/book/discussions');
-    } else if (mockType) {
-      navigate(`/book/exams?type=${encodeURIComponent(mockType)}`);
-    } else {
-      // Fallback: start from exam type selection
-      navigate('/book/exam-types');
+      if (!bookingToProcess) {
+        console.error('No booking to process')
+        setRebookModalOpen(false)
+        return
+      }
+
+      if (bookingToReschedule) {
+        const objectId = bookingToReschedule.id || bookingToReschedule.booking_id;
+
+        await apiService.bookings.cancelBooking(objectId, {
+            student_id: userSession.studentId,
+            email: userSession.email,
+            contact_id: userSession.contactId
+        });
+
+        //refresh bookings list
+        await fetchBookings(userSession.studentId, userSession.email, currentPage, true);
+
+      }
+
+      // close rebook modal and reset state
+      setRebookModalOpen(false);
+      setCancelledBooking(null);
+      setBookingToReschedule(null);
+
+
+      // Navigate to booking flow with type pre-filled
+      if (mockType === 'Mock Discussion') {
+        navigate('/book/discussions');
+      } else if (mockType) {
+        navigate(`/book/exams?type=${encodeURIComponent(mockType)}`);
+      } else {
+        // Fallback: start from exam type selection
+        navigate('/book/exam-types');
+      }
     }
+    catch (error) {
+      console.error('Error during reschedule:', error);
+      // Close modal and reset state on error
+      setRebookModalOpen(false);
+      setCancelledBooking(null);
+      setBookingToReschedule(null);
+      // Optionally show error to user
+      setDeleteError(error.message || 'Failed to reschedule booking')
   };
-
+}
   // Handle closing the rebook modal
   const handleCloseRebookModal = () => {
     setRebookModalOpen(false);
@@ -577,18 +619,27 @@ const MyBookings = () => {
       </div>
 
       {getBookingStatus(booking) === 'scheduled' && (
-        <div className="mt-3 flex justify-end">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCancelBooking(booking);
-            }}
-            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium"
-          >
-            Cancel Booking
-          </button>
-        </div>
-      )}
+          <div className="mt-3 flex gap-3 justify-end">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRescheduleClick(booking);
+              }}
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
+            >
+              Reschedule
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCancelBooking(booking);
+              }}
+              className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium"
+            >
+              Cancel Booking
+            </button>
+          </div>
+        )}
     </div>
   );
 
@@ -1106,15 +1157,26 @@ const MyBookings = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                               {getBookingStatus(booking) === 'scheduled' && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleCancelBooking(booking);
-                                  }}
-                                  className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 px-3 py-1 rounded-md transition-colors"
-                                >
-                                  Cancel
-                                </button>
+                                <div className="flex gap-2 justify-center">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRescheduleClick(booking);
+                                      }}
+                                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 px-3 py-1 rounded-md transition-colors"
+                                    >
+                                      Reschedule
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCancelBooking(booking);
+                                      }}
+                                      className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 px-3 py-1 rounded-md transition-colors"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
                               )}
                             </td>
                           </tr>
@@ -1144,6 +1206,7 @@ const MyBookings = () => {
               <BookingsCalendarView
                 bookings={displayBookings}
                 onCancelBooking={handleCancelBooking}
+                onRescheduleBooking={handleRescheduleClick}
                 isLoading={loading}
                 error={error}
               />
@@ -1252,7 +1315,7 @@ const MyBookings = () => {
       {/* Rebook Prompt Modal */}
       <RebookPromptModal
         isOpen={rebookModalOpen}
-        booking={cancelledBooking}
+        booking={cancelledBooking || bookingToReschedule}
         onClose={handleCloseRebookModal}
         onRebook={handleRebook}
       />
