@@ -314,9 +314,13 @@ const MyBookings = () => {
 
             console.log('✅ Booking cancelled for reschedule');
 
+            // CRITICAL: Invalidate both bookings AND credits caches to prevent stale time conflict checks
+            console.log('🔄 [CACHE] Invalidating bookings and credits caches after reschedule cancellation');
+            invalidateBookingsCache();
+            invalidateCreditsCache();
+
             // Refresh bookings to show updated status
             await fetchBookings(userSession.studentId, userSession.email, currentPage, true);
-            invalidateCreditsCache();
 
             // Store as cancelled booking for rebook flow
             setCancelledBooking(bookingToReschedule);

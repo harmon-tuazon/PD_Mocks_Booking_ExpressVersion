@@ -55,14 +55,43 @@ export const findConflictingBookings = (existingBookings, newSession) => {
     // Only check active bookings (exclude cancelled, completed, failed)
     const isActive = booking.is_active;
 
+    // First, explicitly exclude cancelled/completed bookings
+    const isCancelled =
+      isActive === 'Cancelled' ||
+      isActive === 'cancelled' ||
+      isActive === 'Canceled' ||
+      isActive === 'canceled' ||
+      isActive === 'Completed' ||
+      isActive === 'completed' ||
+      isActive === 'Failed' ||
+      isActive === 'failed' ||
+      isActive === false ||
+      isActive === 'false';
+
+    if (isCancelled) {
+      console.log('⏭️ Skipping cancelled/completed booking:', {
+        id: booking.booking_id || booking.id,
+        type: booking.mock_type,
+        status: isActive
+      });
+      return false;
+    }
+
     // Check various representations of active status
     const isActiveBooking =
       isActive === 'Active' ||
       isActive === 'active' ||
       isActive === 'Scheduled' ||
-      isActive === 'scheduled';
+      isActive === 'scheduled' ||
+      isActive === true ||
+      isActive === 'true';
 
     if (!isActiveBooking) {
+      console.log('⏭️ Skipping non-active booking:', {
+        id: booking.booking_id || booking.id,
+        type: booking.mock_type,
+        status: isActive
+      });
       return false;
     }
 
