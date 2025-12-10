@@ -281,15 +281,28 @@ const MyBookings = () => {
   };
 
   const handleRescheduleClick = (booking) => {
-    const normalizedBooking = normalizeBooking(bookings);
-    setBookingToReschedule(normalizedBooking);
-    setRebookModalOpen(true);
+
+  console.log('🔍 Reschedule clicked with booking:', booking);
+  console.log('🔍 Booking ID:', booking.id);
+  console.log('🔍 Booking recordId:', booking.recordId);
+  console.log('🔍 Booking booking_id:', booking.booking_id);
+  
+  const normalizedBooking = normalizeBooking(booking);
+  console.log('🔍 Normalized booking:', normalizedBooking);
+  setBookingToReschedule(normalizedBooking);
+  setRebookModalOpen(true);
   }
 
   // Handle rebook navigation
   const handleRebook = async (mockType) => {
     try {
       const bookingToProcess = bookingToReschedule || cancelledBooking
+
+      console.log('🔍 Processing rebook for:', bookingToProcess);
+
+      console.log('🔍 Extracted objectId:', objectId);
+      console.log('🔍 objectId type:', typeof objectId);
+
 
       if (!bookingToProcess) {
         console.error('No booking to process')
