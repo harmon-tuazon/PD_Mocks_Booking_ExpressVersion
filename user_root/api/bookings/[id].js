@@ -52,7 +52,6 @@ const {
   getExamByIdFromSupabase
 } = require('../_shared/supabase-data');
 const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
-const { getCache } = require('../_shared/cache');
 
 // Handler function for GET /api/bookings/[id]
 async function handler(req, res) {
@@ -496,6 +495,7 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
     const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
 
     // Decrement Redis counter for real-time capacity tracking
+    const RedisLockService = require('../_shared/redis');
     const redis = new RedisLockService();
     const newTotalBookings = await redis.decr(`exam:${bookingData.associated_mock_exam}:bookings`);
     console.log(`✅ Decremented Redis counter: exam:${bookingData.associated_mock_exam}:bookings = ${newTotalBookings}`);
@@ -575,7 +575,7 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       if (bookingData.associated_contact_id && bookingData.exam_date) {
         const duplicateKey = `booking:${bookingData.associated_contact_id}:${bookingData.exam_date}`;
         const deletedCount = await redis.del(duplicateKey);
-        
+
         if (deletedCount > 0) {
           console.log(`✅ [REDIS] Invalidated duplicate cache: ${duplicateKey}`);
         }
@@ -583,10 +583,9 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
 
       // 6.3. Invalidate contact credits cache (ensures frontend gets updated tokens)
       if (bookingData.student_id) {
-        const cache = getCache();
         const creditsCachePattern = `contact:credits:${bookingData.student_id}:*`;
-        const creditsInvalidatedCount = await cache.deletePattern(creditsCachePattern);
-        
+        const creditsInvalidatedCount = await redis.cacheDeletePattern(creditsCachePattern);
+
         if (creditsInvalidatedCount > 0) {
           console.log(`✅ [CACHE] Invalidated ${creditsInvalidatedCount} credits cache entries`);
         }
