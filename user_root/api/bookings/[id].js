@@ -478,7 +478,18 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       throw error;
     }
 
-    // Step 5: Trigger HubSpot webhooks (fire-and-forget)
+    // Step 5: Decrement Supabase total_bookings atomically
+    const { updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
+
+    try {
+      await updateExamBookingCountInSupabase(bookingData.associated_mock_exam, 1, 'decrement');
+      console.log(`✅ [SUPABASE] Decremented exam ${bookingData.associated_mock_exam} total_bookings atomically`);
+    } catch (supabaseError) {
+      console.error(`❌ [SUPABASE] Failed to decrement total_bookings:`, supabaseError.message);
+      // Non-blocking - continue even if Supabase update fails
+    }
+
+    // Step 6: Trigger HubSpot webhooks (fire-and-forget)
     const examData = await getExamByIdFromSupabase(bookingData.associated_mock_exam);
     const newTotalBookings = examData?.total_bookings || 0;
 

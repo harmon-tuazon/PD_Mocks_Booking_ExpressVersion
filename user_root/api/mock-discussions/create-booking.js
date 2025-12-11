@@ -191,6 +191,7 @@ module.exports = async function handler(req, res) {
 
     const {
       contact_id,
+      hubspot_id,  // ✅ Extract hubspot_id from request (numeric HubSpot ID)
       mock_exam_id,
       student_id,
       name,
@@ -364,16 +365,56 @@ module.exports = async function handler(req, res) {
       throw error;
     }
 
-    // Step 3: Verify contact and mock discussion tokens
-    const contact = await hubspot.apiCall('GET',
-      `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contact_id}?properties=student_id,email,mock_discussion_token`
-    );
+    // Step 3: Verify contact and credits (Supabase-first for performance)
+    let contact = null;
 
+    // PHASE 1: Try Supabase secondary database first (fast path ~50ms)
+    try {
+      const { getContactCreditsFromSupabase } = require('../_shared/supabase-data');
+      const supabaseContact = await getContactCreditsFromSupabase(student_id, email);
+
+      if (supabaseContact && (supabaseContact.id === contact_id ||  // UUID match
+        supabaseContact.hubspot_id === contact_id  // Numeric HubSpot ID match (legacy)
+      )) {
+        console.log(`✅ [SUPABASE HIT] Reusing cached credit data from validate-credits for student ${student_id}`);
+
+        // Convert Supabase format to HubSpot format for compatibility
+        contact = {
+          id: supabaseContact.hubspot_id,
+          properties: {
+            student_id: supabaseContact.student_id,
+            email: supabaseContact.email,
+            mock_discussion_token: supabaseContact.mock_discussion_token?.toString() || '0'
+          }
+        };
+      }
+    } catch (supabaseError) {
+      console.error('[SUPABASE ERROR] Failed to read from secondary DB:', supabaseError.message);
+      // Continue to HubSpot fallback
+    }
+
+    // PHASE 2: Fallback to HubSpot (source of truth) if not in Supabase
     if (!contact) {
-      const error = new Error('Contact not found');
-      error.status = 404;
-      error.code = 'CONTACT_NOT_FOUND';
-      throw error;
+      console.log(`⚠️ [HUBSPOT FALLBACK] Reading from source of truth for student ${student_id}`);
+
+      // Ensure we have a numeric HubSpot ID for the API call
+      if (!hubspot_id) {
+        const error = new Error('Contact data not found in Supabase and no HubSpot ID provided for fallback');
+        error.status = 400;
+        error.code = 'MISSING_HUBSPOT_ID';
+        throw error;
+      }
+
+      contact = await hubspot.apiCall('GET',
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${hubspot_id}?properties=student_id,email,mock_discussion_token`
+      );
+
+      if (!contact) {
+        const error = new Error('Contact not found');
+        error.status = 404;
+        error.code = 'CONTACT_NOT_FOUND';
+        throw error;
+      }
     }
 
     // Check mock discussion tokens
@@ -434,8 +475,40 @@ module.exports = async function handler(req, res) {
 
     bookingCreated = true;
     createdBookingId = atomicResult.data.booking_hubspot_id;
-    const newTotalBookings = atomicResult.data.new_total_bookings;
-    console.log(`Atomic Mock Discussion booking created: ${bookingId} (HubSpot ID: ${createdBookingId}), Total bookings: ${newTotalBookings}`);
+    console.log(`Atomic Mock Discussion booking created: ${bookingId} (HubSpot ID: ${createdBookingId})`);
+
+    // Increment Redis booking counter for real-time capacity tracking
+    const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
+    console.log(`✅ Atomic booking created: ${bookingId}, Total bookings: ${newTotalBookings}`);
+
+    // ========================================================================
+    // SUPABASE ATOMIC INCREMENT - Update total_bookings in Supabase
+    // ========================================================================
+    const { updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
+
+    try {
+      await updateExamBookingCountInSupabase(mock_exam_id, 1, 'increment');
+      console.log(`✅ [SUPABASE] Incremented exam ${mock_exam_id} total_bookings atomically`);
+    } catch (supabaseError) {
+      console.error(`❌ [SUPABASE] Failed to increment total_bookings:`, supabaseError.message);
+      // Non-blocking - continue even if Supabase update fails
+      // Cron job will reconcile any drift
+    }
+
+    // ========================================================================
+    // CONSTRUCT CREDITS AFTER DEDUCTION (Option 2: Build from existing data)
+    // ========================================================================
+    // Since the RPC function doesn't return credits_after_deduction,
+    // we construct it from the contact data we already have
+    const creditsAfterDeduction = {
+      sj_credits: parseInt(contact.properties.sj_credits) || 0,
+      cs_credits: parseInt(contact.properties.cs_credits) || 0,
+      sjmini_credits: parseInt(contact.properties.sjmini_credits) || 0,
+      mock_discussion_token: Math.max(0, discussionTokens - 1), // Deduct 1 token
+      shared_mock_credits: parseInt(contact.properties.shared_mock_credits) || 0
+    };
+
+    console.log('✅ [CREDITS] Constructed credits after deduction:', creditsAfterDeduction);
 
     // ========================================================================
     // DUAL WEBHOOK INTEGRATION - Sync to HubSpot (fire-and-forget)
@@ -453,25 +526,16 @@ module.exports = async function handler(req, res) {
         );
 
         if (examSyncResult.success) {
-          console.log(`[WEBHOOK-EXAM] HubSpot exam count synced: ${examSyncResult.message}`);
+          console.log(`✅ [WEBHOOK-EXAM] HubSpot exam count synced: ${examSyncResult.message}`);
         } else {
-          console.error(`[WEBHOOK-EXAM] Exam sync failed: ${examSyncResult.message}`);
+          console.error(`❌ [WEBHOOK-EXAM] Exam sync failed: ${examSyncResult.message}`);
         }
 
         // Webhook 2: Sync ALL contact credits to HubSpot
-        // Use credits from atomic result for consistency
-        const contactCredits = atomicResult.data.credits_after_deduction;
-
         const creditsSyncResult = await HubSpotWebhookService.syncContactCredits(
           contact_id,
           sanitizedEmail,
-          {
-            sj_credits: contactCredits.sj_credits,
-            cs_credits: contactCredits.cs_credits,
-            sjmini_credits: contactCredits.sjmini_credits,
-            mock_discussion_token: contactCredits.mock_discussion_token,
-            shared_mock_credits: contactCredits.shared_mock_credits
-          }
+          creditsAfterDeduction
         );
 
         if (creditsSyncResult.success) {

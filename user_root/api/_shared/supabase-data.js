@@ -318,22 +318,84 @@ async function updateBookingStatusInSupabase(bookingId, newStatus) {
  * @param {string} examId - HubSpot ID
  * @param {number} totalBookings - New total bookings count
  */
-async function updateExamBookingCountInSupabase(examId, totalBookings) {
-  const { error } = await supabaseAdmin
-    .from('hubspot_mock_exams')
-    .update({
-      total_bookings: totalBookings,
-      updated_at: new Date().toISOString(),
-      synced_at: new Date().toISOString()
-    })
-    .eq('hubspot_id', examId);
+/**
+ * Update exam booking count in Supabase
+ * Supports three modes: 'set' (absolute), 'increment', 'decrement'
+ * @param {string} examId - HubSpot exam ID
+ * @param {number} totalBookings - For 'set' mode: absolute value. For increment/decrement: delta amount
+ * @param {string} operation - 'set' | 'increment' | 'decrement'
+ */
+async function updateExamBookingCountInSupabase(examId, totalBookings, operation = 'set') {
+  try {
+    if (operation === 'increment' || operation === 'decrement') {
+      // ATOMIC OPERATION: Use PostgreSQL increment/decrement RPC
+      const delta = operation === 'increment' ? totalBookings : -totalBookings;
 
-  if (error) {
+      console.log(`🔍 [RPC DEBUG] Calling increment_exam_bookings with:`, {
+        examId,
+        operation,
+        delta
+      });
+
+      const { data, error } = await supabaseAdmin.rpc('increment_exam_bookings', {
+        p_exam_id: examId,
+        p_delta: delta
+      });
+
+      if (error) {
+        // If RPC function doesn't exist, fallback to manual fetch-update-set
+        console.warn(`⚠️ RPC function not available, using fallback method`);
+        console.warn(`⚠️ RPC Error details:`, JSON.stringify(error, null, 2));
+
+        // Fetch current value
+        const { data: exam, error: fetchError } = await supabaseAdmin
+          .from('hubspot_mock_exams')
+          .select('total_bookings')
+          .eq('hubspot_id', examId)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const currentCount = parseInt(exam?.total_bookings) || 0;
+        const newCount = operation === 'increment'
+          ? currentCount + totalBookings
+          : Math.max(0, currentCount - totalBookings); // Prevent negative counts
+
+        const { error: updateError } = await supabaseAdmin
+          .from('hubspot_mock_exams')
+          .update({
+            total_bookings: newCount,
+            updated_at: new Date().toISOString(),
+            synced_at: new Date().toISOString()
+          })
+          .eq('hubspot_id', examId);
+
+        if (updateError) throw updateError;
+
+        console.log(`✅ ${operation === 'increment' ? 'Incremented' : 'Decremented'} exam ${examId} total_bookings to ${newCount} in Supabase (fallback)`);
+        return;
+      }
+
+      console.log(`✅ ${operation === 'increment' ? 'Incremented' : 'Decremented'} exam ${examId} total_bookings in Supabase (atomic RPC) - new value: ${data}`);
+    } else {
+      // ABSOLUTE SET: Set exact value (legacy behavior for cron sync)
+      const { error } = await supabaseAdmin
+        .from('hubspot_mock_exams')
+        .update({
+          total_bookings: totalBookings,
+          updated_at: new Date().toISOString(),
+          synced_at: new Date().toISOString()
+        })
+        .eq('hubspot_id', examId);
+
+      if (error) throw error;
+
+      console.log(`✅ Set exam ${examId} total_bookings to ${totalBookings} in Supabase`);
+    }
+  } catch (error) {
     console.error(`❌ Supabase exam count update error:`, error.message);
     throw error;
   }
-
-  console.log(`✅ Updated exam ${examId} total_bookings to ${totalBookings} in Supabase`);
 }
 
 

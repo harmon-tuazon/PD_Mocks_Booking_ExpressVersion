@@ -600,9 +600,42 @@ module.exports = async function handler(req, res) {
     }
 
     bookingCreated = true;
-    createdBookingId = atomicResult.data.booking_hubspot_id;  // HubSpot ID from Supabase
-    const newTotalBookings = atomicResult.data.new_total_bookings;
-    console.log(`✅ Atomic booking created: ${bookingId} (HubSpot ID: ${createdBookingId}), Total bookings: ${newTotalBookings}`);
+    
+    // Increment Redis booking counter for real-time capacity tracking
+    const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
+    console.log(`✅ Atomic booking created: ${bookingId}, Total bookings: ${newTotalBookings}`);
+
+    // ========================================================================
+    // SUPABASE ATOMIC INCREMENT - Update total_bookings in Supabase
+    // ========================================================================
+    const { updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
+
+    try {
+      await updateExamBookingCountInSupabase(mock_exam_id, 1, 'increment');
+      console.log(`✅ [SUPABASE] Incremented exam ${mock_exam_id} total_bookings atomically`);
+    } catch (supabaseError) {
+      console.error(`❌ [SUPABASE] Failed to increment total_bookings:`, supabaseError.message);
+      // Non-blocking - continue even if Supabase update fails
+      // Cron job will reconcile any drift
+    }
+
+    // ========================================================================
+    // CONSTRUCT CREDITS AFTER DEDUCTION (Option 2: Build from existing data)
+    // ========================================================================
+    // Since the RPC function doesn't return credits_after_deduction,
+    // we construct it from the contact data we already have
+    const creditsAfterDeduction = {
+      sj_credits: parseInt(contact.properties.sj_credits) || 0,
+      cs_credits: parseInt(contact.properties.cs_credits) || 0,
+      sjmini_credits: parseInt(contact.properties.sjmini_credits) || 0,
+      mock_discussion_token: parseInt(contact.properties.mock_discussion_token) || 0,
+      shared_mock_credits: parseInt(contact.properties.shared_mock_credits) || 0
+    };
+
+    // Update the deducted field with new value
+    creditsAfterDeduction[creditField] = newCreditValue;
+
+    console.log('✅ [CREDITS] Constructed credits after deduction:', creditsAfterDeduction);
 
     // ========================================================================
     // DUAL WEBHOOK INTEGRATION - Sync to HubSpot (fire-and-forget)
@@ -626,19 +659,10 @@ module.exports = async function handler(req, res) {
         }
 
         // Webhook 2: Sync ALL contact credits to HubSpot
-        // Use credits from atomic result for consistency
-        const contactCredits = atomicResult.data.credits_after_deduction;
-
         const creditsSyncResult = await HubSpotWebhookService.syncContactCredits(
           contact_id,
           sanitizedEmail,
-          {
-            sj_credits: contactCredits.sj_credits,
-            cs_credits: contactCredits.cs_credits,
-            sjmini_credits: contactCredits.sjmini_credits,
-            mock_discussion_token: contactCredits.mock_discussion_token,
-            shared_mock_credits: contactCredits.shared_mock_credits
-          }
+          creditsAfterDeduction
         );
 
         if (creditsSyncResult.success) {
@@ -659,7 +683,7 @@ module.exports = async function handler(req, res) {
     // Cache booking in Redis to prevent duplicate bookings (until exam date)
     const examDateTime = new Date(`${exam_date}T23:59:59Z`);
     const ttlSeconds = Math.max((examDateTime - Date.now()) / 1000, 86400);
-    await redis.setex(redisKey, Math.floor(ttlSeconds), `${createdBookingId}:Active`);
+    await redis.setex(redisKey, Math.floor(ttlSeconds), `${atomicResult.data.booking_id}:Active`);
     console.log(`✅ Booking cached in Redis with key: ${redisKey}, expires in ${Math.floor(ttlSeconds / 3600)} hours`);
 
     // ========================================================================
@@ -704,9 +728,6 @@ module.exports = async function handler(req, res) {
     });
 
     // Calculate AFTER deduction credit breakdown for TokenCard display
-    // Use fresh data from Supabase atomic result for accuracy
-    const creditsAfterDeduction = atomicResult.data.credits_after_deduction;
-
     let specificCreditsAfter = specificCredits;
     let sharedCreditsAfter = sharedCredits;
 
@@ -717,18 +738,23 @@ module.exports = async function handler(req, res) {
       specificCreditsAfter = creditsAfterDeduction[creditField];
     }
 
-    // Prepare response
+    // Prepare response with exam timing data
     const responseData = {
       booking_id: bookingId,
-      booking_record_id: createdBookingId,
+      booking_record_id: atomicResult.data.booking_id,
       confirmation_message: `Your booking for ${mock_type} on ${formattedDate} has been confirmed`,
-      idempotency_key: idempotencyKey,  // Include idempotency key in response
+      idempotency_key: idempotencyKey,
       exam_details: {
         mock_exam_id,
         exam_date,
         mock_type,
         location: mockExam.properties.location || 'Mississauga',
-        total_bookings: newTotalBookings  // Include updated booking count
+        start_time: mockExam.properties.start_time || null,
+        end_time: mockExam.properties.end_time || null,
+        total_bookings: newTotalBookings
+      },
+      user_details: {
+        ndecc_exam_date: contact.properties.ndecc_exam_date || null
       },
       credit_details: {
         credit_field_deducted: creditField,
