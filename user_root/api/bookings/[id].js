@@ -573,13 +573,28 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       // 6.2. Invalidate duplicate detection cache (allows immediate rebooking)
       // Use associated_contact_id (numeric HubSpot contact ID) to match create.js format
       // Format: booking:{hubspot_contact_id}:{exam_date}
+      console.log(`🔍 [DEBUG] Cache invalidation check:`, {
+        associated_contact_id: bookingData.associated_contact_id,
+        exam_date: bookingData.exam_date,
+        hasContactId: !!bookingData.associated_contact_id,
+        hasExamDate: !!bookingData.exam_date
+      });
+
       if (bookingData.associated_contact_id && bookingData.exam_date) {
         const duplicateKey = `booking:${bookingData.associated_contact_id}:${bookingData.exam_date}`;
+        console.log(`🔍 [DEBUG] Attempting to delete cache key: ${duplicateKey}`);
         const deletedCount = await redis.del(duplicateKey);
 
         if (deletedCount > 0) {
           console.log(`✅ [REDIS] Invalidated duplicate cache: ${duplicateKey}`);
+        } else {
+          console.warn(`⚠️ [REDIS] Cache key not found: ${duplicateKey} (may have already expired or never existed)`);
         }
+      } else {
+        console.error(`❌ [REDIS] Cannot invalidate cache - missing data:`, {
+          associated_contact_id: bookingData.associated_contact_id,
+          exam_date: bookingData.exam_date
+        });
       }
 
       // 6.3. Invalidate contact credits cache (ensures frontend gets updated tokens)

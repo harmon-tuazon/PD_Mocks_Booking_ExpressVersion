@@ -720,7 +720,7 @@ module.exports = async function handler(req, res) {
     };
 
     process.nextTick(() => {
-      hubspot.createBookingNote(bookingData, contact_id, mockExamDataForNote)
+      hubspot.createBookingNote(bookingData, hubspot_id, mockExamDataForNote)
         .then(noteResult => {
           if (noteResult) {
             console.log(`✅ Booking note created successfully for booking ${bookingId}`);
