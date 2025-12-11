@@ -381,8 +381,10 @@ export const normalizeBooking = (booking) => {
   return {
     ...booking,
     // Ensure we have an id property
-    id: booking.id || booking.booking_id || booking.recordId,
-    // Ensure we have booking_id (primary identifier)
+    // CRITICAL: Use UUID first, then hubspot_id for API operations
+    // NEVER use booking_id string for API identifier
+    id: booking.id || booking.hubspot_id || booking.recordId,
+    // Ensure we have booking_id (human-readable identifier for display)
     booking_id: booking.booking_id || 'Booking ID TBD',
      // hubspot_id may be null for new Supabase-first bookings
     hubspot_id: booking.hubspot_id || null,

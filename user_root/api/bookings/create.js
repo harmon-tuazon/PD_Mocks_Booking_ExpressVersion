@@ -779,15 +779,16 @@ module.exports = async function handler(req, res) {
 
     console.log('✅ Booking successful - associations will be reconciled by cron job');
 
-    // FIX: Invalidate booking cache for this contact using Redis pattern deletion
+    // FIX: Invalidate booking list cache for this contact using Redis pattern deletion
+    // ✅ Use hubspot_id (numeric HubSpot contact ID) to match list.js cache key format
     try {
       const cache = getCache();
-      const cachePattern = `bookings:contact:${contact_id}:*`;
+      const cachePattern = `bookings:contact:${hubspot_id}:*`;
 
       const invalidatedCount = await cache.deletePattern(cachePattern);
 
       if (invalidatedCount > 0) {
-        console.log(`✅ [Cache Invalidation] Successfully invalidated ${invalidatedCount} cache entries for contact ${contact_id}`);
+        console.log(`✅ [Cache Invalidation] Successfully invalidated ${invalidatedCount} cache entries for contact ${hubspot_id}`);
       } else {
         console.log(`ℹ️ [Cache Invalidation] No cache entries found to invalidate (pattern: "${cachePattern}")`);
       }

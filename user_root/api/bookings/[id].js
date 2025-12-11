@@ -407,7 +407,8 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       booking_id: booking.booking_id,
       is_active: booking.is_active,
       student_id: booking.student_id,
-      associated_mock_exam: booking.associated_mock_exam
+      associated_mock_exam: booking.associated_mock_exam,
+      associated_contact_id: booking.associated_contact_id // For cache invalidation
     });
    
 
@@ -489,59 +490,78 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       // Non-blocking - continue even if Supabase update fails
     }
 
-    // Step 6: Trigger HubSpot webhooks (fire-and-forget)
-    const examData = await getExamByIdFromSupabase(bookingData.associated_mock_exam);
-    const newTotalBookings = examData?.total_bookings || 0;
+    // ========================================================================
+    // DUAL WEBHOOK INTEGRATION - Sync to HubSpot (fire-and-forget)
+    // ========================================================================
+    const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
 
-    process.nextTick(async () => {
-      const result = await HubSpotWebhookService.syncWithRetry(
-        bookingData.associated_mock_exam,
-        newTotalBookings,
-        3 // 3 retries with exponential backoff
-      );
+    // Decrement Redis counter for real-time capacity tracking
+    const redis = new RedisLockService();
+    const newTotalBookings = await redis.decr(`exam:${bookingData.associated_mock_exam}:bookings`);
+    console.log(`✅ Decremented Redis counter: exam:${bookingData.associated_mock_exam}:bookings = ${newTotalBookings}`);
 
-      if (result.success) {
-        console.log(`✅ [WEBHOOK] HubSpot workflow triggered: ${result.message}`);
-      } else {
-        console.error(`❌ [WEBHOOK] All retry attempts failed: ${result.message}`);
-        console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
-      }
+    // Fire-and-forget webhook sync
+    process.nextTick(() => {
+      (async () => {
+        // Webhook 1: Sync exam total_bookings to HubSpot
+        const examSyncResult = await HubSpotWebhookService.syncWithRetry(
+          bookingData.associated_mock_exam,
+          newTotalBookings,
+          3 // 3 retries with exponential backoff
+        );
+
+        if (examSyncResult.success) {
+          console.log(`✅ [WEBHOOK-EXAM] HubSpot exam count synced after cancellation: ${examSyncResult.message}`);
+        } else {
+          console.error(`❌ [WEBHOOK-EXAM] Exam sync failed after cancellation: ${examSyncResult.message}`);
+        }
+
+        // Webhook 2: Sync contact credits to HubSpot (restore credit)
+        const restoredCredits = {
+          sj_credits: currentCredits?.sj_credits || 0,
+          cs_credits: currentCredits?.cs_credits || 0,
+          sjmini_credits: currentCredits?.sjmini_credits || 0,
+          mock_discussion_token: currentCredits?.mock_discussion_token || 0,
+          shared_mock_credits: currentCredits?.shared_mock_credits || 0
+        };
+
+        // Update the restored field
+        if (creditField) {
+          restoredCredits[creditField] = restoredCreditValue;
+        }
+
+        const creditsSyncResult = await HubSpotWebhookService.syncContactCredits(
+          contactId,
+          bookingData.student_email,
+          restoredCredits
+        );
+
+        if (creditsSyncResult.success) {
+          console.log(`✅ [WEBHOOK-CREDITS] HubSpot credits synced after cancellation: ${creditsSyncResult.message}`);
+        } else {
+          console.error(`❌ [WEBHOOK-CREDITS] Credits sync failed after cancellation: ${creditsSyncResult.message}`);
+        }
+      })().catch(err => {
+        console.error('❌ [WEBHOOK] Unexpected error in webhook sync:', err.message);
+      });
     });
 
-    const updatedCredits = await getContactCreditsFromSupabase(bookingData.student_id, bookingData.student_email);
-    process.nextTick(async () => {
-        try {
-          await HubSpotWebhookService.syncContactCredits(
-            contactId,
-            bookingData.student_email,
-            {
-              sj_credits: updatedCredits.sj_credits,
-              cs_credits: updatedCredits.cs_credits,
-              sjmini_credits: updatedCredits.sjmini_credits,
-              mock_discussion_token: updatedCredits.mock_discussion_token,
-              shared_mock_credits: updatedCredits.shared_mock_credits
-            }
-          );
-        } catch (webhookError) {
-          console.error('Credit sync webhook failed:', webhookError);
-        }
-      });
-
-    // Step 6: Invalidate Redis caches (CRITICAL for consistency)
-    const RedisLockService = require('../_shared/redis');
-    const redis = new RedisLockService();
-
+    // Step 6: Invalidate caches
     try {
-      console.log('🔄 [CACHE] Invalidating Redis caches after cancellation');
+      // 6.1. Decrement counter was already done above
 
-      // 6.1. Decrement Redis booking counter for the exam
-      if (bookingData.associated_mock_exam) {
+      // Validate counter value (ensure it's not negative due to race conditions)
+      if (newTotalBookings < 0) {
+        console.warn(`⚠️ [REDIS] Negative booking counter detected: ${newTotalBookings}, resetting to 0`);
         const counterKey = `exam:${bookingData.associated_mock_exam}:bookings`;
-        const currentCount = await redis.get(counterKey);
-        
-        if (currentCount && parseInt(currentCount) > 0) {
-          await redis.decr(counterKey);
-          console.log(`✅ [REDIS] Decremented counter for exam ${bookingData.associated_mock_exam}`);
+        const hubspot = new HubSpotService();
+        const mockExam = await hubspot.getMockExam(bookingData.associated_mock_exam);
+
+        if (mockExam) {
+          const correctCount = parseInt(mockExam.properties.total_bookings) || 0;
+          const TTL_30_DAYS = 30 * 24 * 60 * 60;
+          await redis.setex(counterKey, TTL_30_DAYS, correctCount);
+          console.log(`✅ [REDIS] Counter corrected to ${correctCount} from HubSpot`);
         } else {
           // Reset to 0 if counter is invalid
           const TTL_30_DAYS = 30 * 24 * 60 * 60;
@@ -551,6 +571,7 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       }
 
       // 6.2. Invalidate duplicate detection cache (allows immediate rebooking)
+      // ✅ FIX: Use associated_contact_id (HubSpot numeric ID) to match create.js format
       if (bookingData.associated_contact_id && bookingData.exam_date) {
         const duplicateKey = `booking:${bookingData.associated_contact_id}:${bookingData.exam_date}`;
         const deletedCount = await redis.del(duplicateKey);
