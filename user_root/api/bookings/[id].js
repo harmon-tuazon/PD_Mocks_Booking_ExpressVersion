@@ -573,6 +573,7 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       // 6.2. Invalidate duplicate detection cache (allows immediate rebooking)
       // Use associated_contact_id (numeric HubSpot contact ID) to match create.js format
       // Format: booking:{hubspot_contact_id}:{exam_date}
+      // CRITICAL: Normalize exam_date to YYYY-MM-DD format to match create.js
       console.log(`🔍 [DEBUG] Cache invalidation check:`, {
         associated_contact_id: bookingData.associated_contact_id,
         exam_date: bookingData.exam_date,
@@ -581,8 +582,12 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       });
 
       if (bookingData.associated_contact_id && bookingData.exam_date) {
-        const duplicateKey = `booking:${bookingData.associated_contact_id}:${bookingData.exam_date}`;
-        console.log(`🔍 [DEBUG] Attempting to delete cache key: ${duplicateKey}`);
+        // Normalize date to YYYY-MM-DD format (Supabase returns ISO timestamp)
+        // Extract just the date portion: "2026-03-01T00:00:00+00:00" -> "2026-03-01"
+        const normalizedDate = bookingData.exam_date.split('T')[0];
+
+        const duplicateKey = `booking:${bookingData.associated_contact_id}:${normalizedDate}`;
+        console.log(`🔍 [DEBUG] Attempting to delete cache key: ${duplicateKey} (normalized date: ${normalizedDate})`);
         const deletedCount = await redis.del(duplicateKey);
 
         if (deletedCount > 0) {

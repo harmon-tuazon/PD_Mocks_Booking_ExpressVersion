@@ -149,6 +149,31 @@ async function getActiveBookingsCountFromSupabase(examId) {
   return count || 0;
 }
 
+/**
+ * Check if active booking exists for contact on specific exam date
+ * Used for duplicate detection during booking creation (Tier 2 after Redis cache)
+ * @param {string} contactId - Numeric HubSpot contact ID (associated_contact_id)
+ * @param {string} examDate - Exam date in YYYY-MM-DD format
+ * @returns {Promise<boolean>} - True if active booking exists, false otherwise
+ */
+async function checkExistingBookingInSupabase(contactId, examDate) {
+  const { data, error } = await supabaseAdmin
+    .from('hubspot_bookings')
+    .select('id, booking_id, is_active')
+    .eq('associated_contact_id', contactId)
+    .eq('exam_date', examDate)
+    .neq('is_active', 'Cancelled')
+    .neq('is_active', 'cancelled')
+    .limit(1);
+
+  if (error) {
+    console.error(`❌ Supabase duplicate check error for contact ${contactId} on ${examDate}:`, error.message);
+    throw error;
+  }
+
+  return data && data.length > 0;
+}
+
 // ============== WRITE SYNC OPERATIONS (after HubSpot write) ==============
 
 /**
@@ -721,6 +746,7 @@ module.exports = {
   getExamByIdFromSupabase,
   getBookingByIdFromSupabase,
   getActiveBookingsCountFromSupabase,
+  checkExistingBookingInSupabase,
   getContactCreditsFromSupabase,
   getBookingCascading,
   // Write syncs
