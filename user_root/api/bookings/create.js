@@ -815,10 +815,34 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const statusCode = error.status || 500;
+    // Determine appropriate status code and user-friendly message
+    let statusCode = error.status || 500;
+    let userMessage = error.message;
+    
+    // Improve error messages for common database/system errors
+    if (error.message && error.message.includes('function') && error.message.includes('is not unique')) {
+      // PostgreSQL function ambiguity error
+      statusCode = 500;
+      userMessage = 'A system error occurred while processing your booking. Please try again in a moment.';
+      error.code = 'DATABASE_ERROR';
+    } else if (error.message && (error.message.includes('Contact not found') || error.message.includes('MISSING_HUBSPOT_ID'))) {
+      // Contact lookup failure
+      statusCode = 400;
+      userMessage = 'We could not verify your account. Please contact support for assistance.';
+      error.code = 'CONTACT_NOT_FOUND';
+    } else if (error.message && error.message.includes('INSUFFICIENT_CREDITS')) {
+      // Insufficient credits - keep the original message as it's user-friendly
+      statusCode = 400;
+      userMessage = 'You don\'t have enough credits to book this exam. Please contact support to purchase more credits.';
+      error.code = 'INSUFFICIENT_CREDITS';
+    }
 
-    // FIX: Pass error object to createErrorResponse, not separate parameters
-    const errorResponse = createErrorResponse(error);
+    // Update error object with user-friendly message
+    const enhancedError = new Error(userMessage);
+    enhancedError.status = statusCode;
+    enhancedError.code = error.code || 'INTERNAL_ERROR';
+
+    const errorResponse = createErrorResponse(enhancedError);
 
     return res.status(statusCode).json(errorResponse);
 
