@@ -98,6 +98,7 @@ module.exports = async (req, res) => {
           // Convert Supabase format to HubSpot format for compatibility
           contact = {
             id: supabaseContact.hubspot_id,
+            uuid: supabaseContact.id,
             properties: {
               student_id: supabaseContact.student_id,
               email: supabaseContact.email,
@@ -163,7 +164,8 @@ module.exports = async (req, res) => {
 
     // Prepare student profile response
     const studentProfile = {
-      contact_id: contact.id,
+      hubspot_id: contact.id,
+      contact_id: contact.uuid,
       student_id: contact.properties.student_id,
       email: contact.properties.email,
       name: `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim() || 'Student',
