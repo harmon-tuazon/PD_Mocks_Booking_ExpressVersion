@@ -143,7 +143,7 @@ const schemas = {
         }),
         otherwise: Joi.optional().strip()
       })
-  }),,
+  }),
 
   // Schema for fetching available exams
   // Schema for listing bookings
