@@ -5,10 +5,9 @@ const { schemas } = require('../_shared/validation');
 const { getCache } = require('../_shared/cache');
 const RedisLockService = require('../_shared/redis');
 const {
-  syncBookingToSupabase,
-  updateExamBookingCountInSupabase,
-  updateContactCreditsInSupabase,
-  getContactCreditsFromSupabase
+  getContactCreditsFromSupabase,
+  createBookingAtomic,
+  checkIdempotencyKey
 } = require('../_shared/supabase-data');
 const {
   setCorsHeaders,
@@ -89,7 +88,7 @@ function mapCreditFieldToTokenUsed(creditField) {
  * POST /api/bookings/create
  * Create a new booking for a mock exam slot and handle all associations
  */
-module.exports = module.exports = module.exports = async function handler(req, res) {
+module.exports = async function handler(req, res) {
   let bookingCreated = false;
   let createdBookingId = null;
   let redis = null;
@@ -553,47 +552,98 @@ module.exports = module.exports = module.exports = async function handler(req, r
       bookingData.attendingLocation = formattedLocation;
     }
 
-    const createdBooking = await hubspot.createBooking(bookingData);
-    bookingCreated = true;
-    createdBookingId = createdBooking.id;
-    console.log(`✅ Booking created successfully with ID: ${createdBookingId}`);
+    // ========================================================================
+    // SUPABASE-FIRST ATOMIC BOOKING CREATION
+    // ========================================================================
+    // Call Supabase atomic RPC function that handles:
+    // 1. Create booking record in Supabase
+    // 2. Deduct credit from contact
+    // 3. Increment exam booking count
+    // All in ONE database transaction (ACID guarantees)
 
-    // SUPABASE SYNC: Sync booking to Supabase for read optimization
-    try {
-      // Since we now set attending_location correctly in bookingData above,
-      // we can use the created booking's attending_location property directly
-      const locationForSupabase = createdBooking.properties.attending_location || null;
+    const currentCreditValue = parseInt(contact.properties[creditField]) || 0;
+    const newCreditValue = Math.max(0, currentCreditValue - 1);
 
-      const bookingForSync = {
-        id: createdBookingId,
-        properties: {
-          booking_id: bookingId,
-          associated_mock_exam: mock_exam_id,
-          associated_contact_id: contact_id,
-          student_id: student_id,
-          name: sanitizedName,
-          student_email: sanitizedEmail,
-          is_active: 'Active',
-          attendance: null,
-          attending_location: locationForSupabase,
-          exam_date: exam_date,
-          dominant_hand: dominant_hand || null,
-          token_used: tokenUsed || null,
-          idempotency_key: idempotencyKey || null,
-          // Include mock exam's properties for display purposes
-          mock_type: mock_type,
-          start_time: mockExam.properties?.start_time || null,
-          end_time: mockExam.properties?.end_time || null,
-          ndecc_exam_date: contact.properties?.ndecc_exam_date || null,
-          createdate: new Date().toISOString()
-        }
-      };
-      await syncBookingToSupabase(bookingForSync, mock_exam_id);
-      console.log(`✅ Booking synced to Supabase`);
-    } catch (supabaseError) {
-      // Non-blocking - log but don't fail the booking
-      console.error(`⚠️ Supabase sync failed (non-blocking):`, supabaseError.message);
+    const atomicResult = await createBookingAtomic({
+      bookingId: bookingId,  // UUID primary key
+      studentId: student_id,
+      studentEmail: sanitizedEmail,
+      mockExamId: mock_exam_id,
+      studentName: sanitizedName,
+      tokenUsed: tokenUsed,
+      attendingLocation: bookingData.attendingLocation,
+      dominantHand: dominant_hand || null,
+      idempotencyKey: idempotencyKey,
+      creditField: creditField,
+      newCreditValue: newCreditValue
+    });
+
+    // If idempotent (duplicate request), return existing booking
+    if (atomicResult.idempotent) {
+      console.log(`✅ [IDEMPOTENT] Duplicate booking request detected, returning existing booking`);
+      return res.status(200).json(createSuccessResponse({
+        booking_id: bookingId,
+        idempotent: true,
+        message: 'Booking already exists (duplicate request prevented)'
+      }));
     }
+
+    bookingCreated = true;
+    createdBookingId = atomicResult.data.booking_hubspot_id;  // HubSpot ID from Supabase
+    const newTotalBookings = atomicResult.data.new_total_bookings;
+    console.log(`✅ Atomic booking created: ${bookingId} (HubSpot ID: ${createdBookingId}), Total bookings: ${newTotalBookings}`);
+
+    // ========================================================================
+    // DUAL WEBHOOK INTEGRATION - Sync to HubSpot (fire-and-forget)
+    // ========================================================================
+    const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
+
+    process.nextTick(() => {
+      // Fire-and-forget webhook sync (async operations run independently)
+      (async () => {
+        // Webhook 1: Sync exam total_bookings to HubSpot
+        const examSyncResult = await HubSpotWebhookService.syncWithRetry(
+          mock_exam_id,
+          newTotalBookings,
+          3 // 3 retries with exponential backoff
+        );
+
+        if (examSyncResult.success) {
+          console.log(`✅ [WEBHOOK-EXAM] HubSpot exam count synced: ${examSyncResult.message}`);
+        } else {
+          console.error(`❌ [WEBHOOK-EXAM] Exam sync failed: ${examSyncResult.message}`);
+        }
+
+        // Webhook 2: Sync ALL contact credits to HubSpot
+        // Use credits from atomic result for consistency
+        const contactCredits = atomicResult.data.credits_after_deduction;
+
+        const creditsSyncResult = await HubSpotWebhookService.syncContactCredits(
+          contact_id,
+          sanitizedEmail,
+          {
+            sj_credits: contactCredits.sj_credits,
+            cs_credits: contactCredits.cs_credits,
+            sjmini_credits: contactCredits.sjmini_credits,
+            mock_discussion_token: contactCredits.mock_discussion_token,
+            shared_mock_credits: contactCredits.shared_mock_credits
+          }
+        );
+
+        if (creditsSyncResult.success) {
+          console.log(`✅ [WEBHOOK-CREDITS] HubSpot credits synced: ${creditsSyncResult.message}`);
+        } else {
+          console.error(`❌ [WEBHOOK-CREDITS] Credits sync failed: ${creditsSyncResult.message}`);
+        }
+
+        // If both webhooks fail, log reconciliation reminder
+        if (!examSyncResult.success && !creditsSyncResult.success) {
+          console.error(`⏰ [WEBHOOK] Both webhooks failed - reconciliation cron will fix drift within 2 hours`);
+        }
+      })().catch(err => {
+        console.error('❌ [WEBHOOK] Unexpected error in webhook sync:', err.message);
+      });
+    });
 
     // Cache booking in Redis to prevent duplicate bookings (until exam date)
     const examDateTime = new Date(`${exam_date}T23:59:59Z`);
@@ -601,86 +651,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
     await redis.setex(redisKey, Math.floor(ttlSeconds), `${createdBookingId}:Active`);
     console.log(`✅ Booking cached in Redis with key: ${redisKey}, expires in ${Math.floor(ttlSeconds / 3600)} hours`);
 
-    // Create associations in parallel for faster response time (60% reduction)
-    const associationResults = await Promise.allSettled([
-      // Associate with Contact
-      hubspot.createAssociation(
-        HUBSPOT_OBJECTS.bookings,
-        createdBookingId,
-        HUBSPOT_OBJECTS.contacts,
-        contact_id
-      ).then(result => {
-        console.log('✅ Contact association created successfully:', result);
-        return { type: 'contact', success: true, result };
-      }).catch(err => {
-        console.error('❌ Failed to associate with contact:', err.message);
-        console.error('🔍 CRITICAL: Contact association error details:', {
-          fromObject: HUBSPOT_OBJECTS.bookings,
-          fromId: createdBookingId,
-          toObject: HUBSPOT_OBJECTS.contacts,
-          toId: contact_id,
-          error: err.message,
-          status: err.response?.status,
-          data: err.response?.data,
-          context: err.response?.data?.context
-        });
-        return { type: 'contact', success: false, error: err.message };
-      }),
-
-      // Associate with Mock Exam
-      hubspot.createAssociation(
-        HUBSPOT_OBJECTS.bookings,
-        createdBookingId,
-        HUBSPOT_OBJECTS.mock_exams,
-        mock_exam_id
-      ).then(result => {
-        console.log('✅ Mock exam association created successfully:', result);
-        return { type: 'mock_exam', success: true, result };
-      }).catch(err => {
-        console.error('❌ Failed to associate with mock exam:', err);
-        return { type: 'mock_exam', success: false, error: err.message };
-      })
-    ]).then(results => results.map(r => r.value));
-
-    // Check critical associations - Contact and Mock Exam are required for booking integrity
-    const contactAssocSuccess = associationResults.find(r => r.type === 'contact')?.success || false;
-    const mockExamAssocSuccess = associationResults.find(r => r.type === 'mock_exam')?.success || false;
-
-    // Step 7: Update total bookings counter - CRITICAL: Use Redis for real-time accuracy
-    // Increment Redis counter immediately (non-blocking, real-time)
-    const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
-    // Ensure TTL is set (incr on non-existent key creates without TTL)
-    const TTL_30_DAYS = 30 * 24 * 60 * 60; // 2,592,000 seconds
-    await redis.expire(`exam:${mock_exam_id}:bookings`, TTL_30_DAYS);
-    console.log(`✅ Redis counter incremented: exam:${mock_exam_id}:bookings = ${newTotalBookings} (TTL: 30 days)`);
-
-    // SUPABASE SYNC: Update exam booking count in Supabase
-    try {
-      await updateExamBookingCountInSupabase(mock_exam_id, newTotalBookings);
-    } catch (supabaseError) {
-      console.error(`⚠️ Supabase exam count sync failed (non-blocking):`, supabaseError.message);
-    }
-
-    // Trigger HubSpot workflow via webhook (async, non-blocking)
-    // This runs AFTER response is sent to user - doesn't block booking completion
-    const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
-
-    process.nextTick(async () => {
-      const result = await HubSpotWebhookService.syncWithRetry(
-        mock_exam_id,
-        newTotalBookings,
-        3 // 3 retries with exponential backoff
-      );
-
-      if (result.success) {
-        console.log(`✅ [WEBHOOK] HubSpot workflow triggered: ${result.message}`);
-      } else {
-        console.error(`❌ [WEBHOOK] All retry attempts failed: ${result.message}`);
-        console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
-      }
-    });
-
-    // ========================================================================
     // ========================================================================
     // REDIS LOCK RELEASE - Release both locks after booking is confirmed
     // ========================================================================
@@ -696,70 +666,44 @@ module.exports = module.exports = module.exports = async function handler(req, r
       console.log(`✅ User lock released successfully`);
     }
 
-    // Step 8: Deduct credits (creditField already calculated in Step 4)
-    const currentCreditValue = parseInt(contact.properties[creditField]) || 0;
-    const newCreditValue = Math.max(0, currentCreditValue - 1);
+    // ========================================================================
+    // HUBSPOT LEGACY OPERATIONS (Notes Only - Fire-and-Forget)
+    // Associations removed - will be reconciled by cron job within 2 hours
+    // ========================================================================
 
-    await hubspot.updateContactCredits(contact_id, creditField, newCreditValue);
-
-    // Step 8a: Sync credit deduction to Supabase (non-blocking)
-    // Calculate new credit values for Supabase sync
-    let newSpecificCredits = specificCredits;
-    let newSharedCredits = sharedCredits;
-
-    if (creditField === 'shared_mock_credits') {
-      newSharedCredits = newCreditValue;
-    } else {
-      newSpecificCredits = newCreditValue;
-    }
-
-    updateContactCreditsInSupabase(contact_id, mock_type, newSpecificCredits, newSharedCredits)
-      .then(() => {
-        console.log(`✅ [SUPABASE SYNC] Contact credits synced for ${contact_id} after booking`);
-      })
-      .catch(supabaseError => {
-        console.error(`⚠️ [SUPABASE SYNC] Failed to sync contact credits to Supabase (non-blocking):`, supabaseError.message);
-        // Don't block booking - Supabase will sync on next cron run
-      });
-
-    // Step 9: Create Note in Contact timeline (async, non-blocking)
+    // Create Note in Contact timeline (async, fire-and-forget)
     const mockExamDataForNote = {
       exam_date,
       mock_type,
       location: mockExam.properties.location || 'Mississauga'
     };
 
-    hubspot.createBookingNote(bookingData, contact_id, mockExamDataForNote)
-      .then(noteResult => {
-        if (noteResult) {
-          console.log(`✅ Booking note created successfully for booking ${bookingId}`);
-        } else {
-          console.log(`⚠️ Booking note creation failed for booking ${bookingId}, but booking was successful`);
-        }
-      })
-      .catch(err => {
-        console.error(`❌ Error creating booking note for ${bookingId}:`, err.message);
-      });
-
-    // Determine overall success
-    const bookingSuccess = true;
-    const associationWarnings = [];
-
-    if (!contactAssocSuccess) {
-      associationWarnings.push('Contact association failed - booking may not appear in student records');
-    }
-    if (!mockExamAssocSuccess) {
-      associationWarnings.push('Mock exam association failed - exam may not show booking count update');
-    }
+    process.nextTick(() => {
+      hubspot.createBookingNote(bookingData, contact_id, mockExamDataForNote)
+        .then(noteResult => {
+          if (noteResult) {
+            console.log(`✅ Booking note created successfully for booking ${bookingId}`);
+          } else {
+            console.log(`⚠️ Booking note creation failed for booking ${bookingId}, but booking was successful`);
+          }
+        })
+        .catch(err => {
+          console.error(`❌ Error creating booking note for ${bookingId}:`, err.message);
+        });
+    });
 
     // Calculate AFTER deduction credit breakdown for TokenCard display
+    // Use fresh data from Supabase atomic result for accuracy
+    const creditsAfterDeduction = atomicResult.data.credits_after_deduction;
+
     let specificCreditsAfter = specificCredits;
     let sharedCreditsAfter = sharedCredits;
 
     if (creditField === 'shared_mock_credits') {
-      sharedCreditsAfter = newCreditValue;
+      sharedCreditsAfter = creditsAfterDeduction.shared_mock_credits;
     } else {
-      specificCreditsAfter = newCreditValue;
+      // For specific credit types (sj_credits, cs_credits, sjmini_credits)
+      specificCreditsAfter = creditsAfterDeduction[creditField];
     }
 
     // Prepare response
@@ -772,7 +716,8 @@ module.exports = module.exports = module.exports = async function handler(req, r
         mock_exam_id,
         exam_date,
         mock_type,
-        location: mockExam.properties.location || 'Mississauga'
+        location: mockExam.properties.location || 'Mississauga',
+        total_bookings: newTotalBookings  // Include updated booking count
       },
       credit_details: {
         credit_field_deducted: creditField,
@@ -787,11 +732,6 @@ module.exports = module.exports = module.exports = async function handler(req, r
           field_used: creditField,
           amount_deducted: 1
         }
-      },
-      associations: {
-        results: associationResults,
-        warnings: associationWarnings,
-        critical_success: contactAssocSuccess && mockExamAssocSuccess
       }
     };
 
@@ -800,11 +740,7 @@ module.exports = module.exports = module.exports = async function handler(req, r
       throw new Error('Internal error: credit_details not properly generated');
     }
 
-    if (associationWarnings.length > 0) {
-      console.log('⚠️ Booking successful with association warnings:', associationWarnings);
-    } else {
-      console.log('✅ Booking and all associations successful');
-    }
+    console.log('✅ Booking successful - associations will be reconciled by cron job');
 
     // FIX: Invalidate booking cache for this contact using Redis pattern deletion
     try {

@@ -58,6 +58,86 @@ class HubSpotWebhookService {
   }
 
   /**
+   * Send contact credits sync webhook to HubSpot
+   *
+   * @param {string} contactId - HubSpot Contact ID
+   * @param {string} creditField - Credit field to update (e.g., 'sj_credits')
+   * @param {number} newCreditValue - New credit value after deduction
+   * @returns {Promise<{success: boolean, message: string}>}
+   */
+  /**
+   * Send contact credits sync webhook to HubSpot
+   * Sends ALL credit types to keep HubSpot fully synchronized
+   *
+   * @param {string} contactId - HubSpot Contact ID
+   * @param {Object} allCredits - Object with all credit fields
+   * @param {number} allCredits.sj_credits - SJ credits
+   * @param {number} allCredits.cs_credits - CS credits
+   * @param {number} allCredits.sjmini_credits - SJ Mini credits
+   * @param {number} allCredits.mock_discussion_token - Mock discussion tokens
+   * @param {number} allCredits.shared_mock_credits - Shared mock credits
+   * @returns {Promise<{success: boolean, message: string}>}
+   */
+  static async syncContactCredits(contactId, email, allCredits) {
+    try {
+      const CONTACT_CREDITS_WEBHOOK = 'https://api-na1.hubapi.com/automation/v4/webhook-triggers/46814382/PcbOjzx';
+      
+      // Always send ALL credit types to keep HubSpot fully synchronized
+      const payload = {
+        contact_id: contactId,
+        email: email,
+        sj_credits: parseInt(allCredits.sj_credits) || 0,
+        cs_credits: parseInt(allCredits.cs_credits) || 0,
+        sjmini_credits: parseInt(allCredits.sjmini_credits) || 0,
+        mock_discussion_token: parseInt(allCredits.mock_discussion_token) || 0,
+        shared_mock_credits: parseInt(allCredits.shared_mock_credits) || 0,
+      };
+
+      console.log(`📤 [WEBHOOK] Sending ALL credit types for contact ${contactId}:`, payload);
+
+      const startTime = Date.now();
+      const response = await fetch(CONTACT_CREDITS_WEBHOOK, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const duration = Date.now() - startTime;
+
+      if (response.ok) {
+        console.log(`✅ [WEBHOOK] Credit sync successful (${duration}ms) - Status: ${response.status}`);
+        return {
+          success: true,
+          message: `Contact credit webhook sent successfully (${duration}ms)`
+        };
+      } else {
+        const errorText = await response.text();
+        console.error(`❌ [WEBHOOK] Credit sync failed - Status: ${response.status}, Error: ${errorText}`);
+        return {
+          success: false,
+          message: `Contact credit webhook failed: ${response.status} ${errorText}`
+        };
+      }
+
+    } catch (error) {
+      console.error(`❌ [WEBHOOK] Contact credits exception:`, error.message);
+      return {
+        success: false,
+        message: `Contact credit webhook error: ${error.message}`
+      };
+    }
+  }
+
+
+
+
+
+
+
+
+  /**
    * Sync with retry logic (for critical operations)
    *
    * @param {string} mockExamId

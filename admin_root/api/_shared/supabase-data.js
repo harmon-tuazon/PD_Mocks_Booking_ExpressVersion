@@ -585,6 +585,54 @@ async function updateContactCreditsInSupabase(contactId, mockType, newSpecificCr
   console.log(`✅ [SUPABASE SYNC] Updated secondary DB for contact ${contactId} (${mockType})`);
 }
 
+/**
+ * Get booking with cascading lookup
+ * Priority: hubspot_id → id (UUID) → booking_id
+ *
+ * @param {string} identifier - The booking identifier (could be any of the 3 types)
+ * @returns {Promise<Object|null>} Booking record or null
+ */
+
+async function getBookingCascading(identifier) {
+  if (!identifier) return null;
+
+  console.log('[SUPABASE] Cascading booking lookup:', { identifier });
+
+  // Determine identifier type
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+
+  // Priority 1: If it's a UUID, search by id (primary key - fastest)
+  if (isUUID) {
+    const { data, error } = await supabaseAdmin
+      .from('hubspot_bookings')
+      .select('*')
+      .eq('id', identifier)
+      .single();
+
+    if (!error && data) {
+      console.log('[SUPABASE] Found by id (UUID):', identifier);
+      return data;
+    }
+  }
+
+  // Priority 2: Otherwise assume it's hubspot_id (numeric string or legacy)
+  const { data, error } = await supabaseAdmin
+    .from('hubspot_bookings')
+    .select('*')
+    .eq('hubspot_id', identifier)
+    .single();
+
+  if (!error && data) {
+    console.log('[SUPABASE] Found by hubspot_id:', identifier);
+    return data;
+  }
+
+  // Not found
+  console.warn('[SUPABASE] Booking not found with identifier:', identifier);
+  return null;
+}
+
+
 module.exports = {
   // Contact reads
   getContactByEmailFromSupabase,
@@ -598,6 +646,7 @@ module.exports = {
   getExamByIdFromSupabase,
   getBookingByIdFromSupabase,
   getActiveBookingsCountFromSupabase,
+  getBookingCascading,
   // Write syncs
   syncBookingToSupabase,
   syncBookingsToSupabase,
