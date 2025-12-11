@@ -270,7 +270,7 @@ module.exports = async function handler(req, res) {
     // ========================================================================
     redis = new RedisLockService();
 
-    const redisKey = `booking:${contact_id}:${exam_date}`;
+    const redisKey = `booking:${hubspot_id}:${exam_date}`;
     const cachedResult = await redis.get(redisKey);
 
     // TIER 1: Check Redis first (fast path - no HubSpot API call)
