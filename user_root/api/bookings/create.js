@@ -128,6 +128,7 @@ module.exports = async function handler(req, res) {
 
     const {
       contact_id,
+      hubspot_id,  // ✅ Extract hubspot_id from request (numeric HubSpot ID)
       student_id,
       name,
       email,
@@ -401,7 +402,9 @@ module.exports = async function handler(req, res) {
     try {
       const supabaseContact = await getContactCreditsFromSupabase(student_id, email);
 
-      if (supabaseContact && supabaseContact.hubspot_id === contact_id) {
+      if (supabaseContact && ( supabaseContact.id === contact_id ||  // UUID match
+        supabaseContact.hubspot_id === contact_id  // Numeric HubSpot ID match (legacy)
+      )) {
         console.log(`✅ [SUPABASE HIT] Reusing cached credit data from validate-credits for student ${student_id}`);
 
         // Convert Supabase format to HubSpot format for compatibility
@@ -428,6 +431,14 @@ module.exports = async function handler(req, res) {
     if (!contact) {
       console.log(`⚠️ [HUBSPOT FALLBACK] Reading from source of truth for student ${student_id}`);
 
+      // Ensure we have a numeric HubSpot ID for the API call
+      if (!hubspot_id) {
+        const error = new Error('Contact data not found in Supabase and no HubSpot ID provided for fallback');
+        error.status = 400;
+        error.code = 'MISSING_HUBSPOT_ID';
+        throw error;
+      }
+
       // Build properties list based on mock type for efficiency
       const baseProperties = ['student_id', 'email', 'ndecc_exam_date'];
       let creditProperties = [];
@@ -452,7 +463,7 @@ module.exports = async function handler(req, res) {
 
       const properties = [...baseProperties, ...creditProperties].join(',');
       contact = await hubspot.apiCall('GET',
-        `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contact_id}?properties=${properties}`
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${hubspot_id}?properties=${properties}`
       );
 
       if (!contact) {

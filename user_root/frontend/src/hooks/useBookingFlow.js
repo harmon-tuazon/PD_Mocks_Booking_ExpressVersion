@@ -175,6 +175,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
         credits: result.available_credits,
         creditBreakdown: result.credit_breakdown,
         contactId: result.contact_id,
+        hubspotId: result.hubspot_id,  // ✅ Store HubSpot ID for backend fallback
         enrollmentId: result.enrollment_id,
         name: result.student_name || prev.name,
       }));
@@ -262,6 +263,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
       const bookingPayload = {
         mock_exam_id: mergedData.mockExamId,
         contact_id: mergedData.contactId,
+        hubspot_id: mergedData.hubspotId,  // ✅ Include HubSpot ID for fallback
         student_id: mergedData.studentId,
         name: mergedData.name.trim(),
         email: mergedData.email,
