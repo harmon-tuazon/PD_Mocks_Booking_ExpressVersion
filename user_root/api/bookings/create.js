@@ -270,20 +270,22 @@ module.exports = async function handler(req, res) {
     // ========================================================================
     redis = new RedisLockService();
 
+    // Use hubspot_id (numeric HubSpot contact ID) for duplicate detection
+    // Format: booking:{hubspot_contact_id}:{exam_date}
     const redisKey = `booking:${hubspot_id}:${exam_date}`;
     const cachedResult = await redis.get(redisKey);
 
     // TIER 1: Check Redis first (fast path - no HubSpot API call)
     if (cachedResult === 'NO_DUPLICATE') {
       // Redis confirms no duplicate within cache window - fast approval
-      console.log(`✅ Redis cache hit: No duplicate found for contact ${contact_id} on ${exam_date}`);
+      console.log(`✅ Redis cache hit: No duplicate found for contact ${hubspot_id} on ${exam_date}`);
     } else if (cachedResult && cachedResult !== 'NO_DUPLICATE') {
       // Cache contains booking_id:status (e.g., "12345:Active")
       const [cachedBookingId, status] = cachedResult.split(':');
 
       if (status === 'Active') {
         // Active booking exists - fast rejection (no HubSpot call needed)
-        console.log(`❌ Redis cache hit: Active booking ${cachedBookingId} found for contact ${contact_id} on ${exam_date}`);
+        console.log(`❌ Redis cache hit: Active booking ${cachedBookingId} found for contact ${hubspot_id} on ${exam_date}`);
         const error = new Error('Duplicate booking detected: You already have an active booking for this exam date');
         error.status = 400;
         error.code = 'DUPLICATE_BOOKING';
@@ -293,7 +295,7 @@ module.exports = async function handler(req, res) {
         console.log(`⚠️ Redis cache: Cancelled booking ${cachedBookingId} found, verifying with HubSpot`);
       }
     } else {
-      console.log(`⚠️ Redis cache miss: No cache entry found for contact ${contact_id} on ${exam_date}`);
+      console.log(`⚠️ Redis cache miss: No cache entry found for contact ${hubspot_id} on ${exam_date}`);
     }
 
     // TIER 2: Redis cache miss OR cancelled booking - verify with HubSpot for data integrity
@@ -322,7 +324,8 @@ module.exports = async function handler(req, res) {
     // ========================================================================
 
     // First lock: User + Date specific lock to prevent duplicate bookings by same user
-    const userLockKey = `user_booking:${contact_id}:${exam_date}`;
+    // Use hubspot_id (numeric HubSpot contact ID) for consistency
+    const userLockKey = `user_booking:${hubspot_id}:${exam_date}`;
     const userLockToken = await redis.acquireLockWithRetry(userLockKey, 3, 100, 5);
 
     if (!userLockToken) {
@@ -681,10 +684,13 @@ module.exports = async function handler(req, res) {
     });
 
     // Cache booking in Redis to prevent duplicate bookings (until exam date)
+    // Use hubspot_id (numeric HubSpot contact ID) to match the duplicate detection key format
+    // Format: booking:{hubspot_contact_id}:{exam_date} with booking_code:Active as value
+    const verifiedRedisKey = `booking:${hubspot_id}:${exam_date}`;
     const examDateTime = new Date(`${exam_date}T23:59:59Z`);
     const ttlSeconds = Math.max((examDateTime - Date.now()) / 1000, 86400);
-    await redis.setex(redisKey, Math.floor(ttlSeconds), `${atomicResult.data.booking_id}:Active`);
-    console.log(`✅ Booking cached in Redis with key: ${redisKey}, expires in ${Math.floor(ttlSeconds / 3600)} hours`);
+    await redis.setex(verifiedRedisKey, Math.floor(ttlSeconds), `${atomicResult.data.booking_code}:Active`);
+    console.log(`✅ Booking cached in Redis with key: ${verifiedRedisKey}, value: ${atomicResult.data.booking_code}:Active, expires in ${Math.floor(ttlSeconds / 3600)} hours`);
 
     // ========================================================================
     // REDIS LOCK RELEASE - Release both locks after booking is confirmed

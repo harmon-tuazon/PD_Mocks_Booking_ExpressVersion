@@ -571,7 +571,8 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       }
 
       // 6.2. Invalidate duplicate detection cache (allows immediate rebooking)
-      // ✅ FIX: Use associated_contact_id (HubSpot numeric ID) to match create.js format
+      // Use associated_contact_id (numeric HubSpot contact ID) to match create.js format
+      // Format: booking:{hubspot_contact_id}:{exam_date}
       if (bookingData.associated_contact_id && bookingData.exam_date) {
         const duplicateKey = `booking:${bookingData.associated_contact_id}:${bookingData.exam_date}`;
         const deletedCount = await redis.del(duplicateKey);
