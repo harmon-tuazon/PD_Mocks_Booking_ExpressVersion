@@ -145,27 +145,34 @@ class HubSpotWebhookService {
    * @param {number} maxRetries
    * @returns {Promise<{success: boolean, message: string}>}
    */
-  static async syncWithRetry(mockExamId, totalBookings, maxRetries = 3) {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const result = await this.syncTotalBookings(mockExamId, totalBookings);
+  static async syncWithRetry(type, ...args) {
+      const maxRetries = 3;
 
-      if (result.success) {
-        return result;
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        let result;
+
+        if (type === 'totalBookings') {
+          result = await this.syncTotalBookings(...args);
+        } else if (type === 'contactCredits') {  // ADD THIS
+          result = await this.syncContactCredits(...args);
+        } else {
+          throw new Error(`Unknown sync type: ${type}`);
+        }
+
+        if (result.success) {
+          return result;
+        }
+
+        if (attempt < maxRetries) {
+          const delay = attempt * 1000; // 1s, 2s, 3s
+          console.log(`[WEBHOOK] Retry ${attempt}/${maxRetries} after ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       }
 
-      if (attempt < maxRetries) {
-        const delay = attempt * 1000; // 1s, 2s, 3s
-        console.log(`⏳ [WEBHOOK] Retry ${attempt}/${maxRetries} after ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-
-    console.error(`❌ [WEBHOOK] All ${maxRetries} attempts failed for exam ${mockExamId}`);
-    return {
-      success: false,
-      message: `All ${maxRetries} webhook attempts failed`
-    };
-  }
+      return {
+        success: false,
+        message: `Failed after ${maxRetries} attempts`
+      };
+  } 
 }
-
-module.exports = { HubSpotWebhookService };

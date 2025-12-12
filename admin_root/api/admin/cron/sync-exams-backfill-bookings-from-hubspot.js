@@ -1,21 +1,29 @@
 /**
- * GET /api/admin/cron/sync-supabase
- * Vercel Cron Job - Sync mock exams and bookings from HubSpot to Supabase
- * ⚠️ NOTE: Contact credits are NOT synced via this cron (see hybrid sync architecture)
+ * GET /api/admin/cron/sync-exams-backfill-bookings-from-hubspot
+ * Vercel Cron Job - Reconcile HubSpot manual changes and backfill missing hubspot_ids
+ * ⚠️ NOTE: Booking properties and credits are NOT synced via this cron (see hybrid sync architecture)
  *
- * Schedule: Runs every 2 hours (0 */2 * * *) - configured in vercel.json
- * Purpose: Keeps Supabase exams & bookings synchronized with HubSpot data
+ * Schedule: Runs every 1 hour - configured in vercel.json
+ * Purpose: Keeps Supabase exams synchronized with HubSpot manual admin changes
+ *
+ * What This Cron Does:
+ * - ✅ Syncs exam data: HubSpot → Supabase (incremental sync using hs_lastmodifieddate)
+ * - ✅ Backfills missing hubspot_id values in Supabase using idempotency_key matching
+ * - ❌ Does NOT sync booking properties (Edge Function handles updates)
+ * - ❌ Does NOT sync credits (webhooks + fire-and-forget handle credits)
  *
  * Hybrid Sync Architecture:
- * - Exams & Bookings: HubSpot → Supabase (this cron, every 2 hours)
+ * - Exams: HubSpot → Supabase (this cron, every 1 hour for manual admin changes)
+ * - Bookings: Created in Supabase first, synced by sync-bookings-from-supabase cron
+ * - Booking Updates: Edge Function webhook (real-time < 1s)
  * - Credits (User ops): Supabase → HubSpot (real-time webhook < 1s after booking/cancel)
  * - Credits (Admin ops): HubSpot → Supabase (fire-and-forget sync after token updates)
  *
  * Security: Requires CRON_SECRET from Vercel (set in environment variables)
  *
  * Usage:
- * - Automatically triggered by Vercel every 2 hours
- * - Can be manually triggered: curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain.com/api/admin/cron/sync-supabase
+ * - Automatically triggered by Vercel every 1 hour
+ * - Can be manually triggered: curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain.com/api/admin/cron/sync-exams-backfill-bookings-from-hubspot
  *
  * See: PRDs/supabase/supabase_SOT_migrations/04-cron-batch-sync.md
  **/

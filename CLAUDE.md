@@ -236,21 +236,26 @@ rg --files -g "*.js"
      - **User Writes (Target)**: Supabase → HubSpot Sync (fire-and-forget)
      - **Admin Writes (Current)**: HubSpot → Supabase Sync (fire-and-forget)
 
-2. **Cron Job Reconciliation (HubSpot → Supabase)**
-   - **Purpose**: Sync manual HubSpot UI changes to Supabase every 2 hours
-   - **Why HubSpot → Supabase Direction**:
-     - Admin operations still write to HubSpot first
-     - Admins can manually edit exams/bookings in HubSpot UI
-     - Cron job reconciles these manual changes to keep Supabase synchronized
-     - **Note**: Direction stays HubSpot → Supabase until admin writes migrate to Supabase-first
-   - **Incremental Sync**: Uses `hs_lastmodifieddate` to fetch only changed records
-   - **Auto-populate on Read Miss**: If Supabase query returns no data, fetch from HubSpot and populate Supabase
+2. **Cron Job Reconciliation (HubSpot ↔ Supabase)**
+   - **sync-exams-backfill-bookings-from-hubspot** (Every 1 hour):
+     - Syncs exam data: HubSpot → Supabase (incremental via `hs_lastmodifieddate`)
+     - Backfills missing `hubspot_id` values using `idempotency_key` matching
+     - **Does NOT sync** booking properties (Edge Function handles) or credits (webhooks handle)
+   - **sync-bookings-from-supabase** (Every 15 minutes):
+     - Creates new bookings in HubSpot (where `hubspot_id IS NULL`)
+     - Creates associations (contact + exam)
+     - **Does NOT update** existing bookings (Edge Function cascades updates)
+   - **Edge Function: cascade-exam-updates** (Real-time < 1s):
+     - Triggered by admin exam property updates via webhook
+     - Cascades changes to all associated bookings in Supabase
+     - HubSpot rollup fields auto-update from associations
 
 3. **Supabase Sync Strategy**
    - Immediate sync after all mutations (non-blocking, fire-and-forget)
-   - Cron job every 2 hours: Exams, bookings, contact credits (incremental sync)
+   - Cron jobs: Exams (every hour), booking creation (every 15 mins)
    - Auto-populate on cache misses to build Supabase dataset
    - Always fetch all properties to prevent partial overwrites
+   - Edge Functions handle real-time property cascades
 
 4. **Deal Timeline for Audit Trail (HubSpot)**
    - Log all business events as formatted notes
@@ -511,10 +516,13 @@ vercel --prod                           # Deploy to production
   - `sync_metadata`: Last sync timestamps for incremental syncing
 - **Performance**: ~50ms Supabase queries vs ~500ms HubSpot API calls (10x faster)
 - **Read Strategy (100% Complete)**: Redis → Supabase → HubSpot fallback + auto-populate
-- **Write Strategy (In Progress)**:
-  - User writes: Targeting Supabase-first → HubSpot sync
-  - Admin writes: Currently HubSpot-first → Supabase sync
-- **Cron Sync**: Every 2 hours (HubSpot → Supabase) for reconciliation
+- **Write Strategy (80% Complete)**:
+  - User writes: Supabase-first → HubSpot sync (bookings created in Supabase)
+  - Admin writes: HubSpot-first → Supabase sync (attendance, cancellations)
+- **Cron Sync**:
+  - **Every 1 hour**: Exams + hubspot_id backfill (HubSpot → Supabase)
+  - **Every 15 minutes**: Booking creation (Supabase → HubSpot)
+- **Edge Function**: Real-time property cascades (< 1s via webhook)
 - **Fire-and-Forget Sync**: Immediate non-blocking sync after all mutations
 
 ### HubSpot CRM (Legacy System - Admin Write Authority)
@@ -533,6 +541,268 @@ vercel --prod                           # Deploy to production
   - Lab Stations (`2-41603799`)
 - **Role**: Admin write operations, deal timeline audit logs, manual UI edits by admins
 - **Migration Target**: Eventually become read-only audit trail (Q4 2025)
+
+## 🔑 Variable Naming Standards & ID Conventions
+
+**CRITICAL**: This section documents the standardized variable naming conventions across HubSpot and Supabase schemas. Always follow these conventions to maintain consistency.
+
+### Core ID System Architecture
+
+The system uses **three parallel identifier systems**:
+
+1. **Supabase UUIDs** - Primary keys in Supabase tables
+2. **HubSpot Numeric IDs** - Legacy numeric IDs from HubSpot CRM
+3. **Business Identifiers** - Human-readable strings for display (e.g., "SJ-123-March 1, 2026")
+
+### Contact Identifier Naming
+
+| Variable Name | Type | Usage | Example |
+|---------------|------|-------|---------|
+| `hubspot_id` | numeric string | HubSpot contact record ID | `"124340560202"` |
+| `contact_id` | UUID string | Supabase primary key (user app requests accept both) | `"a1b2c3d4-..."` |
+| `student_id` | alphanumeric | Business identifier for display | `"PREP001"` |
+| `associated_contact_id` | numeric string | Foreign key in bookings table (HubSpot ID) | `"124340560202"` |
+
+**Request Handling Pattern:**
+```javascript
+// User app endpoints accept EITHER UUID or HubSpot numeric ID
+const { contact_id, hubspot_id } = validatedData;
+
+// Dual-check for Supabase lookup
+if (supabaseContact && (
+  supabaseContact.id === contact_id ||        // UUID match
+  supabaseContact.hubspot_id === contact_id   // HubSpot ID match
+)) {
+  // Proceed with booking
+}
+```
+
+**Cache Key Pattern:**
+```javascript
+// ALWAYS use hubspot_id (numeric) for Redis cache keys
+const cacheKey = `booking:${hubspot_id}:${exam_date}`;
+```
+
+### Booking Identifier Naming
+
+| Variable Name | Type | Usage | Example |
+|---------------|------|-------|---------|
+| `id` | UUID string | Supabase primary key | `"f5e4d3c2-..."` |
+| `hubspot_id` | numeric string | HubSpot booking record ID | `"987654321"` |
+| `booking_id` | string | Human-readable business identifier (DISPLAY ONLY) | `"SJ-PREP001-March 1, 2026"` |
+| `booking_code` | string | Alias for `booking_id` | Same as above |
+
+**API Response Pattern:**
+```javascript
+// Return all three IDs for different use cases
+{
+  id: atomicResult.data.id,                    // UUID for Supabase operations
+  hubspot_id: atomicResult.data.hubspot_id,    // HubSpot numeric ID for legacy
+  booking_id: bookingId,                       // Human-readable for display
+  booking_record_id: createdBookingId          // DEPRECATED - use hubspot_id
+}
+```
+
+**Frontend Normalization:**
+```javascript
+// Prefer UUID, fallback to HubSpot ID for API operations
+const bookingIdentifier = booking.id || booking.hubspot_id;
+
+// Use booking_id for user-facing displays ONLY
+const displayId = booking.booking_id || 'Booking ID TBD';
+```
+
+**CRITICAL RULE**:
+- **API operations**: Use `id` (UUID) or `hubspot_id` (numeric)
+- **User displays**: Use `booking_id` (human-readable string)
+- **NEVER** use `booking_id` string as API identifier
+
+### Mock Exam Identifier Naming
+
+| Variable Name | Type | Usage | Example |
+|---------------|------|-------|---------|
+| `mock_exam_id` | numeric string | HubSpot exam record ID (primary) | `"111222333"` |
+| `id` | UUID string | Supabase primary key | `"e1f2g3h4-..."` |
+| `associated_mock_exam` | numeric string | Foreign key in bookings (HubSpot ID) | `"111222333"` |
+| `exam_id` | numeric string | DEPRECATED - use `mock_exam_id` | `"111222333"` |
+
+**Standardized Pattern:**
+```javascript
+// Request parameters - ALWAYS use mock_exam_id
+const { mock_exam_id } = req.body;
+
+// Supabase foreign key - use associated_mock_exam
+const booking = {
+  associated_mock_exam: mock_exam_id
+};
+
+// Response transformation
+const response = {
+  mock_exam_id: booking.associated_mock_exam  // Map back to standard name
+};
+```
+
+### Credit Field Naming (HubSpot Properties)
+
+**IMMUTABLE - Do not rename these HubSpot properties:**
+
+| Property Name | Exam Type | Description |
+|---------------|-----------|-------------|
+| `sj_credits` | Situational Judgment | Specific credits for SJ exams |
+| `cs_credits` | Clinical Skills | Specific credits for CS exams |
+| `sjmini_credits` | Mini-mock | Specific credits for Mini-mock exams |
+| `mock_discussion_token` | Mock Discussion | Tokens for discussion sessions |
+| `shared_mock_credits` | All types | Shared credits usable for any exam type |
+
+**Credit Deduction Logic:**
+```javascript
+// Prioritize specific credits, fallback to shared
+const creditField = specificCredits > 0 ? 'sj_credits' : 'shared_mock_credits';
+const newCreditValue = specificCredits > 0 ? specificCredits - 1 : sharedCredits - 1;
+```
+
+### Timestamp Field Naming
+
+**HubSpot Timestamps:**
+- `createdate` - Record creation timestamp
+- `hs_lastmodifieddate` - Last modification timestamp
+- `hs_createdate` - Alternative creation timestamp
+
+**Supabase Timestamps:**
+- `created_at` - Record creation timestamp
+- `updated_at` - Last update timestamp
+- `synced_at` - Last sync from HubSpot timestamp
+
+**Transformation Rule:**
+```javascript
+// Always transform HubSpot timestamps to Supabase format during sync
+const supabaseRecord = {
+  created_at: hubspotRecord.properties.createdate,
+  updated_at: hubspotRecord.properties.hs_lastmodifieddate,
+  synced_at: new Date().toISOString()
+};
+```
+
+### Supabase Table Schemas
+
+**`hubspot_bookings` table columns:**
+```sql
+- id                      UUID PRIMARY KEY
+- hubspot_id              TEXT (HubSpot numeric ID)
+- booking_id              TEXT (human-readable)
+- associated_contact_id   TEXT (HubSpot contact ID)
+- associated_mock_exam    TEXT (HubSpot exam ID)
+- student_id              TEXT
+- name                    TEXT
+- student_email           TEXT
+- is_active               TEXT ('Active', 'Cancelled', 'Completed')
+- exam_date               DATE
+- start_time              TIMESTAMPTZ
+- end_time                TIMESTAMPTZ
+- mock_type               TEXT
+- token_used              TEXT
+- dominant_hand           TEXT
+- attending_location      TEXT
+- attendance              TEXT
+- created_at              TIMESTAMPTZ
+- updated_at              TIMESTAMPTZ
+- synced_at               TIMESTAMPTZ
+```
+
+**`hubspot_contact_credits` table columns:**
+```sql
+- id                      UUID PRIMARY KEY
+- hubspot_id              TEXT (HubSpot contact ID)
+- student_id              TEXT
+- email                   TEXT
+- firstname               TEXT
+- lastname                TEXT
+- sj_credits              INTEGER
+- cs_credits              INTEGER
+- sjmini_credits          INTEGER
+- mock_discussion_token   INTEGER
+- shared_mock_credits     INTEGER
+- created_at              TIMESTAMPTZ
+- updated_at              TIMESTAMPTZ
+- synced_at               TIMESTAMPTZ
+```
+
+### Known Inconsistencies & Migration Status
+
+**HIGH PRIORITY - Known Issues:**
+
+1. **Validation Schema Bug** (`user_root/api/bookings/create.js:120`)
+   ```javascript
+   // BUG: Schema 'booking' does not exist
+   const { error, value } = schemas.booking.validate(req.body);
+
+   // FIX: Should be 'bookingCreation'
+   const { error, value } = schemas.bookingCreation.validate(req.body);
+   ```
+
+2. **Ambiguous ID Acceptance** (`user_root/api/bookings/create.js:130`)
+   ```javascript
+   // Accepts BOTH UUID and HubSpot numeric ID
+   const { contact_id, hubspot_id } = validatedData;
+
+   // Dual-check pattern required
+   if (supabaseContact.id === contact_id || supabaseContact.hubspot_id === contact_id)
+   ```
+
+3. **Duplicate Response Fields** (`user_root/api/bookings/list.js:188,199`)
+   ```javascript
+   // Same data with two different names
+   mock_exam_id: booking.associated_mock_exam,    // Standard name
+   associated_mock_exam: booking.associated_mock_exam  // Database column name
+   ```
+
+**MEDIUM PRIORITY - Legacy Support:**
+
+4. **Frontend Fallback Chain** (`user_root/frontend/src/services/api.js:386`)
+   ```javascript
+   // Multiple fallbacks for backwards compatibility
+   id: booking.id || booking.hubspot_id || booking.recordId
+   ```
+   - `recordId` is DEPRECATED but kept for old bookings
+
+5. **Cache Key Format** (`user_root/api/bookings/create.js:234`)
+   ```javascript
+   // ALWAYS use numeric HubSpot ID for consistency
+   const redisKey = `booking:${hubspot_id}:${exam_date}`;
+   ```
+
+### Variable Naming Checklist
+
+When adding new features, ensure:
+
+- [ ] Contact IDs use `hubspot_id` (numeric) and `contact_id` (UUID) consistently
+- [ ] Booking IDs distinguish between `id` (UUID), `hubspot_id` (numeric), and `booking_id` (display)
+- [ ] Exam IDs use `mock_exam_id` for HubSpot numeric IDs
+- [ ] Foreign keys in Supabase use `associated_*` prefix
+- [ ] Credit fields match HubSpot property names exactly
+- [ ] Timestamps transform correctly between HubSpot and Supabase
+- [ ] Cache keys use numeric HubSpot IDs, not UUIDs
+- [ ] API responses include all necessary ID formats for compatibility
+- [ ] Frontend normalization handles fallbacks for legacy data
+- [ ] Documentation explains which ID to use for which operation
+
+### Validation Schema Reference
+
+**Available schemas in `validation.js`:**
+- ✅ `bookingCreation` - POST /api/bookings/create
+- ✅ `bookingCancellation` - DELETE /api/bookings/[id]
+- ✅ `bookingsList` - GET /api/bookings/list
+- ✅ `creditValidation` - POST /api/mock-exams/validate-credits
+- ✅ `availableExams` - GET /api/mock-exams/available
+- ✅ `authCheck` - Authentication validation
+- ✅ `updateNdeccDate` - PUT /api/user/update-ndecc-date
+- ❌ `booking` - **DOES NOT EXIST** (use `bookingCreation`)
+
+**Usage Pattern:**
+```javascript
+const { schemas } = require('../_shared/validation');
+const { error, value } = schemas.bookingCreation.validate(req.body);
+```
 
 ## Input Validation Standards
 

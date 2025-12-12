@@ -61,8 +61,12 @@
       "schedule": "0 5,17 * * *"
     },
     {
-      "path": "/api/admin/cron/sync-supabase",
-      "schedule": "0 */2 * * *"
+      "path": "/api/admin/cron/sync-bookings-from-supabase",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/admin/cron/sync-exams-backfill-bookings-from-hubspot",
+      "schedule": "0 * * * *"
     }
   ]
 }

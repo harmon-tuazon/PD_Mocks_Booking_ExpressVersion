@@ -10,6 +10,7 @@ const { validationMiddleware } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
 const { syncExamToSupabase } = require('../../_shared/supabase-data');
+const { triggerExamCascade, shouldCascadeUpdate, extractCascadeProperties } = require('../../_shared/supabase-webhook');
 
 module.exports = async (req, res) => {
   try {
@@ -233,6 +234,13 @@ module.exports = async (req, res) => {
       });
       console.log(`✅ Mock exam ${mockExamId} synced to Supabase`);
       supabaseSynced = true;
+
+      // 🆕 Trigger webhook to cascade changes to bookings (if relevant properties changed)
+      if (shouldCascadeUpdate(properties)) {
+        const cascadeProps = extractCascadeProperties(properties);
+        console.log('🔔 Triggering booking cascade for properties:', Object.keys(cascadeProps));
+        triggerExamCascade(mockExamId, cascadeProps);
+      }
     } catch (supabaseError) {
       console.error('❌ Supabase sync failed:', supabaseError.message);
       // Continue - HubSpot is source of truth

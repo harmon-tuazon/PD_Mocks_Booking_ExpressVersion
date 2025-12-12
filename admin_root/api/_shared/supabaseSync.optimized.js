@@ -374,164 +374,93 @@ async function syncBookingsToSupabase(bookings, examId) {
 }
 
 /**
- * OPTIMIZED: Fetch only modified contacts since last sync
- * Uses hs_lastmodifieddate for incremental sync
+ * Backfill hubspot_id for bookings created in Supabase that now exist in HubSpot
+ *
+ * IMPORTANT: This function ONLY updates hubspot_id and synced_at.
+ * It does NOT overwrite any other Supabase data (Supabase is source of truth for bookings).
+ *
+ * Matches by idempotency_key (unique identifier for booking operations):
+ * - Generated at booking creation time with contact_id, exam_id, date, type, timestamp
+ * - Same value exists in both Supabase and HubSpot
+ * - More reliable than booking_id for matching
+ *
+ * Use Case:
+ * 1. User creates booking at 10:00 AM → Supabase record (hubspot_id = NULL)
+ * 2. Cron sync-bookings-from-supabase runs at 12:00 PM → Creates in HubSpot
+ * 3. BUT if update fails, Supabase still has hubspot_id = NULL
+ * 4. This function runs during sync-supabase cron → Backfills missing hubspot_id
+ *
+ * @param {Array} bookings - HubSpot bookings with id and properties.idempotency_key
+ * @returns {number} - Count of backfilled records
  */
-async function fetchModifiedContactsWithCredits(sinceTimestamp) {
-  const allContacts = [];
-  let after = undefined;
-  const properties = [
-    'student_id', 'email', 'firstname', 'lastname',
-    'sj_credits', 'cs_credits', 'sjmini_credits',
-    'mock_discussion_token', 'shared_mock_credits',
-    'ndecc_exam_date', 'hs_createdate', 'hs_lastmodifieddate'
-  ];
+async function backfillBookingHubSpotIds(bookings) {
+  if (!bookings || bookings.length === 0) return 0;
 
-  do {
-    const filterGroups = [];
+  let backfilledCount = 0;
 
-    if (sinceTimestamp) {
-      // Incremental sync: Get contacts modified since last sync AND have credits
-      // Using OR logic: (modified since X AND has any credit type > 0)
-      filterGroups.push(
-        {
-          filters: [
-            { propertyName: 'hs_lastmodifieddate', operator: 'GTE', value: sinceTimestamp.toString() },
-            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
-            { propertyName: 'sj_credits', operator: 'GT', value: '0' }
-          ]
-        },
-        {
-          filters: [
-            { propertyName: 'hs_lastmodifieddate', operator: 'GTE', value: sinceTimestamp.toString() },
-            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
-            { propertyName: 'cs_credits', operator: 'GT', value: '0' }
-          ]
-        },
-        {
-          filters: [
-            { propertyName: 'hs_lastmodifieddate', operator: 'GTE', value: sinceTimestamp.toString() },
-            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
-            { propertyName: 'sjmini_credits', operator: 'GT', value: '0' }
-          ]
-        },
-        {
-          filters: [
-            { propertyName: 'hs_lastmodifieddate', operator: 'GTE', value: sinceTimestamp.toString() },
-            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
-            { propertyName: 'mock_discussion_token', operator: 'GT', value: '0' }
-          ]
-        },
-        {
-          filters: [
-            { propertyName: 'hs_lastmodifieddate', operator: 'GTE', value: sinceTimestamp.toString() },
-            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
-            { propertyName: 'shared_mock_credits', operator: 'GT', value: '0' }
-          ]
-        }
-      );
-    } else {
-      // Initial sync: Get all contacts with credits (same as before)
-      filterGroups.push(
-        {
-          filters: [
-            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
-            { propertyName: 'sj_credits', operator: 'GT', value: '0' }
-          ]
-        },
-        {
-          filters: [
-            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
-            { propertyName: 'cs_credits', operator: 'GT', value: '0' }
-          ]
-        },
-        {
-          filters: [
-            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
-            { propertyName: 'sjmini_credits', operator: 'GT', value: '0' }
-          ]
-        },
-        {
-          filters: [
-            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
-            { propertyName: 'mock_discussion_token', operator: 'GT', value: '0' }
-          ]
-        },
-        {
-          filters: [
-            { propertyName: 'student_id', operator: 'HAS_PROPERTY' },
-            { propertyName: 'shared_mock_credits', operator: 'GT', value: '0' }
-          ]
-        }
-      );
+  for (const booking of bookings) {
+    const props = booking.properties;
+    const idempotencyKey = props.idempotency_key;
+    const hubspotId = booking.id;
+
+    // Skip if missing required fields
+    if (!idempotencyKey || !hubspotId) {
+      continue;
     }
 
-    const searchBody = {
-      filterGroups,
-      properties,
-      limit: 100,
-      sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'DESCENDING' }]
-    };
+    try {
+      // Find Supabase record by idempotency_key WITHOUT hubspot_id
+      const { data: existing, error: findError } = await supabaseAdmin
+        .from('hubspot_bookings')
+        .select('id, hubspot_id, booking_id')
+        .eq('idempotency_key', idempotencyKey)
+        .is('hubspot_id', null)  // Only records missing hubspot_id
+        .single();
 
-    if (after) {
-      searchBody.after = after;
+      // Handle errors
+      if (findError) {
+        if (findError.code === 'PGRST116') {
+          // No rows found - either:
+          // 1. Record doesn't exist in Supabase (created in HubSpot first - rare)
+          // 2. Record already has hubspot_id (already synced)
+          // Both cases are fine, skip silently
+          continue;
+        }
+
+        console.warn(`⚠️ [BACKFILL] Error checking for existing booking with key ${idempotencyKey}: ${findError.message}`);
+        continue;
+      }
+
+      // Match found! Backfill hubspot_id ONLY (preserve all other Supabase data)
+      if (existing) {
+        const { error: updateError } = await supabaseAdmin
+          .from('hubspot_bookings')
+          .update({
+            hubspot_id: hubspotId,  // Only update hubspot_id
+            synced_at: new Date().toISOString()  // Update sync timestamp
+            // ⚠️ DO NOT update any other fields - Supabase is source of truth!
+          })
+          .eq('id', existing.id);
+
+        if (updateError) {
+          console.error(`❌ [BACKFILL] Failed to backfill hubspot_id for idempotency_key ${idempotencyKey}: ${updateError.message}`);
+        } else {
+          console.log(`✅ [BACKFILL] Backfilled hubspot_id=${hubspotId} for booking_id=${existing.booking_id} (idempotency_key=${idempotencyKey.substring(0, 20)}...)`);
+          backfilledCount++;
+        }
+      }
+    } catch (error) {
+      console.error(`❌ [BACKFILL] Error backfilling booking with key ${idempotencyKey}:`, error.message);
     }
-
-    const response = await hubspotApiCall(
-      'POST',
-      `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/search`,
-      searchBody
-    );
-
-    allContacts.push(...response.results);
-    after = response.paging?.next?.after;
-
-    // Rate limiting
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-  } while (after);
-
-  console.log(`📊 Incremental sync: Found ${allContacts.length} modified contacts ${sinceTimestamp ? 'since ' + new Date(parseInt(sinceTimestamp)).toISOString() : '(initial sync)'}`);
-
-  return allContacts;
-}
-
-/**
- * Sync contact credits to Supabase (unchanged)
- */
-async function syncContactCreditsToSupabase(contact) {
-  if (!contact || !contact.properties) {
-    console.error('[SYNC] Cannot sync contact - missing properties');
-    return;
   }
 
-  const props = contact.properties;
-
-  const record = {
-    hubspot_id: contact.id,
-    student_id: props.student_id,
-    email: props.email?.toLowerCase(),
-    firstname: props.firstname,
-    lastname: props.lastname,
-    sj_credits: parseInt(props.sj_credits) || 0,
-    cs_credits: parseInt(props.cs_credits) || 0,
-    sjmini_credits: parseInt(props.sjmini_credits) || 0,
-    mock_discussion_token: parseInt(props.mock_discussion_token) || 0,
-    shared_mock_credits: parseInt(props.shared_mock_credits) || 0,
-    ndecc_exam_date: props.ndecc_exam_date,
-    created_at: props.hs_createdate,
-    updated_at: props.hs_lastmodifieddate,
-    synced_at: new Date().toISOString()
-  };
-
-  const { error } = await supabaseAdmin
-    .from('hubspot_contact_credits')
-    .upsert(record, { onConflict: 'hubspot_id' });
-
-  if (error) {
-    throw new Error(`Supabase contact credits sync error: ${error.message}`);
+  if (backfilledCount > 0) {
+    console.log(`✅ [BACKFILL] Successfully backfilled ${backfilledCount} booking hubspot_ids`);
   }
+
+  return backfilledCount;
 }
+
 
 /**
  * OPTIMIZED: Main sync function with incremental sync support
@@ -547,8 +476,7 @@ async function syncAllData() {
   const startTime = Date.now();
   const syncTimestamp = Date.now(); // Current timestamp for this sync
   let totalExams = 0;
-  let totalBookings = 0;
-  let totalContactCredits = 0;
+  let totalBackfilled = 0;  // Track backfilled hubspot_ids
   let errors = [];
 
   try {
@@ -589,35 +517,51 @@ async function syncAllData() {
         );
       }
 
-      // Step 3: Fetch and sync bookings ONLY for modified exams
+      // Step 3: Booking Sync REMOVED - Edge Function handles booking property cascades
+      // HubSpot → Supabase booking sync no longer needed because:
+      //   1. Bookings are created in Supabase first (Supabase is source of truth)
+      //   2. Booking property updates cascade via Edge Function webhook (real-time < 1s)
+      //   3. HubSpot rollup fields auto-update from associations
+      // Only hubspot_id backfill is needed (Step 3.5 below)
+      console.log('⏭️ Skipping HubSpot → Supabase booking sync (Edge Function handles cascades)');
+
+      // Step 3.5: Backfill hubspot_ids for Supabase-first bookings
+      // This step ONLY updates hubspot_id field, does NOT overwrite Supabase data
+      console.log('🔄 Backfilling HubSpot IDs for Supabase-first bookings...');
+
       const bookingBatchSize = 10;
       for (let i = 0; i < exams.length; i += bookingBatchSize) {
         const examBatch = exams.slice(i, i + bookingBatchSize);
 
-        const bookingResults = await Promise.allSettled(
+        const backfillResults = await Promise.allSettled(
           examBatch.map(async (exam) => {
             try {
               const bookings = await fetchBookingsForExam(exam.id);
               if (bookings.length > 0) {
-                await syncBookingsToSupabase(bookings, exam.id);
-                return bookings.length;
+                return await backfillBookingHubSpotIds(bookings);
               }
               return 0;
             } catch (error) {
-              console.error(`Failed to sync bookings for exam ${exam.id}: ${error.message}`);
-              errors.push({ type: 'bookings', examId: exam.id, error: error.message });
+              console.error(`[BACKFILL] Failed to backfill for exam ${exam.id}: ${error.message}`);
+              errors.push({ type: 'backfill', examId: exam.id, error: error.message });
               return 0;
             }
           })
         );
 
-        bookingResults.forEach(result => {
+        backfillResults.forEach(result => {
           if (result.status === 'fulfilled') {
-            totalBookings += result.value;
+            totalBackfilled += result.value;
           }
         });
 
         await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      if (totalBackfilled > 0) {
+        console.log(`✅ [BACKFILL] Backfilled ${totalBackfilled} booking hubspot_ids`);
+      } else {
+        console.log(`ℹ️ [BACKFILL] No hubspot_ids needed backfilling`);
       }
     }
 
@@ -654,12 +598,13 @@ async function syncAllData() {
       summary: {
         sync_mode: lastExamSync ? 'incremental' : 'full',
         exams_synced: totalExams,
-        bookings_synced: totalBookings,
+        hubspot_ids_backfilled: totalBackfilled,  // Only backfill tracking remains
+        // bookings_synced removed - Edge Function handles booking cascades
         // contact_credits_synced removed - credits synced via webhook/fire-and-forget only
         errors_count: errors.length,
         duration_seconds: duration,
         completed_at: new Date().toISOString(),
-        note: 'Credits synced via webhook/fire-and-forget only (see hybrid sync architecture)'
+        note: 'Bookings handled by Edge Function, Credits via webhook/fire-and-forget'
       },
       errors: errors.length > 0 ? errors : undefined
     };
@@ -676,6 +621,7 @@ module.exports = {
   fetchBookingsForExam,
   syncExamToSupabase,
   syncBookingsToSupabase,
+  backfillBookingHubSpotIds,  // New: backfill function for external use
   fetchModifiedContactsWithCredits,
   syncContactCreditsToSupabase,
   getLastSyncTimestamp,

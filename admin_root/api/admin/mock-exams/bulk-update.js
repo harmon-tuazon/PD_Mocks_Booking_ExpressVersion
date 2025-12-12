@@ -33,6 +33,7 @@ const { validationMiddleware } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
 const { syncExamToSupabase } = require('../../_shared/supabase-data');
+const { triggerExamCascade, shouldCascadeUpdate, extractCascadeProperties } = require('../../_shared/supabase-webhook');
 
 // HubSpot Object Type ID for mock exams
 const HUBSPOT_OBJECTS = {
@@ -329,6 +330,18 @@ module.exports = async (req, res) => {
         const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
         console.log(`✅ [BULK-UPDATE] Synced ${syncedCount}/${results.successful.length} exams to Supabase`);
         supabaseSynced = syncedCount === results.successful.length;
+
+        // 🆕 Trigger webhook cascade for affected exams (if relevant properties changed)
+        if (shouldCascadeUpdate(cleanedUpdates)) {
+          const cascadeProps = extractCascadeProperties(cleanedUpdates);
+          console.log(`🔔 [BULK-UPDATE] Triggering cascade for ${results.successful.length} exams`);
+          console.log(`🔔 [BULK-UPDATE] Properties to cascade:`, Object.keys(cascadeProps));
+
+          // Trigger cascade for each successfully updated exam
+          results.successful.forEach(sessionId => {
+            triggerExamCascade(sessionId, cascadeProps);
+          });
+        }
       } catch (supabaseError) {
         console.error('❌ Supabase bulk update sync failed:', supabaseError.message);
         // Continue - HubSpot is source of truth

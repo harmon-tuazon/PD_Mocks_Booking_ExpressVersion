@@ -12,14 +12,15 @@
 
 ## Three-Cron System Architecture
 
-After migration, the system will use **THREE** cron jobs + **WEBHOOKS** for hybrid sync:
+After migration, the system uses **THREE** cron jobs + **EDGE FUNCTION WEBHOOK** for hybrid sync:
 
 | Sync Method | Direction | Schedule | Purpose | Status |
 |-------------|-----------|----------|---------|--------|
 | **activate-scheduled-exams** (Cron) | Supabase Read → HubSpot Write | 5am, 5pm daily | Business logic: Auto-activate scheduled exams | ✅ Existing |
-| **sync-supabase** (Cron) | HubSpot → Supabase | Every 2 hours | Sync exams & bookings (⚠️ NO credits) | ✅ Existing - Modified |
-| **batch-sync-hubspot** (Cron) | Supabase → HubSpot | Every 2 hours | Push user-created bookings to HubSpot | 🆕 New |
-| **Credit Sync Webhook** | Supabase → HubSpot | Real-time | User credit sync after booking/cancel | 🆕 New |
+| **sync-exams-backfill-bookings-from-hubspot** (Cron) | HubSpot → Supabase | **Every 1 hour** | Sync exams & backfill hubspot_ids (⚠️ NO booking properties or credits) | ✅ Modified |
+| **sync-bookings-from-supabase** (Cron) | Supabase → HubSpot | **Every 15 minutes** | Create bookings in HubSpot with associations | ✅ Modified |
+| **Edge Function: cascade-exam-updates** | Supabase → Supabase Bookings | Real-time | Cascade exam property changes to bookings | ✅ Implemented |
+| **Credit Sync Webhook** | Supabase → HubSpot | Real-time | User credit sync after booking/cancel | ✅ Existing |
 | **Admin Token Fire-and-Forget** | HubSpot → Supabase | Immediate | Admin credit updates sync immediately | ✅ Existing |
 
 ### Why Hybrid Sync (Cron + Webhooks)?
@@ -31,14 +32,20 @@ The hybrid architecture uses **different sync methods** for different data types
 │                       HYBRID SYNC ARCHITECTURE                      │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  HUBSPOT → SUPABASE (sync-supabase.js - Cron)                      │
-│  ├─ Mock exams (admin creates in HubSpot)                          │
-│  ├─ Bookings (admin attendance updates)                            │
-│  └─ ⚠️ CREDITS REMOVED - synced via webhook/fire-and-forget only   │
+│  HUBSPOT → SUPABASE (sync-exams-backfill-bookings - Every 1 Hour)  │
+│  ├─ Mock exams (admin creates/edits in HubSpot UI)                 │
+│  ├─ Backfills missing hubspot_id via idempotency_key matching      │
+│  └─ ⚠️ BOOKING PROPERTIES & CREDITS REMOVED                        │
 │                                                                     │
-│  SUPABASE → HUBSPOT (Bookings via Cron)                            │
-│  ├─ User booking creations (write to Supabase first)               │
-│  └─ 2-hour delay acceptable for audit trail                        │
+│  SUPABASE → HUBSPOT (sync-bookings-from-supabase - Every 15 Mins)  │
+│  ├─ Create new bookings in HubSpot (hubspot_id = NULL)             │
+│  ├─ Create associations (contact + exam)                           │
+│  └─ ⚠️ Does NOT update existing bookings (Edge Function handles)   │
+│                                                                     │
+│  SUPABASE EDGE FUNCTION (cascade-exam-updates - REAL-TIME)         │
+│  ├─ Webhook triggered by admin exam property updates               │
+│  ├─ Cascades changes to all associated bookings in Supabase        │
+│  └─ < 1 second latency, batch updates                              │
 │                                                                     │
 │  SUPABASE → HUBSPOT (Credits via Webhook - REAL-TIME)              │
 │  ├─ Credit deductions after booking creation                       │
@@ -139,7 +146,7 @@ The hybrid architecture uses **different sync methods** for different data types
 
 **File: `admin_root/vercel.json`**
 
-The complete cron configuration includes all three jobs (webhooks configured separately):
+The complete cron configuration includes all three jobs (webhooks and Edge Functions configured separately):
 
 ```json
 {
@@ -149,12 +156,12 @@ The complete cron configuration includes all three jobs (webhooks configured sep
       "schedule": "0 5,17 * * *"
     },
     {
-      "path": "/api/admin/cron/sync-supabase",
-      "schedule": "0 */2 * * *"
+      "path": "/api/admin/cron/sync-bookings-from-supabase",
+      "schedule": "*/15 * * * *"
     },
     {
-      "path": "/api/admin/cron/batch-sync-hubspot",
-      "schedule": "0 */2 * * *"
+      "path": "/api/admin/cron/sync-exams-backfill-bookings-from-hubspot",
+      "schedule": "0 * * * *"
     }
   ]
 }
@@ -165,10 +172,12 @@ The complete cron configuration includes all three jobs (webhooks configured sep
 | Cron Job | Schedule | Runs At | Frequency |
 |----------|----------|---------|-----------|
 | `activate-scheduled-exams` | `0 5,17 * * *` | 5:00 AM, 5:00 PM | Twice daily |
-| `sync-supabase` | `0 */2 * * *` | 00:00, 02:00, 04:00, 06:00... | Every 2 hours |
-| `batch-sync-hubspot` | `0 */2 * * *` | 00:00, 02:00, 04:00, 06:00... | Every 2 hours |
+| `sync-bookings-from-supabase` | `*/15 * * * *` | Every 15 minutes | 96 times/day |
+| `sync-exams-backfill-bookings-from-hubspot` | `0 * * * *` | 00:00, 01:00, 02:00, 03:00... | Every hour (24 times/day) |
 
-**Note**: Credit sync webhooks are triggered in real-time, not on a schedule.
+**Note**:
+- Credit sync webhooks are triggered in real-time, not on a schedule
+- Edge Function `cascade-exam-updates` is triggered via webhook from admin API endpoints (< 1s)
 
 ---
 

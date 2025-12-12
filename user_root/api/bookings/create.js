@@ -117,7 +117,7 @@ module.exports = async function handler(req, res) {
     }
 
     // Validate input
-    const { error, value: validatedData } = schemas.booking.validate(req.body);
+    const { error, value: validatedData } = schemas.bookingCreation.validate(req.body);
     if (error) {
       const validationError = new Error(`Invalid input: ${error.details.map(detail => detail.message).join(', ')}`);
       validationError.status = 400;
