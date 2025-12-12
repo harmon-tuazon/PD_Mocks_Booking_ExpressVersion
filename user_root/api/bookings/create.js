@@ -41,51 +41,6 @@ function generateIdempotencyKey(data) {
 }
 
 /**
- * Determine which credit to deduct based on mock type
- */
-function getCreditFieldToDeduct(mockType, creditBreakdown) {
-  if (!creditBreakdown) {
-    throw new Error('Credit breakdown not provided');
-  }
-
-  // For Mini-mock, only use specific credits
-  if (mockType === 'Mini-mock') {
-    return 'sjmini_credits';
-  }
-
-  // For Mock Discussion, only use specific credits
-  if (mockType === 'Mock Discussion') {
-    return 'mock_discussion_token';
-  }
-
-  // For other types, prefer specific credits, then shared
-  if (mockType === 'Situational Judgment') {
-    return creditBreakdown.specific_credits > 0 ? 'sj_credits' : 'shared_mock_credits';
-  }
-
-  if (mockType === 'Clinical Skills') {
-    return creditBreakdown.specific_credits > 0 ? 'cs_credits' : 'shared_mock_credits';
-  }
-
-  throw new Error('Invalid mock type for credit deduction');
-}
-
-/**
- * Map credit field to token_used property value
- */
-function mapCreditFieldToTokenUsed(creditField) {
-  const mapping = {
-    'sj_credits': 'Situational Judgment Token',
-    'cs_credits': 'Clinical Skills Token',
-    'sjmini_credits': 'Mini-mock Token',
-    'mock_discussion_token': 'Mock Discussion Token',
-    'shared_mock_credits': 'Shared Token'
-  };
-
-  return mapping[creditField] || 'Unknown Token';
-}
-
-/**
  * POST /api/bookings/create
  * Create a new booking for a mock exam slot and handle all associations
  */
@@ -401,12 +356,12 @@ module.exports = async function handler(req, res) {
     switch (mock_type) {
       case 'Situational Judgment':
         creditField = 'sj_credits';
-        tokenName = 'SJ Token';
+        tokenName = 'Situational Judgment Token';
         specificCredits = parseInt(contact.properties.sj_credits) || 0;
         break;
       case 'Clinical Skills':
         creditField = 'cs_credits';
-        tokenName = 'CS Token';
+        tokenName = 'Clinical Skills Token';
         specificCredits = parseInt(contact.properties.cs_credits) || 0;
         break;
       case 'Mini-mock':
