@@ -203,7 +203,12 @@ module.exports = async function handler(req, res) {
 
     // Step 1: Generate booking ID and check for duplicates BEFORE acquiring lock
     // This prevents race conditions where two users book the same date simultaneously
-    const formattedDate = formatBookingDate(exam_date);
+    const examDate = new Date(exam_date);
+    const formattedDate = examDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
 
     // Generate booking ID with exam type, student ID, and formatted date
     // Format: "MockType-StudentID-Date" ensures uniqueness per student

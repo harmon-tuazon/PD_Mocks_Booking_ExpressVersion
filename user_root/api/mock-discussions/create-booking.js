@@ -100,42 +100,6 @@ function generateIdempotencyKey(data) {
 }
 
 /**
- * Format date to full month name format
- */
-function formatBookingDate(dateString) {
-  try {
-    const dateParts = dateString.split('-');
-    if (dateParts.length !== 3) {
-      throw new Error('Invalid date format');
-    }
-
-    const year = parseInt(dateParts[0]);
-    const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed in JavaScript
-    const day = parseInt(dateParts[2]);
-
-    const date = new Date(year, month, day);
-
-    if (isNaN(date.getTime())) {
-      throw new Error('Invalid date');
-    }
-
-    const monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-
-    const monthName = monthNames[date.getMonth()];
-    const formattedDay = date.getDate();
-    const formattedYear = date.getFullYear();
-
-    return `${monthName} ${formattedDay}, ${formattedYear}`;
-  } catch (err) {
-    console.error('Date formatting error:', err.message, 'for date:', dateString);
-    return dateString; // Fallback to original format
-  }
-}
-
-/**
  * POST /api/mock-discussions/create-booking
  * Create a new booking for a mock discussion session
  *
@@ -268,7 +232,12 @@ module.exports = async function handler(req, res) {
 
     // Step 1: Generate booking ID and check for duplicates BEFORE acquiring lock
     // This prevents race conditions where two users book the same date simultaneously
-    const formattedDate = formatBookingDate(exam_date);
+    const examDate = new Date(exam_date);
+    const formattedDate = examDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
 
     // Generate booking ID with Mock Discussion prefix, student ID, and formatted date
     // Format: "MockType-StudentID-Date" ensures uniqueness per student
