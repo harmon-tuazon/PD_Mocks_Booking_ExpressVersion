@@ -505,9 +505,9 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       (async () => {
         // Webhook 1: Sync exam total_bookings to HubSpot
         const examSyncResult = await HubSpotWebhookService.syncWithRetry(
+          'totalBookings',
           bookingData.associated_mock_exam,
-          newTotalBookings,
-          3 // 3 retries with exponential backoff
+          newTotalBookings
         );
 
         if (examSyncResult.success) {

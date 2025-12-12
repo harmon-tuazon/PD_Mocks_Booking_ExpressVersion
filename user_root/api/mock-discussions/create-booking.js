@@ -545,9 +545,9 @@ module.exports = async function handler(req, res) {
       (async () => {
         // Webhook 1: Sync exam total_bookings to HubSpot
         const examSyncResult = await HubSpotWebhookService.syncWithRetry(
+          'totalBookings',
           mock_exam_id,
-          newTotalBookings,
-          3 // 3 retries with exponential backoff
+          newTotalBookings
         );
 
         if (examSyncResult.success) {

@@ -249,9 +249,9 @@ async function cancelSingleBooking(hubspot, bookingData) {
 
         process.nextTick(async () => {
           const webhookResult = await HubSpotWebhookService.syncWithRetry(
+            'totalBookings',
             mockExamId,
-            newCount,
-            3 // 3 retries with exponential backoff
+            newCount
           );
 
           if (webhookResult.success) {
