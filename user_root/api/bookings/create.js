@@ -8,7 +8,8 @@ const {
   getContactCreditsFromSupabase,
   createBookingAtomic,
   checkIdempotencyKey,
-  checkExistingBookingInSupabase
+  checkExistingBookingInSupabase,
+  supabaseAdmin
 } = require('../_shared/supabase-data');
 const {
   setCorsHeaders,
@@ -49,7 +50,12 @@ module.exports = async (req, res) => {
   let lockToken = null;
 
   try {
-    const { studentId, email, mockExamId, location, dominantHand } = req.body;
+    // Accept both snake_case (frontend) and camelCase (legacy) field names
+    const studentId = req.body.student_id || req.body.studentId;
+    const email = req.body.email;
+    const mockExamId = req.body.mock_exam_id || req.body.mockExamId;
+    const location = req.body.attending_location || req.body.location;
+    const dominantHand = req.body.dominant_hand ?? req.body.dominantHand;
 
     // Validate required fields
     if (!studentId || !email || !mockExamId) {
@@ -57,7 +63,7 @@ module.exports = async (req, res) => {
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Missing required fields: studentId, email, mockExamId'
+          message: 'Missing required fields: student_id, email, mock_exam_id'
         }
       });
     }
