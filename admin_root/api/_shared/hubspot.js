@@ -539,9 +539,11 @@ class HubSpotService {
     }
 
     // Add conditional fields based on what's provided
-    if (bookingData.dominantHand !== undefined) {
+    // dominant_hand is optional - only set if provided and not null
+    if (bookingData.dominantHand != null) {
       properties.dominant_hand = bookingData.dominantHand.toString();
     }
+    // If dominantHand is null or undefined, we simply don't include it in the HubSpot properties
 
     if (bookingData.attendingLocation) {
       properties.attending_location = bookingData.attendingLocation;
