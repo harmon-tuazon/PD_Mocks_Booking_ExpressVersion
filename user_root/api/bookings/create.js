@@ -396,7 +396,8 @@ module.exports = async (req, res) => {
     const response = {
       success: true,
       data: {
-        bookingId: bookingResult.hubspot_id,
+        booking_id: bookingResult.booking_code,  // Human-readable ID from RPC (e.g., "Clinical Skills-1599999-March 1, 2026")
+        id: bookingResult.booking_id,            // Supabase UUID
         examType: mock_type,
         examDate: exam_date,
         startTime: start_time,
