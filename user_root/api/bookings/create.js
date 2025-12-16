@@ -278,7 +278,7 @@ module.exports = async (req, res) => {
     }
 
     // ========================================================================
-    // STEP 8: Generate booking ID
+    // STEP 8: Generate booking ID and idempotency key
     // ========================================================================
     const examDate = new Date(exam_date);
     const formattedDate = examDate.toLocaleDateString('en-US', {
@@ -288,7 +288,22 @@ module.exports = async (req, res) => {
     });
     const bookingId = `${mock_type}-${studentId}-${formattedDate}`;
 
+    // Generate idempotency key for duplicate prevention
+    const idempotencyKey = generateIdempotencyKey({
+      contact_id,
+      mock_exam_id,
+      exam_date,
+      mock_type
+    });
+
+    // Calculate new credit value after deduction
+    const currentCreditValue = creditToDeduct === 'shared_mock_credits'
+      ? sharedCredits
+      : specificCredits;
+    const newCreditValue = currentCreditValue - 1;
+
     console.log(`🎫 [BOOKING-CREATE] Generated booking ID: ${bookingId}`);
+    console.log(`🔑 [BOOKING-CREATE] Idempotency key: ${idempotencyKey}`);
 
     // ========================================================================
     // STEP 9: Create atomic booking in Supabase with credit deduction
@@ -300,17 +315,17 @@ module.exports = async (req, res) => {
       {
         p_booking_id: bookingId,
         p_mock_exam_id: mock_exam_id,
-        p_contact_id: contact_id,
         p_student_id: studentId.toUpperCase(),
-        p_student_name: contact.student_name,
+        p_student_name: contact.firstname && contact.lastname
+          ? `${contact.firstname} ${contact.lastname}`
+          : contact.student_name || 'Unknown',
         p_student_email: sanitizedEmail,
-        p_booking_status: 'Confirmed',
-        p_is_active: 'true',
-        p_attendance: 'Pending',
         p_attending_location: location || examLocation || 'TBD',
         p_dominant_hand: dominantHand || 'Right',
         p_token_used: tokenUsed,
-        p_credit_field: creditToDeduct
+        p_credit_field: creditToDeduct,
+        p_idempotency_key: idempotencyKey,
+        p_new_credit_value: newCreditValue
       }
     );
 
