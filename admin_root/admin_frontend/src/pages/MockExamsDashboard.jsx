@@ -219,10 +219,9 @@ function MockExamsDashboard() {
   // Fetch metrics data (only pass non-empty date filters)
   const metricsFilters = useMemo(() => {
     const params = {};
-    if (filters.filter_date_from) params.date_from = filters.filter_date_from;
     if (filters.filter_date_to) params.date_to = filters.filter_date_to;
     return params;
-  }, [filters.filter_date_from, filters.filter_date_to]);
+  }, [filters.filter_date_to]);
 
   const {
     data: metricsData,

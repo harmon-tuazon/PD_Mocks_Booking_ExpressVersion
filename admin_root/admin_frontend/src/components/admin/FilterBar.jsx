@@ -45,15 +45,8 @@ const FilterBar = ({
       {/* Compact horizontal layout - filters first, then reset, then view toggles */}
       <div className="flex items-center gap-3 flex-wrap lg:flex-nowrap">
 
-        {/* Date Filters - Compact */}
+        {/* Date Filter - To Date only */}
         <div className="flex items-center gap-2">
-          <DatePicker
-            value={filters.filter_date_from || ''}
-            onChange={(value) => onFilterChange('filter_date_from', value)}
-            placeholder="From Date"
-            className="min-w-[140px]"
-          />
-          <span className="text-gray-500 dark:text-gray-400 text-sm">to</span>
           <DatePicker
             value={filters.filter_date_to || ''}
             onChange={(value) => onFilterChange('filter_date_to', value)}

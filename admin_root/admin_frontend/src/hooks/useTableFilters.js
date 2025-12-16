@@ -12,7 +12,6 @@ const DEFAULT_FILTERS = {
   filter_location: '',
   filter_mock_type: '',
   filter_status: '', // Changed from 'all' to empty string to match other filters
-  filter_date_from: '',
   filter_date_to: '',
   filter_date_range: 'upcoming' // Frontend-only filter: 'upcoming' (default) or 'all'
 };
@@ -108,7 +107,6 @@ export function useTableFilters(initialFilters = {}) {
       filters.filter_location !== '' ||
       filters.filter_mock_type !== '' ||
       filters.filter_status !== '' || // Changed from 'all' to empty string
-      filters.filter_date_from !== '' ||
       filters.filter_date_to !== '' ||
       filters.filter_date_range !== 'upcoming' // Only count if changed from default
     );
@@ -122,7 +120,6 @@ export function useTableFilters(initialFilters = {}) {
     if (filters.filter_location) count++;
     if (filters.filter_mock_type) count++;
     if (filters.filter_status !== '' && filters.filter_status !== 'all') count++; // Check both for compatibility
-    if (filters.filter_date_from) count++;
     if (filters.filter_date_to) count++;
     if (filters.filter_date_range !== 'upcoming') count++; // Only count if changed from default
     return count;
