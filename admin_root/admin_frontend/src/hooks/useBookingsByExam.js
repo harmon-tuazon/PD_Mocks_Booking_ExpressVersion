@@ -136,6 +136,7 @@ export const useBookingsByExam = (examId, params = {}) => {
 
   return {
     data: processedData,
+    allBookings: apiData?.bookings || [], // Expose ALL bookings for export (bypasses pagination)
     isLoading,
     error
   };

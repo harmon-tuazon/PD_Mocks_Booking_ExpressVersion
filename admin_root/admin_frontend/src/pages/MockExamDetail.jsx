@@ -53,6 +53,7 @@ function MockExamDetail() {
   // Fetch bookings with pagination, sorting, and search
   const {
     data: bookingsData,
+    allBookings, // All bookings (unpaginated) for CSV export
     isLoading: isLoadingBookings,
     error: bookingsError
   } = useBookingsByExam(id, {
@@ -86,9 +87,9 @@ function MockExamDetail() {
   // CSV Export state
   const [isExporting, setIsExporting] = useState(false);
 
-  // Handle CSV export
+  // Handle CSV export - exports ALL bookings regardless of pagination
   const handleExportCSV = async () => {
-    if (!bookingsData?.data?.length || isExporting) return;
+    if (!allBookings?.length || isExporting) return;
 
     setIsExporting(true);
     try {
@@ -101,7 +102,7 @@ function MockExamDetail() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          bookings: bookingsData.data,
+          bookings: allBookings, // Use ALL bookings, not just current page
           examId: id
         })
       });
@@ -124,7 +125,7 @@ function MockExamDetail() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      toast.success(`Exported ${bookingsData.data.length} bookings to CSV`);
+      toast.success(`Exported ${allBookings.length} bookings to CSV`);
     } catch (error) {
       console.error('Export failed:', error);
       toast.error(error.message || 'Failed to export bookings. Please try again.');
@@ -432,7 +433,7 @@ function MockExamDetail() {
               // Export CSV props
               onExportCSV: handleExportCSV,
               isExporting: isExporting,
-              exportDisabled: !bookingsData?.data?.length
+              exportDisabled: !allBookings?.length
             }}
             // Add cancellation props
             cancellationState={{
