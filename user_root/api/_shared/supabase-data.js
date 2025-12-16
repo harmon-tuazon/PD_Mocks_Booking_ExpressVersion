@@ -739,6 +739,8 @@ async function getBookingCascading(identifier) {
 
 
 module.exports = {
+  // Supabase client (for direct queries when needed)
+  supabaseAdmin,
   // Reads
   getBookingsFromSupabase,
   getBookingsByContactFromSupabase,

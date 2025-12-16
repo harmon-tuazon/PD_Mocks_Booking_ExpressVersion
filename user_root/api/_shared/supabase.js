@@ -22,7 +22,7 @@ const supabaseAdmin = createClient(
       persistSession: false,
       autoRefreshToken: false,
     },
-    db: { schema: process.env.SUPABASE_SCHEMA_NAME } 
+    db: { schema: process.env.SUPABASE_SCHEMA_NAME }
   }
 );
 
