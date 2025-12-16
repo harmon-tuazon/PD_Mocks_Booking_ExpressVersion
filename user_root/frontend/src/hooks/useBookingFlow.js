@@ -150,12 +150,13 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     }
 
     try {
-      // Fetch credits from cache or API
-      await fetchCredits(studentId, email);
-      
-      // Extract the specific mock type data from the cache
-      const result = credits?.[bookingData.mockType];
-      
+      // Fetch credits from API and use the returned data directly
+      // (React state updates are async, so we can't rely on credits state immediately)
+      const freshCredits = await fetchCredits(studentId, email);
+
+      // Extract the specific mock type data from the fetched result
+      const result = freshCredits?.[bookingData.mockType];
+
       if (!result) {
         throw new Error('Unable to verify credits. Please try again.');
       }
@@ -199,7 +200,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     } finally {
       setLoading(false);
     }
-  }, [bookingData.mockType, credits, fetchCredits]);
+  }, [bookingData.mockType, fetchCredits]);
 
   // Submit booking - accepts optional overrides for immediate data that hasn't been committed to state yet
   const submitBooking = useCallback(async (immediateData = {}) => {

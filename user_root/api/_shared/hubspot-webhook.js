@@ -174,5 +174,7 @@ class HubSpotWebhookService {
         success: false,
         message: `Failed after ${maxRetries} attempts`
       };
-  } 
+  }
 }
+
+module.exports = { HubSpotWebhookService };
