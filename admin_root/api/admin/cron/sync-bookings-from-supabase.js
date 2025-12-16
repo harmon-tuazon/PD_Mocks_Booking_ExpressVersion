@@ -111,18 +111,40 @@ async function syncBookings(summary) {
   // Step 2: Create new bookings in HubSpot one by one
   for (const booking of newBookings || []) {
     try {
-      // Create booking in HubSpot
-      const hubspotBooking = await hubspot.createBooking({
+      // Log booking data for debugging
+      console.log(`[BATCH SYNC] Processing booking:`, {
+        id: booking.id,
         booking_id: booking.booking_id,
-        student_id: booking.student_id,
-        student_name: booking.student_name,
+        name: booking.name,
         student_email: booking.student_email,
-        is_active: booking.is_active,
-        token_used: booking.token_used,
-        attending_location: booking.attending_location,
-        dominant_hand: booking.dominant_hand,
-        exam_date: booking.exam_date,
-        idempotencyKey: booking.idempotency_key  // Fixed: camelCase for HubSpotService
+        columns: Object.keys(booking)
+      });
+
+      // Validate required fields before attempting HubSpot creation
+      if (!booking.booking_id || !booking.name || !booking.student_email) {
+        console.error(`[BATCH SYNC] Skipping booking ${booking.id} - missing required fields:`, {
+          booking_id: booking.booking_id || 'MISSING',
+          name: booking.name || 'MISSING',
+          student_email: booking.student_email || 'MISSING'
+        });
+        summary.bookings.failed++;
+        continue;
+      }
+
+      // Create booking in HubSpot
+      // IMPORTANT: HubSpotService.createBooking expects camelCase field names
+      // Supabase columns are snake_case, so we need to map them correctly:
+      // - Supabase 'name' → HubSpot 'name' (via bookingData.name)
+      // - Supabase 'student_email' → HubSpot 'email' (via bookingData.email)
+      // - Supabase 'booking_id' → HubSpot 'booking_id' (via bookingData.bookingId)
+      const hubspotBooking = await hubspot.createBooking({
+        bookingId: booking.booking_id,           // Supabase column: booking_id
+        name: booking.name,                       // Supabase column: name
+        email: booking.student_email,             // Supabase column: student_email
+        tokenUsed: booking.token_used,           // Supabase column: token_used
+        attendingLocation: booking.attending_location,  // Supabase column: attending_location
+        dominantHand: booking.dominant_hand,     // Supabase column: dominant_hand
+        idempotencyKey: booking.idempotency_key  // Supabase column: idempotency_key
       });
 
       // Create associations
