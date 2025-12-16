@@ -104,7 +104,6 @@ module.exports = async (req, res) => {
           firstname: contactFromSupabase.firstname || '',
           lastname: contactFromSupabase.lastname || '',
           email: contactFromSupabase.email || '',
-          phone: contactFromSupabase.phone || '',
           student_id: contactFromSupabase.student_id || '',
           ndecc_exam_date: contactFromSupabase.ndecc_exam_date || ''
         };
@@ -121,7 +120,7 @@ module.exports = async (req, res) => {
       try {
         console.log(`📧 [HUBSPOT] Fetching contact info for ${contactId}`);
         const contactResponse = await hubspot.apiCall('GET',
-          `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contactId}?properties=firstname,lastname,email,phone,student_id,ndecc_exam_date`
+          `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contactId}?properties=firstname,lastname,email,student_id,ndecc_exam_date`
         );
 
         traineeInfo = {
@@ -129,7 +128,6 @@ module.exports = async (req, res) => {
           firstname: contactResponse.properties.firstname || '',
           lastname: contactResponse.properties.lastname || '',
           email: contactResponse.properties.email || '',
-          phone: contactResponse.properties.phone || '',
           student_id: contactResponse.properties.student_id || '',
           ndecc_exam_date: contactResponse.properties.ndecc_exam_date || ''
         };

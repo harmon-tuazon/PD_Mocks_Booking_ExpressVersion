@@ -28,7 +28,6 @@ describe('TraineeInfoCard', () => {
     lastname: 'Doe',
     email: 'john.doe@example.com',
     student_id: 'STU123456',
-    phone: '4165551234',
     ndecc_exam_date: '2025-03-15',
     tokens: {
       mock_discussion: 5,
@@ -70,7 +69,6 @@ describe('TraineeInfoCard', () => {
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('john.doe@example.com')).toBeInTheDocument();
     expect(screen.getByText('STU123456')).toBeInTheDocument();
-    expect(screen.getByText('(416) 555-1234')).toBeInTheDocument();
   });
 
   it('should display token balances', () => {

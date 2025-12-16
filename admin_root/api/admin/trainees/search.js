@@ -112,7 +112,6 @@ module.exports = async (req, res) => {
           firstname: supabaseContact.firstname,
           lastname: supabaseContact.lastname,
           email: supabaseContact.email,
-          phone: supabaseContact.phone,
           student_id: supabaseContact.student_id,
           ndecc_exam_date: supabaseContact.ndecc_exam_date,
           mock_discussion_token: supabaseContact.mock_discussion_token,
@@ -146,7 +145,7 @@ module.exports = async (req, res) => {
             {
               filterGroups: [emailFilter],
               properties: [
-                'firstname', 'lastname', 'email', 'phone', 'student_id', 'ndecc_exam_date',
+                'firstname', 'lastname', 'email', 'student_id', 'ndecc_exam_date',
                 // Token properties
                 'mock_discussion_token', 'cs_credits', 'sj_credits', 'sjmini_credits', 'shared_mock_credits'
               ],
@@ -187,7 +186,7 @@ module.exports = async (req, res) => {
             {
               filterGroups: [studentIdFilter],
               properties: [
-                'firstname', 'lastname', 'email', 'phone', 'student_id', 'ndecc_exam_date',
+                'firstname', 'lastname', 'email', 'student_id', 'ndecc_exam_date',
                 // Token properties
                 'mock_discussion_token', 'cs_credits', 'sj_credits', 'sjmini_credits', 'shared_mock_credits'
               ],
@@ -222,7 +221,6 @@ module.exports = async (req, res) => {
       firstname: contact.properties.firstname || '',
       lastname: contact.properties.lastname || '',
       email: contact.properties.email || '',
-      phone: contact.properties.phone || '',
       student_id: contact.properties.student_id || '',
       ndecc_exam_date: contact.properties.ndecc_exam_date || '',
       // Include token properties

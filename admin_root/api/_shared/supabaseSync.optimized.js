@@ -517,14 +517,6 @@ async function syncAllData() {
         );
       }
 
-      // Step 3: Booking Sync REMOVED - Edge Function handles booking property cascades
-      // HubSpot → Supabase booking sync no longer needed because:
-      //   1. Bookings are created in Supabase first (Supabase is source of truth)
-      //   2. Booking property updates cascade via Edge Function webhook (real-time < 1s)
-      //   3. HubSpot rollup fields auto-update from associations
-      // Only hubspot_id backfill is needed (Step 3.5 below)
-      console.log('⏭️ Skipping HubSpot → Supabase booking sync (Edge Function handles cascades)');
-
       // Step 3.5: Backfill hubspot_ids for Supabase-first bookings
       // This step ONLY updates hubspot_id field, does NOT overwrite Supabase data
       console.log('🔄 Backfilling HubSpot IDs for Supabase-first bookings...');
@@ -565,23 +557,6 @@ async function syncAllData() {
       }
     }
 
-    // Step 4: Contact Credits Sync - REMOVED (Hybrid Sync Architecture)
-    // ⚠️ Credits are now synced via two unidirectional flows:
-    //   1. User Operations: Supabase → HubSpot (real-time webhook < 1s after booking/cancel)
-    //   2. Admin Operations: HubSpot → Supabase (fire-and-forget sync in tokens.js:96-98)
-    //
-    // Why removed from cron:
-    //   - Prevents race conditions: User books at 01:59:50 (credits 5→4, webhook triggers),
-    //     Cron runs at 02:00:00 reading HubSpot before webhook processes (still 5),
-    //     Cron would overwrite Supabase (4→5) ❌ allowing double-bookings
-    //   - Triple redundancy: Admin fire-and-forget (immediate) + User webhook (< 1s) + Cron
-    //   - Bidirectional conflict: User ops (Supabase→HubSpot) vs Cron (HubSpot→Supabase)
-    //   - Admin updates already covered by fire-and-forget sync
-    //
-    // See: PRDs/supabase/supabase_SOT_migrations/04-cron-batch-sync.md (lines 68-84)
-    //
-    console.log('⏭️ Skipping contact credits sync (handled by webhook/fire-and-forget only)');
-
     // Step 5: Update last sync timestamps (only if no critical errors)
     if (errors.filter(e => e.type === 'exam').length === 0) {
       await updateLastSyncTimestamp('mock_exams', syncTimestamp);
@@ -599,8 +574,6 @@ async function syncAllData() {
         sync_mode: lastExamSync ? 'incremental' : 'full',
         exams_synced: totalExams,
         hubspot_ids_backfilled: totalBackfilled,  // Only backfill tracking remains
-        // bookings_synced removed - Edge Function handles booking cascades
-        // contact_credits_synced removed - credits synced via webhook/fire-and-forget only
         errors_count: errors.length,
         duration_seconds: duration,
         completed_at: new Date().toISOString(),
@@ -622,8 +595,6 @@ module.exports = {
   syncExamToSupabase,
   syncBookingsToSupabase,
   backfillBookingHubSpotIds,  // New: backfill function for external use
-  fetchModifiedContactsWithCredits,
-  syncContactCreditsToSupabase,
   getLastSyncTimestamp,
   updateLastSyncTimestamp
 };

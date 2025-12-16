@@ -35,18 +35,6 @@ const TraineeInfoCard = ({ trainee }) => {
 
   if (!trainee) return null;
 
-  // Format phone number for display
-  const formatPhoneNumber = (phone) => {
-    if (!phone) return 'N/A';
-    // Remove any non-digits
-    const cleaned = phone.replace(/\D/g, '');
-    // Format as (XXX) XXX-XXXX if US number
-    if (cleaned.length === 10) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
-    }
-    return phone || 'N/A';
-  };
-
   // Helper function to display field value or placeholder
   const displayField = (value, placeholder = 'N/A') => {
     return value || placeholder;
@@ -192,16 +180,6 @@ const TraineeInfoCard = ({ trainee }) => {
               ) : (
                 'N/A'
               )}
-            </div>
-          </div>
-
-          {/* Phone */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Phone
-            </label>
-            <div className="text-base text-gray-900 dark:text-gray-100">
-              {formatPhoneNumber(trainee.phone)}
             </div>
           </div>
 

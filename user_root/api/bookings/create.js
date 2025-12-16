@@ -45,7 +45,7 @@ function generateIdempotencyKey(data) {
  * Create a new booking for a mock exam slot and handle all associations
  */
 module.exports = async (req, res) => {
-  const redis = require('../_shared/redis-lock-service');
+  const redis = require('../_shared/redis');
   let lockToken = null;
 
   try {
