@@ -18,7 +18,9 @@ const TraineeInfoCard = ({ trainee }) => {
   // Import the token edit mutation hook
   const tokenEditMutation = useTokenEditMutation(trainee?.contactId);
 
-  // Initialize edited tokens when trainee changes or edit mode is entered
+  // Initialize edited tokens when trainee data changes from server
+  // Note: Do NOT include isEditMode in dependencies - we only want to sync when trainee prop changes
+  // including isEditMode would cause this to run when edit mode closes, clearing lastSavedTokens prematurely
   useEffect(() => {
     if (trainee?.tokens) {
       setEditedTokens({
@@ -31,7 +33,20 @@ const TraineeInfoCard = ({ trainee }) => {
       // Clear lastSavedTokens when trainee data updates from server
       setLastSavedTokens(null);
     }
-  }, [trainee, isEditMode]);
+  }, [trainee]);
+
+  // Sync editedTokens when entering edit mode (separate from trainee data sync)
+  useEffect(() => {
+    if (isEditMode && trainee?.tokens) {
+      setEditedTokens({
+        mock_discussion: trainee.tokens.mock_discussion || 0,
+        clinical_skills: trainee.tokens.clinical_skills || 0,
+        situational_judgment: trainee.tokens.situational_judgment || 0,
+        mini_mock: trainee.tokens.mini_mock || 0,
+        shared_mock: trainee.tokens.shared_mock || 0
+      });
+    }
+  }, [isEditMode, trainee?.tokens]);
 
   if (!trainee) return null;
 

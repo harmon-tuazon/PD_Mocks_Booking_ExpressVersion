@@ -76,8 +76,9 @@ export const useTokenEditMutation = (contactId) => {
     },
 
     onSuccess: (data) => {
-      // Invalidate and refetch relevant queries
-      queryClient.invalidateQueries(['trainee-search']);
+      // Force refetch (not just invalidate) to ensure UI updates immediately
+      // invalidateQueries only marks as stale but may not trigger refetch if staleTime hasn't elapsed
+      queryClient.refetchQueries({ queryKey: ['trainee-search'], type: 'active' });
 
       // Also invalidate specific trainee queries if they exist
       if (contactId) {
@@ -97,9 +98,9 @@ export const useTokenEditMutation = (contactId) => {
     },
 
     onSettled: () => {
-      // Always refetch trainee search data after mutation completes
-      // This ensures data consistency regardless of success/failure
-      queryClient.invalidateQueries(['trainee-search']);
+      // Force refetch on settled to ensure data consistency regardless of success/failure
+      // Using refetchQueries instead of invalidateQueries to guarantee immediate UI update
+      queryClient.refetchQueries({ queryKey: ['trainee-search'], type: 'active' });
     }
   });
 };
