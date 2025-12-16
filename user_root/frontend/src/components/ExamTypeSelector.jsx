@@ -34,87 +34,15 @@ const ExamTypeSelector = () => {
   ];
 
   // Load user session and fetch credit information
-  // CRITICAL FIX: Empty dependency array to run only once on mount
-  // fetchCredits function reference changes on every render, causing infinite loop
+  // Credits refresh on mount - no events needed (navigation causes remount)
   useEffect(() => {
     const userData = getUserSession();
     if (userData) {
       setUserSession(userData);
-      // Fetch fresh credits on page load
-      console.log('🚀 [ExamTypeSelector] Calling fetchCredits');
+      // Fetch fresh credits on mount
       fetchCredits(userData.studentId, userData.email);
-    } else {
-      console.log('⚠️ [ExamTypeSelector] No user session found');
     }
-  }, []); // ✅ FIXED: Empty array - run only once on mount
-
-  // Listen for cache invalidation to refresh token display
-  // NOTE: We ONLY listen to creditsInvalidated to avoid duplicate API calls
-  // MyBookings dispatches BOTH bookingCancelled AND creditsInvalidated
-  // Listening to both would cause 2x API calls and trigger rate limiting
-  useEffect(() => {
-    const handleBookingCreated = (event) => {
-      const { studentId, email } = event.detail || {};
-
-      console.log('📢 [ExamTypeSelector] Received bookingCreated event:', event.detail);
-
-      if (userSession && studentId === userSession.studentId) {
-        console.log('🔄 [ExamTypeSelector] Refreshing credits after booking creation...');
-        // Refresh to get updated token values
-        fetchCredits(studentId, email);
-      }
-    };
-
-    const handleCreditsInvalidated = () => {
-      console.log('📢 [ExamTypeSelector] Received creditsInvalidated event');
-
-      if (userSession) {
-        console.log('🔄 [ExamTypeSelector] Refreshing credits after cache invalidation...');
-        // Refresh to get updated token values
-        fetchCredits(userSession.studentId, userSession.email);
-      }
-    };
-
-    // Also check localStorage for refresh signals (backup mechanism)
-    const checkRefreshSignals = () => {
-      if (!userSession) return;
-
-      // Check for booking creation signal
-      const bookingCreatedSignal = localStorage.getItem('bookingCreated');
-      if (bookingCreatedSignal) {
-        try {
-          const signal = JSON.parse(bookingCreatedSignal);
-          const signalAge = Date.now() - signal.timestamp;
-
-          // Only process if signal is less than 5 seconds old and for current user
-          if (signalAge < 5000 && signal.studentId === userSession.studentId) {
-            console.log('🔄 [ExamTypeSelector] Processing localStorage bookingCreated signal:', signal);
-            fetchCredits(signal.studentId, signal.email);
-            // Clear the signal after processing
-            localStorage.removeItem('bookingCreated');
-          }
-        } catch (e) {
-          console.error('Error parsing bookingCreated signal:', e);
-        }
-      }
-
-      // NOTE: We don't check bookingCancelled signal because creditsInvalidated handles it
-      // This prevents duplicate API calls that cause 429 rate limiting errors
-    };
-
-    // Check for localStorage signals on mount
-    checkRefreshSignals();
-
-    // Listen for custom events (only bookingCreated and creditsInvalidated)
-    // NOTE: bookingCancelled is handled by creditsInvalidated to avoid duplicate calls
-    window.addEventListener('bookingCreated', handleBookingCreated);
-    window.addEventListener('creditsInvalidated', handleCreditsInvalidated);
-
-    return () => {
-      window.removeEventListener('bookingCreated', handleBookingCreated);
-      window.removeEventListener('creditsInvalidated', handleCreditsInvalidated);
-    };
-  }, [userSession, fetchCredits]);
+  }, []);
 
   const handleSelectType = (type) => {
     navigate(`/book/exams?type=${encodeURIComponent(type)}`);

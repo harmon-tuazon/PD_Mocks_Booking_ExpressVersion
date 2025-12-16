@@ -226,7 +226,9 @@ async function handler(req, res) {
             }
 
             return {
-              id: booking.hubspot_id,
+              // CRITICAL FIX: Use Supabase UUID as primary id, fallback to hubspot_id for legacy bookings
+              id: booking.id || booking.hubspot_id,
+              hubspot_id: booking.hubspot_id, // Include hubspot_id separately for legacy compatibility
               booking_id: booking.booking_id,
               name: booking.name,
               email: booking.student_email,

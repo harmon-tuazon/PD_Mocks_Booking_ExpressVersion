@@ -143,7 +143,13 @@ export function parseErrorMessage(error) {
   } else if (error?.message) {
     errorMessage = error.message;
   } else if (error?.error) {
-    errorMessage = error.error;
+    // Handle nested error object: { error: { code, message } }
+    if (typeof error.error === 'object' && error.error !== null) {
+      errorCode = error.error.code;
+      errorMessage = error.error.message || '';
+    } else {
+      errorMessage = error.error;
+    }
   }
 
   // 🔍 DEBUG: Log extracted values
@@ -161,7 +167,7 @@ export function parseErrorMessage(error) {
   }
 
   // Check for specific error message patterns
-  if (errorMessage) {
+  if (errorMessage && typeof errorMessage === 'string') {
     const lowerMessage = errorMessage.toLowerCase();
 
     // Credit-related errors

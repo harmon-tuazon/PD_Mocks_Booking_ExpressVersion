@@ -83,6 +83,12 @@ const schemas = {
       .messages({
         'any.required': 'Contact ID is required'
       }),
+    hubspot_id: Joi.string()
+      .optional()
+      .allow(null)
+      .messages({
+        'string.base': 'HubSpot ID must be a string'
+      }),
     student_id: Joi.string()
       .pattern(/^[A-Z0-9]+$/)
       .required()

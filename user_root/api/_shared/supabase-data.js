@@ -149,6 +149,31 @@ async function getActiveBookingsCountFromSupabase(examId) {
   return count || 0;
 }
 
+/**
+ * Check if active booking exists for contact on specific exam date
+ * Used for duplicate detection during booking creation (Tier 2 after Redis cache)
+ * @param {string} contactId - Numeric HubSpot contact ID (associated_contact_id)
+ * @param {string} examDate - Exam date in YYYY-MM-DD format
+ * @returns {Promise<boolean>} - True if active booking exists, false otherwise
+ */
+async function checkExistingBookingInSupabase(contactId, examDate) {
+  const { data, error } = await supabaseAdmin
+    .from('hubspot_bookings')
+    .select('id, booking_id, is_active')
+    .eq('associated_contact_id', contactId)
+    .eq('exam_date', examDate)
+    .neq('is_active', 'Cancelled')
+    .neq('is_active', 'cancelled')
+    .limit(1);
+
+  if (error) {
+    console.error(`❌ Supabase duplicate check error for contact ${contactId} on ${examDate}:`, error.message);
+    throw error;
+  }
+
+  return data && data.length > 0;
+}
+
 // ============== WRITE SYNC OPERATIONS (after HubSpot write) ==============
 
 /**
@@ -315,40 +340,31 @@ async function updateBookingStatusInSupabase(bookingId, newStatus) {
 
 /**
  * Update exam total_bookings in Supabase
- * Supports atomic increment/decrement operations to avoid race conditions
- *
  * @param {string} examId - HubSpot ID
- * @param {number|null} totalBookings - Absolute value to set, or null for atomic operations
- * @param {string} operation - 'set' (default), 'increment', or 'decrement'
- * @param {number} delta - Amount to increment/decrement (default: 1)
- *
- * @example
- * // Set absolute value (legacy behavior)
- * await updateExamBookingCountInSupabase('123', 10);
- *
- * // Atomic increment
- * await updateExamBookingCountInSupabase('123', null, 'increment');
- *
- * // Atomic decrement
- * await updateExamBookingCountInSupabase('123', null, 'decrement');
+ * @param {number} totalBookings - New total bookings count
  */
-async function updateExamBookingCountInSupabase(examId, totalBookings = null, operation = 'set', delta = 1) {
+/**
+ * Update exam booking count in Supabase
+ * Supports three modes: 'set' (absolute), 'increment', 'decrement'
+ * @param {string} examId - HubSpot exam ID
+ * @param {number} totalBookings - For 'set' mode: absolute value. For increment/decrement: delta amount
+ * @param {string} operation - 'set' | 'increment' | 'decrement'
+ */
+async function updateExamBookingCountInSupabase(examId, totalBookings, operation = 'set') {
   try {
     if (operation === 'increment' || operation === 'decrement') {
-      // ATOMIC OPERATION: Use PostgreSQL increment/decrement
-      const operator = operation === 'increment' ? '+' : '-';
-      const actualDelta = operation === 'increment' ? delta : -delta;
+      // ATOMIC OPERATION: Use PostgreSQL increment/decrement RPC
+      const delta = operation === 'increment' ? totalBookings : -totalBookings;
 
       console.log(`🔍 [RPC DEBUG] Calling increment_exam_bookings with:`, {
         examId,
         operation,
-        delta,
-        actualDelta
+        delta
       });
 
       const { data, error } = await supabaseAdmin.rpc('increment_exam_bookings', {
         p_exam_id: examId,
-        p_delta: actualDelta
+        p_delta: delta
       });
 
       if (error) {
@@ -367,8 +383,8 @@ async function updateExamBookingCountInSupabase(examId, totalBookings = null, op
 
         const currentCount = parseInt(exam?.total_bookings) || 0;
         const newCount = operation === 'increment'
-          ? currentCount + delta
-          : Math.max(0, currentCount - delta); // Prevent negative counts
+          ? currentCount + totalBookings
+          : Math.max(0, currentCount - totalBookings); // Prevent negative counts
 
         const { error: updateError } = await supabaseAdmin
           .from('hubspot_mock_exams')
@@ -385,9 +401,9 @@ async function updateExamBookingCountInSupabase(examId, totalBookings = null, op
         return;
       }
 
-      console.log(`✅ ${operation === 'increment' ? 'Incremented' : 'Decremented'} exam ${examId} total_bookings in Supabase (atomic) - new value: ${data}`);
+      console.log(`✅ ${operation === 'increment' ? 'Incremented' : 'Decremented'} exam ${examId} total_bookings in Supabase (atomic RPC) - new value: ${data}`);
     } else {
-      // ABSOLUTE SET: Set exact value (legacy behavior)
+      // ABSOLUTE SET: Set exact value (legacy behavior for cron sync)
       const { error } = await supabaseAdmin
         .from('hubspot_mock_exams')
         .update({
@@ -407,23 +423,7 @@ async function updateExamBookingCountInSupabase(examId, totalBookings = null, op
   }
 }
 
-/**
- * Delete booking from Supabase
- * @param {string} bookingId - HubSpot ID
- */
-async function deleteBookingFromSupabase(bookingId) {
-  const { error } = await supabaseAdmin
-    .from('hubspot_bookings')
-    .delete()
-    .eq('hubspot_id', bookingId);
 
-  if (error) {
-    console.error(`❌ Supabase booking delete error:`, error.message);
-    throw error;
-  }
-
-  console.log(`✅ Deleted booking ${bookingId} from Supabase`);
-}
 
 /**
  * Delete exam from Supabase
@@ -554,7 +554,193 @@ async function updateContactCreditsInSupabase(contactId, mockType, newSpecificCr
   console.log(`✅ [SUPABASE SYNC] Updated secondary DB for contact ${contactId} (${mockType})`);
 }
 
+/**
+ * Create booking atomically via RPC
+ * @param {Object} params - Booking parameters
+ * @returns {Promise<Object>} Booking result
+ */
+
+async function createBookingAtomic({
+  bookingId,
+  studentId,
+  studentEmail,
+  mockExamId,
+  studentName,
+  tokenUsed,
+  attendingLocation,
+  dominantHand,
+  idempotencyKey,
+  creditField,
+  newCreditValue
+}) {
+  console.log('[SUPABASE] Creating booking atomically:', { bookingId, studentId });
+
+  const { data, error } = await supabaseAdmin.rpc('create_booking_atomic', {
+    p_booking_id: bookingId,
+    p_student_id: studentId,
+    p_student_email: studentEmail,
+    p_mock_exam_id: mockExamId,
+    p_student_name: studentName,
+    p_token_used: tokenUsed,
+    p_attending_location: attendingLocation,
+    p_dominant_hand: dominantHand,
+    p_idempotency_key: idempotencyKey,
+    p_credit_field: creditField,
+    p_new_credit_value: newCreditValue
+  });
+
+  if (error) {
+    console.error('[SUPABASE] Atomic booking failed:', {
+      error: error.message,
+      code: error.code,
+      bookingId,
+      studentId
+    });
+
+    // Check for idempotency (duplicate key)
+    if (error.code === '23505') {
+      return {
+        success: true,
+        idempotent: true,
+        message: 'Duplicate request - booking already exists'
+      };
+    }
+
+    throw new Error(error.message);
+  }
+
+  console.log('[SUPABASE] Booking created successfully:', {
+    bookingId: data.booking_id,
+    bookingCode: data.booking_code
+  });
+
+  return {
+    success: true,
+    idempotent: false,
+    data
+  };
+}
+
+/**
+ * Cancel booking atomically via RPC
+ * @param {Object} params - Cancellation parameters
+ * @returns {Promise<Object>} Cancellation result
+ */
+async function cancelBookingAtomic({
+  bookingId,  // UUID (id column, not hubspot_id)
+  creditField,
+  restoredCreditValue
+}) {
+  console.log('[SUPABASE] Cancelling booking atomically:', { bookingId });
+
+  const { data, error } = await supabaseAdmin.rpc('cancel_booking_atomic', {
+    p_booking_id: bookingId,
+    p_credit_field: creditField,
+    p_restored_credit_value: restoredCreditValue
+  });
+
+  if (error) {
+    console.error('[SUPABASE] Atomic cancellation failed:', {
+      error: error.message,
+      code: error.code,
+      bookingId
+    });
+    throw new Error(error.message);
+  }
+
+  console.log('[SUPABASE] Booking cancelled successfully:', {
+    bookingId: data.booking_id
+  });
+
+  return {
+    success: true,
+    data
+  };
+}
+
+/**
+ * Check idempotency key via RPC
+ * @param {string} idempotencyKey - The key to check
+ * @returns {Promise<Object|null>} Existing booking or null
+ */
+async function checkIdempotencyKey(idempotencyKey) {
+  if (!idempotencyKey) return null;
+
+  const { data, error } = await supabaseAdmin.rpc('check_idempotency_key', {
+    p_idempotency_key: idempotencyKey
+  });
+
+  if (error) {
+    console.warn('[SUPABASE] Idempotency check failed:', error.message);
+    return null;  // Treat as not found
+  }
+
+  if (data && data.found) {
+    console.log('[SUPABASE] Idempotency key found:', {
+      bookingId: data.booking_id,
+      isActive: data.is_active
+    });
+    return data;
+  }
+
+  return null;
+}
+
+
+/**
+ * Get booking with cascading lookup
+ * Priority: hubspot_id → id (UUID) → booking_id
+ *
+ * @param {string} identifier - The booking identifier (could be any of the 3 types)
+ * @returns {Promise<Object|null>} Booking record or null
+ */
+
+async function getBookingCascading(identifier) {
+  if (!identifier) return null;
+
+  console.log('[SUPABASE] Cascading booking lookup:', { identifier });
+
+  // Determine identifier type
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+
+  // Priority 1: If it's a UUID, search by id (primary key - fastest)
+  if (isUUID) {
+    const { data, error } = await supabaseAdmin
+      .from('hubspot_bookings')
+      .select('*')
+      .eq('id', identifier)
+      .single();
+
+    if (!error && data) {
+      console.log('[SUPABASE] Found by id (UUID):', identifier);
+      return data;
+    }
+  }
+
+  // Priority 2: Otherwise assume it's hubspot_id (numeric string or legacy)
+  const { data, error } = await supabaseAdmin
+    .from('hubspot_bookings')
+    .select('*')
+    .eq('hubspot_id', identifier)
+    .single();
+
+  if (!error && data) {
+    console.log('[SUPABASE] Found by hubspot_id:', identifier);
+    return data;
+  }
+
+  // Not found
+  console.warn('[SUPABASE] Booking not found with identifier:', identifier);
+  return null;
+}
+
+
+
+
+
 module.exports = {
+  // Supabase client (for direct queries when needed)
+  supabaseAdmin,
   // Reads
   getBookingsFromSupabase,
   getBookingsByContactFromSupabase,
@@ -562,15 +748,19 @@ module.exports = {
   getExamByIdFromSupabase,
   getBookingByIdFromSupabase,
   getActiveBookingsCountFromSupabase,
+  checkExistingBookingInSupabase,
   getContactCreditsFromSupabase,
+  getBookingCascading,
   // Write syncs
   syncBookingToSupabase,
   syncBookingsToSupabase,
   syncExamToSupabase,
   updateBookingStatusInSupabase,
   updateExamBookingCountInSupabase,
-  deleteBookingFromSupabase,
   deleteExamFromSupabase,
   syncContactCreditsToSupabase,
-  updateContactCreditsInSupabase
+  updateContactCreditsInSupabase,
+  createBookingAtomic,
+  cancelBookingAtomic,
+  checkIdempotencyKey,
 };

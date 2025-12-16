@@ -1,14 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import apiService, { transformLoginCreditsToCache } from '../services/api';
 
 /**
+ * Simplified credit fetching hook - always fetches fresh data
+ * No caching layer - components refetch on mount
+ * Event-driven updates only for MyBookings (modal-based UI)
+ */
+
+/**
  * Custom hook for fetching credit data
- * No caching - always fetches fresh from API
+ * Always fetches fresh data from API - no caching layer
  *
  * @returns {{
  *   credits: Object | null,
  *   loading: boolean,
- *   fetchCredits: (studentId: string, email: string) => Promise<void>,
+ *   fetchCredits: (studentId: string, email: string) => Promise<Object>,
  *   invalidateCache: () => void
  * }}
  */
@@ -18,11 +24,11 @@ export function useCachedCredits() {
 
   /**
    * Fetches credit data for all exam types
-   * Always fetches fresh from API - no caching
+   * Always fetches fresh data from the API (no caching)
    *
    * @param {string} studentId - The student's ID
    * @param {string} email - The student's email
-   * @returns {Promise<Object>} The fetched credit data
+   * @returns {Promise<Object>} - Credit data object
    */
   const fetchCredits = async (studentId, email) => {
     setLoading(true);
@@ -44,7 +50,7 @@ export function useCachedCredits() {
       });
 
       setCredits(newCreditData);
-      return newCreditData; // Return the data for immediate use
+      return newCreditData;
     } catch (error) {
       console.error('Error fetching credits:', error);
       throw error;
@@ -54,11 +60,16 @@ export function useCachedCredits() {
   };
 
   /**
-   * Invalidates the cache (no-op now, kept for API compatibility)
+   * Invalidates the cache and dispatches event
+   * Kept for backward compatibility with event-driven components (MyBookings)
    */
   const invalidateCache = () => {
-    console.log('🔄 [CREDITS] Cache invalidation called (no cache to invalidate)');
-    // Dispatch event for other parts of the app
+    console.log('🔄 [CACHE INVALIDATED] Clearing credits cache');
+
+    // Clear component state
+    setCredits(null);
+
+    // Dispatch custom event for MyBookings component
     window.dispatchEvent(new CustomEvent('creditsInvalidated'));
   };
 
@@ -71,23 +82,34 @@ export function useCachedCredits() {
 }
 
 /**
- * Standalone invalidation function for components that don't use the hook
- * Dispatches event to notify components to refetch credits
+ * Standalone event dispatcher for triggering credit updates
+ * Dispatches creditsInvalidated event for MyBookings component
  *
- * Used by BookingForm and other components to signal credit changes
+ * Used by BookingForm after booking creation to notify MyBookings
+ * (MyBookings uses modal UI, stays mounted, needs event notification)
  *
  * @example
  * import { invalidateCreditsCache } from '../hooks/useCachedCredits';
- * // After booking creation or cancellation
+ * // After booking creation
  * invalidateCreditsCache();
+ * navigate('/confirmation');
  */
 export const invalidateCreditsCache = () => {
-  console.log('🔄 [CREDITS INVALIDATION] Dispatching creditsInvalidated event');
+  console.log('🔄 [STANDALONE CACHE INVALIDATION] Dispatching creditsInvalidated event');
 
-  // Dispatch global event for components to react
+  // Dispatch global event for MyBookings component to react
   window.dispatchEvent(new CustomEvent('creditsInvalidated'));
 
-  console.log('✅ [CREDITS] Invalidation event dispatched');
+  console.log('✅ [STANDALONE CACHE INVALIDATION] Event dispatched');
+};
+
+/**
+ * Reset cache for testing purposes
+ * @private
+ */
+export const __resetCache = () => {
+  // No-op for testing compatibility
+  console.log('✅ [RESET CACHE] No cache to reset (using fresh-fetch strategy)');
 };
 
 export default useCachedCredits;

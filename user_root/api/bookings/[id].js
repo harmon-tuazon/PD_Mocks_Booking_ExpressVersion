@@ -44,8 +44,14 @@ const {
   rateLimitMiddleware,
   sanitizeInput
 } = require('../_shared/auth');
-const { updateBookingStatusInSupabase, updateContactCreditsInSupabase, updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
-const { getCache } = require('../_shared/cache');
+const {
+  getBookingCascading,
+  cancelBookingAtomic,
+  getContactCreditsFromSupabase,
+  getBookingsFromSupabase,
+  getExamByIdFromSupabase
+} = require('../_shared/supabase-data');
+const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
 
 // Handler function for GET /api/bookings/[id]
 async function handler(req, res) {
@@ -386,19 +392,8 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       reason
     });
 
-    // Step 1: Get comprehensive booking data with associations
-    let booking;
-    try {
-      booking = await hubspot.getBookingWithAssociations(bookingId);
-      console.log('✅ Booking found with associations:', {
-        id: booking.id || booking.data?.id,
-        booking_id: booking.data?.properties?.booking_id || booking.properties?.booking_id,
-        status: booking.data?.properties?.status || booking.properties?.status,
-        is_active: booking.data?.properties?.is_active || booking.properties?.is_active,
-        hasContactAssoc: !!(booking.associations?.[HUBSPOT_OBJECTS.contacts]?.results?.length),
-        hasMockExamAssoc: !!(booking.associations?.[HUBSPOT_OBJECTS.mock_exams]?.results?.length)
-      });
-    } catch (error) {
+    const booking = await getBookingCascading(bookingId);
+    if (!booking) {
       console.error('❌ Booking not found:', bookingId);
       const notFoundError = new Error('Booking not found');
       notFoundError.status = 404;
@@ -406,18 +401,21 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       throw notFoundError;
     }
 
+    console.log('✅ Booking found:', {
+      id: booking.id,
+      booking_id: booking.booking_id,
+      is_active: booking.is_active,
+      student_id: booking.student_id,
+      associated_mock_exam: booking.associated_mock_exam,
+      associated_contact_id: booking.associated_contact_id // For cache invalidation
+    });
+   
+
     // Normalize booking data structure
-    const bookingData = booking.data || booking;
-    const bookingProperties = bookingData.properties || {};
+    const bookingData = booking;
 
-    // Step 2: Check if already cancelled
-    const currentStatus = bookingProperties.status;
-    const isActive = bookingProperties.is_active;
-
-    // Check both status field and is_active field for cancelled state
-    if (currentStatus === 'canceled' || currentStatus === 'cancelled' ||
-        isActive === 'Cancelled' || isActive === 'cancelled' ||
-        isActive === false || isActive === 'false') {
+    // Step 2: Check if already cancelled (Supabase uses boolean is_active)
+    if (!bookingData.is_active) {
       console.log('⚠️ Booking already cancelled');
       const error = new Error('Booking is already cancelled');
       error.status = 409;
@@ -425,358 +423,212 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       throw error;
     }
 
-    // Step 3: Get Mock Exam details if associated
-    let mockExamId = null;
-    let mockExamDetails = null;
+    // Step 3: Determine credit field to restore based on token_used
+    const tokenUsed = bookingData.token_used;
 
-    const mockExamAssociations = booking.associations?.[HUBSPOT_OBJECTS.mock_exams]?.results || [];
-    if (mockExamAssociations.length > 0) {
-      mockExamId = mockExamAssociations[0].id || mockExamAssociations[0].toObjectId;
-      console.log(`📚 Found Mock Exam association: ${mockExamId}`);
-
-      try {
-        const mockExamResponse = await hubspot.getMockExam(mockExamId);
-        if (mockExamResponse?.data) {
-          mockExamDetails = mockExamResponse.data.properties;
-          console.log('✅ Mock Exam details retrieved:', {
-            id: mockExamId,
-            mock_type: mockExamDetails.mock_type,
-            exam_date: mockExamDetails.exam_date,
-            location: mockExamDetails.location
-          });
-        }
-      } catch (examError) {
-        console.warn('⚠️ Failed to fetch Mock Exam details:', examError.message);
-        // Continue without Mock Exam details
-      }
-    }
-
-    // Step 4: Prepare cancellation data for note
-    const cancellationData = {
-      booking_id: bookingProperties.booking_id || bookingData.id,
-      mock_type: mockExamDetails?.mock_type || bookingProperties.mock_type || 'Mock Exam',
-      exam_date: mockExamDetails?.exam_date || bookingProperties.exam_date,
-      location: mockExamDetails?.location || bookingProperties.location || 'Location TBD',
-      name: bookingProperties.name || contact.properties?.firstname + ' ' + contact.properties?.lastname,
-      email: bookingProperties.email || contact.properties?.email,
-      reason: reason || 'User requested cancellation',
-      token_used: bookingProperties.token_used || 'Not specified'
+    const tokenToCreditFieldMapping = {
+      'Situational Judgment Token': 'sj_credits',
+      'Clinical Skills Token': 'cs_credits',
+      'Mini-mock Token': 'sjmini_credits',
+      'Mock Discussion Token': 'mock_discussion_token',
+      'Shared Token': 'shared_mock_credits'
     };
 
-    console.log('📝 Cancellation data prepared:', cancellationData);
+    const creditField = tokenToCreditFieldMapping[tokenUsed];
 
-    // Step 5: Create cancellation note on Contact timeline
-    let noteCreated = false;
-    if (contactId) {
-      try {
-        await hubspot.createBookingCancellationNote(contactId, cancellationData);
-        console.log(`✅ Cancellation note created for Contact ${contactId}`);
-        noteCreated = true;
-      } catch (noteError) {
-        console.error('❌ Failed to create cancellation note:', noteError.message);
-        // Continue with deletion even if note creation fails
-      }
-    } else {
-      console.warn('⚠️ No Contact ID available for note creation');
+    if (!creditField) {
+      console.warn(`⚠️ Unknown token type: ${tokenUsed}, cannot restore credits`);
     }
 
-    // Step 6: Trigger webhook to sync total_bookings (will be done after Redis decrement)
-    // Webhook will be triggered after Redis counter is updated in Step 7.5
-    let bookingsDecremented = false;
-    let creditsCacheInvalidated = false;
+    // Get current credits to calculate restored value
+    const currentCredits = await getContactCreditsFromSupabase(
+      bookingData.student_id,
+      bookingData.student_email
+    );
 
-    // Step 6.5: Restore credits to contact
-    let creditsRestored = null;
-    const tokenUsed = bookingProperties.token_used;
+    const restoredCreditValue = (currentCredits?.[creditField] || 0) + 1;
 
-    if (contactId && tokenUsed) {
-      try {
-        console.log('💳 Restoring credits for cancelled booking:', {
-          contactId,
-          tokenUsed,
-          currentCredits: {
-            sj_credits: parseInt(contact.properties?.sj_credits) || 0,
-            cs_credits: parseInt(contact.properties?.cs_credits) || 0,
-            sjmini_credits: parseInt(contact.properties?.sjmini_credits) || 0,
-            shared_mock_credits: parseInt(contact.properties?.shared_mock_credits) || 0
-          }
-        });
+    console.log('💳 Credit restoration plan:', {
+      tokenUsed,
+      creditField,
+      currentValue: currentCredits?.[creditField] || 0,
+      restoredValue: restoredCreditValue
+    });
 
-        const currentCredits = {
-          sj_credits: parseInt(contact.properties?.sj_credits) || 0,
-          cs_credits: parseInt(contact.properties?.cs_credits) || 0,
-          sjmini_credits: parseInt(contact.properties?.sjmini_credits) || 0,
-          shared_mock_credits: parseInt(contact.properties?.shared_mock_credits) || 0
-        };
-
-        creditsRestored = await hubspot.restoreCredits(contactId, tokenUsed, currentCredits);
-        console.log('✅ Credits restored successfully:', creditsRestored);
-
-        // Sync credit restoration to Supabase (non-blocking)
-        if (creditsRestored) {
-          // Map token to mock_type for Supabase sync
-          const tokenToMockTypeMapping = {
-            'Situational Judgment Token': 'Situational Judgment',
-            'Clinical Skills Token': 'Clinical Skills',
-            'Mini-mock Token': 'Mini-mock',
-            'Mock Discussion Token': 'Mock Discussion',
-            'Shared Token': mockExamDetails?.mock_type || bookingProperties.mock_type || 'Situational Judgment'
-          };
-
-          const mockTypeForSync = tokenToMockTypeMapping[tokenUsed] || mockExamDetails?.mock_type || bookingProperties.mock_type;
-
-          // Calculate new credit values for Supabase sync
-          const newCredits = { ...currentCredits };
-          newCredits[creditsRestored.credit_type] = creditsRestored.new_balance;
-
-          // Determine specific and shared credits based on credit_type
-          let newSpecificCredits = 0;
-          let newSharedCredits = newCredits.shared_mock_credits;
-
-          if (creditsRestored.credit_type === 'sj_credits') {
-            newSpecificCredits = newCredits.sj_credits;
-          } else if (creditsRestored.credit_type === 'cs_credits') {
-            newSpecificCredits = newCredits.cs_credits;
-          } else if (creditsRestored.credit_type === 'sjmini_credits') {
-            newSpecificCredits = newCredits.sjmini_credits;
-            newSharedCredits = 0; // Mini-mock doesn't use shared
-          } else if (creditsRestored.credit_type === 'mock_discussion_token') {
-            newSpecificCredits = newCredits.mock_discussion_token;
-            newSharedCredits = 0; // Mock Discussion doesn't use shared
-          } else if (creditsRestored.credit_type === 'shared_mock_credits') {
-            newSharedCredits = newCredits.shared_mock_credits;
-            // Get specific credits from mock_type
-            if (mockTypeForSync === 'Situational Judgment') {
-              newSpecificCredits = newCredits.sj_credits;
-            } else if (mockTypeForSync === 'Clinical Skills') {
-              newSpecificCredits = newCredits.cs_credits;
-            }
-          }
-
-          updateContactCreditsInSupabase(contactId, mockTypeForSync, newSpecificCredits, newSharedCredits)
-            .then(() => {
-              console.log(`✅ [SUPABASE SYNC] Contact credits synced for ${contactId} after cancellation`);
-            })
-            .catch(supabaseError => {
-              console.error(`⚠️ [SUPABASE SYNC] Failed to sync contact credits to Supabase (non-blocking):`, supabaseError.message);
-              // Don't block cancellation - Supabase will sync on next cron run
-            });
-        }
-      } catch (creditError) {
-        console.error('❌ Failed to restore credits:', creditError.message);
-        // Continue with cancellation even if credit restoration fails
-        // This ensures booking is still cancelled but admin may need to manually restore credits
-      }
-    } else {
-      console.warn('⚠️ Cannot restore credits: missing contactId or tokenUsed property');
-    }
-
-    // Step 7: Perform soft delete (mark as cancelled)
+    // Step 4: Cancel booking atomically (Supabase-first)
+    let cancellationResult;
     try {
-      await hubspot.softDeleteBooking(bookingId);
-      console.log(`✅ Booking ${bookingId} marked as cancelled in HubSpot`);
-    } catch (deleteError) {
-      console.error('❌ Failed to soft delete booking:', deleteError);
-      const softDeleteError = new Error('Failed to cancel booking');
-      softDeleteError.status = 500;
-      softDeleteError.code = 'SOFT_DELETE_FAILED';
-      throw softDeleteError;
+      cancellationResult = await cancelBookingAtomic({
+        bookingId: bookingData.id,  // UUID primary key
+        creditField,
+        restoredCreditValue
+      });
+
+      console.log('✅ Booking cancelled atomically:', {
+        bookingId: bookingData.id,
+        booking_code: bookingData.booking_id,
+        creditField,
+        restoredValue: restoredCreditValue
+      });
+    } catch (cancelError) {
+      console.error('❌ Atomic cancellation failed:', cancelError.message);
+      const error = new Error('Failed to cancel booking');
+      error.status = 500;
+      error.code = 'CANCEL_FAILED';
+      throw error;
     }
 
-    // Step 7.1: Sync cancellation to Supabase
-    let supabaseSynced = false;
+    // Step 5: Decrement Supabase total_bookings atomically
+    const { updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
+
     try {
-      await updateBookingStatusInSupabase(bookingId, 'Cancelled');
-      console.log(`✅ Booking ${bookingId} marked as cancelled in Supabase`);
-      supabaseSynced = true;
+      await updateExamBookingCountInSupabase(bookingData.associated_mock_exam, 1, 'decrement');
+      console.log(`✅ [SUPABASE] Decremented exam ${bookingData.associated_mock_exam} total_bookings atomically`);
     } catch (supabaseError) {
-      console.error('❌ Failed to sync cancellation to Supabase:', supabaseError.message);
-      // Continue - HubSpot is source of truth, Supabase sync failure is non-blocking
+      console.error(`❌ [SUPABASE] Failed to decrement total_bookings:`, supabaseError.message);
+      // Non-blocking - continue even if Supabase update fails
     }
 
-    // Step 7.5: Update Redis counters and invalidate cache (CRITICAL for eventual consistency + ENHANCED LOGGING)
-    console.log(`🔍 [REDIS DEBUG] Starting user cancellation cache invalidation for booking ${bookingId}`);
-    console.log(`🔍 [REDIS DEBUG] - contactId: ${contactId}`);
-    console.log(`🔍 [REDIS DEBUG] - mockExamId: ${mockExamId}`);
+    // ========================================================================
+    // DUAL WEBHOOK INTEGRATION - Sync to HubSpot (fire-and-forget)
+    // ========================================================================
+    const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
 
+    // Decrement Redis counter for real-time capacity tracking
     const RedisLockService = require('../_shared/redis');
     const redis = new RedisLockService();
+    const newTotalBookings = await redis.decr(`exam:${bookingData.associated_mock_exam}:bookings`);
+    console.log(`✅ Decremented Redis counter: exam:${bookingData.associated_mock_exam}:bookings = ${newTotalBookings}`);
 
+    // Fire-and-forget webhook sync
+    process.nextTick(() => {
+      (async () => {
+        // Webhook 1: Sync exam total_bookings to HubSpot
+        const examSyncResult = await HubSpotWebhookService.syncWithRetry(
+          'totalBookings',
+          bookingData.associated_mock_exam,
+          newTotalBookings
+        );
+
+        if (examSyncResult.success) {
+          console.log(`✅ [WEBHOOK-EXAM] HubSpot exam count synced after cancellation: ${examSyncResult.message}`);
+        } else {
+          console.error(`❌ [WEBHOOK-EXAM] Exam sync failed after cancellation: ${examSyncResult.message}`);
+        }
+
+        // Webhook 2: Sync contact credits to HubSpot (restore credit)
+        const restoredCredits = {
+          sj_credits: currentCredits?.sj_credits || 0,
+          cs_credits: currentCredits?.cs_credits || 0,
+          sjmini_credits: currentCredits?.sjmini_credits || 0,
+          mock_discussion_token: currentCredits?.mock_discussion_token || 0,
+          shared_mock_credits: currentCredits?.shared_mock_credits || 0
+        };
+
+        // Update the restored field
+        if (creditField) {
+          restoredCredits[creditField] = restoredCreditValue;
+        }
+
+        const creditsSyncResult = await HubSpotWebhookService.syncContactCredits(
+          contactId,
+          bookingData.student_email,
+          restoredCredits
+        );
+
+        if (creditsSyncResult.success) {
+          console.log(`✅ [WEBHOOK-CREDITS] HubSpot credits synced after cancellation: ${creditsSyncResult.message}`);
+        } else {
+          console.error(`❌ [WEBHOOK-CREDITS] Credits sync failed after cancellation: ${creditsSyncResult.message}`);
+        }
+      })().catch(err => {
+        console.error('❌ [WEBHOOK] Unexpected error in webhook sync:', err.message);
+      });
+    });
+
+    // Step 6: Invalidate caches
     try {
-      console.log(`🔍 [REDIS DEBUG] Redis instance created successfully`);
+      // 6.1. Decrement counter was already done above
 
-      // 1. Decrement Redis counter immediately (real-time availability update)
-      if (mockExamId) {
-        const counterKey = `exam:${mockExamId}:bookings`;
-        const counterBefore = await redis.get(counterKey);
-        const currentCount = parseInt(counterBefore) || 0;
-        console.log(`🔍 [REDIS DEBUG] Counter before decrement: ${counterBefore}`);
+      // Validate counter value (ensure it's not negative due to race conditions)
+      if (newTotalBookings < 0) {
+        console.warn(`⚠️ [REDIS] Negative booking counter detected: ${newTotalBookings}, resetting to 0`);
+        const counterKey = `exam:${bookingData.associated_mock_exam}:bookings`;
+        const hubspot = new HubSpotService();
+        const mockExam = await hubspot.getMockExam(bookingData.associated_mock_exam);
 
-        let newCount;
-        // Safety check: Don't decrement below 0 (indicates counter drift)
-        if (currentCount <= 0) {
-          console.warn(`⚠️ [REDIS] Counter is already at ${currentCount}, cannot decrement. Setting to 0.`);
-          console.warn(`⚠️ [REDIS] This indicates counter drift - reconciliation cron will fix this.`);
-
-          // Preserve TTL when resetting to 0
-          const TTL_30_DAYS = 30 * 24 * 60 * 60; // 2,592,000 seconds
+        if (mockExam) {
+          const correctCount = parseInt(mockExam.properties.total_bookings) || 0;
+          const TTL_30_DAYS = 30 * 24 * 60 * 60;
+          await redis.setex(counterKey, TTL_30_DAYS, correctCount);
+          console.log(`✅ [REDIS] Counter corrected to ${correctCount} from HubSpot`);
+        } else {
+          // Reset to 0 if counter is invalid
+          const TTL_30_DAYS = 30 * 24 * 60 * 60;
           await redis.setex(counterKey, TTL_30_DAYS, 0);
-          newCount = 0;
-          console.log(`✅ Redis counter reset to 0 for exam ${mockExamId} (TTL preserved: 90 days)`);
-        } else {
-          newCount = await redis.decr(counterKey);
-          console.log(`🔍 [REDIS DEBUG] Counter after decrement: ${newCount}`);
-          console.log(`✅ Redis counter decremented for exam ${mockExamId}: ${counterBefore} → ${newCount}`);
+          console.log(`✅ [REDIS] Reset counter to 0 for exam ${bookingData.associated_mock_exam}`);
         }
-
-        // SUPABASE SYNC: Atomically decrement exam booking count in Supabase
-        try {
-          await updateExamBookingCountInSupabase(mockExamId, null, 'decrement');
-        } catch (supabaseError) {
-          console.error(`⚠️ Supabase exam count sync failed (non-blocking):`, supabaseError.message);
-          // Fallback is built into the function - it will fetch and update if RPC fails
-        }
-
-        // Trigger HubSpot workflow via webhook (async, non-blocking)
-        const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
-
-        process.nextTick(async () => {
-          const result = await HubSpotWebhookService.syncWithRetry(
-            mockExamId,
-            newCount,
-            3 // 3 retries with exponential backoff
-          );
-
-          if (result.success) {
-            console.log(`✅ [WEBHOOK] HubSpot workflow triggered after cancellation: ${result.message}`);
-            bookingsDecremented = true;
-          } else {
-            console.error(`❌ [WEBHOOK] All retry attempts failed: ${result.message}`);
-            console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
-          }
-        });
-      } else {
-        console.warn(`⚠️ [REDIS DEBUG] No mockExamId found, skipping counter decrement`);
       }
 
-      // 2. Invalidate duplicate detection cache (CRITICAL for rebooking)
-      // This allows the user to immediately book the same date again
-      const exam_date = mockExamDetails?.exam_date || bookingProperties.exam_date;
-      console.log(`🔍 [REDIS DEBUG] - exam_date: ${exam_date}`);
+      // 6.2. Invalidate duplicate detection cache (allows immediate rebooking)
+      // Use associated_contact_id (numeric HubSpot contact ID) to match create.js format
+      // Format: booking:{hubspot_contact_id}:{exam_date}
+      // CRITICAL: Normalize exam_date to YYYY-MM-DD format to match create.js
+      console.log(`🔍 [DEBUG] Cache invalidation check:`, {
+        associated_contact_id: bookingData.associated_contact_id,
+        exam_date: bookingData.exam_date,
+        hasContactId: !!bookingData.associated_contact_id,
+        hasExamDate: !!bookingData.exam_date
+      });
 
-      if (contactId && exam_date) {
-        const redisKey = `booking:${contactId}:${exam_date}`;
-        console.log(`🔍 [REDIS DEBUG] Attempting to delete cache key: "${redisKey}"`);
+      if (bookingData.associated_contact_id && bookingData.exam_date) {
+        // Normalize date to YYYY-MM-DD format (Supabase returns ISO timestamp)
+        // Extract just the date portion: "2026-03-01T00:00:00+00:00" -> "2026-03-01"
+        const normalizedDate = bookingData.exam_date.split('T')[0];
 
-        // Check if key exists before deletion
-        const keyExistsBefore = await redis.get(redisKey);
-        console.log(`🔍 [REDIS DEBUG] Cache key exists before deletion: ${keyExistsBefore !== null} (value: ${keyExistsBefore})`);
+        const duplicateKey = `booking:${bookingData.associated_contact_id}:${normalizedDate}`;
+        console.log(`🔍 [DEBUG] Attempting to delete cache key: ${duplicateKey} (normalized date: ${normalizedDate})`);
+        const deletedCount = await redis.del(duplicateKey);
 
-        // Delete the cache key
-        const deletedCount = await redis.del(redisKey);
-        console.log(`🔍 [REDIS DEBUG] redis.del() returned: ${deletedCount} (1 = deleted, 0 = key didn't exist)`);
-
-        // Verify deletion
-        const keyExistsAfter = await redis.get(redisKey);
-        console.log(`🔍 [REDIS DEBUG] Cache key exists after deletion: ${keyExistsAfter !== null} (should be false)`);
-
-        if (keyExistsAfter === null) {
-          console.log(`✅ [REDIS] Successfully invalidated duplicate cache: ${redisKey}`);
+        if (deletedCount > 0) {
+          console.log(`✅ [REDIS] Invalidated duplicate cache: ${duplicateKey}`);
         } else {
-          console.error(`❌ [REDIS] CRITICAL: Cache key still exists after deletion! Value: ${keyExistsAfter}`);
+          console.warn(`⚠️ [REDIS] Cache key not found: ${duplicateKey} (may have already expired or never existed)`);
         }
       } else {
-        console.warn(`⚠️ [REDIS DEBUG] Cannot invalidate cache - missing data:`, {
-          hasContactId: !!contactId,
-          hasExamDate: !!exam_date
+        console.error(`❌ [REDIS] Cannot invalidate cache - missing data:`, {
+          associated_contact_id: bookingData.associated_contact_id,
+          exam_date: bookingData.exam_date
         });
       }
 
-      // 3. CRITICAL: Invalidate contact credits cache (ensures frontend gets fresh token data)
-      // This is the same pattern used in booking creation (create.js)
-      if (studentId) {
-        try {
-          const cache = getCache();
-          const creditsCachePattern = `contact:credits:${studentId}:*`;
-          const creditsInvalidatedCount = await cache.deletePattern(creditsCachePattern);
+      // 6.3. Invalidate contact credits cache (ensures frontend gets updated tokens)
+      if (bookingData.student_id) {
+        const creditsCachePattern = `contact:credits:${bookingData.student_id}:*`;
+        const creditsInvalidatedCount = await redis.cacheDeletePattern(creditsCachePattern);
 
-          if (creditsInvalidatedCount > 0) {
-            console.log(`✅ [Credits Cache Invalidation] Invalidated ${creditsInvalidatedCount} credits cache entries for student ${studentId} after cancellation`);
-            creditsCacheInvalidated = true;
-          } else {
-            console.log(`ℹ️ [Credits Cache Invalidation] No credits cache entries found (pattern: "${creditsCachePattern}")`);
-            creditsCacheInvalidated = true; // Still considered success - cache was empty
-          }
-        } catch (creditsCacheError) {
-          console.error('❌ Credits cache invalidation failed:', {
-            error: creditsCacheError.message,
-            stack: creditsCacheError.stack
-          });
-          // Non-blocking - continue even if Redis cache invalidation fails
+        if (creditsInvalidatedCount > 0) {
+          console.log(`✅ [CACHE] Invalidated ${creditsInvalidatedCount} credits cache entries`);
         }
-      } else {
-        console.warn('⚠️ [Credits Cache] Cannot invalidate credits cache - missing studentId');
-      }
-
-      // 4. CRITICAL: Invalidate bookings list cache (ensures frontend gets fresh booking data)
-      // This prevents time conflict warnings for cancelled bookings during immediate rebook
-      if (contactId) {
-        try {
-          const cache = getCache();
-          const bookingsCachePattern = `bookings:contact:${contactId}:*`;
-          const bookingsInvalidatedCount = await cache.deletePattern(bookingsCachePattern);
-
-          if (bookingsInvalidatedCount > 0) {
-            console.log(`✅ [Bookings Cache Invalidation] Invalidated ${bookingsInvalidatedCount} bookings cache entries for contact ${contactId} after cancellation`);
-          } else {
-            console.log(`ℹ️ [Bookings Cache Invalidation] No bookings cache entries found (pattern: "${bookingsCachePattern}")`);
-          }
-        } catch (bookingsCacheError) {
-          console.error('❌ Bookings cache invalidation failed:', {
-            error: bookingsCacheError.message,
-            stack: bookingsCacheError.stack
-          });
-          // Non-blocking - continue even if cache invalidation fails
-        }
-      } else {
-        console.warn('⚠️ [Bookings Cache] Cannot invalidate bookings cache - missing contactId');
       }
 
       await redis.close();
-      console.log(`🔍 [REDIS DEBUG] Redis connection closed successfully`);
-    } catch (redisError) {
-      console.error('❌ [REDIS] Cache invalidation FAILED:', {
-        error: redisError.message,
-        stack: redisError.stack,
-        contactId,
-        mockExamId,
-        exam_date: mockExamDetails?.exam_date || bookingProperties.exam_date
-      });
-      // Continue - Redis failure shouldn't block cancellation
-      // Reconciliation cron job will fix any drift
+      console.log('✅ [CACHE] All cache invalidations complete');
+
+    } catch (cacheError) {
+      console.error('⚠️ [CACHE] Cache invalidation failed (non-blocking):', cacheError.message);
+      // Continue - cache invalidation failures are non-critical
+      // Cron job will eventually reconcile any stale cache data
     }
 
-    // Step 8: Return success response with detailed actions
-    const responseData = {
-      booking_id: bookingProperties.booking_id || bookingId,
-      status: 'cancelled',
-      cancelled_at: new Date().toISOString(),
-      actions_completed: {
-        soft_delete: true,
-        note_created: noteCreated,
-        bookings_decremented: bookingsDecremented,
-        credits_restored: !!creditsRestored,
-        credits_cache_invalidated: creditsCacheInvalidated,
-        supabase_synced: supabaseSynced
-      },
-      ...(creditsRestored ? { credit_restoration: creditsRestored } : {}),
-      ...(reason ? { reason } : {})
-    };
-
-    console.log('✅ Booking cancellation completed successfully with enhanced actions:', responseData.actions_completed);
-
+    // Step 7: Return success response
     return res.status(200).json(createSuccessResponse(
-      responseData,
+      {
+        booking_id: bookingData.booking_id,
+        student_id: bookingData.student_id,
+        cancelled_at: new Date().toISOString(),
+        credits_restored: creditField ? 1 : 0
+      },
       'Booking cancelled successfully'
     ));
 

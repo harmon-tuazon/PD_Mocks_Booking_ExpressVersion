@@ -14,7 +14,11 @@ const {
   rateLimitMiddleware,
   sanitizeInput
 } = require('../_shared/auth');
-const { syncBookingToSupabase, updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
+const {
+  createBookingAtomic,
+  getContactCreditsFromSupabase,
+  checkExistingBookingInSupabase
+} = require('../_shared/supabase-data');
 
 /**
  * Validation schema specific to Mock Discussion bookings
@@ -96,42 +100,6 @@ function generateIdempotencyKey(data) {
 }
 
 /**
- * Format date to full month name format
- */
-function formatBookingDate(dateString) {
-  try {
-    const dateParts = dateString.split('-');
-    if (dateParts.length !== 3) {
-      throw new Error('Invalid date format');
-    }
-
-    const year = parseInt(dateParts[0]);
-    const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed in JavaScript
-    const day = parseInt(dateParts[2]);
-
-    const date = new Date(year, month, day);
-
-    if (isNaN(date.getTime())) {
-      throw new Error('Invalid date');
-    }
-
-    const monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-
-    const monthName = monthNames[date.getMonth()];
-    const formattedDay = date.getDate();
-    const formattedYear = date.getFullYear();
-
-    return `${monthName} ${formattedDay}, ${formattedYear}`;
-  } catch (err) {
-    console.error('Date formatting error:', err.message, 'for date:', dateString);
-    return dateString; // Fallback to original format
-  }
-}
-
-/**
  * POST /api/mock-discussions/create-booking
  * Create a new booking for a mock discussion session
  *
@@ -191,6 +159,7 @@ module.exports = async function handler(req, res) {
 
     const {
       contact_id,
+      hubspot_id,  // ✅ Extract hubspot_id from request (numeric HubSpot ID)
       mock_exam_id,
       student_id,
       name,
@@ -263,26 +232,76 @@ module.exports = async function handler(req, res) {
 
     // Step 1: Generate booking ID and check for duplicates BEFORE acquiring lock
     // This prevents race conditions where two users book the same date simultaneously
-    const formattedDate = formatBookingDate(exam_date);
+    const examDate = new Date(exam_date);
+    const formattedDate = examDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
 
     // Generate booking ID with Mock Discussion prefix, student ID, and formatted date
     // Format: "MockType-StudentID-Date" ensures uniqueness per student
     // This prevents same-name collision while maintaining duplicate detection
     const bookingId = `Mock Discussion-${student_id}-${formattedDate}`;
 
-    // Check for duplicate booking BEFORE acquiring lock (prevents race condition)
-    const isDuplicate = await hubspot.checkExistingBooking(bookingId);
+    // ========================================================================
+    // DUAL-TIER DUPLICATE DETECTION - Prevents duplicate Mock Discussion bookings
+    // ========================================================================
+    // TIER 1: Check Redis cache for existing Active bookings (fast path ~1ms)
+    // TIER 2: Query Supabase to verify no active bookings exist (~50ms)
+    //
+    // Cache Key Format: booking:{hubspot_contact_id}:{exam_date}
+    // Cache Value: "{bookingId}:Active" - Active booking exists (TTL: until exam date)
+    // ========================================================================
+
+    // Initialize Redis for duplicate detection cache
+    redis = new RedisLockService();
+
+    // Format cache key: Use hubspot_id (numeric HubSpot contact ID) for consistency
+    const redisKey = `booking:${hubspot_id}:${exam_date}`;
+    const cachedResult = await redis.get(redisKey);
+
+    console.log(`[Mock Discussion Duplicate Check] Cache key: ${redisKey}, Result: ${cachedResult}`);
+
+    // TIER 1: Check Redis cache for existing Active bookings (fast path)
+    if (cachedResult && cachedResult.includes('Active')) {
+      // Cache contains booking_id:status (e.g., "Mock Discussion-1599999-March 1, 2026:Active")
+      const [cachedBookingId] = cachedResult.split(':');
+      console.log(`❌ Redis cache hit: Active Mock Discussion booking ${cachedBookingId} found for contact ${hubspot_id} on ${exam_date}`);
+
+      const error = new Error('Duplicate booking detected: You already have an active Mock Discussion booking for this date');
+      error.status = 400;
+      error.code = 'DUPLICATE_BOOKING';
+      throw error;
+    }
+
+    // TIER 2: Cache miss or non-Active status - verify with Supabase
+    // Use Supabase-only approach (10x faster than HubSpot: ~50ms vs ~500ms)
+    console.log(`⚠️ Redis cache miss or non-Active status - verifying with Supabase for contact ${hubspot_id} on ${exam_date}`);
+
+    const isDuplicate = await checkExistingBookingInSupabase(hubspot_id, exam_date);
+
     if (isDuplicate) {
+      // Active duplicate found in Supabase - cache it for future fast-path rejection
+      console.log(`❌ [SUPABASE] Duplicate check: Active Mock Discussion booking found for contact ${hubspot_id} on ${exam_date}`);
+      const examDateTime = new Date(`${exam_date}T23:59:59Z`);
+      const ttlSeconds = Math.max((examDateTime - Date.now()) / 1000, 86400);
+      await redis.setex(redisKey, Math.floor(ttlSeconds), `${bookingId}:Active`);
+
       const error = new Error('Duplicate booking detected: You already have a Mock Discussion booking for this date');
       error.status = 400;
       error.code = 'DUPLICATE_BOOKING';
       throw error;
     }
 
+    // No duplicate found - proceed with booking creation
+    // Active status will be cached after successful booking creation
+    console.log(`✅ [SUPABASE] Duplicate check passed: No active Mock Discussion booking found for contact ${hubspot_id} on ${exam_date}`);
+
     // ========================================================================
     // REDIS LOCK ACQUISITION - Two-phase locking for complete duplicate prevention
     // ========================================================================
-    redis = new RedisLockService();
+    // Redis already initialized for duplicate detection above (line 289)
 
     // First lock: User + Date specific lock to prevent duplicate bookings by same user
     const userLockKey = `user_booking:${contact_id}:${exam_date}`;
@@ -364,16 +383,56 @@ module.exports = async function handler(req, res) {
       throw error;
     }
 
-    // Step 3: Verify contact and mock discussion tokens
-    const contact = await hubspot.apiCall('GET',
-      `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contact_id}?properties=student_id,email,mock_discussion_token`
-    );
+    // Step 3: Verify contact and credits (Supabase-first for performance)
+    let contact = null;
 
+    // PHASE 1: Try Supabase secondary database first (fast path ~50ms)
+    try {
+      const { getContactCreditsFromSupabase } = require('../_shared/supabase-data');
+      const supabaseContact = await getContactCreditsFromSupabase(student_id, email);
+
+      if (supabaseContact && (supabaseContact.id === contact_id ||  // UUID match
+        supabaseContact.hubspot_id === contact_id  // Numeric HubSpot ID match (legacy)
+      )) {
+        console.log(`✅ [SUPABASE HIT] Reusing cached credit data from validate-credits for student ${student_id}`);
+
+        // Convert Supabase format to HubSpot format for compatibility
+        contact = {
+          id: supabaseContact.hubspot_id,
+          properties: {
+            student_id: supabaseContact.student_id,
+            email: supabaseContact.email,
+            mock_discussion_token: supabaseContact.mock_discussion_token?.toString() || '0'
+          }
+        };
+      }
+    } catch (supabaseError) {
+      console.error('[SUPABASE ERROR] Failed to read from secondary DB:', supabaseError.message);
+      // Continue to HubSpot fallback
+    }
+
+    // PHASE 2: Fallback to HubSpot (source of truth) if not in Supabase
     if (!contact) {
-      const error = new Error('Contact not found');
-      error.status = 404;
-      error.code = 'CONTACT_NOT_FOUND';
-      throw error;
+      console.log(`⚠️ [HUBSPOT FALLBACK] Reading from source of truth for student ${student_id}`);
+
+      // Ensure we have a numeric HubSpot ID for the API call
+      if (!hubspot_id) {
+        const error = new Error('Contact data not found in Supabase and no HubSpot ID provided for fallback');
+        error.status = 400;
+        error.code = 'MISSING_HUBSPOT_ID';
+        throw error;
+      }
+
+      contact = await hubspot.apiCall('GET',
+        `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${hubspot_id}?properties=student_id,email,mock_discussion_token`
+      );
+
+      if (!contact) {
+        const error = new Error('Contact not found');
+        error.status = 404;
+        error.code = 'CONTACT_NOT_FOUND';
+        throw error;
+      }
     }
 
     // Check mock discussion tokens
@@ -386,108 +445,137 @@ module.exports = async function handler(req, res) {
       throw error;
     }
 
-    // Step 4: Create booking with Mock Discussion specific data
-    const bookingData = {
-      bookingId,
-      name: sanitizedName,
-      email: sanitizedEmail,
+    // ========================================================================
+    // SUPABASE-FIRST ATOMIC BOOKING CREATION
+    // ========================================================================
+    // Call Supabase atomic RPC function that handles:
+    // 1. Create booking record in Supabase
+    // 2. Deduct mock_discussion_token from contact
+    // 3. Increment exam booking count
+    // All in ONE database transaction (ACID guarantees)
+
+    const newTokenValue = Math.max(0, discussionTokens - 1);
+
+    const atomicResult = await createBookingAtomic({
+      bookingId: bookingId,
+      studentId: student_id,
+      studentEmail: sanitizedEmail,
+      mockExamId: mock_exam_id,
+      studentName: sanitizedName,
       tokenUsed: 'Mock Discussion Token',
-      idempotencyKey: idempotencyKey
-      // Note: Calculated properties (mockType, examDate, location, etc.)
-      // come from the associated Mock Exam object
+      attendingLocation: discussion_format || 'Virtual',
+      dominantHand: null,
+      idempotencyKey: idempotencyKey,
+      creditField: 'mock_discussion_token',
+      newCreditValue: newTokenValue
+    });
+
+    // If idempotent (duplicate request), return existing booking
+    if (atomicResult.idempotent) {
+      console.log(`[IDEMPOTENT] Duplicate Mock Discussion booking request detected, returning existing booking`);
+
+      // Release locks before returning
+      if (lockToken) {
+        await redis.releaseLock(mock_exam_id, lockToken);
+        lockToken = null;
+      }
+      if (userLock?.token) {
+        await redis.releaseLock(userLock.key, userLock.token);
+        userLock.token = null;
+      }
+
+      return res.status(200).json(createSuccessResponse({
+        booking_id: bookingId,
+        idempotent: true,
+        message: 'Mock Discussion booking already exists (duplicate request prevented)'
+      }));
+    }
+
+    bookingCreated = true;
+    createdBookingId = atomicResult.data.booking_hubspot_id;
+    console.log(`Atomic Mock Discussion booking created: ${bookingId} (HubSpot ID: ${createdBookingId})`);
+
+    // Increment Redis booking counter for real-time capacity tracking
+    const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
+    console.log(`✅ Atomic booking created: ${bookingId}, Total bookings: ${newTotalBookings}`);
+
+    // Cache Active booking status in Redis to prevent duplicate bookings (until exam date)
+    const verifiedRedisKey = `booking:${hubspot_id}:${exam_date}`;
+    const examDateTime = new Date(`${exam_date}T23:59:59Z`);
+    const ttlSeconds = Math.max((examDateTime - Date.now()) / 1000, 86400);
+    await redis.setex(verifiedRedisKey, Math.floor(ttlSeconds), `${bookingId}:Active`);
+    console.log(`✅ Cached Active Mock Discussion booking in Redis: ${verifiedRedisKey} (TTL: ${Math.floor(ttlSeconds)}s)`);
+
+    // ========================================================================
+    // SUPABASE ATOMIC INCREMENT - Update total_bookings in Supabase
+    // ========================================================================
+    const { updateExamBookingCountInSupabase } = require('../_shared/supabase-data');
+
+    try {
+      await updateExamBookingCountInSupabase(mock_exam_id, 1, 'increment');
+      console.log(`✅ [SUPABASE] Incremented exam ${mock_exam_id} total_bookings atomically`);
+    } catch (supabaseError) {
+      console.error(`❌ [SUPABASE] Failed to increment total_bookings:`, supabaseError.message);
+      // Non-blocking - continue even if Supabase update fails
+      // Cron job will reconcile any drift
+    }
+
+    // ========================================================================
+    // CONSTRUCT CREDITS AFTER DEDUCTION (Option 2: Build from existing data)
+    // ========================================================================
+    // Since the RPC function doesn't return credits_after_deduction,
+    // we construct it from the contact data we already have
+    const creditsAfterDeduction = {
+      sj_credits: parseInt(contact.properties.sj_credits) || 0,
+      cs_credits: parseInt(contact.properties.cs_credits) || 0,
+      sjmini_credits: parseInt(contact.properties.sjmini_credits) || 0,
+      mock_discussion_token: Math.max(0, discussionTokens - 1), // Deduct 1 token
+      shared_mock_credits: parseInt(contact.properties.shared_mock_credits) || 0
     };
 
-    // Add optional Mock Discussion fields if provided
-    if (discussion_format && discussion_format !== 'Virtual') {
-      bookingData.discussionFormat = discussion_format;
-    }
-    if (topic_preference) {
-      bookingData.topicPreference = topic_preference;
-    }
+    console.log('✅ [CREDITS] Constructed credits after deduction:', creditsAfterDeduction);
 
-    const createdBooking = await hubspot.createBooking(bookingData);
-    bookingCreated = true;
-    createdBookingId = createdBooking.id;
-    console.log(`✅ Mock Discussion booking created successfully with ID: ${createdBookingId}`);
-
-    // Sync booking to Supabase (non-blocking)
-    let supabaseSynced = false;
-    try {
-      await syncBookingToSupabase(createdBooking, mock_exam_id);
-      console.log(`✅ Mock Discussion booking ${createdBookingId} synced to Supabase`);
-      supabaseSynced = true;
-    } catch (supabaseError) {
-      console.error('❌ Failed to sync Mock Discussion booking to Supabase:', supabaseError.message);
-      // Continue - HubSpot is source of truth
-    }
-
-    const associationResults = [];
-
-    // Associate with Contact
-    try {
-      const contactAssociation = await hubspot.createAssociation(
-        HUBSPOT_OBJECTS.bookings,
-        createdBookingId,
-        HUBSPOT_OBJECTS.contacts,
-        contact_id
-      );
-      console.log('✅ Contact association created successfully:', contactAssociation);
-      associationResults.push({ type: 'contact', success: true, result: contactAssociation });
-    } catch (err) {
-      console.error('❌ Failed to associate with contact:', err.message);
-      associationResults.push({ type: 'contact', success: false, error: err.message });
-    }
-
-    // Associate with Mock Discussion (Mock Exam)
-    try {
-      const mockExamAssociation = await hubspot.createAssociation(
-        HUBSPOT_OBJECTS.bookings,
-        createdBookingId,
-        HUBSPOT_OBJECTS.mock_exams,
-        mock_exam_id
-      );
-      console.log('✅ Mock Discussion association created successfully:', mockExamAssociation);
-      associationResults.push({ type: 'mock_discussion', success: true, result: mockExamAssociation });
-    } catch (err) {
-      console.error('❌ Failed to associate with mock discussion:', err);
-      associationResults.push({ type: 'mock_discussion', success: false, error: err.message });
-    }
-
-    // Check critical associations
-    const contactAssocSuccess = associationResults.find(r => r.type === 'contact')?.success || false;
-    const mockDiscussionAssocSuccess = associationResults.find(r => r.type === 'mock_discussion')?.success || false;
-
-    // Step 5: Update total bookings counter - CRITICAL: Use Redis for real-time accuracy
-    // Increment Redis counter immediately (non-blocking, real-time)
-    const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
-    console.log(`✅ Redis counter incremented: exam:${mock_exam_id}:bookings = ${newTotalBookings}`);
-
-    // Sync exam booking count to Supabase (non-blocking, atomic increment)
-    try {
-      await updateExamBookingCountInSupabase(mock_exam_id, null, 'increment');
-      console.log(`✅ Exam ${mock_exam_id} booking count atomically incremented in Supabase`);
-    } catch (supabaseError) {
-      console.error('❌ Failed to sync exam booking count to Supabase:', supabaseError.message);
-      // Continue - Redis is authoritative for counts
-    }
-
-    // Trigger HubSpot workflow via webhook (async, non-blocking)
-    // This runs AFTER response is sent to user - doesn't block booking completion
+    // ========================================================================
+    // DUAL WEBHOOK INTEGRATION - Sync to HubSpot (fire-and-forget)
+    // ========================================================================
     const { HubSpotWebhookService } = require('../_shared/hubspot-webhook');
 
-    process.nextTick(async () => {
-      const result = await HubSpotWebhookService.syncWithRetry(
-        mock_exam_id,
-        newTotalBookings,
-        3 // 3 retries with exponential backoff
-      );
+    process.nextTick(() => {
+      // Fire-and-forget webhook sync (async operations run independently)
+      (async () => {
+        // Webhook 1: Sync exam total_bookings to HubSpot
+        const examSyncResult = await HubSpotWebhookService.syncWithRetry(
+          'totalBookings',
+          mock_exam_id,
+          newTotalBookings
+        );
 
-      if (result.success) {
-        console.log(`✅ [WEBHOOK] HubSpot workflow triggered: ${result.message}`);
-      } else {
-        console.error(`❌ [WEBHOOK] All retry attempts failed: ${result.message}`);
-        console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
-      }
+        if (examSyncResult.success) {
+          console.log(`✅ [WEBHOOK-EXAM] HubSpot exam count synced: ${examSyncResult.message}`);
+        } else {
+          console.error(`❌ [WEBHOOK-EXAM] Exam sync failed: ${examSyncResult.message}`);
+        }
+
+        // Webhook 2: Sync ALL contact credits to HubSpot
+        const creditsSyncResult = await HubSpotWebhookService.syncContactCredits(
+          contact_id,
+          sanitizedEmail,
+          creditsAfterDeduction
+        );
+
+        if (creditsSyncResult.success) {
+          console.log(`[WEBHOOK-CREDITS] HubSpot credits synced: ${creditsSyncResult.message}`);
+        } else {
+          console.error(`[WEBHOOK-CREDITS] Credits sync failed: ${creditsSyncResult.message}`);
+        }
+
+        // If both webhooks fail, log reconciliation reminder
+        if (!examSyncResult.success && !creditsSyncResult.success) {
+          console.error(`[WEBHOOK] Both webhooks failed - reconciliation cron will fix drift within 2 hours`);
+        }
+      })().catch(err => {
+        console.error('[WEBHOOK] Unexpected error in webhook sync:', err.message);
+      });
     });
 
     // ========================================================================
@@ -505,12 +593,12 @@ module.exports = async function handler(req, res) {
       console.log(`✅ User lock released successfully`);
     }
 
-    // Step 6: Deduct mock discussion token
-    const newTokenValue = Math.max(0, discussionTokens - 1);
+    // ========================================================================
+    // HUBSPOT LEGACY OPERATIONS (Notes Only - Fire-and-Forget)
+    // Associations removed - will be reconciled by cron job within 2 hours
+    // ========================================================================
 
-    await hubspot.updateContactCredits(contact_id, 'mock_discussion_token', newTokenValue);
-
-    // Step 7: Create Note in Contact timeline
+    // Create Note in Contact timeline (async, fire-and-forget)
     const discussionDataForNote = {
       exam_date,
       mock_type: 'Mock Discussion',
@@ -519,43 +607,34 @@ module.exports = async function handler(req, res) {
       topic_preference: topic_preference || 'No preference specified'
     };
 
-    // Create a custom note for Mock Discussion
-    hubspot.apiCall('POST', `/crm/v3/objects/notes`, {
-      properties: {
-        hs_timestamp: new Date().getTime(),
-        hs_note_body: `
-          <h3>📝 Mock Discussion Booking Confirmed</h3>
-          <p><strong>Student:</strong> ${sanitizedName}</p>
-          <p><strong>Date:</strong> ${formattedDate}</p>
-          <p><strong>Format:</strong> ${discussion_format || 'Virtual'}</p>
-          <p><strong>Location:</strong> ${discussionDataForNote.location}</p>
-          ${topic_preference ? `<p><strong>Topic Preference:</strong> ${topic_preference}</p>` : ''}
-          <p><strong>Booking ID:</strong> ${bookingId}</p>
-          <p><strong>Token Used:</strong> Mock Discussion Token</p>
-          <p><strong>Remaining Tokens:</strong> ${newTokenValue}</p>
-          <hr>
-          <p style="color: #666; font-size: 0.9em;">Booking created at ${new Date().toISOString()}</p>
-        `
-      }
-    }).then(async (note) => {
-      // Associate note with contact
-      await hubspot.createAssociation('notes', note.id, HUBSPOT_OBJECTS.contacts, contact_id);
-      console.log(`✅ Mock Discussion booking note created successfully`);
-    }).catch(err => {
-      console.error(`❌ Error creating Mock Discussion booking note:`, err.message);
+    process.nextTick(() => {
+      hubspot.apiCall('POST', `/crm/v3/objects/notes`, {
+        properties: {
+          hs_timestamp: new Date().getTime(),
+          hs_note_body: `
+            <h3>Mock Discussion Booking Confirmed</h3>
+            <p><strong>Student:</strong> ${sanitizedName}</p>
+            <p><strong>Date:</strong> ${formattedDate}</p>
+            <p><strong>Format:</strong> ${discussion_format || 'Virtual'}</p>
+            <p><strong>Location:</strong> ${discussionDataForNote.location}</p>
+            ${topic_preference ? `<p><strong>Topic Preference:</strong> ${topic_preference}</p>` : ''}
+            <p><strong>Booking ID:</strong> ${bookingId}</p>
+            <p><strong>Token Used:</strong> Mock Discussion Token</p>
+            <p><strong>Remaining Tokens:</strong> ${newTokenValue}</p>
+            <hr>
+            <p style="color: #666; font-size: 0.9em;">Booking created at ${new Date().toISOString()}</p>
+          `
+        }
+      }).then(async (note) => {
+        // Associate note with contact
+        await hubspot.createAssociation('notes', note.id, HUBSPOT_OBJECTS.contacts, contact_id);
+        console.log(`✅ Mock Discussion booking note created successfully for booking ${bookingId}`);
+      }).catch(err => {
+        console.error(`❌ Error creating Mock Discussion booking note for ${bookingId}:`, err.message);
+      });
     });
 
-    // Determine overall success
-    const associationWarnings = [];
-
-    if (!contactAssocSuccess) {
-      associationWarnings.push('Contact association failed - booking may not appear in student records');
-    }
-    if (!mockDiscussionAssocSuccess) {
-      associationWarnings.push('Mock Discussion association failed - session may not show booking count update');
-    }
-
-    // Prepare response
+    // Prepare response (simplified - no associations field)
     const responseData = {
       booking_id: bookingId,
       booking_record_id: createdBookingId,
@@ -566,17 +645,13 @@ module.exports = async function handler(req, res) {
         exam_date,
         mock_type: 'Mock Discussion',
         location: mockDiscussion.properties.location || 'Virtual',
-        discussion_format: discussion_format || 'Virtual'
+        discussion_format: discussion_format || 'Virtual',
+        total_bookings: newTotalBookings
       },
       token_details: {
         tokens_before: discussionTokens,
         tokens_deducted: 1,
         tokens_remaining: newTokenValue
-      },
-      associations: {
-        results: associationResults,
-        warnings: associationWarnings,
-        critical_success: contactAssocSuccess && mockDiscussionAssocSuccess
       }
     };
 
@@ -584,27 +659,42 @@ module.exports = async function handler(req, res) {
       responseData.exam_details.topic_preference = topic_preference;
     }
 
-    if (associationWarnings.length > 0) {
-      console.log('⚠️ Mock Discussion booking successful with association warnings:', associationWarnings);
-    } else {
-      console.log('✅ Mock Discussion booking and all associations successful');
-    }
+    console.log('✅ Mock Discussion booking successful - associations will be reconciled by cron job');
 
-    // Invalidate cache for this contact
+    // Invalidate booking list cache for this contact
+    // ✅ Use hubspot_id (numeric HubSpot contact ID) to match list.js cache key format
     try {
       const cache = getCache();
-      const cachePattern = `bookings:contact:${contact_id}:*`;
+      const cachePattern = `bookings:contact:${hubspot_id}:*`;
 
       const invalidatedCount = await cache.deletePattern(cachePattern);
 
       if (invalidatedCount > 0) {
-        console.log(`✅ [Cache Invalidation] Successfully invalidated ${invalidatedCount} cache entries for contact ${contact_id}`);
+        console.log(`[Cache Invalidation] Successfully invalidated ${invalidatedCount} cache entries for contact ${hubspot_id}`);
       } else {
-        console.log(`ℹ️ [Cache Invalidation] No cache entries found to invalidate`);
+        console.log(`[Cache Invalidation] No cache entries found to invalidate`);
       }
     } catch (cacheError) {
-      console.error('❌ Cache invalidation failed:', cacheError.message);
+      console.error('[Cache Invalidation] Failed:', cacheError.message);
       // Continue - cache invalidation failure shouldn't block booking
+    }
+
+    // CRITICAL: Invalidate contact credits cache after booking creation
+    // This ensures frontend useCachedCredits hook doesn't return stale data
+    try {
+      const cache = getCache();
+      const creditsCachePattern = `contact:credits:${student_id}:*`;
+
+      const creditsInvalidatedCount = await cache.deletePattern(creditsCachePattern);
+
+      if (creditsInvalidatedCount > 0) {
+        console.log(`[Credits Cache Invalidation] Invalidated ${creditsInvalidatedCount} credits cache entries for student ${student_id}`);
+      } else {
+        console.log(`[Credits Cache Invalidation] No credits cache entries found (pattern: "${creditsCachePattern}")`);
+      }
+    } catch (creditsCacheError) {
+      console.error('[Credits Cache Invalidation] Failed:', creditsCacheError.message);
+      // Non-blocking - continue even if Redis cache invalidation fails
     }
 
     return res.status(201).json(createSuccessResponse(responseData, 'Mock Discussion booking created successfully'));

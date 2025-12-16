@@ -23,7 +23,7 @@ const { requirePermission } = require('../../middleware/requirePermission');
 const { validateInput } = require('../../../_shared/validation');
 const hubspot = require('../../../_shared/hubspot');
 const { getCache } = require('../../../_shared/cache');
-const { syncContactCreditsToSupabase } = require('../../../_shared/supabaseSync');
+const { syncContactToSupabase } = require('../../../_shared/supabase-data');
 
 module.exports = async (req, res) => {
   try {
@@ -93,7 +93,7 @@ module.exports = async (req, res) => {
     );
 
     // Fire and forget sync to Supabase
-    syncContactCreditsToSupabase(fullContact).catch(error => {
+    syncContactToSupabase(fullContact).catch(error => {
       console.error('[TOKEN UPDATE] Supabase sync failed (non-blocking):', error.message);
     });
 

@@ -150,11 +150,12 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     }
 
     try {
-      // Fetch credits from API and get returned data directly
-      const fetchedCredits = await fetchCredits(studentId, email);
+      // Fetch credits from API and use the returned data directly
+      // (React state updates are async, so we can't rely on credits state immediately)
+      const freshCredits = await fetchCredits(studentId, email);
 
-      // Extract the specific mock type data from the fetched credits
-      const result = fetchedCredits?.[bookingData.mockType];
+      // Extract the specific mock type data from the fetched result
+      const result = freshCredits?.[bookingData.mockType];
 
       if (!result) {
         throw new Error('Unable to verify credits. Please try again.');
@@ -175,6 +176,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
         credits: result.available_credits,
         creditBreakdown: result.credit_breakdown,
         contactId: result.contact_id,
+        hubspotId: result.hubspot_id,  // ✅ Store HubSpot ID for backend fallback
         enrollmentId: result.enrollment_id,
         name: result.student_name || prev.name,
       }));
@@ -198,7 +200,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
     } finally {
       setLoading(false);
     }
-  }, [bookingData.mockType, credits, fetchCredits]);
+  }, [bookingData.mockType, fetchCredits]);
 
   // Submit booking - accepts optional overrides for immediate data that hasn't been committed to state yet
   const submitBooking = useCallback(async (immediateData = {}) => {
@@ -262,6 +264,7 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
       const bookingPayload = {
         mock_exam_id: mergedData.mockExamId,
         contact_id: mergedData.contactId,
+        hubspot_id: mergedData.hubspotId,  // ✅ Include HubSpot ID for fallback
         student_id: mergedData.studentId,
         name: mergedData.name.trim(),
         email: mergedData.email,
@@ -408,8 +411,8 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
       // Invalidate the cache and immediately fetch fresh credits
       invalidateCache();
 
-      // Fetch fresh credits immediately to update all components
-      fetchCredits(mergedData.studentId, mergedData.email).catch(err => {
+      // Fetch fresh credits immediately to update localStorage and all components
+      fetchCredits(mergedData.studentId, mergedData.email, true).catch(err => {
         console.error('Failed to refresh credits after booking:', err);
         // Non-blocking - booking already succeeded
       });

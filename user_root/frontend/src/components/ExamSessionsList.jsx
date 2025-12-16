@@ -9,7 +9,6 @@ import { getUserSession } from '../utils/auth';
 import useCachedCredits from '../hooks/useCachedCredits';
 import LocationFilter from './shared/LocationFilter';
 import BookingTimeWarningModal from './shared/BookingTimeWarningModal';
-import { getTimezoneLabel, formatTimezoneForDisplay } from '../utils/timezoneHelpers';
 
 const ExamSessionsList = () => {
   const [searchParams] = useSearchParams();
@@ -40,89 +39,16 @@ const ExamSessionsList = () => {
   // Combined loading state
   const isLoading = loading || creditsLoading;
 
+  // Fetch exams and credits on mount or when exam type changes
+  // Credits refresh on mount - no events needed (navigation causes remount)
   useEffect(() => {
     fetchExams();
-    // Fetch credits using the hook
-    const userData = getUserSession();
-    if (userData) {
-      fetchCredits(userData.studentId, userData.email);
-    }
-  }, [mockType]);
-
-  useEffect(() => {
     const userData = getUserSession();
     if (userData) {
       setUserSession(userData);
+      fetchCredits(userData.studentId, userData.email);
     }
-  }, []);
-
-  // Listen for cache invalidation to refresh token display
-  // NOTE: We ONLY listen to creditsInvalidated to avoid duplicate API calls
-  // MyBookings dispatches BOTH bookingCancelled AND creditsInvalidated
-  // Listening to both would cause 2x API calls and trigger rate limiting
-  useEffect(() => {
-    const handleBookingCreated = (event) => {
-      const { studentId, email } = event.detail || {};
-
-      console.log('📢 [ExamSessionsList] Received bookingCreated event:', event.detail);
-
-      if (userSession && studentId === userSession.studentId) {
-        console.log('🔄 [ExamSessionsList] Refreshing credits after booking creation...');
-        // Refresh to get updated token values
-        fetchCredits(studentId, email);
-      }
-    };
-
-    const handleCreditsInvalidated = () => {
-      console.log('📢 [ExamSessionsList] Received creditsInvalidated event');
-
-      if (userSession) {
-        console.log('🔄 [ExamSessionsList] Refreshing credits after cache invalidation...');
-        // Refresh to get updated token values
-        fetchCredits(userSession.studentId, userSession.email);
-      }
-    };
-
-    // Also check localStorage for refresh signals (backup mechanism)
-    const checkRefreshSignals = () => {
-      if (!userSession) return;
-
-      // Check for booking creation signal
-      const bookingCreatedSignal = localStorage.getItem('bookingCreated');
-      if (bookingCreatedSignal) {
-        try {
-          const signal = JSON.parse(bookingCreatedSignal);
-          const signalAge = Date.now() - signal.timestamp;
-
-          // Only process if signal is less than 5 seconds old and for current user
-          if (signalAge < 5000 && signal.studentId === userSession.studentId) {
-            console.log('🔄 [ExamSessionsList] Processing localStorage bookingCreated signal:', signal);
-            fetchCredits(signal.studentId, signal.email);
-            // Clear the signal after processing
-            localStorage.removeItem('bookingCreated');
-          }
-        } catch (e) {
-          console.error('Error parsing bookingCreated signal:', e);
-        }
-      }
-
-      // NOTE: We don't check bookingCancelled signal because creditsInvalidated handles it
-      // This prevents duplicate API calls that cause 429 rate limiting errors
-    };
-
-    // Check for localStorage signals on mount
-    checkRefreshSignals();
-
-    // Listen for custom events (only bookingCreated and creditsInvalidated)
-    // NOTE: bookingCancelled is handled by creditsInvalidated to avoid duplicate calls
-    window.addEventListener('bookingCreated', handleBookingCreated);
-    window.addEventListener('creditsInvalidated', handleCreditsInvalidated);
-
-    return () => {
-      window.removeEventListener('bookingCreated', handleBookingCreated);
-      window.removeEventListener('creditsInvalidated', handleCreditsInvalidated);
-    };
-  }, [userSession, fetchCredits]);
+  }, [mockType]);
 
   const fetchExams = async () => {
     setLoading(true);
@@ -544,7 +470,7 @@ const ExamSessionsList = () => {
                           <div className="flex items-center">
                             <ClockIcon />
                             <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                              {formatTimeRange(exam, formatTimezoneForDisplay(getTimezoneLabel(mockType, exam.location)))}
+                              {formatTimeRange(exam)}
                             </span>
                           </div>
                         </td>
@@ -605,7 +531,7 @@ const ExamSessionsList = () => {
                     <div className="space-y-2 text-sm font-body text-gray-700 dark:text-gray-300">
                       <div className="flex items-center gap-2">
                         <ClockIcon />
-                        <span>{formatTimeRange(exam, formatTimezoneForDisplay(getTimezoneLabel(mockType, exam.location)))}</span>
+                        <span>{formatTimeRange(exam)}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <LocationIcon />
@@ -681,7 +607,6 @@ const ExamSessionsList = () => {
           <CalendarView
             exams={filteredExams}
             onExamSelect={handleSelectExam}
-            mockType={mockType}
           />
         )}
       </div>

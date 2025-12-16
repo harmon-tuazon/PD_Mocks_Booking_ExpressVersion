@@ -16,7 +16,7 @@ Prioritize reusing old components, endpoints, functions, logic, etc. when they a
 1. **PRD-Driven Development**: Comprehensive plans ensuring 7-10 confidence scores
 2. **Specialized Developer Agents**: Each writes specific code types (NOT runtime functions)
 3. **5-Phase Workflow**: Guaranteed progression from idea to production
-4. **HubSpot-Centric Architecture**: No databases, HubSpot is the single source of truth
+4. **Supabase-First Architecture**: Supabase as primary source of truth with HubSpot for admin writes and legacy operations
 5. **Vercel Driven Hosting**: Assume that hosting is generally using Vercel with a special emphasis on serverless architecture and design
 6. **Leveraging MCPs**: MANDATORY - Always use MCPs when applicable:
    - **Serena MCP**: For ALL code generation, refactoring, and IDE assistance
@@ -181,7 +181,7 @@ execute-prd PRDs/[feature-name].md
 ### Core Development Philosophy
 
 #### KISS (Keep It Simple, Stupid)
-Simplicity is paramount in our HubSpot-centric architecture. Choose HubSpot's built-in features over custom solutions. Simple solutions are easier to maintain in a serverless environment.
+Simplicity is paramount in our Supabase-first architecture. Choose Supabase's built-in features and PostgreSQL capabilities over complex custom solutions. Simple solutions are easier to maintain in a serverless environment.
 
 #### YAGNI (You Aren't Gonna Need It)
 Avoid building functionality on speculation. Our payment app has proven that minimal, focused features work best. Implement only what's needed now.
@@ -191,11 +191,14 @@ Prioritize reusing old components, endpoints, functions, logic, etc. when they a
 
 ### Design Principles
 
-- **API-First Architecture**: HubSpot as source of truth with Supabase as read-optimized secondary database
-- **Two-Tier Database Architecture**: HubSpot (write operations + source of truth) → Supabase (read optimization for high-frequency queries)
+- **Supabase-First Architecture**: Supabase as primary source of truth for all read operations and user writes (target: 100% by Q4 2025)
+- **Two-Tier Database Architecture**:
+  - **Supabase**: Primary database for reads (100% complete) and user writes (in progress - 80% complete)
+  - **HubSpot**: Legacy system for admin writes (attendance, cancellations) with automatic Supabase sync
+  - **Migration Status**: Admin reads 100% migrated to Supabase-first; User writes migrating from HubSpot → Supabase
 - **Stateless by Design**: Every Vercel function execution is independent
 - **Error-First Callbacks**: Always handle errors as the first parameter in callbacks
-- **Async by Default**: Use async/await for all API calls to HubSpot, Supabase, and Stripe
+- **Async by Default**: Use async/await for all API calls to Supabase, HubSpot, and Stripe
 - **Fail Fast**: Validate inputs early using Joi schemas
 - **Security First**: Never trust user input, always validate with existing validation.js patterns
 
@@ -217,30 +220,52 @@ find . -name "*.js"
 rg --files -g "*.js"
 ```
 
-### HubSpot-Centric Guidelines
+### Supabase-First Architecture Guidelines
 
-1. **HubSpot as Single Source of Truth with Supabase Secondary Database**
-   - HubSpot is the authoritative source for all data writes
-   - Supabase serves as read-optimized secondary database for high-frequency queries (contact credits)
-   - Write-through pattern: Write to HubSpot → Immediately sync to Supabase (non-blocking)
-   - Read pattern: Try Supabase first → Fallback to HubSpot if not found → Auto-populate Supabase
-   - Never modify Supabase without updating HubSpot first
+**Migration Status: 80% Complete (Admin Reads: 100% | User Writes: In Progress)**
 
-2. **Supabase Sync Strategy**
-   - Immediate sync after all credit-changing operations (non-blocking, fire-and-forget)
-   - Cron job every 2 hours to sync exams, bookings, and contact credits
-   - Auto-populate on read misses to build Supabase cache
-   - Always fetch all credit properties to prevent partial overwrites
+1. **Supabase as Primary Source of Truth**
+   - **Read Operations (100% Complete)**: All read queries use Supabase-first pattern
+     - Admin reads: List exams, get exam details, fetch bookings (ALL migrated)
+     - User reads: Available credits, exam schedules, booking history
+   - **Write Operations (80% Complete)**:
+     - ✅ User writes migrating to Supabase-first (booking creation, credit usage)
+     - 🔄 Admin writes still use HubSpot-first (attendance, cancellations, exam edits)
+   - **Data Flow Pattern**:
+     - **Reads**: Redis Cache → Supabase → HubSpot Fallback + Auto-Populate
+     - **User Writes (Target)**: Supabase → HubSpot Sync (fire-and-forget)
+     - **Admin Writes (Current)**: HubSpot → Supabase Sync (fire-and-forget)
 
-3. **Deal Timeline for Audit Trail**
+2. **Cron Job Reconciliation (HubSpot ↔ Supabase)**
+   - **sync-exams-backfill-bookings-from-hubspot** (Every 1 hour):
+     - Syncs exam data: HubSpot → Supabase (incremental via `hs_lastmodifieddate`)
+     - Backfills missing `hubspot_id` values using `idempotency_key` matching
+     - **Does NOT sync** booking properties (Edge Function handles) or credits (webhooks handle)
+   - **sync-bookings-from-supabase** (Every 15 minutes):
+     - Creates new bookings in HubSpot (where `hubspot_id IS NULL`)
+     - Creates associations (contact + exam)
+     - **Does NOT update** existing bookings (Edge Function cascades updates)
+   - **Edge Function: cascade-exam-updates** (Real-time < 1s):
+     - Triggered by admin exam property updates via webhook
+     - Cascades changes to all associated bookings in Supabase
+     - HubSpot rollup fields auto-update from associations
+
+3. **Supabase Sync Strategy**
+   - Immediate sync after all mutations (non-blocking, fire-and-forget)
+   - Cron jobs: Exams (every hour), booking creation (every 15 mins)
+   - Auto-populate on cache misses to build Supabase dataset
+   - Always fetch all properties to prevent partial overwrites
+   - Edge Functions handle real-time property cascades
+
+4. **Deal Timeline for Audit Trail (HubSpot)**
    - Log all business events as formatted notes
    - Use consistent icons (✅ ❌ 🔁 📊)
    - Include structured data in note HTML
 
-4. **Property-Based State Management**
-   - Use existing properties before creating new ones
-   - Batch property updates for efficiency
-   - Validate property values match HubSpot enumeration
+5. **Property-Based State Management**
+   - Use existing columns/properties before creating new ones
+   - Batch updates for efficiency (Supabase bulk upserts, HubSpot batch API)
+   - Validate property values match database/CRM constraints
 1. **Function Timeout Awareness**
    - Maximum 60 seconds per function execution
    - Design for quick response times
@@ -258,10 +283,11 @@ rg --files -g "*.js"
 
 ### Testing Requirements
 
-- Test HubSpot integration with dry-run modes
-- Mock external API calls in unit tests
-- Always test with production-like data volumes
-- Validate API endpoints and data integrity in tests
+- Test Supabase queries with realistic data volumes
+- Test HubSpot integration with dry-run modes for admin operations
+- Mock external API calls (Supabase, HubSpot, Stripe) in unit tests
+- Validate API endpoints and data integrity across both databases
+- Test cache invalidation and sync behavior
 
 ### Security Requirements
 
@@ -481,31 +507,302 @@ vercel --prod                           # Deploy to production
 
 ## Critical Integration Points
 
-### HubSpot CRM (Source of Truth)
-- Private app authentication via `HS_PRIVATE_APP_TOKEN`
-- Custom objects (Object Type ID):
-  - Transactions (`2-47045790`)
+### Supabase (Primary Database - 80% Migration Complete)
+- **Authentication**: Service role via `SUPABASE_SERVICE_ROLE_KEY`
+- **Primary Tables** (synced bidirectionally with HubSpot):
+  - `hubspot_contact_credits`: Contact credit balances (sj_credits, cs_credits, sjmini_credits, mock_discussion_token, shared_mock_credits)
+  - `hubspot_mock_exams`: Mock exam sessions (capacity, bookings, dates, times, scheduled activation)
+  - `hubspot_bookings`: Student bookings (attendance, tokens used, refunds, associations)
+  - `sync_metadata`: Last sync timestamps for incremental syncing
+- **Performance**: ~50ms Supabase queries vs ~500ms HubSpot API calls (10x faster)
+- **Read Strategy (100% Complete)**: Redis → Supabase → HubSpot fallback + auto-populate
+- **Write Strategy (80% Complete)**:
+  - User writes: Supabase-first → HubSpot sync (bookings created in Supabase)
+  - Admin writes: HubSpot-first → Supabase sync (attendance, cancellations)
+- **Cron Sync**:
+  - **Every 1 hour**: Exams + hubspot_id backfill (HubSpot → Supabase)
+  - **Every 15 minutes**: Booking creation (Supabase → HubSpot)
+- **Edge Function**: Real-time property cascades (< 1s via webhook)
+- **Fire-and-Forget Sync**: Immediate non-blocking sync after all mutations
+
+### HubSpot CRM (Legacy System - Admin Write Authority)
+- **Authentication**: Private app via `HS_PRIVATE_APP_TOKEN`
+- **Custom Objects** (Object Type IDs):
+  - Bookings (`2-50158943`) - Admin writes
+  - Mock Exams (`2-50158913`) - Admin writes
+  - Contacts (`0-1`) - Credit updates
+  - Transactions (`2-47045790`) - Payment records
   - Payment Schedules (`2-47381547`)
   - Credit Notes (`2-41609496`)
-  - Contacts (`0-1`)
   - Deals (`0-3`)
   - Courses (`0-410`)
   - Campus Venues (`2-41607847`)
   - Enrollments (`2-41701559`)
   - Lab Stations (`2-41603799`)
-  - Bookings (`2-50158943`)
-  - Mock Exams (`2-50158913`)
+- **Role**: Admin write operations, deal timeline audit logs, manual UI edits by admins
+- **Migration Target**: Eventually become read-only audit trail (Q4 2025)
 
-### Supabase (Read-Optimized Secondary Database)
-- Service role authentication via `SUPABASE_SERVICE_ROLE_KEY`
-- Secondary database tables (synced from HubSpot):
-  - `hubspot_contact_credits`: Contact credit balances (sj_credits, cs_credits, sjmini_credits, mock_discussion_token, shared_mock_credits)
-  - `hubspot_mock_exams`: Mock exam sessions (capacity, bookings, dates, times)
-  - `hubspot_bookings`: Student bookings (attendance, tokens used, refunds)
-- Read-first strategy: ~50ms vs ~500ms HubSpot API calls
-- Auto-populate on cache miss
-- Cron sync every 2 hours
-- Immediate sync after credit mutations
+## 🔑 Variable Naming Standards & ID Conventions
+
+**CRITICAL**: This section documents the standardized variable naming conventions across HubSpot and Supabase schemas. Always follow these conventions to maintain consistency.
+
+### Core ID System Architecture
+
+The system uses **three parallel identifier systems**:
+
+1. **Supabase UUIDs** - Primary keys in Supabase tables
+2. **HubSpot Numeric IDs** - Legacy numeric IDs from HubSpot CRM
+3. **Business Identifiers** - Human-readable strings for display (e.g., "SJ-123-March 1, 2026")
+
+### Contact Identifier Naming
+
+| Variable Name | Type | Usage | Example |
+|---------------|------|-------|---------|
+| `hubspot_id` | numeric string | HubSpot contact record ID | `"124340560202"` |
+| `contact_id` | UUID string | Supabase primary key (user app requests accept both) | `"a1b2c3d4-..."` |
+| `student_id` | alphanumeric | Business identifier for display | `"PREP001"` |
+| `associated_contact_id` | numeric string | Foreign key in bookings table (HubSpot ID) | `"124340560202"` |
+
+**Request Handling Pattern:**
+```javascript
+// User app endpoints accept EITHER UUID or HubSpot numeric ID
+const { contact_id, hubspot_id } = validatedData;
+
+// Dual-check for Supabase lookup
+if (supabaseContact && (
+  supabaseContact.id === contact_id ||        // UUID match
+  supabaseContact.hubspot_id === contact_id   // HubSpot ID match
+)) {
+  // Proceed with booking
+}
+```
+
+**Cache Key Pattern:**
+```javascript
+// ALWAYS use hubspot_id (numeric) for Redis cache keys
+const cacheKey = `booking:${hubspot_id}:${exam_date}`;
+```
+
+### Booking Identifier Naming
+
+| Variable Name | Type | Usage | Example |
+|---------------|------|-------|---------|
+| `id` | UUID string | Supabase primary key | `"f5e4d3c2-..."` |
+| `hubspot_id` | numeric string | HubSpot booking record ID | `"987654321"` |
+| `booking_id` | string | Human-readable business identifier (DISPLAY ONLY) | `"SJ-PREP001-March 1, 2026"` |
+| `booking_code` | string | Alias for `booking_id` | Same as above |
+
+**API Response Pattern:**
+```javascript
+// Return all three IDs for different use cases
+{
+  id: atomicResult.data.id,                    // UUID for Supabase operations
+  hubspot_id: atomicResult.data.hubspot_id,    // HubSpot numeric ID for legacy
+  booking_id: bookingId,                       // Human-readable for display
+  booking_record_id: createdBookingId          // DEPRECATED - use hubspot_id
+}
+```
+
+**Frontend Normalization:**
+```javascript
+// Prefer UUID, fallback to HubSpot ID for API operations
+const bookingIdentifier = booking.id || booking.hubspot_id;
+
+// Use booking_id for user-facing displays ONLY
+const displayId = booking.booking_id || 'Booking ID TBD';
+```
+
+**CRITICAL RULE**:
+- **API operations**: Use `id` (UUID) or `hubspot_id` (numeric)
+- **User displays**: Use `booking_id` (human-readable string)
+- **NEVER** use `booking_id` string as API identifier
+
+### Mock Exam Identifier Naming
+
+| Variable Name | Type | Usage | Example |
+|---------------|------|-------|---------|
+| `mock_exam_id` | numeric string | HubSpot exam record ID (primary) | `"111222333"` |
+| `id` | UUID string | Supabase primary key | `"e1f2g3h4-..."` |
+| `associated_mock_exam` | numeric string | Foreign key in bookings (HubSpot ID) | `"111222333"` |
+| `exam_id` | numeric string | DEPRECATED - use `mock_exam_id` | `"111222333"` |
+
+**Standardized Pattern:**
+```javascript
+// Request parameters - ALWAYS use mock_exam_id
+const { mock_exam_id } = req.body;
+
+// Supabase foreign key - use associated_mock_exam
+const booking = {
+  associated_mock_exam: mock_exam_id
+};
+
+// Response transformation
+const response = {
+  mock_exam_id: booking.associated_mock_exam  // Map back to standard name
+};
+```
+
+### Credit Field Naming (HubSpot Properties)
+
+**IMMUTABLE - Do not rename these HubSpot properties:**
+
+| Property Name | Exam Type | Description |
+|---------------|-----------|-------------|
+| `sj_credits` | Situational Judgment | Specific credits for SJ exams |
+| `cs_credits` | Clinical Skills | Specific credits for CS exams |
+| `sjmini_credits` | Mini-mock | Specific credits for Mini-mock exams |
+| `mock_discussion_token` | Mock Discussion | Tokens for discussion sessions |
+| `shared_mock_credits` | All types | Shared credits usable for any exam type |
+
+**Credit Deduction Logic:**
+```javascript
+// Prioritize specific credits, fallback to shared
+const creditField = specificCredits > 0 ? 'sj_credits' : 'shared_mock_credits';
+const newCreditValue = specificCredits > 0 ? specificCredits - 1 : sharedCredits - 1;
+```
+
+### Timestamp Field Naming
+
+**HubSpot Timestamps:**
+- `createdate` - Record creation timestamp
+- `hs_lastmodifieddate` - Last modification timestamp
+- `hs_createdate` - Alternative creation timestamp
+
+**Supabase Timestamps:**
+- `created_at` - Record creation timestamp
+- `updated_at` - Last update timestamp
+- `synced_at` - Last sync from HubSpot timestamp
+
+**Transformation Rule:**
+```javascript
+// Always transform HubSpot timestamps to Supabase format during sync
+const supabaseRecord = {
+  created_at: hubspotRecord.properties.createdate,
+  updated_at: hubspotRecord.properties.hs_lastmodifieddate,
+  synced_at: new Date().toISOString()
+};
+```
+
+### Supabase Table Schemas
+
+**`hubspot_bookings` table columns:**
+```sql
+- id                      UUID PRIMARY KEY
+- hubspot_id              TEXT (HubSpot numeric ID)
+- booking_id              TEXT (human-readable)
+- associated_contact_id   TEXT (HubSpot contact ID)
+- associated_mock_exam    TEXT (HubSpot exam ID)
+- student_id              TEXT
+- name                    TEXT
+- student_email           TEXT
+- is_active               TEXT ('Active', 'Cancelled', 'Completed')
+- exam_date               DATE
+- start_time              TIMESTAMPTZ
+- end_time                TIMESTAMPTZ
+- mock_type               TEXT
+- token_used              TEXT
+- dominant_hand           TEXT
+- attending_location      TEXT
+- attendance              TEXT
+- created_at              TIMESTAMPTZ
+- updated_at              TIMESTAMPTZ
+- synced_at               TIMESTAMPTZ
+```
+
+**`hubspot_contact_credits` table columns:**
+```sql
+- id                      UUID PRIMARY KEY
+- hubspot_id              TEXT (HubSpot contact ID)
+- student_id              TEXT
+- email                   TEXT
+- firstname               TEXT
+- lastname                TEXT
+- sj_credits              INTEGER
+- cs_credits              INTEGER
+- sjmini_credits          INTEGER
+- mock_discussion_token   INTEGER
+- shared_mock_credits     INTEGER
+- created_at              TIMESTAMPTZ
+- updated_at              TIMESTAMPTZ
+- synced_at               TIMESTAMPTZ
+```
+
+### Known Inconsistencies & Migration Status
+
+**HIGH PRIORITY - Known Issues:**
+
+1. **Validation Schema Bug** (`user_root/api/bookings/create.js:120`)
+   ```javascript
+   // BUG: Schema 'booking' does not exist
+   const { error, value } = schemas.booking.validate(req.body);
+
+   // FIX: Should be 'bookingCreation'
+   const { error, value } = schemas.bookingCreation.validate(req.body);
+   ```
+
+2. **Ambiguous ID Acceptance** (`user_root/api/bookings/create.js:130`)
+   ```javascript
+   // Accepts BOTH UUID and HubSpot numeric ID
+   const { contact_id, hubspot_id } = validatedData;
+
+   // Dual-check pattern required
+   if (supabaseContact.id === contact_id || supabaseContact.hubspot_id === contact_id)
+   ```
+
+3. **Duplicate Response Fields** (`user_root/api/bookings/list.js:188,199`)
+   ```javascript
+   // Same data with two different names
+   mock_exam_id: booking.associated_mock_exam,    // Standard name
+   associated_mock_exam: booking.associated_mock_exam  // Database column name
+   ```
+
+**MEDIUM PRIORITY - Legacy Support:**
+
+4. **Frontend Fallback Chain** (`user_root/frontend/src/services/api.js:386`)
+   ```javascript
+   // Multiple fallbacks for backwards compatibility
+   id: booking.id || booking.hubspot_id || booking.recordId
+   ```
+   - `recordId` is DEPRECATED but kept for old bookings
+
+5. **Cache Key Format** (`user_root/api/bookings/create.js:234`)
+   ```javascript
+   // ALWAYS use numeric HubSpot ID for consistency
+   const redisKey = `booking:${hubspot_id}:${exam_date}`;
+   ```
+
+### Variable Naming Checklist
+
+When adding new features, ensure:
+
+- [ ] Contact IDs use `hubspot_id` (numeric) and `contact_id` (UUID) consistently
+- [ ] Booking IDs distinguish between `id` (UUID), `hubspot_id` (numeric), and `booking_id` (display)
+- [ ] Exam IDs use `mock_exam_id` for HubSpot numeric IDs
+- [ ] Foreign keys in Supabase use `associated_*` prefix
+- [ ] Credit fields match HubSpot property names exactly
+- [ ] Timestamps transform correctly between HubSpot and Supabase
+- [ ] Cache keys use numeric HubSpot IDs, not UUIDs
+- [ ] API responses include all necessary ID formats for compatibility
+- [ ] Frontend normalization handles fallbacks for legacy data
+- [ ] Documentation explains which ID to use for which operation
+
+### Validation Schema Reference
+
+**Available schemas in `validation.js`:**
+- ✅ `bookingCreation` - POST /api/bookings/create
+- ✅ `bookingCancellation` - DELETE /api/bookings/[id]
+- ✅ `bookingsList` - GET /api/bookings/list
+- ✅ `creditValidation` - POST /api/mock-exams/validate-credits
+- ✅ `availableExams` - GET /api/mock-exams/available
+- ✅ `authCheck` - Authentication validation
+- ✅ `updateNdeccDate` - PUT /api/user/update-ndecc-date
+- ❌ `booking` - **DOES NOT EXIST** (use `bookingCreation`)
+
+**Usage Pattern:**
+```javascript
+const { schemas } = require('../_shared/validation');
+const { error, value } = schemas.bookingCreation.validate(req.body);
+```
 
 ## Input Validation Standards
 
@@ -550,7 +847,18 @@ catch (error) {
 
 ### Batch Operations
 ```javascript
-// ✅ Good - Batch API calls
+// ✅ Good - Batch Supabase upserts (preferred for reads/writes)
+const records = exams.map(exam => ({
+  hubspot_id: exam.id,
+  mock_type: exam.properties.mock_type,
+  exam_date: exam.properties.exam_date,
+  // ... other fields
+}));
+await supabaseAdmin
+  .from('hubspot_mock_exams')
+  .upsert(records, { onConflict: 'hubspot_id' });
+
+// ✅ Good - Batch HubSpot API calls (for admin writes)
 const batchUpdate = schedules.map(schedule => ({
   id: schedule.id,
   properties: { status: 'processed' }
@@ -696,7 +1004,9 @@ HubSpot_Automation_System:
 - NEVER use synchronous I/O operations
 - ALWAYS validate inputs with Joi schemas
 - NEVER store secrets in code
-- ALWAYS use HubSpot as the single source of truth
+- **ALWAYS use Supabase-first pattern for reads** (Redis → Supabase → HubSpot fallback)
+- **Admin writes**: Use HubSpot-first with Supabase sync (until migration complete)
+- **User writes**: Target Supabase-first with HubSpot sync (migration in progress)
 
 ## Agent Development Team
 

@@ -393,10 +393,15 @@ export const normalizeBooking = (booking) => {
   return {
     ...booking,
     // Ensure we have an id property
-    id: booking.id || booking.booking_id || booking.recordId,
-    // Ensure we have booking_id (primary identifier)
+    // CRITICAL: Use UUID first, then hubspot_id for API operations
+    // NEVER use booking_id string for API identifier
+    id: booking.id || booking.hubspot_id || booking.recordId,
+    // Ensure we have booking_id (human-readable identifier for display)
     booking_id: booking.booking_id || 'Booking ID TBD',
+     // hubspot_id may be null for new Supabase-first bookings
+    hubspot_id: booking.hubspot_id || null,
     // Ensure we have a status
+
     status: getBookingStatus(booking),
     // Ensure location is available
     location: booking.location || 'Location TBD',
@@ -474,6 +479,7 @@ export const transformLoginCreditsToCache = (loginResponse) => {
   const commonFields = {
     student_name: loginResponse.name || '',
     contact_id: loginResponse.contact_id || null,
+    hubspot_id: loginResponse.hubspot_id || null,  
     enrollment_id: null, // Login endpoint doesn't provide enrollment_id
     error_message: null
   };

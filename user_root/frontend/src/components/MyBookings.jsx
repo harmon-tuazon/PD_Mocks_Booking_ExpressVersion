@@ -15,9 +15,9 @@ import { object } from 'prop-types';
 const MyBookings = () => {
   const navigate = useNavigate();
 
-  // Import cache invalidation functions
+  // Import cache invalidation and fetch functions
   const { invalidateCache: invalidateBookingsCache } = useCachedBookings();
-  const { invalidateCache: invalidateCreditsCache } = useCachedCredits();
+  const { invalidateCache: invalidateCreditsCache, fetchCredits: fetchCreditsFromCache } = useCachedCredits();
 
   // Exam types for credit display
   const examTypes = [
@@ -251,13 +251,31 @@ const MyBookings = () => {
         setDeleteModalOpen(false);
         setBookingToDelete(null);
 
-        // Force refresh bookings list to show updated status - this will also refresh credits
-        await fetchBookings(userSession.studentId, userSession.email, currentPage, true);
-
-        // CRITICAL FIX: Invalidate both bookings AND credits caches to prevent stale time conflict checks
+        // CRITICAL FIX: Invalidate caches and force-fetch fresh credits after cancellation
         console.log('🔄 [CACHE] Invalidating bookings and credits caches after cancellation');
         invalidateBookingsCache();
         invalidateCreditsCache();
+
+        // Force refresh bookings list to show updated status
+        await fetchBookings(userSession.studentId, userSession.email, currentPage, true);
+
+        // IMPORTANT: Force fetch fresh credits to show refunded tokens immediately
+        // This bypasses the stale cache from fetchBookings response
+        console.log('🔄 [CREDITS] Force-fetching fresh credits after cancellation');
+        await fetchCreditsFromCache(userSession.studentId, userSession.email, true);
+
+        // Update credits state from cache
+        const freshCredits = await apiService.user.login(userSession.studentId, userSession.email);
+        if (freshCredits.success) {
+          const creditBreakdown = {
+            sj_credits: parseInt(freshCredits.data.sj_credits) || 0,
+            cs_credits: parseInt(freshCredits.data.cs_credits) || 0,
+            sjmini_credits: parseInt(freshCredits.data.sjmini_credits) || 0,
+            shared_mock_credits: parseInt(freshCredits.data.shared_mock_credits) || 0
+          };
+          setCredits(creditBreakdown);
+          console.log('✅ [CREDITS] Fresh credits updated in UI:', creditBreakdown);
+        }
 
         // Open rebook modal after successful cancellation
         setRebookModalOpen(true);

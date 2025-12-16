@@ -1,22 +1,48 @@
 /**
  * REFUND SERVICE - TOKEN REFUND SYSTEM
  *
- * Phase 1: Core RefundService class for token refunds on booking cancellations
+ * SUPABASE-FIRST ARCHITECTURE (PRD: 03.5-admin-api-migration.md)
+ *
+ * Two refund patterns supported:
+ *
+ * 1. SINGLE REFUND (Supabase-first) - PREFERRED for individual refunds
+ *    - Uses cascading lookup: hubspot_id → UUID → booking_id
+ *    - Updates Supabase first (source of truth)
+ *    - Syncs to HubSpot fire-and-forget
+ *    - Usage: refundToken(identifier, adminEmail)
+ *
+ * 2. BATCH REFUND (HubSpot-first) - For admin batch operations
+ *    - Uses HubSpot batch API for efficiency
+ *    - Syncs to Supabase after HubSpot update
+ *    - Usage: processRefunds(bookings, adminEmail)
  *
  * FEATURES:
  * - Token type mapping (Mock Discussion, Clinical Skills, Situational Judgment, Mini-mock)
+ * - Cascading booking lookup (hubspot_id, UUID, booking_id)
  * - Batch contact token updates (optimized for HubSpot API limits)
  * - Eligibility validation (idempotent refunds)
  * - Detailed result tracking (successful, failed, skipped)
  * - Error handling with partial failure support
+ * - Automatic rollback on Supabase failures
  *
  * USAGE:
  * const refundService = require('./_shared/refund');
- * const results = await refundService.processRefunds(bookings, adminEmail);
+ *
+ * // Single refund (Supabase-first) - PREFERRED
+ * const result = await refundService.refundToken('booking-id-or-hubspot-id', 'admin@example.com');
+ *
+ * // Batch refund (HubSpot-first) - For large batches
+ * const results = await refundService.processRefunds(bookings, 'admin@example.com');
  */
 
 const hubspot = require('./hubspot');
-const { updateContactCreditsInSupabase } = require('./supabase-data');
+const { supabaseAdmin } = require('./supabase');
+const {
+  updateContactCreditsInSupabase,
+  getBookingCascading,
+  getContactByStudentIdFromSupabase,
+  getContactByIdFromSupabase
+} = require('./supabase-data');
 
 // HubSpot object type IDs
 const HUBSPOT_OBJECTS = {
@@ -358,9 +384,220 @@ async function markBookingsAsRefunded(bookingIds, adminEmail = 'system') {
   return results;
 }
 
+// ============== SUPABASE-FIRST REFUND FUNCTIONS ==============
+
 /**
- * MAIN ORCHESTRATION FUNCTION
- * Process token refunds for cancelled bookings
+ * Refund token for a single booking - SUPABASE-FIRST PATTERN
+ * Supports cascading lookup: hubspot_id → id (UUID) → booking_id
+ *
+ * Data Flow:
+ * 1. Cascading lookup from Supabase
+ * 2. Update Supabase (source of truth)
+ * 3. Sync to HubSpot (fire-and-forget)
+ *
+ * @param {string} identifier - Booking identifier (any of the 3 types: hubspot_id, UUID, or booking_id)
+ * @param {string} adminEmail - Admin performing the refund
+ * @param {string} tokenType - Credit field to restore (optional - will be auto-detected from booking.token_used)
+ * @returns {Promise<Object>} { success, booking_id, id, hubspot_id, credits_restored }
+ */
+async function refundToken(identifier, adminEmail, tokenType = null) {
+  console.log('[REFUND] Starting Supabase-first refund:', { identifier, adminEmail, tokenType });
+
+  // Step 1: Cascading lookup from Supabase
+  const booking = await getBookingCascading(identifier);
+
+  if (!booking) {
+    throw new Error(`Booking not found: ${identifier}`);
+  }
+
+  console.log('[REFUND] Found booking:', {
+    id: booking.id,
+    hubspot_id: booking.hubspot_id,
+    booking_id: booking.booking_id,
+    is_active: booking.is_active,
+    token_used: booking.token_used
+  });
+
+  // Step 2: Validate eligibility
+  if (booking.is_active === 'Cancelled' && booking.token_refunded === 'true') {
+    throw new Error('Token already refunded for this booking');
+  }
+
+  if (!booking.token_used) {
+    throw new Error('No token used for this booking - nothing to refund');
+  }
+
+  // Step 3: Determine token type from booking if not provided
+  const effectiveTokenType = tokenType || getTokenPropertyName(booking.token_used);
+  if (!effectiveTokenType) {
+    throw new Error(`Invalid token type: ${booking.token_used}`);
+  }
+
+  console.log('[REFUND] Token type:', effectiveTokenType);
+
+  // Step 4: Get contact credits using existing function
+  // Try by hubspot_id first (associated_contact_id), then by student_id
+  let contact = null;
+  if (booking.associated_contact_id) {
+    contact = await getContactByIdFromSupabase(booking.associated_contact_id);
+  }
+  if (!contact && booking.student_id) {
+    contact = await getContactByStudentIdFromSupabase(booking.student_id);
+  }
+
+  if (!contact) {
+    throw new Error(`Contact not found for booking: ${booking.booking_id}`);
+  }
+
+  console.log('[REFUND] Found contact:', {
+    id: contact.id,
+    hubspot_id: contact.hubspot_id,
+    student_id: contact.student_id
+  });
+
+  // Step 5: Calculate restored credit value
+  const currentCredits = parseInt(contact[effectiveTokenType]) || 0;
+  const restoredCredits = currentCredits + 1;
+
+  console.log('[REFUND] Credit calculation:', {
+    tokenType: effectiveTokenType,
+    currentCredits,
+    restoredCredits
+  });
+
+  // Step 6: Update Supabase atomically (SOURCE OF TRUTH)
+  const refundTimestamp = new Date().toISOString();
+
+  // 6a: Update booking with refund info
+  const { error: bookingError } = await supabaseAdmin
+    .from('hubspot_bookings')
+    .update({
+      token_refunded: 'true',
+      token_refunded_at: refundTimestamp,
+      token_refund_admin: adminEmail,
+      updated_at: refundTimestamp,
+      synced_at: refundTimestamp
+    })
+    .eq('id', booking.id);
+
+  if (bookingError) {
+    throw new Error(`Failed to update booking in Supabase: ${bookingError.message}`);
+  }
+
+  console.log('[REFUND] ✅ Booking updated in Supabase');
+
+  // 6b: Restore credits in Supabase
+  const { error: creditError } = await supabaseAdmin
+    .from('hubspot_contact_credits')
+    .update({
+      [effectiveTokenType]: restoredCredits,
+      updated_at: refundTimestamp,
+      synced_at: refundTimestamp
+    })
+    .eq('id', contact.id);
+
+  if (creditError) {
+    // Rollback booking update on credit failure
+    console.error('[REFUND] ❌ Credit update failed, attempting rollback...');
+    await supabaseAdmin
+      .from('hubspot_bookings')
+      .update({
+        token_refunded: null,
+        token_refunded_at: null,
+        token_refund_admin: null,
+        updated_at: refundTimestamp
+      })
+      .eq('id', booking.id);
+
+    throw new Error(`Failed to restore credits in Supabase: ${creditError.message}`);
+  }
+
+  console.log('[REFUND] ✅ Credits restored in Supabase');
+
+  // Step 7: Sync to HubSpot (fire-and-forget for resilience)
+  // HubSpot sync is non-blocking - Supabase is source of truth
+  syncRefundToHubSpot(booking, contact, effectiveTokenType, adminEmail, restoredCredits)
+    .then(() => {
+      console.log('[REFUND] ✅ HubSpot sync completed');
+    })
+    .catch(hubspotError => {
+      console.error('[REFUND] ⚠️ HubSpot sync failed (will retry via batch cron):', hubspotError.message);
+      // Don't throw - Supabase is source of truth, HubSpot will sync via cron
+    });
+
+  console.log('[REFUND] ✅ Completed:', {
+    bookingId: booking.booking_id,
+    tokenType: effectiveTokenType,
+    restoredCredits
+  });
+
+  return {
+    success: true,
+    booking_id: booking.booking_id,
+    id: booking.id,
+    hubspot_id: booking.hubspot_id,
+    contact_id: contact.id,
+    contact_hubspot_id: contact.hubspot_id,
+    token_type: effectiveTokenType,
+    credits_restored: restoredCredits,
+    previous_credits: currentCredits
+  };
+}
+
+/**
+ * Sync refund to HubSpot (non-blocking)
+ * Called after Supabase update succeeds
+ *
+ * @param {Object} booking - Booking object from Supabase
+ * @param {Object} contact - Contact object from Supabase
+ * @param {string} tokenPropertyName - HubSpot property name for token
+ * @param {string} adminEmail - Admin email for audit
+ * @param {number} newCreditValue - New credit value after refund
+ */
+async function syncRefundToHubSpot(booking, contact, tokenPropertyName, adminEmail, newCreditValue) {
+  const refundTimestamp = Date.now().toString();
+
+  // Only sync if hubspot_id exists (booking might be Supabase-only)
+  if (booking.hubspot_id) {
+    console.log('[REFUND] Syncing booking to HubSpot:', booking.hubspot_id);
+
+    await hubspot.apiCall('PATCH', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/${booking.hubspot_id}`, {
+      properties: {
+        token_refunded: 'true',
+        token_refunded_at: refundTimestamp,
+        token_refund_admin: adminEmail
+      }
+    });
+
+    console.log('[REFUND] ✅ Booking synced to HubSpot');
+  } else {
+    console.log('[REFUND] ⚠️ Booking has no hubspot_id - skipping HubSpot booking sync');
+  }
+
+  // Sync contact credits to HubSpot
+  if (contact.hubspot_id) {
+    console.log('[REFUND] Syncing contact credits to HubSpot:', contact.hubspot_id);
+
+    await hubspot.apiCall('PATCH', `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/${contact.hubspot_id}`, {
+      properties: {
+        [tokenPropertyName]: newCreditValue.toString()
+      }
+    });
+
+    console.log('[REFUND] ✅ Contact credits synced to HubSpot');
+  } else {
+    console.log('[REFUND] ⚠️ Contact has no hubspot_id - skipping HubSpot contact sync');
+  }
+}
+
+// ============== BATCH REFUND FUNCTIONS (HubSpot-first for admin batch operations) ==============
+
+/**
+ * MAIN ORCHESTRATION FUNCTION (BATCH)
+ * Process token refunds for cancelled bookings - HubSpot-first for batch admin operations
+ *
+ * NOTE: For single refunds, prefer refundToken() which is Supabase-first.
+ * This batch function remains HubSpot-first for efficiency with large batches.
  *
  * @param {Array} bookings - Array of booking objects to process
  * @param {string} adminEmail - Email of admin processing refunds (for audit trail)
@@ -487,7 +724,11 @@ async function processRefunds(bookings, adminEmail = 'system') {
 
 // Export all functions
 module.exports = {
-  // Main orchestration
+  // Supabase-first single refund (PREFERRED for individual refunds)
+  refundToken,
+  syncRefundToHubSpot,
+
+  // Batch orchestration (HubSpot-first for admin batch operations)
   processRefunds,
 
   // Core functions

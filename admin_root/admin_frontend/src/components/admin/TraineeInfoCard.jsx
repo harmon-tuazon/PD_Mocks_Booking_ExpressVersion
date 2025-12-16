@@ -18,7 +18,9 @@ const TraineeInfoCard = ({ trainee, searchQuery }) => {
   // Import the token edit mutation hook
   const tokenEditMutation = useTokenEditMutation(trainee?.contactId, searchQuery);
 
-  // Initialize edited tokens when trainee changes or edit mode is entered
+  // Initialize edited tokens when trainee data changes from server
+  // Note: Do NOT include isEditMode in dependencies - we only want to sync when trainee prop changes
+  // including isEditMode would cause this to run when edit mode closes, clearing lastSavedTokens prematurely
   useEffect(() => {
     if (trainee?.tokens) {
       setEditedTokens({
@@ -31,21 +33,22 @@ const TraineeInfoCard = ({ trainee, searchQuery }) => {
       // Clear lastSavedTokens when trainee data updates from server
       setLastSavedTokens(null);
     }
-  }, [trainee, isEditMode]);
+  }, [trainee]);
+
+  // Sync editedTokens when entering edit mode (separate from trainee data sync)
+  useEffect(() => {
+    if (isEditMode && trainee?.tokens) {
+      setEditedTokens({
+        mock_discussion: trainee.tokens.mock_discussion || 0,
+        clinical_skills: trainee.tokens.clinical_skills || 0,
+        situational_judgment: trainee.tokens.situational_judgment || 0,
+        mini_mock: trainee.tokens.mini_mock || 0,
+        shared_mock: trainee.tokens.shared_mock || 0
+      });
+    }
+  }, [isEditMode, trainee?.tokens]);
 
   if (!trainee) return null;
-
-  // Format phone number for display
-  const formatPhoneNumber = (phone) => {
-    if (!phone) return 'N/A';
-    // Remove any non-digits
-    const cleaned = phone.replace(/\D/g, '');
-    // Format as (XXX) XXX-XXXX if US number
-    if (cleaned.length === 10) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
-    }
-    return phone || 'N/A';
-  };
 
   // Helper function to display field value or placeholder
   const displayField = (value, placeholder = 'N/A') => {
@@ -192,16 +195,6 @@ const TraineeInfoCard = ({ trainee, searchQuery }) => {
               ) : (
                 'N/A'
               )}
-            </div>
-          </div>
-
-          {/* Phone */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Phone
-            </label>
-            <div className="text-base text-gray-900 dark:text-gray-100">
-              {formatPhoneNumber(trainee.phone)}
             </div>
           </div>
 

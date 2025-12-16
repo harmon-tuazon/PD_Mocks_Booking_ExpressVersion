@@ -16,48 +16,17 @@ const BookingConfirmation = () => {
   // Import the hook and get user session
   const { credits, loading: creditsLoading, fetchCredits } = useCachedCredits();
 
-  // CRITICAL FIX: Fetch fresh credits on mount WITHOUT dependency on bookingData
-  // This ensures credits are ALWAYS refreshed when confirmation page loads
+  // Fetch fresh credits on mount
+  // Credits refresh on mount - no events needed (page is reached via navigation)
   useEffect(() => {
     const userData = getUserSession();
     if (userData) {
       console.log('🔄 [BookingConfirmation] Fetching fresh credit data on mount for:', {
         studentId: userData.studentId
       });
-      // Fetch updated token values
       fetchCredits(userData.studentId, userData.email);
     }
   }, []); // Empty dependency array - only run on mount
-
-  // Listen for cache invalidation to refresh token display
-  // NOTE: We ONLY listen to creditsInvalidated to avoid duplicate API calls
-  // MyBookings dispatches BOTH bookingCancelled AND creditsInvalidated
-  // Listening to both would cause 2x API calls and trigger rate limiting
-  useEffect(() => {
-    const userData = getUserSession();
-
-    const handleCreditsInvalidated = () => {
-      console.log('📢 [BookingConfirmation] Received creditsInvalidated event');
-
-      if (userData) {
-        console.log('🔄 [BookingConfirmation] Refreshing credits after cache invalidation...');
-        // Refresh to get updated token values
-        fetchCredits(userData.studentId, userData.email);
-      }
-    };
-
-    // NOTE: No localStorage signal check needed for BookingConfirmation
-    // This page is only reached after booking creation, not cancellation
-    // Cancellations happen in MyBookings and are handled by creditsInvalidated event
-
-    // Listen for custom events (only creditsInvalidated)
-    // NOTE: bookingCancelled is handled by creditsInvalidated to avoid duplicate calls
-    window.addEventListener('creditsInvalidated', handleCreditsInvalidated);
-
-    return () => {
-      window.removeEventListener('creditsInvalidated', handleCreditsInvalidated);
-    };
-  }, [fetchCredits]);
 
   // Extract fresh credit breakdown from cache
   const freshCreditBreakdown = credits?.[bookingData.mockType]?.credit_breakdown;
