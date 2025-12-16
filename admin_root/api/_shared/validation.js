@@ -940,16 +940,26 @@ const schemas = {
   }),
 
   // Schema for batch booking cancellation (Admin) - Supports booking objects with refund data
+  // Supports both HubSpot-synced bookings (id) and Supabase-first bookings (supabase_id)
   batchBookingCancellation: Joi.object({
     bookings: Joi.array()
       .items(
         Joi.object({
+          // HubSpot ID - numeric string, optional for Supabase-first bookings
           id: Joi.string()
             .pattern(/^\d+$/)
-            .required()
+            .allow(null)
+            .optional()
             .messages({
-              'string.pattern.base': 'Booking ID must be numeric',
-              'any.required': 'Booking ID is required'
+              'string.pattern.base': 'Booking ID must be numeric'
+            }),
+          // Supabase UUID - for bookings not yet synced to HubSpot
+          supabase_id: Joi.string()
+            .uuid()
+            .allow(null)
+            .optional()
+            .messages({
+              'string.guid': 'Supabase ID must be a valid UUID'
             }),
           token_used: Joi.string()
             .allow('')
@@ -977,6 +987,16 @@ const schemas = {
             .messages({
               'string.email': 'Email must be a valid email address'
             })
+        })
+        // Custom validation: at least one of id or supabase_id must be provided
+        .custom((value, helpers) => {
+          if (!value.id && !value.supabase_id) {
+            return helpers.error('object.missingId');
+          }
+          return value;
+        })
+        .messages({
+          'object.missingId': 'Either booking id (HubSpot) or supabase_id must be provided'
         })
       )
       .min(1)

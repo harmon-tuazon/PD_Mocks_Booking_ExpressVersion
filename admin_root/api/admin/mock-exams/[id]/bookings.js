@@ -137,8 +137,10 @@ module.exports = async (req, res) => {
         console.log(`✅ [SUPABASE HIT] Found ${supabaseBookings.length} bookings in Supabase`);
 
         // Transform Supabase bookings to HubSpot format
+        // Include both hubspot_id and supabase_id for Supabase-first bookings
         allBookings = supabaseBookings.map(booking => ({
           id: booking.hubspot_id,
+          supabase_id: booking.id,  // Supabase UUID - used for bookings not yet synced to HubSpot
           properties: {
             booking_id: booking.booking_id,
             name: booking.name,

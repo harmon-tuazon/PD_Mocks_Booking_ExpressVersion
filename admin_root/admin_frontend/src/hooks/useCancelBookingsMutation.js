@@ -24,9 +24,11 @@ const useCancelBookingsMutation = (mockExamId) => {
   return useMutation({
     mutationFn: async ({ bookings, refundTokens }) => {
       // Send full booking objects from memory (optimization)
+      // Include both id (HubSpot) and supabase_id for Supabase-first bookings
       const requestBody = {
         bookings: bookings.map(b => ({
-          id: b.id,
+          id: b.id || null,                           // HubSpot ID (null for Supabase-first bookings)
+          supabase_id: b.supabase_id || null,         // Supabase UUID (for bookings not yet synced to HubSpot)
           token_used: b.token_used || '',
           associated_contact_id: b.associated_contact_id || '',
           name: b.name || 'Unknown',
@@ -48,8 +50,9 @@ const useCancelBookingsMutation = (mockExamId) => {
       // Snapshot the previous value
       const previousBookings = queryClient.getQueryData(['bookings', mockExamId]);
 
-      // Extract booking IDs
-      const bookingIds = bookings.map(b => b.id);
+      // Extract booking IDs (both HubSpot IDs and Supabase UUIDs)
+      const bookingIds = bookings.map(b => b.id).filter(Boolean);
+      const supabaseIds = bookings.map(b => b.supabase_id).filter(Boolean);
 
       // Optimistically update to show bookings as cancelled
       queryClient.setQueryData(['bookings', mockExamId], (old) => {
@@ -58,7 +61,10 @@ const useCancelBookingsMutation = (mockExamId) => {
         return {
           ...old,
           data: old.data.map(booking => {
-            if (bookingIds.includes(booking.id)) {
+            // Match by either HubSpot ID or Supabase UUID
+            const matchById = booking.id && bookingIds.includes(booking.id);
+            const matchBySupabaseId = booking.supabase_id && supabaseIds.includes(booking.supabase_id);
+            if (matchById || matchBySupabaseId) {
               return {
                 ...booking,
                 is_active: 'Cancelled'

@@ -99,8 +99,16 @@ module.exports = async (req, res) => {
 
     const { bookings, refundTokens = true } = req.validatedData;
 
-    // Extract booking IDs for processing
-    const bookingIds = bookings.map(b => b.id);
+    // Separate bookings into HubSpot-synced (has id) and Supabase-only (has only supabase_id)
+    const hubspotBookings = bookings.filter(b => b.id);  // Has HubSpot ID
+    const supabaseOnlyBookings = bookings.filter(b => !b.id && b.supabase_id);  // Supabase-first, not synced
+
+    console.log(`🗑️ [CANCEL] Processing batch cancellation for mock exam ${mockExamId}`);
+    console.log(`🗑️ [CANCEL] Total bookings: ${bookings.length} (HubSpot: ${hubspotBookings.length}, Supabase-only: ${supabaseOnlyBookings.length})`);
+    console.log(`🔄 [CANCEL] Token refunds enabled: ${refundTokens}`);
+
+    // Extract HubSpot booking IDs for processing
+    const bookingIds = hubspotBookings.map(b => b.id);
 
     // Check if bookings array is within limits
     if (bookings.length > MAX_BOOKINGS_PER_REQUEST) {
@@ -114,53 +122,80 @@ module.exports = async (req, res) => {
       });
     }
 
-    console.log(`🗑️ [CANCEL] Processing batch cancellation for mock exam ${mockExamId}`);
-    console.log(`🗑️ [CANCEL] Total bookings to process: ${bookings.length}`);
-    console.log(`🔄 [CANCEL] Token refunds enabled: ${refundTokens}`);
-
     // Initialize Redis for cache clearing
     const redis = new RedisLockService();
 
     // Lightweight validation: Fetch is_active and exam_date for cache clearing
     // Note: contact_id comes from frontend (associated_contact_id) since it's not stored as a booking property
-    console.log(`🔍 [CANCEL] Fetching booking data from HubSpot...`);
     const bookingDataMap = new Map();
 
-    // Fetch is_active and exam_date (needed for Redis cache clearing)
-    for (let i = 0; i < bookingIds.length; i += HUBSPOT_BATCH_SIZE) {
-      const chunk = bookingIds.slice(i, i + HUBSPOT_BATCH_SIZE);
+    // Only fetch from HubSpot if there are HubSpot-synced bookings
+    if (hubspotBookings.length > 0) {
+      console.log(`🔍 [CANCEL] Fetching booking data from HubSpot for ${hubspotBookings.length} bookings...`);
 
-      try {
-        const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
-          properties: ['is_active', 'exam_date'],  // Properties for validation + cache clearing
-          inputs: chunk.map(id => ({ id }))
-        });
+      // Fetch is_active and exam_date (needed for Redis cache clearing)
+      for (let i = 0; i < bookingIds.length; i += HUBSPOT_BATCH_SIZE) {
+        const chunk = bookingIds.slice(i, i + HUBSPOT_BATCH_SIZE);
 
-        if (response.results) {
-          for (const booking of response.results) {
-            bookingDataMap.set(booking.id, {
-              is_active: booking.properties.is_active,
-              exam_date: booking.properties.exam_date
-              // Note: contact_id will be added from frontend data below
-            });
+        try {
+          const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
+            properties: ['is_active', 'exam_date'],  // Properties for validation + cache clearing
+            inputs: chunk.map(id => ({ id }))
+          });
+
+          if (response.results) {
+            for (const booking of response.results) {
+              bookingDataMap.set(booking.id, {
+                is_active: booking.properties.is_active,
+                exam_date: booking.properties.exam_date
+                // Note: contact_id will be added from frontend data below
+              });
+            }
           }
+        } catch (error) {
+          console.error(`❌ [CANCEL] Error fetching booking data batch:`, error);
+          // Continue processing other batches
         }
-      } catch (error) {
-        console.error(`❌ [CANCEL] Error fetching booking data batch:`, error);
-        // Continue processing other batches
       }
+
+      // Merge frontend contact_id into bookingDataMap
+      // Frontend provides associated_contact_id which is more reliable than HubSpot property
+      for (const booking of hubspotBookings) {
+        const hubspotData = bookingDataMap.get(booking.id);
+        if (hubspotData && booking.associated_contact_id) {
+          hubspotData.contact_id = booking.associated_contact_id;
+        }
+      }
+
+      console.log(`✅ [CANCEL] Fetched data for ${bookingDataMap.size} bookings from HubSpot`);
     }
 
-    // Merge frontend contact_id into bookingDataMap
-    // Frontend provides associated_contact_id which is more reliable than HubSpot property
-    for (const booking of bookings) {
-      const hubspotData = bookingDataMap.get(booking.id);
-      if (hubspotData && booking.associated_contact_id) {
-        hubspotData.contact_id = booking.associated_contact_id;
+    // For Supabase-only bookings, fetch data from Supabase
+    if (supabaseOnlyBookings.length > 0) {
+      console.log(`🔍 [CANCEL] Fetching booking data from Supabase for ${supabaseOnlyBookings.length} Supabase-only bookings...`);
+      const { getSupabaseAdmin } = require('../../../_shared/supabase-data');
+      const supabaseAdmin = getSupabaseAdmin();
+
+      const supabaseIds = supabaseOnlyBookings.map(b => b.supabase_id);
+      const { data: supabaseData, error: supabaseError } = await supabaseAdmin
+        .from('hubspot_bookings')
+        .select('id, is_active, exam_date, associated_contact_id')
+        .in('id', supabaseIds);
+
+      if (supabaseError) {
+        console.error(`❌ [CANCEL] Error fetching Supabase booking data:`, supabaseError);
+      } else if (supabaseData) {
+        for (const booking of supabaseData) {
+          // Use supabase_id as the key (prefixed to distinguish from HubSpot IDs)
+          bookingDataMap.set(`supabase:${booking.id}`, {
+            is_active: booking.is_active,
+            exam_date: booking.exam_date,
+            contact_id: booking.associated_contact_id
+          });
+        }
+        console.log(`✅ [CANCEL] Fetched data for ${supabaseData.length} bookings from Supabase`);
       }
     }
-
-    console.log(`✅ [CANCEL] Fetched data for ${bookingDataMap.size} bookings from HubSpot`);
 
     // Initialize result tracking
     const results = {
@@ -169,75 +204,93 @@ module.exports = async (req, res) => {
       skipped: []
     };
 
-    console.log(`🔍 [DEBUG] Initializing updates array...`);
+    console.log(`🔍 [DEBUG] Initializing updates arrays...`);
 
     // Validate and prepare updates using bookings array from frontend
-    const updates = [];
+    const hubspotUpdates = [];       // Updates for HubSpot batch API
+    const supabaseOnlyUpdates = [];  // Updates for Supabase-only bookings
     const bookingDetailsForAudit = [];
 
     console.log(`🔍 [DEBUG] Starting booking validation loop for ${bookings.length} bookings...`);
 
     for (const booking of bookings) {
-      console.log(`🔍 [DEBUG] Processing booking ${booking.id}...`);
-      const bookingData = bookingDataMap.get(booking.id);
+      // Determine which ID to use for lookup
+      const isSupabaseOnly = !booking.id && booking.supabase_id;
+      const lookupKey = isSupabaseOnly ? `supabase:${booking.supabase_id}` : booking.id;
+      const displayId = booking.id || booking.supabase_id;
+
+      console.log(`🔍 [DEBUG] Processing booking ${displayId} (isSupabaseOnly: ${isSupabaseOnly})...`);
+      const bookingData = bookingDataMap.get(lookupKey);
 
       // Check if booking exists
       if (!bookingData) {
-        console.log(`❌ [DEBUG] Booking ${booking.id} not found in bookingDataMap`);
+        console.log(`❌ [DEBUG] Booking ${displayId} not found in bookingDataMap`);
         results.failed.push({
-          bookingId: booking.id,
+          bookingId: displayId,
+          supabase_id: booking.supabase_id,
           error: 'Booking not found',
           code: 'BOOKING_NOT_FOUND'
         });
         continue;
       }
 
-      console.log(`🔍 [DEBUG] Booking ${booking.id} status: ${bookingData.is_active}`);
+      console.log(`🔍 [DEBUG] Booking ${displayId} status: ${bookingData.is_active}`);
 
       // Check if already cancelled (idempotent)
       if (bookingData.is_active === 'Cancelled') {
-        console.log(`⏭️ [DEBUG] Booking ${booking.id} already cancelled, skipping`);
+        console.log(`⏭️ [DEBUG] Booking ${displayId} already cancelled, skipping`);
         results.skipped.push({
-          bookingId: booking.id,
+          bookingId: displayId,
+          supabase_id: booking.supabase_id,
           reason: 'Already cancelled',
           currentStatus: 'Cancelled'
         });
         continue;
       }
 
-      console.log(`✅ [DEBUG] Booking ${booking.id} ready for cancellation`);
+      console.log(`✅ [DEBUG] Booking ${displayId} ready for cancellation`);
 
-      // Prepare update
-      updates.push({
-        id: booking.id,
-        properties: {
-          is_active: 'Cancelled'
-        }
-      });
+      if (isSupabaseOnly) {
+        // Prepare Supabase-only update
+        supabaseOnlyUpdates.push({
+          supabase_id: booking.supabase_id,
+          contact_id: bookingData.contact_id,
+          exam_date: bookingData.exam_date
+        });
+      } else {
+        // Prepare HubSpot update
+        hubspotUpdates.push({
+          id: booking.id,
+          properties: {
+            is_active: 'Cancelled'
+          }
+        });
+      }
 
       // Store booking details for audit log (using frontend data)
       bookingDetailsForAudit.push({
-        id: booking.id,
+        id: displayId,
+        supabase_id: booking.supabase_id,
         name: booking.name || 'Unknown',
         email: booking.email || 'No email'
       });
     }
 
-    console.log(`🔍 [DEBUG] Finished validation loop. Updates: ${updates.length}, Failed: ${results.failed.length}, Skipped: ${results.skipped.length}`);
+    console.log(`🔍 [DEBUG] Finished validation loop. HubSpot updates: ${hubspotUpdates.length}, Supabase-only updates: ${supabaseOnlyUpdates.length}, Failed: ${results.failed.length}, Skipped: ${results.skipped.length}`);
 
-    // Process updates in batches
-    if (updates.length > 0) {
-      console.log(`🔍 [DEBUG] Entering processCancellations...`);
-      console.log(`⚡ [CANCEL] Processing ${updates.length} cancellations...`);
+    // Process HubSpot updates in batches
+    if (hubspotUpdates.length > 0) {
+      console.log(`🔍 [DEBUG] Entering processCancellations for HubSpot...`);
+      console.log(`⚡ [CANCEL] Processing ${hubspotUpdates.length} HubSpot cancellations...`);
 
-      const updateResults = await processCancellations(updates);
+      const updateResults = await processCancellations(hubspotUpdates);
 
       // Process results
       for (const result of updateResults.successful) {
         results.successful.push({
           bookingId: result.id,
           status: 'cancelled',
-          message: 'Successfully cancelled'
+          message: 'Successfully cancelled in HubSpot'
         });
       }
 
@@ -248,17 +301,61 @@ module.exports = async (req, res) => {
           code: 'UPDATE_FAILED'
         });
       }
+    }
 
-      // Clear Redis duplicate detection cache for successfully cancelled bookings (ENHANCED LOGGING)
-      if (results.successful.length > 0) {
-        console.log(`🗑️ [REDIS] Clearing duplicate detection cache for ${results.successful.length} cancelled bookings...`);
-        console.log(`🔍 [REDIS DEBUG] Redis instance exists: ${!!redis}`);
-        console.log(`🔍 [REDIS DEBUG] Mock Exam ID: ${mockExamId}`);
+    // Process Supabase-only cancellations (bookings not synced to HubSpot)
+    if (supabaseOnlyUpdates.length > 0) {
+      console.log(`⚡ [CANCEL] Processing ${supabaseOnlyUpdates.length} Supabase-only cancellations...`);
+      const { getSupabaseAdmin } = require('../../../_shared/supabase-data');
+      const supabaseAdmin = getSupabaseAdmin();
 
-        let finalExamCount = null;  // Track final count after all decrements
+      for (const update of supabaseOnlyUpdates) {
+        try {
+          const { error: updateError } = await supabaseAdmin
+            .from('hubspot_bookings')
+            .update({
+              is_active: 'Cancelled',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', update.supabase_id);
 
-        for (const result of results.successful) {
-          const bookingData = bookingDataMap.get(result.bookingId);
+          if (updateError) {
+            throw updateError;
+          }
+
+          results.successful.push({
+            bookingId: update.supabase_id,
+            supabase_id: update.supabase_id,
+            status: 'cancelled',
+            message: 'Successfully cancelled in Supabase (not yet synced to HubSpot)'
+          });
+          console.log(`✅ [CANCEL] Cancelled Supabase-only booking ${update.supabase_id}`);
+        } catch (error) {
+          console.error(`❌ [CANCEL] Failed to cancel Supabase-only booking ${update.supabase_id}:`, error);
+          results.failed.push({
+            bookingId: update.supabase_id,
+            supabase_id: update.supabase_id,
+            error: error.message || 'Failed to cancel booking in Supabase',
+            code: 'SUPABASE_UPDATE_FAILED'
+          });
+        }
+      }
+    }
+
+    // Clear Redis duplicate detection cache for successfully cancelled bookings (ENHANCED LOGGING)
+    if (results.successful.length > 0) {
+      console.log(`🗑️ [REDIS] Clearing duplicate detection cache for ${results.successful.length} cancelled bookings...`);
+      console.log(`🔍 [REDIS DEBUG] Redis instance exists: ${!!redis}`);
+      console.log(`🔍 [REDIS DEBUG] Mock Exam ID: ${mockExamId}`);
+
+      let finalExamCount = null;  // Track final count after all decrements
+
+      for (const result of results.successful) {
+        // Determine the correct lookup key based on whether it's a HubSpot or Supabase-only booking
+        const lookupKey = result.supabase_id && !result.bookingId?.match(/^\d+$/)
+          ? `supabase:${result.supabase_id}`
+          : result.bookingId;
+        const bookingData = bookingDataMap.get(lookupKey);
 
           console.log(`🔍 [REDIS DEBUG] Processing booking ${result.bookingId}:`);
           console.log(`🔍 [REDIS DEBUG] - contact_id: ${bookingData?.contact_id}`);
@@ -329,25 +426,24 @@ module.exports = async (req, res) => {
           }
         }
 
-        // Trigger HubSpot workflow via webhook with final count after all decrements
-        if (finalExamCount !== null) {
-          const { HubSpotWebhookService } = require('../../../_shared/hubspot-webhook');
+      // Trigger HubSpot workflow via webhook with final count after all decrements
+      if (finalExamCount !== null) {
+        const { HubSpotWebhookService } = require('../../../_shared/hubspot-webhook');
 
-          process.nextTick(async () => {
-            const webhookResult = await HubSpotWebhookService.syncWithRetry(
-              mockExamId,
-              finalExamCount,
-              3 // 3 retries with exponential backoff
-            );
+        process.nextTick(async () => {
+          const webhookResult = await HubSpotWebhookService.syncWithRetry(
+            mockExamId,
+            finalExamCount,
+            3 // 3 retries with exponential backoff
+          );
 
-            if (webhookResult.success) {
-              console.log(`✅ [WEBHOOK] HubSpot workflow triggered after batch mock exam cancellation: ${webhookResult.message}`);
-            } else {
-              console.error(`❌ [WEBHOOK] All retry attempts failed: ${webhookResult.message}`);
-              console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
-            }
-          });
-        }
+          if (webhookResult.success) {
+            console.log(`✅ [WEBHOOK] HubSpot workflow triggered after batch mock exam cancellation: ${webhookResult.message}`);
+          } else {
+            console.error(`❌ [WEBHOOK] All retry attempts failed: ${webhookResult.message}`);
+            console.error(`⏰ [WEBHOOK] Reconciliation cron will fix drift within 2 hours`);
+          }
+        });
       }
     }
 
@@ -358,9 +454,12 @@ module.exports = async (req, res) => {
 
       const refundService = require('../../../_shared/refund');
 
-      // Get bookings that were successfully cancelled
+      // Get bookings that were successfully cancelled (match by either HubSpot ID or Supabase ID)
       const successfulBookingIds = results.successful.map(r => r.bookingId);
-      const bookingsToRefund = bookings.filter(b => successfulBookingIds.includes(b.id));
+      const successfulSupabaseIds = results.successful.filter(r => r.supabase_id).map(r => r.supabase_id);
+      const bookingsToRefund = bookings.filter(b =>
+        successfulBookingIds.includes(b.id) || successfulSupabaseIds.includes(b.supabase_id)
+      );
 
       try {
         refundResults = await refundService.processRefunds(bookingsToRefund, adminEmail);
@@ -387,46 +486,47 @@ module.exports = async (req, res) => {
       console.log(`🗑️ [CANCEL] Caches invalidated for mock exam ${mockExamId}`);
     }
 
-    // Sync cancellations to Supabase (including skipped bookings that are already cancelled)
+    // Sync HubSpot cancellations to Supabase (Supabase-only bookings already updated above)
+    // Only sync bookings that have HubSpot IDs (numeric IDs)
     let supabaseSynced = false;
-    const allCancelledBookings = [
-      ...results.successful.map(r => r.bookingId),
-      ...results.skipped.filter(r => r.currentStatus === 'Cancelled').map(r => r.bookingId)
+    const hubspotCancelledBookings = [
+      ...results.successful.filter(r => r.bookingId?.match(/^\d+$/)).map(r => r.bookingId),
+      ...results.skipped.filter(r => r.currentStatus === 'Cancelled' && r.bookingId?.match(/^\d+$/)).map(r => r.bookingId)
     ];
 
-    if (allCancelledBookings.length > 0) {
+    if (hubspotCancelledBookings.length > 0) {
       try {
-        console.log(`🔄 [SUPABASE] Syncing ${allCancelledBookings.length} cancelled bookings (${results.successful.length} newly cancelled + ${results.skipped.length} already cancelled)`);
+        console.log(`🔄 [SUPABASE] Syncing ${hubspotCancelledBookings.length} HubSpot cancelled bookings to Supabase`);
 
-        const supabaseUpdates = allCancelledBookings.map(bookingId =>
+        const supabaseUpdates = hubspotCancelledBookings.map(bookingId =>
           updateBookingStatusInSupabase(bookingId, 'Cancelled')
         );
 
         const supabaseResults = await Promise.allSettled(supabaseUpdates);
         const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
-        console.log(`✅ [CANCEL] Synced ${syncedCount}/${allCancelledBookings.length} cancellations to Supabase`);
-        supabaseSynced = syncedCount === allCancelledBookings.length;
-
-        // SUPABASE SYNC: Atomically decrement exam booking count in Supabase
-        // Only decrement for newly cancelled bookings (not already-cancelled ones)
-        const newlyCancelledCount = results.successful.length;
-        if (newlyCancelledCount > 0) {
-          try {
-            await updateExamBookingCountInSupabase(mockExamId, null, 'decrement', newlyCancelledCount);
-          } catch (supabaseError) {
-            console.error(`⚠️ Supabase exam count sync failed (non-blocking):`, supabaseError.message);
-            // Fallback is built into the function - it will fetch and update if RPC fails
-          }
-        }
+        console.log(`✅ [CANCEL] Synced ${syncedCount}/${hubspotCancelledBookings.length} HubSpot cancellations to Supabase`);
+        supabaseSynced = syncedCount === hubspotCancelledBookings.length;
       } catch (supabaseError) {
         console.error('❌ Supabase cancellation sync failed:', supabaseError.message);
         // Continue - HubSpot is source of truth
       }
     }
 
+    // SUPABASE SYNC: Atomically decrement exam booking count in Supabase
+    // Only decrement for newly cancelled bookings (not already-cancelled ones)
+    const newlyCancelledCount = results.successful.length;
+    if (newlyCancelledCount > 0) {
+      try {
+        await updateExamBookingCountInSupabase(mockExamId, null, 'decrement', newlyCancelledCount);
+      } catch (supabaseError) {
+        console.error(`⚠️ Supabase exam count sync failed (non-blocking):`, supabaseError.message);
+        // Fallback is built into the function - it will fetch and update if RPC fails
+      }
+    }
+
     // Calculate summary
     const summary = {
-      total: bookingIds.length,
+      total: bookings.length,  // All bookings (both HubSpot and Supabase-only)
       cancelled: results.successful.length,
       failed: results.failed.length,
       skipped: results.skipped.length
