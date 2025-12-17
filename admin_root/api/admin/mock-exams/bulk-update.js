@@ -96,9 +96,15 @@ module.exports = async (req, res) => {
       console.log(`📝 [BULK-UPDATE] Using ${targetSessionIds.length} session IDs with updates`);
     }
 
-    // Remove empty string values from updates
+    // Remove empty/null/undefined values from updates
+    // EXCEPTION: mock_set can be empty string (to clear the value)
     cleanedUpdates = Object.entries(cleanedUpdates).reduce((acc, [key, value]) => {
-      if (value !== '' && value !== null && value !== undefined) {
+      // Allow empty string for mock_set (clearing the value)
+      if (key === 'mock_set') {
+        if (value !== null && value !== undefined) {
+          acc[key] = value;  // Keep empty string for clearing
+        }
+      } else if (value !== '' && value !== null && value !== undefined) {
         acc[key] = value;
       }
       return acc;
@@ -137,9 +143,15 @@ module.exports = async (req, res) => {
       const sessionUpdates = sessionData.updates || {};
       const totalBookings = parseInt(currentProps.total_bookings) || 0;
 
-      // Remove empty string values from updates
+      // Remove empty/null/undefined values from updates
+      // EXCEPTION: mock_set can be empty string (to clear the value)
       const cleanedSessionUpdates = Object.entries(sessionUpdates).reduce((acc, [key, value]) => {
-        if (value !== '' && value !== null && value !== undefined) {
+        // Allow empty string for mock_set (clearing the value)
+        if (key === 'mock_set') {
+          if (value !== null && value !== undefined) {
+            acc[key] = value;  // Keep empty string for clearing
+          }
+        } else if (value !== '' && value !== null && value !== undefined) {
           acc[key] = value;
         }
         return acc;

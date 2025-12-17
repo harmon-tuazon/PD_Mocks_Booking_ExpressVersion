@@ -138,6 +138,28 @@ export const validationRules = {
     errorMessage: 'Status must be active, inactive, or scheduled'
   },
 
+  mock_set: {
+    required: false,
+    validate: (value, formData) => {
+      // Mock set is optional, but if provided must be valid
+      if (!value || value === '') return true;
+
+      const validSets = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+      if (!validSets.includes(value)) {
+        return 'Mock set must be A-H';
+      }
+
+      // Mini-mock cannot have a mock_set
+      const MOCK_SET_APPLICABLE_TYPES = ['Clinical Skills', 'Situational Judgment', 'Mock Discussion'];
+      if (formData?.mock_type && !MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type) && value) {
+        return `Mock sets are not applicable for ${formData.mock_type}`;
+      }
+
+      return true;
+    },
+    errorMessage: 'Please select a valid mock set (A-H)'
+  },
+
   scheduled_activation_datetime: {
     required: false,
     validate: (value, formData) => {

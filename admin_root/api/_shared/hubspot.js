@@ -1138,6 +1138,7 @@ class HubSpotService {
       // Set exam data with correct HubSpot property names and timestamp format
       const examData = {
         mock_type: mockExamData.mock_type,
+        mock_set: mockExamData.mock_set || '',  // Optional: A-H or empty
         exam_date: mockExamData.exam_date,
         start_time: startTimestamp,  // Unix timestamp in milliseconds
         end_time: endTimestamp,      // Unix timestamp in milliseconds
@@ -1207,6 +1208,7 @@ class HubSpotService {
 
         const properties = {
           mock_type: commonProperties.mock_type,
+          mock_set: commonProperties.mock_set || '',  // Optional: A-H or empty
           exam_date: examDate,
           start_time: startTimestamp,  // Unix timestamp in milliseconds
           end_time: endTimestamp,      // Unix timestamp in milliseconds
