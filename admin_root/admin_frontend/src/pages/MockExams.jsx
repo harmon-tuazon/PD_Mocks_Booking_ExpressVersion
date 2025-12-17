@@ -196,52 +196,54 @@ function MockExams() {
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Basic Information</h3>
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div>
-                  <Label className="text-gray-700 dark:text-gray-300">
-                    Mock Type <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={formData.mock_type}
-                    onValueChange={(value) => setFormData({ ...formData, mock_type: value, mock_set: '' })}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a mock type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MOCK_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label className="text-gray-700 dark:text-gray-300">
-                    Exam Date <span className="text-red-500">*</span>
-                  </Label>
-                  <DatePicker
-                    value={formData.exam_date}
-                    onChange={(value) => setFormData({ ...formData, exam_date: value })}
-                    placeholder="Select exam date"
-                    required
-                  />
-                </div>
-
-                {/* Mock Set - Only for applicable mock types */}
-                {MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type) && (
+                  {/* Row 1, Column 1: Mock Type */}
                   <div>
                     <Label className="text-gray-700 dark:text-gray-300">
-                      Mock Set (Optional)
+                      Mock Type <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.mock_type}
+                      onValueChange={(value) => setFormData({ ...formData, mock_type: value, mock_set: '' })}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a mock type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MOCK_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Row 1, Column 2: Exam Date */}
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">
+                      Exam Date <span className="text-red-500">*</span>
+                    </Label>
+                    <DatePicker
+                      value={formData.exam_date}
+                      onChange={(value) => setFormData({ ...formData, exam_date: value })}
+                      placeholder="Select exam date"
+                      required
+                    />
+                  </div>
+
+                  {/* Row 2, Column 1: Mock Set */}
+                  <div>
+                    <Label className={`${!MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type) ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                      Mock Set {MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type) ? '(Optional)' : ''}
                     </Label>
                     <Select
                       value={formData.mock_set || '__none__'}
                       onValueChange={(value) => setFormData({ ...formData, mock_set: value === '__none__' ? '' : value })}
+                      disabled={!MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type)}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a mock set (optional)" />
+                      <SelectTrigger className={!MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type) ? 'opacity-50 cursor-not-allowed' : ''}>
+                        <SelectValue placeholder={MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type) ? 'Select a mock set (optional)' : 'Not applicable'} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">None</SelectItem>
@@ -253,34 +255,35 @@ function MockExams() {
                       </SelectContent>
                     </Select>
                     <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      Identifies which set of cases/stations this exam uses
+                      {MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type)
+                        ? 'Identifies which set of cases/stations this exam uses'
+                        : `Mock sets only apply to: ${MOCK_SET_APPLICABLE_TYPES.join(', ')}`}
                     </p>
                   </div>
-                )}
-              </div>
 
-              {/* Location Field - Full Width */}
-              <div className="mt-4">
-                <Label className="text-gray-700 dark:text-gray-300">
-                  Location <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.location}
-                  onValueChange={(value) => setFormData({ ...formData, location: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LOCATIONS.map((loc) => (
-                      <SelectItem key={loc} value={loc}>
-                        {loc}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  {/* Row 2, Column 2: Location */}
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">
+                      Location <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.location}
+                      onValueChange={(value) => setFormData({ ...formData, location: value })}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LOCATIONS.map((loc) => (
+                          <SelectItem key={loc} value={loc}>
+                            {loc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
             </div>
 
             {/* Activation Settings Section - Moved above Capacity */}
