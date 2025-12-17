@@ -308,7 +308,11 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
 
     if (redis && contactId && cancellationData.exam_date) {
       try {
-        const redisKey = `booking:${contactId}:${cancellationData.exam_date}`;
+        // Normalize exam_date to YYYY-MM-DD format for consistent cache keys
+        const normalizedExamDate = cancellationData.exam_date.includes('T')
+          ? cancellationData.exam_date.split('T')[0]
+          : cancellationData.exam_date;
+        const redisKey = `booking:${contactId}:${normalizedExamDate}`;
         console.log(`🔍 [REDIS DEBUG] Attempting to delete cache key: "${redisKey}"`);
 
         // Check if key exists before deletion

@@ -173,7 +173,9 @@ module.exports = async (req, res) => {
     // ========================================================================
     // STEP 5: Check for duplicate bookings using Redis cache
     // ========================================================================
-    const cacheKey = `booking:${contact_id}:${exam_date}`;
+    // Normalize exam_date to YYYY-MM-DD format for consistent cache keys
+    const normalizedExamDate = exam_date.includes('T') ? exam_date.split('T')[0] : exam_date;
+    const cacheKey = `booking:${contact_id}:${normalizedExamDate}`;
     console.log(`🔍 [BOOKING-CREATE] Checking for duplicate booking: ${cacheKey}`);
 
     const existingBooking = await redis.get(cacheKey);

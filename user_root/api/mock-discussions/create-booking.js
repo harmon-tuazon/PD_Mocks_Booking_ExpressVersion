@@ -258,7 +258,9 @@ module.exports = async function handler(req, res) {
     redis = new RedisLockService();
 
     // Format cache key: Use hubspot_id (numeric HubSpot contact ID) for consistency
-    const redisKey = `booking:${hubspot_id}:${exam_date}`;
+    // Normalize exam_date to YYYY-MM-DD format for consistent cache keys
+    const normalizedExamDate = exam_date.includes('T') ? exam_date.split('T')[0] : exam_date;
+    const redisKey = `booking:${hubspot_id}:${normalizedExamDate}`;
     const cachedResult = await redis.get(redisKey);
 
     console.log(`[Mock Discussion Duplicate Check] Cache key: ${redisKey}, Result: ${cachedResult}`);
@@ -500,8 +502,9 @@ module.exports = async function handler(req, res) {
     console.log(`✅ Atomic booking created: ${bookingId}, Total bookings: ${newTotalBookings}`);
 
     // Cache Active booking status in Redis to prevent duplicate bookings (until exam date)
-    const verifiedRedisKey = `booking:${hubspot_id}:${exam_date}`;
-    const examDateTime = new Date(`${exam_date}T23:59:59Z`);
+    // Use normalized date (YYYY-MM-DD) for consistent cache keys
+    const verifiedRedisKey = `booking:${hubspot_id}:${normalizedExamDate}`;
+    const examDateTime = new Date(`${normalizedExamDate}T23:59:59Z`);
     const ttlSeconds = Math.max((examDateTime - Date.now()) / 1000, 86400);
     await redis.setex(verifiedRedisKey, Math.floor(ttlSeconds), `${bookingId}:Active`);
     console.log(`✅ Cached Active Mock Discussion booking in Redis: ${verifiedRedisKey} (TTL: ${Math.floor(ttlSeconds)}s)`);

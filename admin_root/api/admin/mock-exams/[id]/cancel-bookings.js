@@ -362,7 +362,11 @@ module.exports = async (req, res) => {
           console.log(`🔍 [REDIS DEBUG] - exam_date: ${bookingData?.exam_date}`);
 
           if (bookingData?.contact_id && bookingData?.exam_date) {
-            const redisKey = `booking:${bookingData.contact_id}:${bookingData.exam_date}`;
+            // Normalize exam_date to YYYY-MM-DD format for consistent cache keys
+            const normalizedExamDate = bookingData.exam_date.includes('T')
+              ? bookingData.exam_date.split('T')[0]
+              : bookingData.exam_date;
+            const redisKey = `booking:${bookingData.contact_id}:${normalizedExamDate}`;
             console.log(`🔍 [REDIS DEBUG] Attempting to delete cache key: "${redisKey}"`);
 
             try {

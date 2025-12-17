@@ -230,7 +230,9 @@ async function cancelSingleBooking(hubspot, bookingData) {
         // CRITICAL FIX: Invalidate duplicate detection cache (allows rebooking same date)
         const exam_date = mockExamDetails?.exam_date || bookingProperties.exam_date;
         if (contactId && exam_date) {
-          const redisKey = `booking:${contactId}:${exam_date}`;
+          // Normalize exam_date to YYYY-MM-DD format for consistent cache keys
+          const normalizedExamDate = exam_date.includes('T') ? exam_date.split('T')[0] : exam_date;
+          const redisKey = `booking:${contactId}:${normalizedExamDate}`;
           console.log(`🔍 [REDIS] Invalidating duplicate cache key: "${redisKey}"`);
 
           const deletedCount = await redis.del(redisKey);
