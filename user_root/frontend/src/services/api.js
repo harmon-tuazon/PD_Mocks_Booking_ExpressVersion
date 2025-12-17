@@ -73,14 +73,23 @@ api.interceptors.response.use(
         error.message = 'Server error. Please try again later.';
       }
       // Use server error message
+      // Backend may return error as string (data.error) or nested object (data.error.message)
       else if (data.error) {
-        error.message = data.error;
+        if (typeof data.error === 'string') {
+          error.message = data.error;
+        } else if (data.error.message) {
+          error.message = data.error.message;
+        }
       }
 
       // Add error code if available
+      // Backend may return code at top level (data.code) or nested (data.error.code)
       if (data.code) {
         error.code = data.code;
         console.log('🔍 [Axios Interceptor] Set error.code =', error.code, 'from data.code =', data.code);
+      } else if (data.error?.code) {
+        error.code = data.error.code;
+        console.log('🔍 [Axios Interceptor] Set error.code =', error.code, 'from data.error.code =', data.error.code);
       }
     } else if (error.request) {
       error.message = 'Network error. Please check your connection.';
