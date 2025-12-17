@@ -579,13 +579,13 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
 
         if (mockExam) {
           const correctCount = parseInt(mockExam.properties.total_bookings) || 0;
-          const TTL_30_DAYS = 30 * 24 * 60 * 60;
-          await redis.setex(counterKey, TTL_30_DAYS, correctCount);
+          const TTL_1_WEEK = 7 * 24 * 60 * 60; // 604,800 seconds
+          await redis.setex(counterKey, TTL_1_WEEK, correctCount);
           console.log(`✅ [REDIS] Counter corrected to ${correctCount} from HubSpot`);
         } else {
           // Reset to 0 if counter is invalid
-          const TTL_30_DAYS = 30 * 24 * 60 * 60;
-          await redis.setex(counterKey, TTL_30_DAYS, 0);
+          const TTL_1_WEEK = 7 * 24 * 60 * 60; // 604,800 seconds
+          await redis.setex(counterKey, TTL_1_WEEK, 0);
           console.log(`✅ [REDIS] Reset counter to 0 for exam ${bookingData.associated_mock_exam}`);
         }
       }

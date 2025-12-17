@@ -369,9 +369,9 @@ module.exports = async function handler(req, res) {
     // TIER 2: Fallback to HubSpot if Redis doesn't have it yet
     if (totalBookings === null) {
       totalBookings = parseInt(mockDiscussion.properties.total_bookings) || 0;
-      // Seed Redis with current HubSpot value (TTL: 30 days / 3 months)
-      const TTL_30_DAYS = 30 * 24 * 60 * 60;
-      await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_30_DAYS, totalBookings);
+      // Seed Redis with current HubSpot value (TTL: 1 week)
+      const TTL_1_WEEK = 7 * 24 * 60 * 60; // 604,800 seconds
+      await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_1_WEEK, totalBookings);
       console.log(`📊 Seeded Redis counter from HubSpot: exam:${mock_exam_id}:bookings = ${totalBookings}`);
     } else {
       totalBookings = parseInt(totalBookings);
@@ -505,9 +505,9 @@ module.exports = async function handler(req, res) {
 
     if (existingCount === null) {
       // Key doesn't exist (edge case) - seed with totalBookings + 1
-      const TTL_30_DAYS = 30 * 24 * 60 * 60;
+      const TTL_1_WEEK = 7 * 24 * 60 * 60; // 604,800 seconds
       newTotalBookings = totalBookings + 1;
-      await redis.setex(counterKey, TTL_30_DAYS, newTotalBookings);
+      await redis.setex(counterKey, TTL_1_WEEK, newTotalBookings);
       console.log(`✅ [REDIS] Seeded exam counter with TTL: ${counterKey} = ${newTotalBookings}`);
     } else {
       newTotalBookings = await redis.incr(counterKey);

@@ -89,9 +89,9 @@ module.exports = async (req, res) => {
       totalBookings = parseInt(examData.total_bookings) || 0;
       console.log(`📊 Redis miss: using Supabase total_bookings = ${totalBookings}`);
 
-      // Seed Redis with Supabase value (TTL: 30 days for self-healing)
-      const TTL_30_DAYS = 30 * 24 * 60 * 60;
-      await redis.setex(`exam:${mockExamId}:bookings`, TTL_30_DAYS, totalBookings);
+      // Seed Redis with Supabase value (TTL: 1 week for self-healing)
+      const TTL_1_WEEK = 7 * 24 * 60 * 60; // 604,800 seconds
+      await redis.setex(`exam:${mockExamId}:bookings`, TTL_1_WEEK, totalBookings);
       console.log(`📊 Redis seeded: exam:${mockExamId}:bookings = ${totalBookings}`);
     }
 

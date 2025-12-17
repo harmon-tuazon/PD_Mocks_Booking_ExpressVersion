@@ -353,7 +353,7 @@ module.exports = async (req, res) => {
     // in /api/mock-exams/available. This MUST be incremented to prevent showing
     // full sessions as available.
     const counterKey = `exam:${mock_exam_id}:bookings`;
-    const TTL_30_DAYS = 30 * 24 * 60 * 60; // 2,592,000 seconds
+    const TTL_1_WEEK = 7 * 24 * 60 * 60; // 604,800 seconds
 
     // Check if key exists - if not, seed it with current Supabase value + 1
     const existingCount = await redis.get(counterKey);
@@ -362,7 +362,7 @@ module.exports = async (req, res) => {
     if (existingCount === null) {
       // Key doesn't exist - seed with currentTotalBookings + 1 (for this booking)
       newTotalBookings = currentTotalBookings + 1;
-      await redis.setex(counterKey, TTL_30_DAYS, newTotalBookings);
+      await redis.setex(counterKey, TTL_1_WEEK, newTotalBookings);
       console.log(`✅ [REDIS] Seeded exam counter with TTL: ${counterKey} = ${newTotalBookings}`);
     } else {
       // Key exists - increment it
