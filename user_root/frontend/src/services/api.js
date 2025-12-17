@@ -112,12 +112,14 @@ const apiService = {
   mockExams: {
     /**
      * Get available mock exams by type
+     * @param {string} mockType - The mock exam type
+     * @param {boolean} includeFullSessions - If true, include full sessions in response (for admin views)
      */
-    getAvailable: async (mockType, includeCapacity = true) => {
+    getAvailable: async (mockType, includeFullSessions = false) => {
       return api.get('/mock-exams/available', {
         params: {
           mock_type: mockType,
-          include_capacity: includeCapacity,
+          include_capacity: includeFullSessions, // false = filter out full exams at backend
           realtime: true, // Always use real-time capacity calculation for accurate availability
         },
       });

@@ -345,20 +345,27 @@ module.exports = async (req, res) => {
     console.log(`✅ [BOOKING-CREATE] Atomic booking created: ${bookingResult.hubspot_id}`);
 
     // ========================================================================
-    // STEP 10: Increment exam total_bookings in Supabase
+    // STEP 10: Increment Redis counter for real-time capacity tracking
     // ========================================================================
-    const newTotalBookings = currentTotalBookings + 1;
+    // CRITICAL: Redis is the authoritative source for available_slots calculation
+    // in /api/mock-exams/available. This MUST be incremented to prevent showing
+    // full sessions as available.
+    const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
+    console.log(`✅ [REDIS] Incremented exam counter: exam:${mock_exam_id}:bookings = ${newTotalBookings}`);
 
+    // ========================================================================
+    // STEP 10b: Sync total_bookings to Supabase (non-blocking)
+    // ========================================================================
     const { error: examUpdateError } = await supabaseAdmin
       .from('hubspot_mock_exams')
       .update({ total_bookings: newTotalBookings })
       .eq('hubspot_id', mock_exam_id);
 
     if (examUpdateError) {
-      console.error(`⚠️ [BOOKING-CREATE] Failed to update exam total_bookings:`, examUpdateError);
+      console.error(`⚠️ [BOOKING-CREATE] Failed to update exam total_bookings in Supabase:`, examUpdateError);
       // Non-blocking - cron will reconcile
     } else {
-      console.log(`✅ [BOOKING-CREATE] Exam total_bookings updated: ${newTotalBookings}`);
+      console.log(`✅ [BOOKING-CREATE] Supabase exam total_bookings updated: ${newTotalBookings}`);
     }
 
     // ========================================================================

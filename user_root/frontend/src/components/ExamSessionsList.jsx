@@ -55,10 +55,12 @@ const ExamSessionsList = () => {
     setError(null);
 
     try {
-      const result = await apiService.mockExams.getAvailable(mockType, true);
+      // Backend now filters out full sessions by default (include_capacity=false)
+      const result = await apiService.mockExams.getAvailable(mockType);
 
       if (result.success) {
         // Filter out past exams (client-side filtering for exams earlier than today)
+        // Backend filters by start date but we double-check for timezone edge cases
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Set to start of day for accurate date-only comparison
 
@@ -79,21 +81,15 @@ const ExamSessionsList = () => {
           }
         });
 
-        // Filter out full sessions (available_slots <= 0)
-        const availableSessions = upcomingExams.filter(exam => exam.available_slots > 0);
-
         // Log filtering statistics for debugging
         const pastExamsCount = (result.data || []).length - upcomingExams.length;
-        const fullSessionsCount = upcomingExams.length - availableSessions.length;
 
         if (pastExamsCount > 0) {
           console.log(`Filtered out ${pastExamsCount} past exam(s) from ${(result.data || []).length} total exam(s)`);
         }
-        if (fullSessionsCount > 0) {
-          console.log(`Filtered out ${fullSessionsCount} full session(s) from ${upcomingExams.length} upcoming exam(s)`);
-        }
 
-        setExams(availableSessions);
+        // Full sessions are now filtered at backend, no need to filter here
+        setExams(upcomingExams);
       } else {
         throw new Error(result.error || 'Failed to fetch exams');
       }

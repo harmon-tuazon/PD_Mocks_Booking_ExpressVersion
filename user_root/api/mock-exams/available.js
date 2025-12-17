@@ -199,7 +199,10 @@ module.exports = async (req, res) => {
     // Close Redis connection
     await redis.close();
 
-    // Filter out full exams unless specifically requested
+    // Filter behavior based on include_capacity parameter:
+    // - include_capacity=true: Return ALL exams including full ones (for admin views)
+    // - include_capacity=false (default): Filter out full exams (available_slots > 0 only)
+    // Default behavior is to hide full sessions from users
     const filteredExams = include_capacity
       ? processedExams
       : processedExams.filter(exam => exam.available_slots > 0);

@@ -208,7 +208,7 @@ const schemas = {
       }),
     include_capacity: Joi.boolean()
       .optional()
-      .default(true),
+      .default(false),  // Default: filter out full exams (only show available sessions)
     realtime: Joi.boolean()
       .optional()
       .default(false)
