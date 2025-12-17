@@ -22,7 +22,10 @@ const { getCache } = require('../../_shared/cache');
 const RedisLockService = require('../../_shared/redis');
 const {
   syncBookingToSupabase,
-  updateExamBookingCountInSupabase
+  updateExamBookingCountInSupabase,
+  searchContactFromSupabase,
+  getExamByIdFromSupabase,
+  checkExistingActiveBookingFromSupabase
 } = require('../../_shared/supabase-data');
 
 module.exports = async (req, res) => {
@@ -62,11 +65,11 @@ module.exports = async (req, res) => {
     hubspot = new HubSpotService();
 
     // ========================================================================
-    // STEP 3: Search for Contact in HubSpot
+    // STEP 3: Search for Contact in Supabase (Supabase-first)
     // ========================================================================
-    console.log(`🔍 [ADMIN BOOKING] Searching for contact...`);
+    console.log(`🔍 [ADMIN BOOKING] Searching for contact in Supabase...`);
 
-    const contact = await hubspot.searchContacts(student_id, email, mock_type);
+    const contact = await searchContactFromSupabase(student_id, email);
 
     if (!contact) {
       const error = new Error(`No contact found with student_id '${student_id}' and email '${email}'`);
@@ -75,17 +78,18 @@ module.exports = async (req, res) => {
       throw error;
     }
 
-    const contactId = contact.id;
-    const contactName = `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim() || student_id;
+    // Supabase uses hubspot_id column, contact data is flat (not nested in properties)
+    const contactId = contact.hubspot_id;
+    const contactName = `${contact.firstname || ''} ${contact.lastname || ''}`.trim() || student_id;
 
     console.log(`✅ [ADMIN BOOKING] Contact found: ${contactName} (ID: ${contactId})`);
 
     // ========================================================================
-    // STEP 4: Verify Mock Exam Exists and is Active
+    // STEP 4: Verify Mock Exam Exists and is Active (Supabase-first)
     // ========================================================================
-    console.log(`🔍 [ADMIN BOOKING] Verifying mock exam...`);
+    console.log(`🔍 [ADMIN BOOKING] Verifying mock exam in Supabase...`);
 
-    const mockExam = await hubspot.getMockExam(mock_exam_id);
+    const mockExam = await getExamByIdFromSupabase(mock_exam_id);
 
     if (!mockExam) {
       const error = new Error('Mock exam not found');
@@ -94,7 +98,8 @@ module.exports = async (req, res) => {
       throw error;
     }
 
-    if (mockExam.properties.is_active !== 'true') {
+    // Supabase stores is_active as 'true'/'false' string
+    if (mockExam.is_active !== 'true') {
       const error = new Error('Cannot create booking for inactive mock exam');
       error.status = 400;
       error.code = 'EXAM_NOT_ACTIVE';
@@ -102,17 +107,18 @@ module.exports = async (req, res) => {
     }
 
     // WARNING ONLY - Don't block for capacity (admin override)
-    const capacity = parseInt(mockExam.properties.capacity) || 0;
+    // Supabase data is flat (not nested in properties)
+    const capacity = parseInt(mockExam.capacity) || 0;
 
     // Use Redis for current booking count (authoritative source)
     let totalBookings = await redis.get(`exam:${mock_exam_id}:bookings`);
 
     if (totalBookings === null) {
-      // Seed from HubSpot if not in Redis
-      totalBookings = parseInt(mockExam.properties.total_bookings) || 0;
+      // Seed from Supabase if not in Redis (Supabase data is flat)
+      totalBookings = parseInt(mockExam.total_bookings) || 0;
       const TTL_30_DAYS = 30 * 24 * 60 * 60;
       await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_30_DAYS, totalBookings);
-      console.log(`📊 [ADMIN BOOKING] Seeded Redis counter from HubSpot: ${totalBookings}`);
+      console.log(`📊 [ADMIN BOOKING] Seeded Redis counter from Supabase: ${totalBookings}`);
     } else {
       totalBookings = parseInt(totalBookings);
     }
@@ -126,12 +132,13 @@ module.exports = async (req, res) => {
       });
     }
 
-    console.log(`✅ [ADMIN BOOKING] Mock exam verified (${mockExam.properties.mock_type})`);
+    console.log(`✅ [ADMIN BOOKING] Mock exam verified (${mockExam.mock_type})`);
 
     // ========================================================================
-    // STEP 5: Check for Duplicate Bookings
+    // STEP 5: Check for Duplicate ACTIVE Bookings (Supabase-first)
+    // Only checks for ACTIVE bookings - allows rebooking if previous was cancelled
     // ========================================================================
-    console.log(`🔍 [ADMIN BOOKING] Checking for duplicates...`);
+    console.log(`🔍 [ADMIN BOOKING] Checking for active duplicates in Supabase...`);
 
     // Format booking date for booking_id
     const formatBookingDate = (dateString) => {
@@ -165,16 +172,17 @@ module.exports = async (req, res) => {
     const formattedDate = formatBookingDate(exam_date);
     const bookingId = `${mock_type}-${student_id}-${formattedDate}`;
 
-    const isDuplicate = await hubspot.checkExistingBooking(bookingId);
+    // Check Supabase for ACTIVE bookings only (cancelled bookings are ignored)
+    const isDuplicate = await checkExistingActiveBookingFromSupabase(bookingId);
     if (isDuplicate) {
-      const error = new Error('This trainee already has a booking for this exam date');
+      const error = new Error('This trainee already has an ACTIVE booking for this exam date');
       error.status = 409;
       error.code = 'DUPLICATE_BOOKING';
       error.details = { existing_booking_id: bookingId };
       throw error;
     }
 
-    console.log(`✅ [ADMIN BOOKING] No duplicate found`);
+    console.log(`✅ [ADMIN BOOKING] No active duplicate found`);
 
     // ========================================================================
     // STEP 6: Create Booking Object (NO TOKEN CHECK, NO CAPACITY BLOCK)
@@ -184,7 +192,7 @@ module.exports = async (req, res) => {
     const bookingData = {
       bookingId,
       name: contactName,
-      email: contact.properties.email,
+      email: contact.email,
       tokenUsed: 'Admin Override' // Special token value for admin bookings
     };
 
@@ -286,14 +294,14 @@ module.exports = async (req, res) => {
           associated_contact_id: contactId,
           student_id,
           name: contactName,
-          student_email: contact.properties.email,
+          student_email: contact.email,
           is_active: 'Active',
           exam_date,
           dominant_hand,
           attending_location,
           token_used: 'Admin Override',
-          start_time: mockExam.properties.start_time,
-          end_time: mockExam.properties.end_time,
+          start_time: mockExam.start_time,
+          end_time: mockExam.end_time,
           createdate: new Date().toISOString()
         }
       }, mock_exam_id);
@@ -336,7 +344,7 @@ module.exports = async (req, res) => {
           <li><strong>Booking ID:</strong> ${bookingId}</li>
           <li><strong>Exam Type:</strong> ${mock_type}</li>
           <li><strong>Exam Date:</strong> ${formattedExamDate}</li>
-          <li><strong>Location:</strong> ${mockExam.properties.location || 'Mississauga'}</li>
+          <li><strong>Location:</strong> ${mockExam.location || 'Mississauga'}</li>
           <li><strong>Created At:</strong> ${formattedTimestamp}</li>
         </ul>
 
@@ -344,7 +352,7 @@ module.exports = async (req, res) => {
         <ul>
           <li><strong>Name:</strong> ${contactName}</li>
           <li><strong>Student ID:</strong> ${student_id}</li>
-          <li><strong>Email:</strong> ${contact.properties.email}</li>
+          <li><strong>Email:</strong> ${contact.email}</li>
         </ul>
 
         <p><strong>Admin Override Details:</strong></p>
@@ -445,13 +453,13 @@ module.exports = async (req, res) => {
           mock_exam_id,
           exam_date,
           mock_type,
-          location: mockExam.properties.location || 'Mississauga'
+          location: mockExam.location || 'Mississauga'
         },
         contact_details: {
           contact_id: contactId,
           student_id,
           name: contactName,
-          email: contact.properties.email
+          email: contact.email
         },
         associations: {
           contact_associated: contactAssocSuccess,

@@ -75,6 +75,55 @@ async function getContactByIdFromSupabase(contactId) {
 }
 
 /**
+ * Search for contact by student_id AND email from Supabase
+ * Used by admin booking creation to find contact without HubSpot API call
+ * @param {string} studentId - Student ID
+ * @param {string} email - Contact email address
+ * @returns {object|null} - Contact object or null if not found
+ */
+async function searchContactFromSupabase(studentId, email) {
+  const { data, error } = await supabaseAdmin
+    .from('hubspot_contact_credits')
+    .select('*')
+    .eq('student_id', studentId)
+    .ilike('email', email)
+    .single();
+
+  if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+    console.error(`❌ Supabase contact search error:`, error.message);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Check if an ACTIVE booking already exists with the same booking_id
+ * Only returns true if there's an active booking (is_active = 'Active')
+ * Cancelled bookings (is_active = 'Cancelled') are ignored
+ * This allows users to rebook for the same exam date after cancelling
+ *
+ * @param {string} bookingId - The booking_id (format: {mock_type}-{student_id}-{formatted_date})
+ * @returns {boolean} - True if an active booking exists, false otherwise
+ */
+async function checkExistingActiveBookingFromSupabase(bookingId) {
+  const { data, error } = await supabaseAdmin
+    .from('hubspot_bookings')
+    .select('id, booking_id, is_active')
+    .eq('booking_id', bookingId)
+    .eq('is_active', 'Active')
+    .limit(1);
+
+  if (error) {
+    console.error(`❌ Supabase booking check error:`, error.message);
+    throw error;
+  }
+
+  // Return true if at least one active booking exists
+  return data && data.length > 0;
+}
+
+/**
  * Sync contact to Supabase (auto-populate on cache miss)
  * @param {object} contact - Contact object from HubSpot
  */
@@ -707,6 +756,7 @@ module.exports = {
   getContactByEmailFromSupabase,
   getContactByStudentIdFromSupabase,
   getContactByIdFromSupabase,
+  searchContactFromSupabase,
   // Booking reads
   getBookingsFromSupabase,
   getBookingsByContactFromSupabase,
@@ -715,6 +765,7 @@ module.exports = {
   getBookingByIdFromSupabase,
   getActiveBookingsCountFromSupabase,
   getBookingCascading,
+  checkExistingActiveBookingFromSupabase,
   // Write syncs
   syncContactToSupabase,
   syncBookingToSupabase,
