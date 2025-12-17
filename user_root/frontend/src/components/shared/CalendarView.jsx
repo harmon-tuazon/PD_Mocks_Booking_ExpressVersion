@@ -244,7 +244,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [], mo
                   >
                     {/* Header: Mock Type + Set Badge */}
                     {MOCK_SET_APPLICABLE_TYPES.includes(mockType) && (
-                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100 dark:border-dark-border">
+                      <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-300 dark:border-gray-600">
                         <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
                           {mockType}
                         </span>
