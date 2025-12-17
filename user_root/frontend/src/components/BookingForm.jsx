@@ -318,20 +318,6 @@ const BookingForm = () => {
   // Check if we have a time conflict error
   const isTimeConflictError = error && error.code === 'TIME_CONFLICT';
 
-  // Check if we have an exam full error (race condition: session filled between check and submit)
-  const isExamFullError = error && (
-    error?.code === 'EXAM_FULL' ||
-    (typeof error === 'string' && error.toLowerCase().includes('fully booked')) ||
-    (error?.message && error.message.toLowerCase().includes('fully booked'))
-  );
-
-  // Show session full modal when EXAM_FULL error is detected
-  useEffect(() => {
-    if (isExamFullError && !showSessionFullModal) {
-      setShowSessionFullModal(true);
-    }
-  }, [isExamFullError, showSessionFullModal]);
-
   if (showInsufficientCreditsCard) {
     return (
       <InsufficientCreditsCard
@@ -409,8 +395,7 @@ const BookingForm = () => {
         </div>
 
         {/* Error Display with User-Friendly Messages */}
-        {/* Hide error display for EXAM_FULL since we show SessionFullModal instead */}
-        {error && !isTimeConflictError && !isExamFullError && (
+        {error && !isTimeConflictError && (
           <ErrorDisplay
             error={error}
             onDismiss={clearError}
