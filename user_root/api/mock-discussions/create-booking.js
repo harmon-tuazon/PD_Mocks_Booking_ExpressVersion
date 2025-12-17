@@ -498,7 +498,21 @@ module.exports = async function handler(req, res) {
     console.log(`Atomic Mock Discussion booking created: ${bookingId} (HubSpot ID: ${createdBookingId})`);
 
     // Increment Redis booking counter for real-time capacity tracking
-    const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
+    // Note: Key should already exist from capacity check, but handle edge case
+    const counterKey = `exam:${mock_exam_id}:bookings`;
+    const existingCount = await redis.get(counterKey);
+    let newTotalBookings;
+
+    if (existingCount === null) {
+      // Key doesn't exist (edge case) - seed with totalBookings + 1
+      const TTL_30_DAYS = 30 * 24 * 60 * 60;
+      newTotalBookings = totalBookings + 1;
+      await redis.setex(counterKey, TTL_30_DAYS, newTotalBookings);
+      console.log(`✅ [REDIS] Seeded exam counter with TTL: ${counterKey} = ${newTotalBookings}`);
+    } else {
+      newTotalBookings = await redis.incr(counterKey);
+      console.log(`✅ [REDIS] Incremented exam counter: ${counterKey} = ${newTotalBookings}`);
+    }
     console.log(`✅ Atomic booking created: ${bookingId}, Total bookings: ${newTotalBookings}`);
 
     // Cache Active booking status in Redis to prevent duplicate bookings (until exam date)

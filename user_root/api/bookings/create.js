@@ -352,8 +352,23 @@ module.exports = async (req, res) => {
     // CRITICAL: Redis is the authoritative source for available_slots calculation
     // in /api/mock-exams/available. This MUST be incremented to prevent showing
     // full sessions as available.
-    const newTotalBookings = await redis.incr(`exam:${mock_exam_id}:bookings`);
-    console.log(`✅ [REDIS] Incremented exam counter: exam:${mock_exam_id}:bookings = ${newTotalBookings}`);
+    const counterKey = `exam:${mock_exam_id}:bookings`;
+    const TTL_30_DAYS = 30 * 24 * 60 * 60; // 2,592,000 seconds
+
+    // Check if key exists - if not, seed it with current Supabase value + 1
+    const existingCount = await redis.get(counterKey);
+    let newTotalBookings;
+
+    if (existingCount === null) {
+      // Key doesn't exist - seed with currentTotalBookings + 1 (for this booking)
+      newTotalBookings = currentTotalBookings + 1;
+      await redis.setex(counterKey, TTL_30_DAYS, newTotalBookings);
+      console.log(`✅ [REDIS] Seeded exam counter with TTL: ${counterKey} = ${newTotalBookings}`);
+    } else {
+      // Key exists - increment it
+      newTotalBookings = await redis.incr(counterKey);
+      console.log(`✅ [REDIS] Incremented exam counter: ${counterKey} = ${newTotalBookings}`);
+    }
 
     // ========================================================================
     // STEP 10b: Sync total_bookings to Supabase (non-blocking)
