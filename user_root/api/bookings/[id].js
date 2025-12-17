@@ -161,11 +161,11 @@ async function handler(req, res) {
     const sanitizedEmail = sanitizeInput(email);
     const sanitizedBookingId = sanitizeInput(bookingId);
 
-    // Initialize HubSpot service
+    // Initialize HubSpot service (still needed for GET request associations)
     const hubspot = new HubSpotService();
 
-    // Step 1: Authenticate user by finding contact
-    const contact = await hubspot.searchContacts(sanitizedStudentId, sanitizedEmail);
+    // Step 1: Authenticate user by finding contact (Supabase-first)
+    const contact = await getContactCreditsFromSupabase(sanitizedStudentId, sanitizedEmail);
 
     if (!contact) {
       const error = new Error('Authentication failed. Please check your Student ID and email.');
@@ -174,17 +174,18 @@ async function handler(req, res) {
       throw error;
     }
 
-    const contactId = contact.id;
-    console.log(`✅ Contact authenticated: ${contactId} - ${contact.properties.firstname} ${contact.properties.lastname}`);
+    // Use hubspot_id for HubSpot operations, store both for ownership verification
+    const contactHubspotId = contact.hubspot_id;
+    console.log(`✅ Contact authenticated (Supabase): ${contactHubspotId} - ${contact.firstname} ${contact.lastname}`);
 
     // Handle GET request
     if (req.method === 'GET') {
-      return await handleGetRequest(req, res, hubspot, sanitizedBookingId, contactId, contact);
+      return await handleGetRequest(req, res, hubspot, sanitizedBookingId, contactHubspotId, contact);
     }
 
     // Handle DELETE request
     if (req.method === 'DELETE') {
-      return await handleDeleteRequest(req, res, hubspot, sanitizedBookingId, contactId, contact, reason, sanitizedStudentId);
+      return await handleDeleteRequest(req, res, hubspot, sanitizedBookingId, contactHubspotId, contact, reason, sanitizedStudentId);
     }
 
   } catch (error) {
@@ -407,16 +408,35 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
       is_active: booking.is_active,
       student_id: booking.student_id,
       associated_mock_exam: booking.associated_mock_exam,
-      associated_contact_id: booking.associated_contact_id // For cache invalidation
+      associated_contact_id: booking.associated_contact_id
     });
-   
+
+    // Step 1.5: OWNERSHIP VERIFICATION - Ensure booking belongs to authenticated user
+    // Compare booking's associated_contact_id with authenticated user's hubspot_id
+    const bookingContactId = booking.associated_contact_id;
+    const isOwner = bookingContactId && contactId &&
+                    String(bookingContactId) === String(contactId);
+
+    console.log('🔐 [OWNERSHIP] Verification:', {
+      bookingContactId,
+      authenticatedContactId: contactId,
+      isOwner
+    });
+
+    if (!isOwner) {
+      console.error('❌ [OWNERSHIP] User does not own this booking');
+      const error = new Error('You do not have permission to cancel this booking');
+      error.status = 403;
+      error.code = 'FORBIDDEN';
+      throw error;
+    }
 
     // Normalize booking data structure
     const bookingData = booking;
 
-    // Step 2: Check if already cancelled (Supabase uses boolean is_active)
-    if (!bookingData.is_active) {
-      console.log('⚠️ Booking already cancelled');
+    // Step 2: Check if already cancelled (is_active is TEXT: 'Active', 'Cancelled', 'Completed')
+    if (bookingData.is_active !== 'Active') {
+      console.log('⚠️ Booking already cancelled or completed:', bookingData.is_active);
       const error = new Error('Booking is already cancelled');
       error.status = 409;
       error.code = 'ALREADY_CANCELED';
