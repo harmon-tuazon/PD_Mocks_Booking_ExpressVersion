@@ -85,13 +85,15 @@ module.exports = async (req, res) => {
         supabaseExams.forEach(exam => {
           // Ensure exam_date is in YYYY-MM-DD format (strip time if present)
           const dateOnly = exam.exam_date ? exam.exam_date.split(' ')[0].split('T')[0] : null;
-          const key = `${exam.mock_type}_${dateOnly}_${exam.location}`;
+          const mockSetSuffix = exam.mock_set ? `_${exam.mock_set.toLowerCase()}` : '';
+          const key = `${exam.mock_type}_${dateOnly}_${exam.location}${mockSetSuffix}`;
 
           if (!aggregateMap.has(key)) {
             aggregateMap.set(key, {
               mock_type: exam.mock_type,
               exam_date: dateOnly, // Store date-only format
               location: exam.location,
+              mock_set: exam.mock_set || null,
               sessions: []
             });
           }
@@ -104,13 +106,14 @@ module.exports = async (req, res) => {
             : 0;
 
           // Add session to aggregate
-          // Include parent aggregate properties (mock_type, exam_date, location)
+          // Include parent aggregate properties (mock_type, exam_date, location, mock_set)
           // so they're available when sessions are selected in bulk operations
           aggregateMap.get(key).sessions.push({
             id: exam.hubspot_id,
             mock_type: exam.mock_type,       // For clone modal preview
             exam_date: dateOnly,              // For clone modal preview
             location: exam.location,          // For clone modal preview
+            mock_set: exam.mock_set || null,  // For clone modal preview
             start_time: exam.start_time,
             end_time: exam.end_time,
             capacity: capacity,

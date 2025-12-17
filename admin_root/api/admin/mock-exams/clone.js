@@ -147,6 +147,9 @@ module.exports = async (req, res) => {
         ...(overrides.scheduled_activation_datetime && {
           scheduled_activation_datetime: overrides.scheduled_activation_datetime
         }),
+        ...(overrides.mock_set !== undefined && {
+          mock_set: overrides.mock_set || null
+        }),
 
         // CRITICAL: Generate new unique mock_exam_id (required by HubSpot)
         mock_exam_id: newMockExamId.toString(),

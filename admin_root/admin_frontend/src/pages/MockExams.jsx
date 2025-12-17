@@ -19,24 +19,13 @@ import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { convertTorontoToUTC, formatTorontoDateTime } from '../utils/dateTimeUtils';
-
-const MOCK_TYPES = [
-  'Situational Judgment',
-  'Clinical Skills',
-  'Mini-mock',
-  'Mock Discussion'
-];
-
-const LOCATIONS = [
-  'Mississauga',
-  'Mississauga - B9',
-  'Mississauga - Lab D',
-  'Calgary',
-  'Vancouver',
-  'Montreal',
-  'Richmond Hill',
-  'Online'
-];
+import {
+  MOCK_TYPES,
+  LOCATIONS,
+  DEFAULT_LOCATION,
+  MOCK_SET_OPTIONS,
+  MOCK_SET_APPLICABLE_TYPES
+} from '../constants/examConstants';
 
 function MockExams() {
   const navigate = useNavigate();
@@ -44,10 +33,11 @@ function MockExams() {
 
   const [showPreview, setShowPreview] = useState(false);
   const [formData, setFormData] = useState({
-    mock_type: 'Situational Judgment',
+    mock_type: MOCK_TYPES[0], // Default to first mock type
+    mock_set: '', // Optional: A-H or empty
     exam_date: '',
     capacity: '',
-    location: 'Mississauga',
+    location: DEFAULT_LOCATION,
     is_active: 'true', // String values: 'true' | 'false' | 'scheduled' (matching HubSpot)
     activation_mode: 'immediate', // NEW: 'immediate' | 'scheduled'
     scheduled_activation_datetime: null // NEW: ISO datetime string in UTC
@@ -146,10 +136,11 @@ function MockExams() {
 
   const resetForm = () => {
     setFormData({
-      mock_type: 'Situational Judgment',
+      mock_type: MOCK_TYPES[0], // Default to first mock type
+      mock_set: '', // Optional: A-H or empty
       exam_date: '',
       capacity: '',
-      location: 'Mississauga',
+      location: DEFAULT_LOCATION,
       is_active: 'true', // String value matching HubSpot
       activation_mode: 'immediate',
       scheduled_activation_datetime: null
@@ -211,7 +202,7 @@ function MockExams() {
                   </Label>
                   <Select
                     value={formData.mock_type}
-                    onValueChange={(value) => setFormData({ ...formData, mock_type: value })}
+                    onValueChange={(value) => setFormData({ ...formData, mock_type: value, mock_set: '' })}
                     required
                   >
                     <SelectTrigger>
@@ -238,6 +229,34 @@ function MockExams() {
                     required
                   />
                 </div>
+
+                {/* Mock Set - Only for applicable mock types */}
+                {MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type) && (
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">
+                      Mock Set (Optional)
+                    </Label>
+                    <Select
+                      value={formData.mock_set || '__none__'}
+                      onValueChange={(value) => setFormData({ ...formData, mock_set: value === '__none__' ? '' : value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a mock set (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {MOCK_SET_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      Identifies which set of cases/stations this exam uses
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Location Field - Full Width */}

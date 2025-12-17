@@ -419,6 +419,7 @@ async function syncExamToSupabase(exam) {
     hubspot_id: exam.id,
     mock_exam_name: props.mock_exam_name || null,
     mock_type: props.mock_type || null,
+    mock_set: props.mock_set || null,
     exam_date: props.exam_date || null,
     start_time: props.start_time || null,
     end_time: props.end_time || null,

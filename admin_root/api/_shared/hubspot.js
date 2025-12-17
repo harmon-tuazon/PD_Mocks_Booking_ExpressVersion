@@ -2109,7 +2109,8 @@ class HubSpotService {
         properties: [
           'mock_type', 'exam_date', 'start_time', 'end_time',
           'capacity', 'total_bookings', 'location', 'is_active',
-          'scheduled_activation_datetime', 'hs_createdate', 'hs_lastmodifieddate'
+          'scheduled_activation_datetime', 'hs_createdate', 'hs_lastmodifieddate',
+          'mock_set'
         ],
         associations: [HUBSPOT_OBJECTS.bookings], // Fetch booking associations
         limit: 200,  // HubSpot max limit per request
@@ -2234,7 +2235,8 @@ class HubSpotService {
 
       enrichedExams.forEach(exam => {
         const properties = exam.properties;
-        const key = `${properties.mock_type}_${properties.location}_${properties.exam_date}`
+        const mockSetSuffix = properties.mock_set ? `_${properties.mock_set.toLowerCase()}` : '';
+        const key = `${properties.mock_type}_${properties.location}_${properties.exam_date}${mockSetSuffix}`
           .toLowerCase()
           .replace(/\s+/g, '_');
 
@@ -2247,6 +2249,7 @@ class HubSpotService {
             mock_type: properties.mock_type,
             exam_date: properties.exam_date,
             location: properties.location,
+            mock_set: properties.mock_set || null,
             session_ids: [],
             sessions: [], // OPTIMIZATION: Pre-loaded session objects
             session_count: 0,
@@ -2270,6 +2273,7 @@ class HubSpotService {
           location: properties.location,
           is_active: properties.is_active,
           scheduled_activation_datetime: properties.scheduled_activation_datetime,
+          mock_set: properties.mock_set || null,
           utilization_rate: capacity > 0
             ? Math.round((totalBookings / capacity) * 100)
             : 0,

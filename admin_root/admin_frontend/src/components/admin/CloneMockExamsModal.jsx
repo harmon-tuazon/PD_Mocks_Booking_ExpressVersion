@@ -13,26 +13,16 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Label } from '@/components/ui/label';
 import { convertTorontoToUTC } from '../../utils/dateTimeUtils';
+import {
+  LOCATIONS,
+  MOCK_TYPES,
+  EXAM_STATUS_OPTIONS,
+  MOCK_SET_OPTIONS,
+  MOCK_SET_APPLICABLE_TYPES
+} from '../../constants/examConstants';
 
-// Valid options for form selects
-const LOCATIONS = [
-  'Mississauga',
-  'Mississauga - B9',
-  'Mississauga - Lab D',
-  'Calgary',
-  'Vancouver',
-  'Montreal',
-  'Richmond Hill',
-  'Online'
-];
-
-const MOCK_TYPES = [
-  'Situational Judgment',
-  'Clinical Skills',
-  'Mini-mock',
-  'Mock Discussion'
-];
-
+// Map EXAM_STATUS_OPTIONS to the format expected by the clone modal
+// Clone modal uses 'active'/'inactive' while constants use 'true'/'false'
 const ACTIVE_STATES = [
   { value: 'active', label: 'Active' },
   { value: 'inactive', label: 'Inactive' },
@@ -76,6 +66,7 @@ const CloneMockExamsModal = ({
     exam_date: '',
     location: KEEP_ORIGINAL,
     mock_type: KEEP_ORIGINAL,
+    mock_set: KEEP_ORIGINAL,
     capacity: KEEP_ORIGINAL,
     start_time: KEEP_ORIGINAL,
     end_time: KEEP_ORIGINAL,
@@ -113,6 +104,7 @@ const CloneMockExamsModal = ({
         exam_date: newExamDate,
         location: source.location || KEEP_ORIGINAL,
         mock_type: source.mock_type || KEEP_ORIGINAL,
+        mock_set: KEEP_ORIGINAL, // Use sentinel value instead of empty string
         capacity: KEEP_ORIGINAL, // Use sentinel value instead of empty string
         start_time: KEEP_ORIGINAL, // Use sentinel value instead of empty string
         end_time: KEEP_ORIGINAL, // Use sentinel value instead of empty string
@@ -125,6 +117,7 @@ const CloneMockExamsModal = ({
         exam_date: '',
         location: KEEP_ORIGINAL,
         mock_type: KEEP_ORIGINAL,
+        mock_set: KEEP_ORIGINAL,
         capacity: KEEP_ORIGINAL,
         start_time: KEEP_ORIGINAL,
         end_time: KEEP_ORIGINAL,
@@ -237,6 +230,10 @@ const CloneMockExamsModal = ({
     }
     if (formData.mock_type && formData.mock_type !== KEEP_ORIGINAL) {
       overrides.mock_type = formData.mock_type;
+    }
+    // mock_set can be explicitly cleared with '__clear__' or set to a value
+    if (formData.mock_set && formData.mock_set !== KEEP_ORIGINAL) {
+      overrides.mock_set = formData.mock_set === '__clear__' ? '' : formData.mock_set;
     }
     if (formData.capacity && formData.capacity !== KEEP_ORIGINAL) {
       overrides.capacity = parseInt(formData.capacity);
@@ -421,6 +418,30 @@ const CloneMockExamsModal = ({
                                 ))}
                               </SelectContent>
                             </Select>
+                          </div>
+
+                          {/* Mock Set */}
+                          <div>
+                            <Label htmlFor="mock_set">Mock Set</Label>
+                            <Select
+                              value={formData.mock_set}
+                              onValueChange={(value) => handleFieldChange('mock_set', value)}
+                              disabled={cloneMutation.isPending}
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Keep original" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={KEEP_ORIGINAL}>Keep original</SelectItem>
+                                <SelectItem value="__clear__">Clear (no set)</SelectItem>
+                                {MOCK_SET_OPTIONS.map(option => (
+                                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                              Only applies to SJ, CS, and Mock Discussion exams
+                            </p>
                           </div>
 
                           {/* Capacity */}

@@ -161,7 +161,7 @@ async function fetchModifiedMockExams(sinceTimestamp) {
   const allExams = [];
   let after = undefined;
   const properties = [
-    'mock_exam_name', 'mock_type', 'exam_date', 'start_time', 'end_time',
+    'mock_exam_name', 'mock_type', 'mock_set', 'exam_date', 'start_time', 'end_time',
     'location', 'capacity', 'is_active', 'scheduled_activation_datetime',
     'hs_createdate', 'hs_lastmodifieddate'
     // NOTE: total_bookings removed - we calculate it from actual bookings count
@@ -281,6 +281,7 @@ async function syncExamToSupabase(exam) {
     hubspot_id: exam.id,
     mock_exam_name: props.mock_exam_name,
     mock_type: props.mock_type,
+    mock_set: props.mock_set || null,
     exam_date: props.exam_date,
     start_time: props.start_time,
     end_time: props.end_time,

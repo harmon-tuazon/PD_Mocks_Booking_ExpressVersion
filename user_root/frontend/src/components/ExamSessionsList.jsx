@@ -10,6 +10,9 @@ import useCachedCredits from '../hooks/useCachedCredits';
 import LocationFilter from './shared/LocationFilter';
 import BookingTimeWarningModal from './shared/BookingTimeWarningModal';
 
+// Mock types that support mock_set grouping
+const MOCK_SET_APPLICABLE_TYPES = ['Clinical Skills', 'Situational Judgment', 'Mock Discussion'];
+
 const ExamSessionsList = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -436,6 +439,11 @@ const ExamSessionsList = () => {
                           )}
                         </div>
                       </th>
+                      {MOCK_SET_APPLICABLE_TYPES.includes(mockType) && (
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-navy-900 dark:text-gray-100 uppercase tracking-wider">
+                          Set
+                        </th>
+                      )}
                       <th
                         className="px-6 py-4 text-left text-xs font-semibold text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-dark-card transition-colors"
                         onClick={() => handleSort('capacity')}
@@ -482,6 +490,17 @@ const ExamSessionsList = () => {
                             </span>
                           </div>
                         </td>
+                        {MOCK_SET_APPLICABLE_TYPES.includes(mockType) && (
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {exam.mock_set ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
+                                Set {exam.mock_set}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
+                            )}
+                          </td>
+                        )}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <CapacityBadge
                             availableSlots={exam.available_slots}
@@ -518,9 +537,16 @@ const ExamSessionsList = () => {
                   <div className="space-y-3">
                     {/* Date and Capacity Badge */}
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-headline font-semibold text-navy-800 dark:text-gray-100">
-                        {formatDate(exam.exam_date)}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-headline font-semibold text-navy-800 dark:text-gray-100">
+                          {formatDate(exam.exam_date)}
+                        </h3>
+                        {MOCK_SET_APPLICABLE_TYPES.includes(mockType) && exam.mock_set && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
+                            Set {exam.mock_set}
+                          </span>
+                        )}
+                      </div>
                       <CapacityBadge
                         availableSlots={exam.available_slots}
                         capacity={exam.capacity}

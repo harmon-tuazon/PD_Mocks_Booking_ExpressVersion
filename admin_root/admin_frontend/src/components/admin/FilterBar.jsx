@@ -13,24 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
-
-const LOCATIONS = [
-  'Mississauga',
-  'Mississauga - B9',
-  'Mississauga - Lab D',
-  'Calgary',
-  'Vancouver',
-  'Montreal',
-  'Richmond Hill',
-  'Online'
-];
-
-const MOCK_TYPES = [
-  'Situational Judgment',
-  'Clinical Skills',
-  'Mini-mock',
-  'Mock Discussion'
-];
+import { LOCATIONS, MOCK_TYPES } from '../../constants/examConstants';
 
 const FilterBar = ({
   filters,

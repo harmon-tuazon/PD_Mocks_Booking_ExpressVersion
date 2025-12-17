@@ -6,6 +6,9 @@ import { checkPrerequisites } from '../../utils/prerequisiteHelpers';
 import { getTimezoneLabel, formatTimezoneForDisplay } from '../../utils/timezoneHelpers';
 import CapacityBadge from './CapacityBadge';
 
+// Mock types that support mock_set grouping
+const MOCK_SET_APPLICABLE_TYPES = ['Clinical Skills', 'Situational Judgment', 'Mock Discussion'];
+
 const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [], mockType = 'Situational Judgment' }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
@@ -241,9 +244,16 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [], mo
                   >
                     {/* Mobile: stack vertically, Desktop: side by side */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                      <h4 className="text-sm sm:text-xs font-subheading font-semibold text-navy-800 dark:text-gray-100">
-                        {formatTimeRange(session, formatTimezoneForDisplay(getTimezoneLabel(mockType, session.location)))}
-                      </h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm sm:text-xs font-subheading font-semibold text-navy-800 dark:text-gray-100">
+                          {formatTimeRange(session, formatTimezoneForDisplay(getTimezoneLabel(mockType, session.location)))}
+                        </h4>
+                        {MOCK_SET_APPLICABLE_TYPES.includes(mockType) && session.mock_set && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
+                            Set {session.mock_set}
+                          </span>
+                        )}
+                      </div>
                       <CapacityBadge
                         availableSlots={session.available_slots}
                         capacity={session.capacity}
