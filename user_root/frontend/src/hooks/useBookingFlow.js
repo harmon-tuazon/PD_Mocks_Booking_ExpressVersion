@@ -437,16 +437,26 @@ const useBookingFlow = (initialMockExamId = null, initialMockType = null) => {
       let errorCode = err.code;
       let errorMessage = err.message;
 
-      // Check if error code is in response data but not on error object
+      // Check if error code is in response data (nested under error object)
+      // Backend format: { success: false, error: { code: 'EXAM_FULL', message: '...' } }
+      if (!errorCode && err.response?.data?.error?.code) {
+        errorCode = err.response.data.error.code;
+        console.log('📌 Extracted error code from response.data.error.code:', errorCode);
+      }
+      // Fallback: check if error code is directly on data (legacy format)
       if (!errorCode && err.response?.data?.code) {
         errorCode = err.response.data.code;
         console.log('📌 Extracted error code from response.data.code:', errorCode);
       }
 
-      // Check if error message is in response data
-      if (err.response?.data?.error) {
+      // Check if error message is in response data (nested under error object)
+      if (err.response?.data?.error?.message) {
+        errorMessage = err.response.data.error.message;
+        console.log('📌 Using error message from response.data.error.message:', errorMessage);
+      } else if (typeof err.response?.data?.error === 'string') {
+        // Fallback: error might be a string directly
         errorMessage = err.response.data.error;
-        console.log('📌 Using error message from response.data.error:', errorMessage);
+        console.log('📌 Using error message from response.data.error (string):', errorMessage);
       }
 
       // FIX: Always pass error object with code for better error display

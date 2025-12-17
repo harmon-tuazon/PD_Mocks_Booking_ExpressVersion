@@ -26,6 +26,13 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [], mo
     return grouped;
   }, [exams]);
 
+  // Helper to check if a date has at least one session with available slots
+  const hasAvailableSessions = (dateKey) => {
+    const sessions = examsByDate[dateKey];
+    if (!sessions || sessions.length === 0) return false;
+    return sessions.some(session => session.available_slots > 0);
+  };
+
   // Generate calendar days for current month
   const calendarDays = useMemo(() => {
     const start = startOfMonth(currentDate);
@@ -84,7 +91,8 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [], mo
     if (!date) return 'invisible';
 
     const dateKey = format(date, 'yyyy-MM-dd');
-    const hasExams = examsByDate[dateKey] && examsByDate[dateKey].length > 0;
+    // Only highlight dates that have sessions with available slots
+    const hasBookableSessions = hasAvailableSessions(dateKey);
     const isDateToday = isToday(date);
     const isPast = isBefore(date, startOfDay(new Date()));
     const isSelected = selectedDate && isSameDay(date, selectedDate);
@@ -96,7 +104,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [], mo
       classes += 'text-gray-400 dark:text-gray-500 cursor-not-allowed bg-gray-50 dark:bg-dark-card/50 ';
     } else if (isSelected) {
       classes += 'bg-primary-600 text-white font-bold shadow-md ring-2 ring-primary-300 dark:ring-primary-700 ';
-    } else if (hasExams) {
+    } else if (hasBookableSessions) {
       classes += 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 hover:bg-teal-200 dark:hover:bg-teal-800/50 cursor-pointer border-2 border-teal-200 dark:border-teal-700 font-semibold ';
       if (isDateToday) {
         classes += 'ring-2 ring-primary-300 dark:ring-primary-700 ';
@@ -184,7 +192,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [], mo
                 <button
                   onClick={() => handleDateClick(date)}
                   className={getDayClasses(date)}
-                  disabled={!date || isBefore(date, startOfDay(new Date())) || (!examsByDate[date && format(date, 'yyyy-MM-dd')])}
+                  disabled={!date || isBefore(date, startOfDay(new Date())) || !hasAvailableSessions(date && format(date, 'yyyy-MM-dd'))}
                 >
                   {date && format(date, 'd')}
                 </button>
