@@ -115,6 +115,14 @@ const BookingForm = () => {
     });
   }, [mockExamId, mockType, examDate, startTime, endTime, updateBookingData]);
 
+  // Trigger SessionFullModal when EXAM_FULL error is received from backend
+  // This handles the race condition where session fills during booking processing
+  useEffect(() => {
+    if (error && error.code === 'EXAM_FULL') {
+      setShowSessionFullModal(true);
+    }
+  }, [error]);
+
   // Background polling for capacity updates (every 10 seconds)
   useEffect(() => {
     // Only poll when on details step (after credits verified)
@@ -318,6 +326,9 @@ const BookingForm = () => {
   // Check if we have a time conflict error
   const isTimeConflictError = error && error.code === 'TIME_CONFLICT';
 
+  // Check if we have an EXAM_FULL error (race condition - session filled during booking)
+  const isExamFullError = error && error.code === 'EXAM_FULL';
+
   if (showInsufficientCreditsCard) {
     return (
       <InsufficientCreditsCard
@@ -395,7 +406,8 @@ const BookingForm = () => {
         </div>
 
         {/* Error Display with User-Friendly Messages */}
-        {error && !isTimeConflictError && (
+        {/* Exclude EXAM_FULL errors as they trigger SessionFullModal instead */}
+        {error && !isTimeConflictError && !isExamFullError && (
           <ErrorDisplay
             error={error}
             onDismiss={clearError}
