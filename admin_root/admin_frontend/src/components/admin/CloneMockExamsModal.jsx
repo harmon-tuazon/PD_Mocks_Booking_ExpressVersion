@@ -166,6 +166,15 @@ const CloneMockExamsModal = ({
         scheduled_activation_datetime: ''
       }));
     }
+
+    // Clear mock_set if changing mock_type to Mini-mock (not applicable)
+    if (field === 'mock_type' && value === 'Mini-mock') {
+      setFormData(prev => ({
+        ...prev,
+        mock_type: value,
+        mock_set: KEEP_ORIGINAL  // Reset to keep original (will be cleared on submit)
+      }));
+    }
   };
 
   // Validate form
@@ -231,8 +240,13 @@ const CloneMockExamsModal = ({
     if (formData.mock_type && formData.mock_type !== KEEP_ORIGINAL) {
       overrides.mock_type = formData.mock_type;
     }
-    // mock_set can be explicitly cleared with '__clear__' or set to a value
-    if (formData.mock_set && formData.mock_set !== KEEP_ORIGINAL) {
+
+    // mock_set handling:
+    // - If changing to Mini-mock, explicitly clear mock_set (Mini-mock doesn't support sets)
+    // - Otherwise, can be cleared with '__clear__' or set to a value
+    if (formData.mock_type === 'Mini-mock') {
+      overrides.mock_set = '';  // Force clear for Mini-mock
+    } else if (formData.mock_set && formData.mock_set !== KEEP_ORIGINAL) {
       overrides.mock_set = formData.mock_set === '__clear__' ? '' : formData.mock_set;
     }
     if (formData.capacity && formData.capacity !== KEEP_ORIGINAL) {
@@ -420,13 +434,13 @@ const CloneMockExamsModal = ({
                             </Select>
                           </div>
 
-                          {/* Mock Set */}
+                          {/* Mock Set - disabled when Mini-mock is selected */}
                           <div>
                             <Label htmlFor="mock_set">Mock Set</Label>
                             <Select
                               value={formData.mock_set}
                               onValueChange={(value) => handleFieldChange('mock_set', value)}
-                              disabled={cloneMutation.isPending}
+                              disabled={cloneMutation.isPending || formData.mock_type === 'Mini-mock'}
                             >
                               <SelectTrigger className="mt-1">
                                 <SelectValue placeholder="Keep original" />
@@ -440,7 +454,9 @@ const CloneMockExamsModal = ({
                               </SelectContent>
                             </Select>
                             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                              Only applies to SJ, CS, and Mock Discussion exams
+                              {formData.mock_type === 'Mini-mock'
+                                ? 'Not applicable for Mini-mock exams'
+                                : 'Only applies to SJ, CS, and Mock Discussion exams'}
                             </p>
                           </div>
 

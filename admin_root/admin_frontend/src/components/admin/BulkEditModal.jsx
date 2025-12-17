@@ -150,6 +150,15 @@ const BulkEditModal = ({
         scheduled_activation_datetime: ''
       }));
     }
+
+    // Clear mock_set if changing mock_type to Mini-mock (not applicable)
+    if (field === 'mock_type' && value === 'Mini-mock') {
+      setFormData(prev => ({
+        ...prev,
+        mock_type: value,
+        mock_set: '__keep_current__'  // Reset to keep current (will be ignored for Mini-mock)
+      }));
+    }
   };
 
   // Check if at least one field has a value
@@ -172,10 +181,16 @@ const BulkEditModal = ({
 
     if (formData.location && formData.location !== KEEP_CURRENT) updates.location = formData.location;
     if (formData.mock_type && formData.mock_type !== KEEP_CURRENT) updates.mock_type = formData.mock_type;
-    // mock_set can be explicitly cleared with '__clear__' or set to a value
-    if (formData.mock_set && formData.mock_set !== KEEP_CURRENT) {
+
+    // mock_set handling:
+    // - If changing to Mini-mock, explicitly clear mock_set (Mini-mock doesn't support sets)
+    // - Otherwise, can be cleared with '__clear__' or set to a value
+    if (formData.mock_type === 'Mini-mock') {
+      updates.mock_set = '';  // Force clear for Mini-mock
+    } else if (formData.mock_set && formData.mock_set !== KEEP_CURRENT) {
       updates.mock_set = formData.mock_set === '__clear__' ? '' : formData.mock_set;
     }
+
     if (formData.capacity) updates.capacity = parseInt(formData.capacity);
     if (formData.exam_date) updates.exam_date = formData.exam_date;
     if (formData.is_active && formData.is_active !== KEEP_CURRENT) updates.is_active = formData.is_active;
@@ -410,13 +425,13 @@ const BulkEditModal = ({
                                 </Select>
                               </div>
 
-                              {/* Mock Set */}
+                              {/* Mock Set - disabled when Mini-mock is selected */}
                               <div>
                                 <Label htmlFor="mock_set">Mock Set</Label>
                                 <Select
                                   value={formData.mock_set}
                                   onValueChange={(value) => handleFieldChange('mock_set', value)}
-                                  disabled={editMutation.isPending}
+                                  disabled={editMutation.isPending || formData.mock_type === 'Mini-mock'}
                                 >
                                   <SelectTrigger id="mock_set">
                                     <SelectValue placeholder="Keep current" />
@@ -430,7 +445,9 @@ const BulkEditModal = ({
                                   </SelectContent>
                                 </Select>
                                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                  Only applies to SJ, CS, and Mock Discussion exams
+                                  {formData.mock_type === 'Mini-mock'
+                                    ? 'Not applicable for Mini-mock exams'
+                                    : 'Only applies to SJ, CS, and Mock Discussion exams'}
                                 </p>
                               </div>
 

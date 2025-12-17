@@ -250,8 +250,13 @@ const schemas = {
       .valid('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H')
       .allow(null, '')
       .optional()
+      .when('mock_type', {
+        is: 'Mini-mock',
+        then: Joi.string().valid(null, '').optional(),  // Mini-mock cannot have mock_set
+        otherwise: Joi.string().valid('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H').allow(null, '').optional()
+      })
       .messages({
-        'any.only': 'Mock set must be one of: A, B, C, D, E, F, G, H'
+        'any.only': 'Mock set must be one of: A, B, C, D, E, F, G, H (not applicable for Mini-mock)'
       }),
     // Activation mode controls whether session activates immediately or is scheduled
     activation_mode: Joi.string()
