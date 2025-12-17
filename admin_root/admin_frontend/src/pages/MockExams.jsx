@@ -101,11 +101,15 @@ function MockExams() {
       scheduledDateTime = convertTorontoToUTC(formData.scheduled_activation_datetime);
     }
 
+    // Determine mock_set value - clear for Mini-mock (defensive guard)
+    const mockSetValue = formData.mock_type === 'Mini-mock' ? '' : formData.mock_set;
+
     // Automatically detect single vs bulk based on time slots count
     if (timeSlots.length === 1) {
       // Single session - determine capacity based on mode
       const singleSessionData = {
         ...formData,
+        mock_set: mockSetValue, // Override with guarded value
         start_time: timeSlots[0].start_time,
         end_time: timeSlots[0].end_time,
         capacity: capacityMode === 'per-slot' ? timeSlots[0].capacity : formData.capacity,
@@ -119,6 +123,7 @@ function MockExams() {
       // Multiple sessions - pass capacity mode to backend
       const commonProperties = {
         mock_type: formData.mock_type,
+        mock_set: mockSetValue, // Include mock_set for bulk creation
         exam_date: formData.exam_date,
         location: formData.location,
         is_active: formData.activation_mode === 'scheduled' ? 'scheduled' : formData.is_active,
