@@ -4,13 +4,13 @@
  *
  * Features:
  * - React Query mutation for bulk updates
- * - True optimistic cache updates (instant UI feedback before server response)
+ * - Optimistic cache updates for instant UI feedback before server response
+ * - Query invalidation on success to ensure fresh server data (same pattern as useCloneSessions)
  * - Error rollback on failure
  * - Support for partial updates (empty fields not sent)
  * - Detailed success/warning/error handling
- * - Only invalidates metrics queries that need server calculation
  *
- * Performance: Uses optimistic updates instead of cache invalidation for instant UI feedback
+ * Flow: onMutate (optimistic update) → Server → onSuccess (invalidate & refetch)
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -203,10 +203,19 @@ const useBulkEdit = () => {
         console.error('❌ [BULK EDIT] Failed updates:', data.details?.failed);
       }
 
-      // Only invalidate metrics queries - they need server calculation
-      // The list/aggregate/detail queries were already optimistically updated
+      // Invalidate all related queries to force refetch with fresh data from server
+      // This follows the same pattern as useCloneSessions which works reliably
+      queryClient.invalidateQueries({ queryKey: ['mockExams'] });
+      queryClient.invalidateQueries({ queryKey: ['mock-exam-aggregates'] });
+      queryClient.invalidateQueries({ queryKey: ['mockExamsInfinite'] });
       queryClient.invalidateQueries({ queryKey: ['mockExamsMetrics'] });
       queryClient.invalidateQueries({ queryKey: ['metrics'] });
+
+      // Also invalidate individual exam detail queries for the updated sessions
+      variables.sessionIds.forEach(sessionId => {
+        queryClient.invalidateQueries({ queryKey: ['mockExamDetails', sessionId] });
+        queryClient.invalidateQueries({ queryKey: ['mockExam', sessionId] });
+      });
     },
 
     /**
@@ -260,8 +269,8 @@ const useBulkEdit = () => {
      */
     onSettled: () => {
       console.log('🏁 [BULK EDIT] Mutation settled');
-      // Note: We don't refetch list/aggregate queries here since onMutate already updated optimistically
-      // and onError rolls back on failure. This saves unnecessary API calls.
+      // onSuccess now invalidates all queries to force refetch with fresh server data
+      // This ensures UI is always in sync, following the same reliable pattern as useCloneSessions
     }
   });
 };
