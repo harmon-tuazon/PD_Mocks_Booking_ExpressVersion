@@ -26,15 +26,15 @@ export const checkPrerequisites = (prerequisiteExamIds, userBookings) => {
     return false;
   }
 
-  // Check if user has attended ANY of the prerequisite exams
+  // Check if user has an active booking for ANY of the prerequisite exams
+  // Note: Attendance check removed - having an active booking is sufficient
   return prerequisiteExamIds.some(prereqId =>
     userBookings.some(booking =>
       booking.mock_exam_id === prereqId &&
-      booking.attendance === 'Yes' &&
       (booking.is_active === 'Active' || booking.is_active === 'Completed')
     )
   );
-};
+};;
 
 /**
  * Get list of prerequisite exams that the user has NOT completed
@@ -51,16 +51,16 @@ export const getMissingPrerequisites = (prerequisiteExamIds, userBookings, allMo
 
   const completedPrereqIds = new Set();
 
-  // Find which prerequisites the user HAS completed
+  // Find which prerequisites the user HAS booked (active booking is sufficient)
+  // Note: Attendance check removed - having an active booking is sufficient
   if (userBookings && userBookings.length > 0) {
     prerequisiteExamIds.forEach(prereqId => {
-      const hasCompleted = userBookings.some(booking =>
+      const hasBooked = userBookings.some(booking =>
         booking.mock_exam_id === prereqId &&
-        booking.attendance === 'Yes' &&
         (booking.is_active === 'Active' || booking.is_active === 'Completed')
       );
 
-      if (hasCompleted) {
+      if (hasBooked) {
         completedPrereqIds.add(prereqId);
       }
     });
@@ -79,7 +79,7 @@ export const getMissingPrerequisites = (prerequisiteExamIds, userBookings, allMo
       const exam = allMockExams.find(e => e.mock_exam_id === prereqId || e.id === prereqId);
       return exam || { id: prereqId, mock_exam_id: prereqId };
     });
-};
+};;
 
 /**
  * Format prerequisite exam for display

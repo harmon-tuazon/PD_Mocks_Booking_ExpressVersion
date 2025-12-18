@@ -33,12 +33,11 @@ describe('checkPrerequisites', () => {
       expect(checkPrerequisites(prerequisiteExamIds, userBookings)).toBe(true);
     });
 
-    test('returns true when user has attended one prerequisite with attendance="Yes" and is_active="Active"', () => {
+    test('returns true when user has active booking for one prerequisite', () => {
       const prerequisiteExamIds = ['prereq1', 'prereq2'];
       const userBookings = [
         {
           mock_exam_id: 'prereq1',
-          attendance: 'Yes',
           is_active: 'Active'
         }
       ];
@@ -46,12 +45,11 @@ describe('checkPrerequisites', () => {
       expect(checkPrerequisites(prerequisiteExamIds, userBookings)).toBe(true);
     });
 
-    test('returns true when user has attended prerequisite with is_active="Completed"', () => {
+    test('returns true when user has booking with is_active="Completed"', () => {
       const prerequisiteExamIds = ['prereq1'];
       const userBookings = [
         {
           mock_exam_id: 'prereq1',
-          attendance: 'Yes',
           is_active: 'Completed'
         }
       ];
@@ -59,17 +57,15 @@ describe('checkPrerequisites', () => {
       expect(checkPrerequisites(prerequisiteExamIds, userBookings)).toBe(true);
     });
 
-    test('returns true when user has attended multiple prerequisites (OR logic)', () => {
+    test('returns true when user has multiple active bookings (OR logic)', () => {
       const prerequisiteExamIds = ['prereq1', 'prereq2'];
       const userBookings = [
         {
           mock_exam_id: 'prereq1',
-          attendance: 'Yes',
           is_active: 'Active'
         },
         {
           mock_exam_id: 'prereq2',
-          attendance: 'Yes',
           is_active: 'Completed'
         }
       ];
@@ -77,17 +73,28 @@ describe('checkPrerequisites', () => {
       expect(checkPrerequisites(prerequisiteExamIds, userBookings)).toBe(true);
     });
 
-    test('returns true when user has attended ANY ONE of multiple prerequisites', () => {
+    test('returns true when user has active booking for ANY ONE of multiple prerequisites', () => {
       const prerequisiteExamIds = ['prereq1', 'prereq2', 'prereq3'];
       const userBookings = [
         {
           mock_exam_id: 'prereq2',
-          attendance: 'Yes',
           is_active: 'Active'
         },
         {
           mock_exam_id: 'other_exam',
-          attendance: 'Yes',
+          is_active: 'Active'
+        }
+      ];
+
+      expect(checkPrerequisites(prerequisiteExamIds, userBookings)).toBe(true);
+    });
+
+    test('returns true when user has booking regardless of attendance status', () => {
+      const prerequisiteExamIds = ['prereq1'];
+      const userBookings = [
+        {
+          mock_exam_id: 'prereq1',
+          attendance: 'No', // Attendance not checked anymore
           is_active: 'Active'
         }
       ];
@@ -118,25 +125,11 @@ describe('checkPrerequisites', () => {
       expect(checkPrerequisites(prerequisiteExamIds, userBookings)).toBe(false);
     });
 
-    test('returns false when user has booking but attendance="No"', () => {
-      const prerequisiteExamIds = ['prereq1'];
-      const userBookings = [
-        {
-          mock_exam_id: 'prereq1',
-          attendance: 'No',
-          is_active: 'Active'
-        }
-      ];
-
-      expect(checkPrerequisites(prerequisiteExamIds, userBookings)).toBe(false);
-    });
-
     test('returns false when user has booking but is_active="Cancelled"', () => {
       const prerequisiteExamIds = ['prereq1'];
       const userBookings = [
         {
           mock_exam_id: 'prereq1',
-          attendance: 'Yes',
           is_active: 'Cancelled'
         }
       ];
@@ -149,7 +142,6 @@ describe('checkPrerequisites', () => {
       const userBookings = [
         {
           mock_exam_id: 'prereq1',
-          attendance: 'Yes',
           is_active: 'Failed'
         }
       ];
@@ -162,19 +154,6 @@ describe('checkPrerequisites', () => {
       const userBookings = [
         {
           mock_exam_id: 'different_exam',
-          attendance: 'Yes',
-          is_active: 'Active'
-        }
-      ];
-
-      expect(checkPrerequisites(prerequisiteExamIds, userBookings)).toBe(false);
-    });
-
-    test('returns false when user has booking with attendance missing', () => {
-      const prerequisiteExamIds = ['prereq1'];
-      const userBookings = [
-        {
-          mock_exam_id: 'prereq1',
           is_active: 'Active'
         }
       ];
@@ -186,8 +165,7 @@ describe('checkPrerequisites', () => {
       const prerequisiteExamIds = ['prereq1'];
       const userBookings = [
         {
-          mock_exam_id: 'prereq1',
-          attendance: 'Yes'
+          mock_exam_id: 'prereq1'
         }
       ];
 
@@ -196,30 +174,15 @@ describe('checkPrerequisites', () => {
   });
 
   describe('Edge cases', () => {
-    test('handles case-sensitive attendance value', () => {
+    test('handles multiple bookings for same exam (one cancelled, one active)', () => {
       const prerequisiteExamIds = ['prereq1'];
       const userBookings = [
         {
           mock_exam_id: 'prereq1',
-          attendance: 'yes', // lowercase
-          is_active: 'Active'
-        }
-      ];
-
-      expect(checkPrerequisites(prerequisiteExamIds, userBookings)).toBe(false);
-    });
-
-    test('handles multiple bookings for same exam', () => {
-      const prerequisiteExamIds = ['prereq1'];
-      const userBookings = [
-        {
-          mock_exam_id: 'prereq1',
-          attendance: 'No',
           is_active: 'Cancelled'
         },
         {
           mock_exam_id: 'prereq1',
-          attendance: 'Yes',
           is_active: 'Active'
         }
       ];
@@ -232,7 +195,18 @@ describe('checkPrerequisites', () => {
       const userBookings = [
         {
           mock_exam_id: '12345',
-          attendance: 'Yes',
+          is_active: 'Active'
+        }
+      ];
+
+      expect(checkPrerequisites(prerequisiteExamIds, userBookings)).toBe(true);
+    });
+
+    test('handles booking without attendance field (attendance not required)', () => {
+      const prerequisiteExamIds = ['prereq1'];
+      const userBookings = [
+        {
+          mock_exam_id: 'prereq1',
           is_active: 'Active'
         }
       ];
@@ -294,12 +268,11 @@ describe('getMissingPrerequisites', () => {
       expect(missing[1].mock_exam_id).toBe('prereq2');
     });
 
-    test('returns only missing prerequisites when user has completed some', () => {
+    test('returns only missing prerequisites when user has booked some', () => {
       const prerequisiteExamIds = ['prereq1', 'prereq2', 'prereq3'];
       const userBookings = [
         {
           mock_exam_id: 'prereq1',
-          attendance: 'Yes',
           is_active: 'Active'
         }
       ];
@@ -311,17 +284,15 @@ describe('getMissingPrerequisites', () => {
       expect(missing[1].mock_exam_id).toBe('prereq3');
     });
 
-    test('returns empty array when all prerequisites are completed', () => {
+    test('returns empty array when all prerequisites have active bookings', () => {
       const prerequisiteExamIds = ['prereq1', 'prereq2'];
       const userBookings = [
         {
           mock_exam_id: 'prereq1',
-          attendance: 'Yes',
           is_active: 'Active'
         },
         {
           mock_exam_id: 'prereq2',
-          attendance: 'Yes',
           is_active: 'Completed'
         }
       ];
@@ -344,12 +315,11 @@ describe('getMissingPrerequisites', () => {
   });
 
   describe('Handles bookings with invalid status', () => {
-    test('treats cancelled booking as not completed', () => {
+    test('treats cancelled booking as not satisfying prerequisite', () => {
       const prerequisiteExamIds = ['prereq1'];
       const userBookings = [
         {
           mock_exam_id: 'prereq1',
-          attendance: 'Yes',
           is_active: 'Cancelled'
         }
       ];
@@ -360,7 +330,7 @@ describe('getMissingPrerequisites', () => {
       expect(missing[0].mock_exam_id).toBe('prereq1');
     });
 
-    test('treats booking without attendance as not completed', () => {
+    test('treats active booking as satisfying prerequisite (attendance not required)', () => {
       const prerequisiteExamIds = ['prereq1'];
       const userBookings = [
         {
@@ -371,7 +341,7 @@ describe('getMissingPrerequisites', () => {
 
       const missing = getMissingPrerequisites(prerequisiteExamIds, userBookings, allMockExams);
 
-      expect(missing).toHaveLength(1);
+      expect(missing).toHaveLength(0);
     });
   });
 
