@@ -243,10 +243,11 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [], mo
                     onClick={() => handleSessionSelect(session)}
                   >
                     {/* Header: Mock Type + Set Badge */}
-                    {MOCK_SET_APPLICABLE_TYPES.includes(mockType) && (
+                    {/* Use session's mock_type for dynamic label, fallback to component prop */}
+                    {MOCK_SET_APPLICABLE_TYPES.includes(session.mock_type || mockType) && (
                       <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-300 dark:border-gray-600">
                         <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                          {mockType}
+                          {session.mock_type || mockType}
                         </span>
                         {session.mock_set && (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
@@ -259,7 +260,7 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [], mo
                     {/* Time and Availability */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                       <h4 className="text-sm sm:text-xs font-subheading font-semibold text-navy-800 dark:text-gray-100">
-                        {formatTimeRange(session, formatTimezoneForDisplay(getTimezoneLabel(mockType, session.location)))}
+                        {formatTimeRange(session, formatTimezoneForDisplay(getTimezoneLabel(session.mock_type || mockType, session.location)))}
                       </h4>
                       <CapacityBadge
                         availableSlots={session.available_slots}

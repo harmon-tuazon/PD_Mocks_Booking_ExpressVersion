@@ -193,37 +193,83 @@ module.exports = async (req, res) => {
 
 
     // Fetch prerequisite associations for all discussions (PRD v2.1.0)
+    // SUPABASE-FIRST PATTERN: Read from Supabase, fallback to HubSpot associations
     const prerequisiteMap = new Map();
     if (searchResult.results.length > 0) {
       try {
         const discussionIds = searchResult.results.map(discussion => discussion.id);
-        console.log('Fetching prerequisite associations for ' + discussionIds.length + ' discussions...');
+        console.log(`📋 Fetching prerequisites for ${discussionIds.length} discussions (Supabase-first)...`);
 
-        // Batch read prerequisite associations using association type ID 1340 ("requires attendance at")
-        const prerequisiteAssociations = await hubspot.batch.batchReadAssociations(
-          '2-50158913', // mock_exams (discussions)
-          discussionIds,
-          '2-50158913', // mock_exams (prerequisites - same object type)
-          1340          // "requires attendance at" association type
+        // Fast path: Batch read from Supabase (~50ms)
+        const { createClient } = require('@supabase/supabase-js');
+        const supabaseAdmin = createClient(
+          process.env.SUPABASE_URL,
+          process.env.SUPABASE_SERVICE_ROLE_KEY
         );
 
-        console.log('Retrieved ' + prerequisiteAssociations.length + ' prerequisite association records');
+        const { data: supabaseExams, error: supabaseError } = await supabaseAdmin
+          .from('hubspot_mock_exams')
+          .select('hubspot_id, prerequisite_exam_ids')
+          .in('hubspot_id', discussionIds);
 
-        // Build prerequisite map: discussion ID -> array of prerequisite exam IDs
-        for (const assoc of prerequisiteAssociations) {
-          const discussionId = assoc.from?.id;
-          if (discussionId) {
-            const prereqIds = (assoc.to || []).map(t => String(t.toObjectId));
-            if (prereqIds.length > 0) {
-              prerequisiteMap.set(discussionId, prereqIds);
-              console.log('  Discussion ' + discussionId + ': ' + prereqIds.length + ' prerequisite(s)');
+        if (!supabaseError && supabaseExams && supabaseExams.length > 0) {
+          // Build prerequisite map from Supabase data
+          for (const exam of supabaseExams) {
+            if (exam.prerequisite_exam_ids && exam.prerequisite_exam_ids.length > 0) {
+              prerequisiteMap.set(exam.hubspot_id, exam.prerequisite_exam_ids);
+              console.log(`  ✅ [SUPABASE] Discussion ${exam.hubspot_id}: ${exam.prerequisite_exam_ids.length} prerequisite(s)`);
             }
           }
-        }
+          console.log(`✅ [SUPABASE] Built prerequisite map with ${prerequisiteMap.size} discussions having prerequisites`);
 
-        console.log('Built prerequisite map with ' + prerequisiteMap.size + ' discussions having prerequisites');
+          // Check for any discussions missing from Supabase (fallback to HubSpot)
+          const supabaseIds = new Set(supabaseExams.map(e => e.hubspot_id));
+          const missingIds = discussionIds.filter(id => !supabaseIds.has(id));
+
+          if (missingIds.length > 0) {
+            console.log(`📭 [SUPABASE MISS] ${missingIds.length} discussions not in Supabase, falling back to HubSpot`);
+            // Fallback to HubSpot for missing discussions
+            const hubspotPrereqs = await hubspot.batch.batchReadAssociations(
+              '2-50158913',
+              missingIds,
+              '2-50158913',
+              1340
+            );
+            for (const assoc of hubspotPrereqs) {
+              const discussionId = assoc.from?.id;
+              if (discussionId) {
+                const prereqIds = (assoc.to || []).map(t => String(t.toObjectId));
+                if (prereqIds.length > 0) {
+                  prerequisiteMap.set(discussionId, prereqIds);
+                  console.log(`  📦 [HUBSPOT] Discussion ${discussionId}: ${prereqIds.length} prerequisite(s)`);
+                }
+              }
+            }
+          }
+        } else {
+          // Full fallback to HubSpot if Supabase query fails
+          console.log(`⚠️ [SUPABASE ERROR] Falling back to HubSpot associations: ${supabaseError?.message || 'No data'}`);
+          const prerequisiteAssociations = await hubspot.batch.batchReadAssociations(
+            '2-50158913',
+            discussionIds,
+            '2-50158913',
+            1340
+          );
+
+          for (const assoc of prerequisiteAssociations) {
+            const discussionId = assoc.from?.id;
+            if (discussionId) {
+              const prereqIds = (assoc.to || []).map(t => String(t.toObjectId));
+              if (prereqIds.length > 0) {
+                prerequisiteMap.set(discussionId, prereqIds);
+                console.log(`  📦 [HUBSPOT] Discussion ${discussionId}: ${prereqIds.length} prerequisite(s)`);
+              }
+            }
+          }
+          console.log(`📦 [HUBSPOT] Built prerequisite map with ${prerequisiteMap.size} discussions having prerequisites`);
+        }
       } catch (prereqError) {
-        console.error('Failed to fetch prerequisite associations:', prereqError);
+        console.error('❌ Failed to fetch prerequisite associations:', prereqError);
         // Continue without prerequisites on error (fail-safe behavior)
       }
     }
@@ -281,6 +327,7 @@ module.exports = async (req, res) => {
         start_time: discussion.properties.start_time,
         end_time: discussion.properties.end_time,
         mock_type: 'Mock Discussion', // Always "Mock Discussion" for this endpoint
+        mock_set: discussion.properties?.mock_set || null, // Include mock_set if available
         capacity: capacity,
         total_bookings: totalBookings,
         available_slots: availableSlots,

@@ -205,6 +205,7 @@ class HubSpotService {
         'capacity',
         'total_bookings',
         'mock_type',
+        'mock_set',
         'location',
         'is_active',
         'hs_object_id'
