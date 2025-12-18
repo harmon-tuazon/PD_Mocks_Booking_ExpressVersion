@@ -19,24 +19,13 @@ import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { convertTorontoToUTC, formatTorontoDateTime } from '../utils/dateTimeUtils';
-
-const MOCK_TYPES = [
-  'Situational Judgment',
-  'Clinical Skills',
-  'Mini-mock',
-  'Mock Discussion'
-];
-
-const LOCATIONS = [
-  'Mississauga',
-  'Mississauga - B9',
-  'Mississauga - Lab D',
-  'Calgary',
-  'Vancouver',
-  'Montreal',
-  'Richmond Hill',
-  'Online'
-];
+import {
+  MOCK_TYPES,
+  LOCATIONS,
+  DEFAULT_LOCATION,
+  MOCK_SET_OPTIONS,
+  MOCK_SET_APPLICABLE_TYPES
+} from '../constants/examConstants';
 
 function MockExams() {
   const navigate = useNavigate();
@@ -44,10 +33,11 @@ function MockExams() {
 
   const [showPreview, setShowPreview] = useState(false);
   const [formData, setFormData] = useState({
-    mock_type: 'Situational Judgment',
+    mock_type: MOCK_TYPES[0], // Default to first mock type
+    mock_set: '', // Optional: A-H or empty
     exam_date: '',
     capacity: '',
-    location: 'Mississauga',
+    location: DEFAULT_LOCATION,
     is_active: 'true', // String values: 'true' | 'false' | 'scheduled' (matching HubSpot)
     activation_mode: 'immediate', // NEW: 'immediate' | 'scheduled'
     scheduled_activation_datetime: null // NEW: ISO datetime string in UTC
@@ -111,11 +101,15 @@ function MockExams() {
       scheduledDateTime = convertTorontoToUTC(formData.scheduled_activation_datetime);
     }
 
+    // Determine mock_set value - clear for Mini-mock (defensive guard)
+    const mockSetValue = formData.mock_type === 'Mini-mock' ? '' : formData.mock_set;
+
     // Automatically detect single vs bulk based on time slots count
     if (timeSlots.length === 1) {
       // Single session - determine capacity based on mode
       const singleSessionData = {
         ...formData,
+        mock_set: mockSetValue, // Override with guarded value
         start_time: timeSlots[0].start_time,
         end_time: timeSlots[0].end_time,
         capacity: capacityMode === 'per-slot' ? timeSlots[0].capacity : formData.capacity,
@@ -129,6 +123,7 @@ function MockExams() {
       // Multiple sessions - pass capacity mode to backend
       const commonProperties = {
         mock_type: formData.mock_type,
+        mock_set: mockSetValue, // Include mock_set for bulk creation
         exam_date: formData.exam_date,
         location: formData.location,
         is_active: formData.activation_mode === 'scheduled' ? 'scheduled' : formData.is_active,
@@ -146,10 +141,11 @@ function MockExams() {
 
   const resetForm = () => {
     setFormData({
-      mock_type: 'Situational Judgment',
+      mock_type: MOCK_TYPES[0], // Default to first mock type
+      mock_set: '', // Optional: A-H or empty
       exam_date: '',
       capacity: '',
-      location: 'Mississauga',
+      location: DEFAULT_LOCATION,
       is_active: 'true', // String value matching HubSpot
       activation_mode: 'immediate',
       scheduled_activation_datetime: null
@@ -205,63 +201,94 @@ function MockExams() {
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Basic Information</h3>
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div>
-                  <Label className="text-gray-700 dark:text-gray-300">
-                    Mock Type <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={formData.mock_type}
-                    onValueChange={(value) => setFormData({ ...formData, mock_type: value })}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a mock type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MOCK_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  {/* Row 1, Column 1: Mock Type */}
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">
+                      Mock Type <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.mock_type}
+                      onValueChange={(value) => setFormData({ ...formData, mock_type: value, mock_set: '' })}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a mock type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MOCK_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div>
-                  <Label className="text-gray-700 dark:text-gray-300">
-                    Exam Date <span className="text-red-500">*</span>
-                  </Label>
-                  <DatePicker
-                    value={formData.exam_date}
-                    onChange={(value) => setFormData({ ...formData, exam_date: value })}
-                    placeholder="Select exam date"
-                    required
-                  />
-                </div>
-              </div>
+                  {/* Row 1, Column 2: Exam Date */}
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">
+                      Exam Date <span className="text-red-500">*</span>
+                    </Label>
+                    <DatePicker
+                      value={formData.exam_date}
+                      onChange={(value) => setFormData({ ...formData, exam_date: value })}
+                      placeholder="Select exam date"
+                      required
+                    />
+                  </div>
 
-              {/* Location Field - Full Width */}
-              <div className="mt-4">
-                <Label className="text-gray-700 dark:text-gray-300">
-                  Location <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.location}
-                  onValueChange={(value) => setFormData({ ...formData, location: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LOCATIONS.map((loc) => (
-                      <SelectItem key={loc} value={loc}>
-                        {loc}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  {/* Row 2, Column 1: Mock Set */}
+                  <div>
+                    <Label className={`${!MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type) ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                      Mock Set {MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type) ? '(Optional)' : ''}
+                    </Label>
+                    <Select
+                      value={formData.mock_set || '__none__'}
+                      onValueChange={(value) => setFormData({ ...formData, mock_set: value === '__none__' ? '' : value })}
+                      disabled={!MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type)}
+                    >
+                      <SelectTrigger className={!MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type) ? 'opacity-50 cursor-not-allowed' : ''}>
+                        <SelectValue placeholder={MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type) ? 'Select a mock set (optional)' : 'Not applicable'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {MOCK_SET_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      {MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type)
+                        ? 'Identifies which set of cases/stations this exam uses'
+                        : `Mock sets only apply to: ${MOCK_SET_APPLICABLE_TYPES.join(', ')}`}
+                    </p>
+                  </div>
+
+                  {/* Row 2, Column 2: Location */}
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">
+                      Location <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.location}
+                      onValueChange={(value) => setFormData({ ...formData, location: value })}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LOCATIONS.map((loc) => (
+                          <SelectItem key={loc} value={loc}>
+                            {loc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
             </div>
 
             {/* Activation Settings Section - Moved above Capacity */}

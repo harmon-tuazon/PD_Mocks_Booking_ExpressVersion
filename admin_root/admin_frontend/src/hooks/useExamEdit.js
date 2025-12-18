@@ -87,6 +87,7 @@ export function useExamEdit(examData) {
       const initialData = {
         id: examData.id || '',
         mock_type: examData.mock_type || '',
+        mock_set: examData.mock_set || '',
         exam_date: examData.exam_date || '',
         start_time: convertToTimeInput(examData.start_time),
         end_time: convertToTimeInput(examData.end_time),

@@ -24,6 +24,13 @@ import { TimePickerSelect } from '@/components/ui/time-picker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import {
+  MOCK_TYPE_OPTIONS,
+  LOCATION_OPTIONS,
+  EXAM_STATUS_OPTIONS,
+  MOCK_SET_OPTIONS,
+  MOCK_SET_APPLICABLE_TYPES
+} from '../../constants/examConstants';
 
 function ExamDetailsForm({
   examData,
@@ -71,6 +78,10 @@ function ExamDetailsForm({
                   value={displayData.mock_type || ''}
                   onValueChange={(value) => {
                     onFieldChange('mock_type', value);
+                    // Clear mock_set when changing to a type that doesn't support it
+                    if (!MOCK_SET_APPLICABLE_TYPES.includes(value) && displayData.mock_set) {
+                      onFieldChange('mock_set', '');
+                    }
                     onFieldBlur('mock_type');
                   }}
                   disabled={isSaving}
@@ -79,10 +90,9 @@ function ExamDetailsForm({
                     <SelectValue placeholder="Select a mock type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Situational Judgment">Situational Judgment</SelectItem>
-                    <SelectItem value="Clinical Skills">Clinical Skills</SelectItem>
-                    <SelectItem value="Mock Discussion">Mock Discussion</SelectItem>
-                    <SelectItem value="Mini-mock">Mini-mock</SelectItem>
+                    {MOCK_TYPE_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {getFieldError('mock_type') && (
@@ -124,9 +134,9 @@ function ExamDetailsForm({
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="true">Active</SelectItem>
-                    <SelectItem value="false">Inactive</SelectItem>
-                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    {EXAM_STATUS_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {getFieldError('is_active') && (
@@ -196,14 +206,9 @@ function ExamDetailsForm({
                     <SelectValue placeholder="Select a location" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Mississauga">Mississauga</SelectItem>
-                    <SelectItem value="Mississauga - B9">Mississauga - B9</SelectItem>
-                    <SelectItem value="Mississauga - Lab D">Mississauga - Lab D</SelectItem>
-                    <SelectItem value="Vancouver">Vancouver</SelectItem>
-                    <SelectItem value="Montreal">Montreal</SelectItem>
-                    <SelectItem value="Calgary">Calgary</SelectItem>
-                    <SelectItem value="Richmond Hill">Richmond Hill</SelectItem>
-                    <SelectItem value="Online">Online</SelectItem>
+                    {LOCATION_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {getFieldError('location') && (
@@ -216,6 +221,53 @@ function ExamDetailsForm({
             ) : (
               <div className="text-gray-900 dark:text-gray-100 font-medium">
                 {displayData.location || 'N/A'}
+              </div>
+            )}
+          </div>
+
+          {/* Mock Set - Always visible, disabled for non-applicable types */}
+          <div>
+            <Label className={!MOCK_SET_APPLICABLE_TYPES.includes(displayData.mock_type) ? 'text-gray-400 dark:text-gray-500' : ''}>
+              Mock Set {MOCK_SET_APPLICABLE_TYPES.includes(displayData.mock_type) ? '(Optional)' : ''}
+            </Label>
+            {isEditing ? (
+              <div>
+                <Select
+                  name="mock_set"
+                  value={displayData.mock_set || '__none__'}
+                  onValueChange={(value) => {
+                    onFieldChange('mock_set', value === '__none__' ? '' : value);
+                    onFieldBlur('mock_set');
+                  }}
+                  disabled={isSaving || !MOCK_SET_APPLICABLE_TYPES.includes(displayData.mock_type)}
+                >
+                  <SelectTrigger className={`${getErrorClass('mock_set')} ${!MOCK_SET_APPLICABLE_TYPES.includes(displayData.mock_type) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    <SelectValue placeholder={MOCK_SET_APPLICABLE_TYPES.includes(displayData.mock_type) ? 'Select a mock set (optional)' : 'Not applicable'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {MOCK_SET_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {getFieldError('mock_set') && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                    <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                    {getFieldError('mock_set')}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {MOCK_SET_APPLICABLE_TYPES.includes(displayData.mock_type)
+                    ? 'Identifies which set of cases/stations this exam uses'
+                    : `Mock sets only apply to: ${MOCK_SET_APPLICABLE_TYPES.join(', ')}`}
+                </p>
+              </div>
+            ) : (
+              <div className="text-gray-900 dark:text-gray-100 font-medium">
+                {MOCK_SET_APPLICABLE_TYPES.includes(displayData.mock_type)
+                  ? (displayData.mock_set ? `Set ${displayData.mock_set}` : 'N/A')
+                  : <span className="text-gray-400 dark:text-gray-500">—</span>}
               </div>
             )}
           </div>

@@ -58,6 +58,13 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import {
+  MOCK_TYPE_OPTIONS,
+  LOCATION_OPTIONS,
+  EXAM_STATUS_OPTIONS,
+  MOCK_SET_OPTIONS,
+  MOCK_SET_APPLICABLE_TYPES
+} from '../../constants/examConstants';
 
 const BulkEditModal = ({
   isOpen,
@@ -69,6 +76,7 @@ const BulkEditModal = ({
   const [formData, setFormData] = useState({
     location: '__keep_current__',
     mock_type: '__keep_current__',
+    mock_set: '__keep_current__',
     capacity: '',
     exam_date: '',
     is_active: '__keep_current__',
@@ -88,15 +96,16 @@ const BulkEditModal = ({
     [selectedSessions]
   );
 
-  // Reset form when modal opens/closes
+  // Reset form when modal opens/closes - use sentinel values for selects
   useEffect(() => {
     if (!isOpen) {
       setFormData({
-        location: '',
-        mock_type: '',
+        location: '__keep_current__',
+        mock_type: '__keep_current__',
+        mock_set: '__keep_current__',
         capacity: '',
         exam_date: '',
-        is_active: '',
+        is_active: '__keep_current__',
         scheduled_activation_datetime: ''
       });
       setConfirmationInput('');
@@ -141,6 +150,15 @@ const BulkEditModal = ({
         scheduled_activation_datetime: ''
       }));
     }
+
+    // Clear mock_set if changing mock_type to Mini-mock (not applicable)
+    if (field === 'mock_type' && value === 'Mini-mock') {
+      setFormData(prev => ({
+        ...prev,
+        mock_type: value,
+        mock_set: '__keep_current__'  // Reset to keep current (will be ignored for Mini-mock)
+      }));
+    }
   };
 
   // Check if at least one field has a value
@@ -163,6 +181,16 @@ const BulkEditModal = ({
 
     if (formData.location && formData.location !== KEEP_CURRENT) updates.location = formData.location;
     if (formData.mock_type && formData.mock_type !== KEEP_CURRENT) updates.mock_type = formData.mock_type;
+
+    // mock_set handling:
+    // - If changing to Mini-mock, explicitly clear mock_set (Mini-mock doesn't support sets)
+    // - Otherwise, can be cleared with '__clear__' or set to a value
+    if (formData.mock_type === 'Mini-mock') {
+      updates.mock_set = '';  // Force clear for Mini-mock
+    } else if (formData.mock_set && formData.mock_set !== KEEP_CURRENT) {
+      updates.mock_set = formData.mock_set === '__clear__' ? '' : formData.mock_set;
+    }
+
     if (formData.capacity) updates.capacity = parseInt(formData.capacity);
     if (formData.exam_date) updates.exam_date = formData.exam_date;
     if (formData.is_active && formData.is_active !== KEEP_CURRENT) updates.is_active = formData.is_active;
@@ -370,14 +398,9 @@ const BulkEditModal = ({
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="__keep_current__">Keep current</SelectItem>
-                                    <SelectItem value="Mississauga">Mississauga</SelectItem>
-                                    <SelectItem value="Mississauga - B9">Mississauga - B9</SelectItem>
-                                    <SelectItem value="Mississauga - Lab D">Mississauga - Lab D</SelectItem>
-                                    <SelectItem value="Vancouver">Vancouver</SelectItem>
-                                    <SelectItem value="Montreal">Montreal</SelectItem>
-                                    <SelectItem value="Calgary">Calgary</SelectItem>
-                                    <SelectItem value="Richmond Hill">Richmond Hill</SelectItem>
-                                    <SelectItem value="Online">Online</SelectItem>
+                                    {LOCATION_OPTIONS.map(option => (
+                                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                    ))}
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -395,12 +418,37 @@ const BulkEditModal = ({
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="__keep_current__">Keep current</SelectItem>
-                                    <SelectItem value="Situational Judgment">Situational Judgment</SelectItem>
-                                    <SelectItem value="Clinical Skills">Clinical Skills</SelectItem>
-                                    <SelectItem value="Mock Discussion">Mock Discussion</SelectItem>
-                                    <SelectItem value="Mini-mock">Mini-mock</SelectItem>
+                                    {MOCK_TYPE_OPTIONS.map(option => (
+                                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                    ))}
                                   </SelectContent>
                                 </Select>
+                              </div>
+
+                              {/* Mock Set - disabled when Mini-mock is selected */}
+                              <div>
+                                <Label htmlFor="mock_set">Mock Set</Label>
+                                <Select
+                                  value={formData.mock_set}
+                                  onValueChange={(value) => handleFieldChange('mock_set', value)}
+                                  disabled={editMutation.isPending || formData.mock_type === 'Mini-mock'}
+                                >
+                                  <SelectTrigger id="mock_set">
+                                    <SelectValue placeholder="Keep current" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="__keep_current__">Keep current</SelectItem>
+                                    <SelectItem value="__clear__">Clear (no set)</SelectItem>
+                                    {MOCK_SET_OPTIONS.map(option => (
+                                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                  {formData.mock_type === 'Mini-mock'
+                                    ? 'Not applicable for Mini-mock exams'
+                                    : 'Only applies to SJ, CS, and Mock Discussion exams'}
+                                </p>
                               </div>
 
                               {/* Capacity */}
@@ -449,9 +497,9 @@ const BulkEditModal = ({
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="__keep_current__">Keep current</SelectItem>
-                                    <SelectItem value="true">Active</SelectItem>
-                                    <SelectItem value="false">Inactive</SelectItem>
-                                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                                    {EXAM_STATUS_OPTIONS.map(option => (
+                                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                    ))}
                                   </SelectContent>
                                 </Select>
                               </div>

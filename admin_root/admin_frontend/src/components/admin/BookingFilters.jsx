@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Checkbox } from '../ui/checkbox';
 import { DatePicker } from '../ui/date-picker';
 import { Calendar, MapPin, Users, BookOpen, CheckCircle, X } from 'lucide-react';
+import { LOCATIONS, MOCK_TYPES } from '../../constants/examConstants';
 
 /**
  * BookingFilters Component
@@ -15,25 +16,11 @@ import { Calendar, MapPin, Users, BookOpen, CheckCircle, X } from 'lucide-react'
  * 5. Booking Status (single select)
  */
 const BookingFilters = ({ bookings = [], filters, onFiltersChange, className = '', cancelButton = null }) => {
-  // Hardcoded location and mock type options (aligned with mock exam dashboard)
+  // Use centralized constants for location and mock type options
   const uniqueValues = useMemo(() => {
     return {
-      locations: [
-        'Mississauga',
-        'Mississauga - B9',
-        'Mississauga - Lab D',
-        'Calgary',
-        'Vancouver',
-        'Montreal',
-        'Richmond Hill',
-        'Online'
-      ],
-      mockTypes: [
-        'Situational Judgment',
-        'Clinical Skills',
-        'Mini-mock',
-        'Mock Discussion'
-      ]
+      locations: LOCATIONS,
+      mockTypes: MOCK_TYPES
     };
   }, []);
 

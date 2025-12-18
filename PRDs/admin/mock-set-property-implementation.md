@@ -83,7 +83,7 @@ Create a new property on the Mock Exams custom object (`2-50158913`):
 | Type | `enumeration` |
 | Field Type | `select` |
 | Group | `mock_exam_information` (or default) |
-| Options | A, B, C, D, E, F, G, H |
+| Options | A, B, C, D, E, F, G, H  |
 | Required | No |
 
 **Manual Steps via HubSpot UI:**
@@ -212,11 +212,13 @@ No changes needed if validation schema is updated.
 
 #### 3.1 Constants - Mock Set Options
 
-**File:** `admin_root/admin_frontend/src/constants/examOptions.js` (or create if needed)
+**File:** `admin_root/admin_frontend/src/constants/examConstants.js` (ALREADY EXISTS - centralized constants)
+
+The `MOCK_SET_OPTIONS` constant has already been added to the centralized constants file which contains all exam-related options (mock types, locations, status, etc.):
 
 ```javascript
+// Already exists in examConstants.js:
 export const MOCK_SET_OPTIONS = [
-  { value: '', label: 'None' },
   { value: 'A', label: 'Set A' },
   { value: 'B', label: 'Set B' },
   { value: 'C', label: 'Set C' },
@@ -224,10 +226,10 @@ export const MOCK_SET_OPTIONS = [
   { value: 'E', label: 'Set E' },
   { value: 'F', label: 'Set F' },
   { value: 'G', label: 'Set G' },
-  { value: 'H', label: 'Set H' },
+  { value: 'H', label: 'Set H' }
 ];
 
-// Exam types that show mock_set
+// Add this for filtering which exam types show mock_set
 export const MOCK_SET_APPLICABLE_TYPES = [
   'Clinical Skills',
   'Situational Judgment',
@@ -235,6 +237,8 @@ export const MOCK_SET_APPLICABLE_TYPES = [
 ];
 // Note: Mini-mock is explicitly excluded
 ```
+
+**Note:** This file consolidates all exam-related constants (MOCK_TYPE_OPTIONS, LOCATION_OPTIONS, EXAM_STATUS_OPTIONS, etc.) to reduce duplication across 23+ files.
 
 #### 3.2 Exam Details Form (View/Edit)
 
@@ -244,7 +248,7 @@ Add a Select field for `mock_set`:
 
 ```jsx
 // Import the constants
-import { MOCK_SET_OPTIONS, MOCK_SET_APPLICABLE_TYPES } from '../../constants/examOptions';
+import { MOCK_SET_OPTIONS, MOCK_SET_APPLICABLE_TYPES } from '../../constants/examConstants';
 
 // Inside the form, add after location or capacity field:
 {MOCK_SET_APPLICABLE_TYPES.includes(formData.mock_type) && (
@@ -446,6 +450,245 @@ No migration script needed since null is a valid state.
 
 ---
 
+### Phase 7: Aggregate View Changes
+
+**Agent:** express-backend-architect, react-frontend-architect
+**Priority:** P1 (Required for complete implementation)
+
+#### Background
+
+The admin dashboard supports an **Aggregate View** that groups mock exam sessions by shared attributes. Currently, aggregates are grouped by:
+- `mock_type` (e.g., Clinical Skills)
+- `exam_date` (e.g., 2026-03-15)
+- `location` (e.g., Mississauga)
+
+With the introduction of `mock_set`, sessions on the same date with the same type and location but **different sets** should appear as **separate aggregates**.
+
+#### 7.1 Updated Aggregate Grouping Key
+
+**Current Key Format:**
+```
+{mock_type}_{location}_{exam_date}
+Example: clinical_skills_mississauga_2026-03-15
+```
+
+**New Key Format (with mock_set):**
+```
+{mock_type}_{location}_{exam_date}_{mock_set}
+Example: clinical_skills_mississauga_2026-03-15_b
+```
+
+**Note:** Sessions with `mock_set = null` will use an empty string or "none" in the key to maintain proper grouping.
+
+#### 7.2 Backend - HubSpot Aggregation
+
+**File:** `admin_root/api/_shared/hubspot.js`
+
+Update `fetchMockExamsForAggregation()` method (~line 2107-2120):
+
+```javascript
+// Current key generation (~line 2246):
+const key = `${properties.mock_type}_${properties.location}_${properties.exam_date}`
+  .toLowerCase()
+  .replace(/\s+/g, '_');
+
+// Updated key generation (include mock_set):
+const mockSetSuffix = properties.mock_set ? `_${properties.mock_set.toLowerCase()}` : '';
+const key = `${properties.mock_type}_${properties.location}_${properties.exam_date}${mockSetSuffix}`
+  .toLowerCase()
+  .replace(/\s+/g, '_');
+```
+
+Update the aggregate object creation (~line 2248-2260):
+
+```javascript
+if (!aggregates[key]) {
+  aggregates[key] = {
+    aggregate_key: key,
+    mock_type: properties.mock_type,
+    exam_date: properties.exam_date,
+    location: properties.location,
+    mock_set: properties.mock_set || null,  // ADD THIS LINE
+    session_ids: [],
+    sessions: [],
+    session_count: 0,
+    total_capacity: 0,
+    total_bookings: 0
+  };
+}
+```
+
+Update the session object within aggregates (~line 2264-2282):
+
+```javascript
+aggregates[key].sessions.push({
+  id: exam.id,
+  mock_type: properties.mock_type,
+  exam_date: properties.exam_date,
+  start_time: properties.start_time,
+  end_time: properties.end_time,
+  capacity: capacity,
+  total_bookings: totalBookings,
+  location: properties.location,
+  mock_set: properties.mock_set || null,  // ADD THIS LINE
+  is_active: properties.is_active,
+  // ... rest of properties
+});
+```
+
+Update the properties array in searchRequest (~line 2107-2115):
+
+```javascript
+properties: [
+  'mock_type', 'exam_date', 'start_time', 'end_time',
+  'capacity', 'total_bookings', 'location', 'is_active',
+  'scheduled_activation_datetime', 'hs_createdate', 'hs_lastmodifieddate',
+  'mock_set'  // ADD THIS LINE
+],
+```
+
+#### 7.3 Backend - Supabase Aggregation
+
+**File:** `admin_root/api/admin/mock-exams/aggregates.js`
+
+Update the aggregate key generation (~line 88):
+
+```javascript
+// Current:
+const key = `${exam.mock_type}_${dateOnly}_${exam.location}`;
+
+// Updated (include mock_set):
+const mockSetSuffix = exam.mock_set ? `_${exam.mock_set.toLowerCase()}` : '';
+const key = `${exam.mock_type}_${dateOnly}_${exam.location}${mockSetSuffix}`;
+```
+
+Update the aggregateMap initialization (~line 91-96):
+
+```javascript
+if (!aggregateMap.has(key)) {
+  aggregateMap.set(key, {
+    mock_type: exam.mock_type,
+    exam_date: dateOnly,
+    location: exam.location,
+    mock_set: exam.mock_set || null,  // ADD THIS LINE
+    sessions: []
+  });
+}
+```
+
+Update the session object (~line 109-121):
+
+```javascript
+aggregateMap.get(key).sessions.push({
+  id: exam.hubspot_id,
+  mock_type: exam.mock_type,
+  exam_date: dateOnly,
+  location: exam.location,
+  mock_set: exam.mock_set || null,  // ADD THIS LINE
+  start_time: exam.start_time,
+  end_time: exam.end_time,
+  capacity: capacity,
+  total_bookings: totalBookings,
+  // ... rest of properties
+});
+```
+
+#### 7.4 Frontend - AggregateRow Component
+
+**File:** `admin_root/admin_frontend/src/components/admin/AggregateRow.jsx`
+
+Add a new "Set" column to display `mock_set` in the aggregate header row:
+
+```jsx
+// Import constants
+import { MOCK_SET_APPLICABLE_TYPES } from '../../constants/examConstants';
+
+// Add Set Column after Location Column (~line 124, before Status Column):
+{/* Set Column - Only show for applicable mock types */}
+<td className="px-6 py-4">
+  {MOCK_SET_APPLICABLE_TYPES.includes(aggregate.mock_type) ? (
+    <div className="flex items-center gap-2">
+      {aggregate.mock_set ? (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+          Set {aggregate.mock_set}
+        </span>
+      ) : (
+        <span className="text-xs text-gray-400 dark:text-gray-500">No Set</span>
+      )}
+    </div>
+  ) : (
+    <span className="text-xs text-gray-400">—</span>
+  )}
+</td>
+```
+
+Update the expanded sessions table colspan (~line 178):
+
+```jsx
+// Current:
+<td colSpan="5" className="p-0">
+
+// Updated (add 1 for new Set column):
+<td colSpan="6" className="p-0">
+```
+
+#### 7.5 Frontend - MockExamsTable Component
+
+**File:** `admin_root/admin_frontend/src/components/admin/MockExamsTable.jsx`
+
+Add "Set" column header to the aggregate view table:
+
+```jsx
+// In the table header for aggregate view, add after Location:
+<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+  Set
+</th>
+```
+
+#### 7.6 Frontend - SessionRow Component (Nested Sessions)
+
+**File:** `admin_root/admin_frontend/src/components/admin/SessionRow.jsx`
+
+Add empty column for alignment when nested inside aggregate:
+
+```jsx
+// Add after the Location alignment column (~line 136):
+{/* Empty column for alignment with aggregate Set column */}
+<td className="px-6 py-4"></td>
+```
+
+#### 7.7 Aggregate View Visual Mockup
+
+**Before (without mock_set):**
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│ Type              │ Location      │ Status      │ Date           │ Sessions│
+├────────────────────────────────────────────────────────────────────────────┤
+│ ▶ Clinical Skills │ Mississauga   │ All Active  │ March 15, 2026 │ 4 sess  │
+│ ▶ Clinical Skills │ Sydney        │ All Active  │ March 15, 2026 │ 3 sess  │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+**After (with mock_set - same date/location splits into separate aggregates by set):**
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ Type              │ Location      │ Set     │ Status      │ Date           │ Sessions│
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│ ▶ Clinical Skills │ Mississauga   │ Set A   │ All Active  │ March 15, 2026 │ 2 sess  │
+│ ▶ Clinical Skills │ Mississauga   │ Set B   │ All Active  │ March 15, 2026 │ 2 sess  │
+│ ▶ Clinical Skills │ Sydney        │ Set A   │ All Active  │ March 15, 2026 │ 3 sess  │
+│ ▶ Situational Jdg │ Mississauga   │ No Set  │ Mixed       │ March 15, 2026 │ 2 sess  │
+│ ▶ Mini-mock       │ Mississauga   │ —       │ All Active  │ March 15, 2026 │ 5 sess  │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Notes:**
+- Mini-mock shows "—" (dash) since mock_set doesn't apply
+- "No Set" shown when mock_set is null for applicable types
+- Sessions with different sets on the same date/location are now separate aggregates
+
+---
+
 ## Testing Requirements
 
 **Agent:** validation-gates
@@ -535,14 +778,18 @@ If issues arise:
 | File | Changes |
 |------|---------|
 | `api/_shared/validation.js` | Add mock_set to 5 schemas |
-| `api/_shared/hubspot.js` | Add mock_set to properties array |
+| `api/_shared/hubspot.js` | Add mock_set to properties array + aggregate key generation |
 | `api/_shared/supabase-data.js` | Add mock_set to syncExamToSupabase |
 | `api/admin/mock-exams/clone.js` | Include mock_set in cloning logic |
+| `api/admin/mock-exams/aggregates.js` | Add mock_set to aggregate key + aggregate/session objects |
 | `admin_frontend/src/constants/examOptions.js` | Add MOCK_SET_OPTIONS constant |
 | `admin_frontend/src/components/admin/ExamDetailsForm.jsx` | Add mock_set Select field |
 | `admin_frontend/src/components/admin/CreateMockExamModal.jsx` | Add mock_set Select field |
 | `admin_frontend/src/components/admin/BulkEditModal.jsx` | Add mock_set Select field |
 | `admin_frontend/src/components/admin/CloneMockExamsModal.jsx` | Add mock_set Select field |
+| `admin_frontend/src/components/admin/AggregateRow.jsx` | Add Set column display + update colspan |
+| `admin_frontend/src/components/admin/MockExamsTable.jsx` | Add Set column header for aggregate view |
+| `admin_frontend/src/components/admin/SessionRow.jsx` | Add empty Set column for alignment |
 
 ### User Root
 
@@ -566,6 +813,10 @@ If issues arise:
 - [ ] User exam cards show mock_set for CS, SJ, Mock Discussion types
 - [ ] User exam cards do NOT show mock_set for Mini-mock type
 - [ ] Data syncs correctly between HubSpot and Supabase
+- [ ] Aggregate view groups exams by mock_type + date + location + mock_set
+- [ ] Aggregate view displays "Set" column between Location and Status
+- [ ] Sessions with different mock_sets on same date/location appear as separate aggregates
+- [ ] Mini-mock aggregates show "—" in Set column
 - [ ] All tests pass with >70% coverage on new code
 
 ---

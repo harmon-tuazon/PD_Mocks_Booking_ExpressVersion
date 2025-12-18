@@ -8,6 +8,7 @@
 const { requirePermission } = require('../../../middleware/requirePermission');
 const hubspot = require('../../../../_shared/hubspot');
 const { getCache } = require('../../../../_shared/cache');
+const { getExamsByIdsFromSupabase } = require('../../../../_shared/supabase-data');
 
 module.exports = async (req, res) => {
   try {
@@ -133,24 +134,45 @@ module.exports = async (req, res) => {
       return res.status(200).json(response);
     }
 
-    // Use batch API to fetch all sessions efficiently
-    let sessions;
+    // SUPABASE-FIRST: Fetch sessions from Supabase with HubSpot fallback
+    let sessions = [];
     try {
-      sessions = await hubspot.batchFetchMockExams(aggregate.session_ids);
-      console.log(`📦 Fetched ${sessions.length} sessions from HubSpot`);
-    } catch (batchError) {
-      console.error('Error fetching sessions via batch API:', batchError);
-      console.error('Session IDs that failed:', aggregate.session_ids);
+      console.log(`🔍 [SESSIONS] Fetching ${aggregate.session_ids.length} sessions from Supabase...`);
+      sessions = await getExamsByIdsFromSupabase(aggregate.session_ids);
 
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to fetch session details from HubSpot',
-        details: {
-          aggregate_key: key,
-          session_count: aggregate.session_ids.length,
-          error_message: batchError.message
-        }
-      });
+      if (sessions.length > 0) {
+        console.log(`✅ [SESSIONS] Fetched ${sessions.length} sessions from Supabase`);
+      }
+
+      // Check if any sessions are missing from Supabase
+      const foundIds = new Set(sessions.map(s => s.id));
+      const missingIds = aggregate.session_ids.filter(id => !foundIds.has(id));
+
+      if (missingIds.length > 0) {
+        console.log(`⚠️ [SESSIONS] ${missingIds.length} sessions not in Supabase, fetching from HubSpot...`);
+        const hubspotSessions = await hubspot.batchFetchMockExams(missingIds);
+        sessions = [...sessions, ...hubspotSessions];
+      }
+    } catch (supabaseError) {
+      // Fallback to HubSpot if Supabase fails
+      console.error(`❌ [SESSIONS] Supabase fetch failed, falling back to HubSpot:`, supabaseError.message);
+      try {
+        sessions = await hubspot.batchFetchMockExams(aggregate.session_ids);
+        console.log(`⚠️ [SESSIONS] Fallback: Fetched ${sessions.length} sessions from HubSpot`);
+      } catch (batchError) {
+        console.error('Error fetching sessions via batch API:', batchError);
+        console.error('Session IDs that failed:', aggregate.session_ids);
+
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to fetch session details',
+          details: {
+            aggregate_key: key,
+            session_count: aggregate.session_ids.length,
+            error_message: batchError.message
+          }
+        });
+      }
     }
 
     // Transform sessions to include additional calculated fields
@@ -161,6 +183,7 @@ module.exports = async (req, res) => {
       return {
         id: session.id,
         mock_type: session.properties.mock_type,
+        mock_set: session.properties.mock_set || null,
         exam_date: session.properties.exam_date,
         start_time: session.properties.start_time,
         end_time: session.properties.end_time,

@@ -6,6 +6,9 @@ import { checkPrerequisites } from '../../utils/prerequisiteHelpers';
 import { getTimezoneLabel, formatTimezoneForDisplay } from '../../utils/timezoneHelpers';
 import CapacityBadge from './CapacityBadge';
 
+// Mock types that support mock_set grouping
+const MOCK_SET_APPLICABLE_TYPES = ['Clinical Skills', 'Situational Judgment', 'Mock Discussion'];
+
 const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [], mockType = 'Situational Judgment' }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
@@ -239,7 +242,21 @@ const CalendarView = ({ exams, onDateSelect, onExamSelect, userBookings = [], mo
                     className={`p-3 border-2 border-cool-grey dark:border-dark-border rounded-lg ${session.available_slots > 0 ? 'hover:shadow-md cursor-pointer hover:border-primary-300 dark:hover:border-primary-600 bg-white dark:bg-dark-card' : 'opacity-75 bg-gray-50 dark:bg-dark-bg/50'} transition-all duration-200`}
                     onClick={() => handleSessionSelect(session)}
                   >
-                    {/* Mobile: stack vertically, Desktop: side by side */}
+                    {/* Header: Mock Type + Set Badge */}
+                    {MOCK_SET_APPLICABLE_TYPES.includes(mockType) && (
+                      <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-300 dark:border-gray-600">
+                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                          {mockType}
+                        </span>
+                        {session.mock_set && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
+                            Set {session.mock_set}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Time and Availability */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                       <h4 className="text-sm sm:text-xs font-subheading font-semibold text-navy-800 dark:text-gray-100">
                         {formatTimeRange(session, formatTimezoneForDisplay(getTimezoneLabel(mockType, session.location)))}

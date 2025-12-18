@@ -437,6 +437,7 @@ async function handleGetRequest(req, res) {
           id: supabaseExam.hubspot_id,
           properties: {
             mock_type: supabaseExam.mock_type,
+            mock_set: supabaseExam.mock_set,
             exam_date: supabaseExam.exam_date,
             start_time: supabaseExam.start_time,
             end_time: supabaseExam.end_time,
@@ -467,7 +468,7 @@ async function handleGetRequest(req, res) {
         console.log(`📧 [HUBSPOT] Fetching exam ${mockExamId}`);
         // Fetch with extended properties including timestamps, address, and scheduled activation
         const response = await hubspot.apiCall('GET',
-          `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?properties=mock_type,exam_date,start_time,end_time,location,address,capacity,total_bookings,is_active,scheduled_activation_datetime,status,hs_createdate,hs_lastmodifieddate`
+          `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?properties=mock_type,mock_set,exam_date,start_time,end_time,location,address,capacity,total_bookings,is_active,scheduled_activation_datetime,status,hs_createdate,hs_lastmodifieddate`
         );
         mockExam = response;
         dataSource = 'hubspot';
@@ -699,6 +700,7 @@ function formatMockExamResponse(mockExam) {
     data: {
       id: mockExam.id,
       mock_type: properties.mock_type || null,
+      mock_set: properties.mock_set || null,
       exam_date: formatDate(properties.exam_date),
       start_time: formatTime(properties.start_time),
       end_time: formatTime(properties.end_time),

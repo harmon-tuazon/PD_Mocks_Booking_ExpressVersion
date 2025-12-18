@@ -246,6 +246,18 @@ const schemas = {
         'any.only': 'Location must be one of: Mississauga, Mississauga - B9, Mississauga - Lab D, Calgary, Vancouver, Montreal, Richmond Hill, or Online',
         'any.required': 'Location is required'
       }),
+    mock_set: Joi.string()
+      .valid('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H')
+      .allow(null, '')
+      .optional()
+      .when('mock_type', {
+        is: 'Mini-mock',
+        then: Joi.string().valid(null, '').optional(),  // Mini-mock cannot have mock_set
+        otherwise: Joi.string().valid('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H').allow(null, '').optional()
+      })
+      .messages({
+        'any.only': 'Mock set must be one of: A, B, C, D, E, F, G, H (not applicable for Mini-mock)'
+      }),
     // Activation mode controls whether session activates immediately or is scheduled
     activation_mode: Joi.string()
       .valid('immediate', 'scheduled')
@@ -348,6 +360,13 @@ const schemas = {
         .messages({
           'any.only': 'Location must be one of: Mississauga, Mississauga - B9, Mississauga - Lab D, Calgary, Vancouver, Montreal, Richmond Hill, or Online',
           'any.required': 'Location is required'
+        }),
+      mock_set: Joi.string()
+        .valid('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H')
+        .allow(null, '')
+        .optional()
+        .messages({
+          'any.only': 'Mock set must be one of: A, B, C, D, E, F, G, H'
         }),
       // Activation mode for bulk creation
       activation_mode: Joi.string()
@@ -588,6 +607,13 @@ const schemas = {
       .messages({
         'any.only': 'Location must be one of: Mississauga, Mississauga - B9, Mississauga - Lab D, Calgary, Vancouver, Montreal, Richmond Hill, or Online'
       }),
+    mock_set: Joi.string()
+      .valid('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H')
+      .allow(null, '')
+      .optional()
+      .messages({
+        'any.only': 'Mock set must be one of: A, B, C, D, E, F, G, H'
+      }),
     // HubSpot stores ALL values as STRINGS: 'true', 'false', or 'scheduled'
     // But we also accept string values 'active', 'inactive', 'scheduled' and booleans from frontend for compatibility
     is_active: Joi.alternatives()
@@ -720,6 +746,14 @@ const schemas = {
         .allow('')
         .messages({
           'any.only': 'Invalid mock type specified'
+        }),
+
+      mock_set: Joi.string()
+        .valid('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H')
+        .allow(null, '')
+        .optional()
+        .messages({
+          'any.only': 'Mock set must be one of: A, B, C, D, E, F, G, H'
         }),
 
       capacity: Joi.number()
@@ -855,6 +889,14 @@ const schemas = {
       mock_type: Joi.string().valid(
         'Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion'
       ).optional().allow(''),
+
+      mock_set: Joi.string()
+        .valid('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H')
+        .allow(null, '')
+        .optional()
+        .messages({
+          'any.only': 'Mock set must be one of: A, B, C, D, E, F, G, H'
+        }),
 
       capacity: Joi.number().integer().min(1).max(100).optional().allow(''),
 

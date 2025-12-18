@@ -166,15 +166,18 @@ class HubSpotService {
       const secondlyRemaining = rateLimitHeaders['x-hubspot-ratelimit-secondly-remaining'];
       
       // Log rate limit info if we're getting close to limits
-      if (secondlyRemaining && parseInt(secondlyRemaining) < 20) {
+      // Warning at <10 remaining (50% of typical 19/s limit)
+      if (secondlyRemaining && parseInt(secondlyRemaining) < 10) {
         console.warn(`⚠️ HubSpot API Rate Limit Warning: Only ${secondlyRemaining}/${secondlyLimit} requests remaining this second`);
       }
-      
-      if (secondlyRemaining && parseInt(secondlyRemaining) < 5) {
+
+      // Critical at <3 remaining (imminent rate limit)
+      if (secondlyRemaining && parseInt(secondlyRemaining) < 3) {
         console.error(`🚨 HubSpot API Rate Limit Critical: Only ${secondlyRemaining}/${secondlyLimit} requests remaining this second!`);
       }
-      
-      if (dailyRemaining && parseInt(dailyRemaining) < 1000) {
+
+      // Daily warning at <500 remaining (more conservative)
+      if (dailyRemaining && parseInt(dailyRemaining) < 500) {
         console.warn(`⚠️ HubSpot API Daily Limit Warning: Only ${dailyRemaining}/${dailyLimit} requests remaining today`);
       }
       
@@ -1140,6 +1143,7 @@ class HubSpotService {
       // Set exam data with correct HubSpot property names and timestamp format
       const examData = {
         mock_type: mockExamData.mock_type,
+        mock_set: mockExamData.mock_set || '',  // Optional: A-H or empty
         exam_date: mockExamData.exam_date,
         start_time: startTimestamp,  // Unix timestamp in milliseconds
         end_time: endTimestamp,      // Unix timestamp in milliseconds
@@ -1209,6 +1213,7 @@ class HubSpotService {
 
         const properties = {
           mock_type: commonProperties.mock_type,
+          mock_set: commonProperties.mock_set || '',  // Optional: A-H or empty
           exam_date: examDate,
           start_time: startTimestamp,  // Unix timestamp in milliseconds
           end_time: endTimestamp,      // Unix timestamp in milliseconds
@@ -1920,7 +1925,7 @@ class HubSpotService {
         const response = await this.apiCall('POST',
           `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/batch/read`, {
             properties: [
-              'mock_type', 'exam_date', 'start_time', 'end_time',
+              'mock_type', 'mock_set', 'exam_date', 'start_time', 'end_time',
               'capacity', 'total_bookings', 'location', 'is_active',
               'mock_exam_name', 'scheduled_activation_datetime',
               'hs_createdate', 'hs_lastmodifieddate'
@@ -1947,100 +1952,44 @@ class HubSpotService {
     // Now fetch associations using the dedicated associations batch API
     // This is the correct way to get associations in batch
     const associationsMap = new Map();
-
     if (allResults.length > 0) {
-      // Chunk into batches of 100 (HubSpot limit for associations API)
-      const chunks = [];
-      for (let i = 0; i < allResults.length; i += 100) {
-        chunks.push(allResults.slice(i, i + 100));
-      }
-
-      // Fetch associations using the proper v4 associations batch API
-      for (const chunk of chunks) {
-        try {
-          const associationsResponse = await this.apiCall('POST',
-            `/crm/v4/associations/${HUBSPOT_OBJECTS.mock_exams}/${HUBSPOT_OBJECTS.bookings}/batch/read`,
-            {
-              inputs: chunk.map(exam => ({ id: exam.id }))
-            }
-          );
-
-          // Map associations back to exam IDs
-          if (associationsResponse.results) {
-            associationsResponse.results.forEach(result => {
-              associationsMap.set(result.from.id, result.to || []);
-            });
-          }
-
-          // Small delay between batches to avoid rate limits
-          if (chunks.length > 1) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-        } catch (error) {
-          console.error(`Error fetching associations batch:`, error.message);
-          // Continue with empty associations for this chunk
-          chunk.forEach(exam => {
-            associationsMap.set(exam.id, []);
-          });
+      try {
+        const associationBatches = [];
+        for (let i = 0; i < allResults.length; i += BATCH_SIZE) {
+          associationBatches.push(allResults.slice(i, i + BATCH_SIZE));
         }
+
+        const associationPromises = associationBatches.map(async (batch) => {
+          const response = await this.apiCall('POST',
+            `/crm/v4/associations/${HUBSPOT_OBJECTS.mock_exams}/${HUBSPOT_OBJECTS.bookings}/batch/read`,
+            { inputs: batch.map(r => ({ id: r.id })) }
+          );
+          return response.results || [];
+        });
+
+        const associationResults = await Promise.all(associationPromises);
+        const flatAssociations = associationResults.flat();
+
+        // Build map of exam ID -> booking IDs
+        flatAssociations.forEach(result => {
+          if (result.from?.id && result.to) {
+            const bookingIds = result.to.map(t => t.toObjectId);
+            associationsMap.set(result.from.id, bookingIds);
+          }
+        });
+      } catch (assocError) {
+        console.error('Error fetching associations:', assocError);
+        // Continue without associations - they're not critical for most operations
       }
     }
 
-    // Recalculate booking counts by fetching actual bookings and counting only Active ones
-    const enrichedResults = await Promise.all(allResults.map(async (exam) => {
-      try {
-        // Get booking IDs from associations map
-        const bookingAssociations = associationsMap.get(exam.id) || [];
-        const bookingIds = bookingAssociations.map(assoc => assoc.toObjectId || assoc.id);
-
-        // If no bookings, set count to 0
-        if (bookingIds.length === 0) {
-          return {
-            ...exam,
-            properties: {
-              ...exam.properties,
-              total_bookings: '0'
-            }
-          };
-        }
-
-        // Batch fetch booking details to check is_active status
-        let activeBookingsCount = 0;
-        for (let i = 0; i < bookingIds.length; i += 100) {
-          const chunk = bookingIds.slice(i, i + 100);
-          const batchResponse = await this.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
-            properties: ['is_active'],
-            inputs: chunk.map(id => ({ id }))
-          });
-
-          if (batchResponse.results) {
-            // Count only Active/Completed bookings (exclude Cancelled)
-            // Handle multiple case variations: Active, active, Completed, completed
-            const activeInChunk = batchResponse.results.filter(booking => {
-              const status = booking.properties.is_active;
-              return status === 'Active' || status === 'active' ||
-                     status === 'Completed' || status === 'completed';
-            }).length;
-            activeBookingsCount += activeInChunk;
-          }
-        }
-
-        // Override total_bookings with accurate Active-only count
-        return {
-          ...exam,
-          properties: {
-            ...exam.properties,
-            total_bookings: String(activeBookingsCount)
-          }
-        };
-      } catch (error) {
-        console.error(`Error recalculating bookings for exam ${exam.id}:`, error);
-        // On error, keep the stored value
-        return exam;
-      }
+    // Merge associations into results
+    return allResults.map(exam => ({
+      ...exam,
+      associations: associationsMap.get(exam.id) ? {
+        bookings: { results: associationsMap.get(exam.id).map(id => ({ id })) }
+      } : undefined
     }));
-
-    return enrichedResults;
   }
 
   /**
@@ -2111,7 +2060,8 @@ class HubSpotService {
         properties: [
           'mock_type', 'exam_date', 'start_time', 'end_time',
           'capacity', 'total_bookings', 'location', 'is_active',
-          'scheduled_activation_datetime', 'hs_createdate', 'hs_lastmodifieddate'
+          'scheduled_activation_datetime', 'hs_createdate', 'hs_lastmodifieddate',
+          'mock_set'
         ],
         associations: [HUBSPOT_OBJECTS.bookings], // Fetch booking associations
         limit: 200,  // HubSpot max limit per request
@@ -2236,7 +2186,8 @@ class HubSpotService {
 
       enrichedExams.forEach(exam => {
         const properties = exam.properties;
-        const key = `${properties.mock_type}_${properties.location}_${properties.exam_date}`
+        const mockSetSuffix = properties.mock_set ? `_${properties.mock_set.toLowerCase()}` : '';
+        const key = `${properties.mock_type}_${properties.location}_${properties.exam_date}${mockSetSuffix}`
           .toLowerCase()
           .replace(/\s+/g, '_');
 
@@ -2249,6 +2200,7 @@ class HubSpotService {
             mock_type: properties.mock_type,
             exam_date: properties.exam_date,
             location: properties.location,
+            mock_set: properties.mock_set || null,
             session_ids: [],
             sessions: [], // OPTIMIZATION: Pre-loaded session objects
             session_count: 0,
@@ -2272,6 +2224,7 @@ class HubSpotService {
           location: properties.location,
           is_active: properties.is_active,
           scheduled_activation_datetime: properties.scheduled_activation_datetime,
+          mock_set: properties.mock_set || null,
           utilization_rate: capacity > 0
             ? Math.round((totalBookings / capacity) * 100)
             : 0,

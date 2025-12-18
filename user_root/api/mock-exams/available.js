@@ -105,7 +105,8 @@ module.exports = async (req, res) => {
             capacity: exam.capacity?.toString() || '0',
             total_bookings: exam.total_bookings?.toString() || '0',
             location: exam.location,
-            is_active: exam.is_active
+            is_active: exam.is_active,
+            mock_set: exam.mock_set
           }
         };
       });
@@ -186,6 +187,7 @@ module.exports = async (req, res) => {
         start_time: exam.properties.start_time,
         end_time: exam.properties.end_time,
         mock_type: exam.properties.mock_type,
+        mock_set: exam.properties?.mock_set || null,
         capacity: capacity,
         total_bookings: totalBookings,
         available_slots: availableSlots,

@@ -184,12 +184,15 @@ async function checkExistingBookingInSupabase(contactId, examDate) {
 async function syncBookingToSupabase(booking, examId) {
   const props = booking.properties || booking;
 
-  // Transform dominant_hand boolean to string
+  // Normalize dominant_hand to boolean string ('true' or 'false')
+  // Frontend sends boolean, HubSpot stores as string
   let dominantHandValue = null;
-  if (props.dominant_hand === 'true' || props.dominant_hand === true) {
-    dominantHandValue = 'right hand';
-  } else if (props.dominant_hand === 'false' || props.dominant_hand === false) {
-    dominantHandValue = 'left hand';
+  if (props.dominant_hand === true || props.dominant_hand === 'true' || 
+      props.dominant_hand === 'right hand' || props.dominant_hand === 'Right') {
+    dominantHandValue = 'true';
+  } else if (props.dominant_hand === false || props.dominant_hand === 'false' || 
+             props.dominant_hand === 'left hand' || props.dominant_hand === 'Left') {
+    dominantHandValue = 'false';
   }
 
   const record = {

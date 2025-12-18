@@ -117,6 +117,9 @@ const MockExamsTable = ({
                 <SortableHeader column="mock_type">Type</SortableHeader>
                 <SortableHeader column="location">Location</SortableHeader>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Set
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Status
                 </th>
                 <SortableHeader column="exam_date">Date</SortableHeader>

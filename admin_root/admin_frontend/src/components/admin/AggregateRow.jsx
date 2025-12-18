@@ -3,6 +3,7 @@ import { ChevronDownIcon, ChevronRightIcon, ClockIcon } from '@heroicons/react/2
 import SessionRow from './SessionRow';
 import { useFetchAggregateSessions } from '../../hooks/useFetchAggregateSessions';
 import { formatDateLong } from '../../utils/dateUtils';
+import { MOCK_SET_APPLICABLE_TYPES } from '../../constants/examConstants';
 
 /**
  * Determine the aggregate status based on all sessions within the aggregate
@@ -123,6 +124,21 @@ const AggregateRow = ({
           </div>
         </td>
 
+        {/* Set Column */}
+        <td className="px-6 py-4">
+          {MOCK_SET_APPLICABLE_TYPES.includes(aggregate.mock_type) ? (
+            aggregate.mock_set ? (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                Set {aggregate.mock_set}
+              </span>
+            ) : (
+              <span className="text-xs text-gray-400 dark:text-gray-500">No Set</span>
+            )
+          ) : (
+            <span className="text-xs text-gray-400 dark:text-gray-500">&mdash;</span>
+          )}
+        </td>
+
         {/* Status Column */}
         <td className="px-6 py-4">
           {aggregateStatus ? (
@@ -175,7 +191,7 @@ const AggregateRow = ({
       {/* Expanded Sessions */}
       {isExpanded && (
         <tr>
-          <td colSpan="5" className="p-0">
+          <td colSpan="6" className="p-0">
             <div className="bg-gray-50 dark:bg-gray-900 border-l-4 border-blue-500">
               {showLoading ? (
                 <div className="py-8 text-center text-gray-500">

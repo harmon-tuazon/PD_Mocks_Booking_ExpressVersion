@@ -240,6 +240,52 @@ async function getExamsFromSupabase(filters = {}) {
   return data || [];
 }
 
+
+/**
+ * Fetch mock exams from Supabase by their HubSpot IDs
+ * Used for Supabase-first reads with HubSpot fallback
+ * @param {Array<string>} hubspotIds - Array of HubSpot exam IDs
+ * @returns {Promise<Array>} Array of exam objects with properties in HubSpot format
+ */
+async function getExamsByIdsFromSupabase(hubspotIds) {
+  if (!hubspotIds || hubspotIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('hubspot_mock_exams')
+    .select('*')
+    .in('hubspot_id', hubspotIds);
+
+  if (error) {
+    console.error(`❌ Supabase exam batch read error:`, error.message);
+    throw error;
+  }
+
+  // Transform Supabase format to HubSpot format for compatibility
+  // This allows the rest of the code to work with either source
+  return (data || []).map(exam => ({
+    id: exam.hubspot_id,
+    createdAt: exam.created_at,
+    updatedAt: exam.updated_at,
+    properties: {
+      mock_type: exam.mock_type,
+      mock_set: exam.mock_set,
+      exam_date: exam.exam_date,
+      start_time: exam.start_time,
+      end_time: exam.end_time,
+      capacity: exam.capacity?.toString(),
+      total_bookings: exam.total_bookings?.toString(),
+      location: exam.location,
+      is_active: exam.is_active,
+      mock_exam_name: exam.mock_exam_name,
+      scheduled_activation_datetime: exam.scheduled_activation_datetime,
+      hs_createdate: exam.created_at,
+      hs_lastmodifieddate: exam.updated_at
+    }
+  }));
+}
+
 /**
  * Get single exam by ID from Supabase
  * @param {string} examId - HubSpot ID
@@ -340,15 +386,15 @@ function parseDateString(value) {
 async function syncBookingToSupabase(booking, examId) {
   const props = booking.properties || booking;
 
-  // Transform dominant_hand boolean to string
+  // Normalize dominant_hand to boolean string ('true' or 'false')
+  // Frontend sends boolean, HubSpot stores as string
   let dominantHandValue = props.dominant_hand || null;
-  if (props.dominant_hand === 'true' || props.dominant_hand === true) {
-    dominantHandValue = 'right hand';
-  } else if (props.dominant_hand === 'false' || props.dominant_hand === false) {
-    dominantHandValue = 'left hand';
-  } else if (props.dominant_hand === 'right hand' || props.dominant_hand === 'left hand') {
-    // Already in correct format
-    dominantHandValue = props.dominant_hand;
+  if (props.dominant_hand === true || props.dominant_hand === 'true' || 
+      props.dominant_hand === 'right hand' || props.dominant_hand === 'Right') {
+    dominantHandValue = 'true';
+  } else if (props.dominant_hand === false || props.dominant_hand === 'false' || 
+             props.dominant_hand === 'left hand' || props.dominant_hand === 'Left') {
+    dominantHandValue = 'false';
   }
 
   const record = {
@@ -401,14 +447,15 @@ async function syncBookingsToSupabase(bookings, examId) {
   const records = bookings.map(booking => {
     const props = booking.properties || booking;
 
-    // Transform dominant_hand boolean to string
+    // Normalize dominant_hand to boolean string ('true' or 'false')
+    // Frontend sends boolean, HubSpot stores as string
     let dominantHandValue = props.dominant_hand || null;
-    if (props.dominant_hand === 'true' || props.dominant_hand === true) {
-      dominantHandValue = 'right hand';
-    } else if (props.dominant_hand === 'false' || props.dominant_hand === false) {
-      dominantHandValue = 'left hand';
-    } else if (props.dominant_hand === 'right hand' || props.dominant_hand === 'left hand') {
-      dominantHandValue = props.dominant_hand;
+    if (props.dominant_hand === true || props.dominant_hand === 'true' || 
+        props.dominant_hand === 'right hand' || props.dominant_hand === 'Right') {
+      dominantHandValue = 'true';
+    } else if (props.dominant_hand === false || props.dominant_hand === 'false' || 
+               props.dominant_hand === 'left hand' || props.dominant_hand === 'Left') {
+      dominantHandValue = 'false';
     }
 
     return {
@@ -467,6 +514,7 @@ async function syncExamToSupabase(exam) {
     hubspot_id: exam.id,
     mock_exam_name: props.mock_exam_name || null,
     mock_type: props.mock_type || null,
+    mock_set: props.mock_set || null,
     exam_date: props.exam_date || null,
     start_time: props.start_time || null,
     end_time: props.end_time || null,
@@ -761,6 +809,7 @@ module.exports = {
   getBookingsFromSupabase,
   getBookingsByContactFromSupabase,
   getExamsFromSupabase,
+  getExamsByIdsFromSupabase,
   getExamByIdFromSupabase,
   getBookingByIdFromSupabase,
   getActiveBookingsCountFromSupabase,

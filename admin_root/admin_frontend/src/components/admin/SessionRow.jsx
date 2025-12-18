@@ -144,6 +144,9 @@ const SessionRow = ({
           </div>
         </td>
 
+        {/* Empty column for alignment with aggregate Set column */}
+        <td className="px-6 py-3"></td>
+
         {/* Empty column for alignment with aggregate Date column */}
         <td className="px-6 py-3">
           {/* Capacity */}
