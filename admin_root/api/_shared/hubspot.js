@@ -166,15 +166,18 @@ class HubSpotService {
       const secondlyRemaining = rateLimitHeaders['x-hubspot-ratelimit-secondly-remaining'];
       
       // Log rate limit info if we're getting close to limits
-      if (secondlyRemaining && parseInt(secondlyRemaining) < 20) {
+      // Warning at <10 remaining (50% of typical 19/s limit)
+      if (secondlyRemaining && parseInt(secondlyRemaining) < 10) {
         console.warn(`⚠️ HubSpot API Rate Limit Warning: Only ${secondlyRemaining}/${secondlyLimit} requests remaining this second`);
       }
-      
-      if (secondlyRemaining && parseInt(secondlyRemaining) < 5) {
+
+      // Critical at <3 remaining (imminent rate limit)
+      if (secondlyRemaining && parseInt(secondlyRemaining) < 3) {
         console.error(`🚨 HubSpot API Rate Limit Critical: Only ${secondlyRemaining}/${secondlyLimit} requests remaining this second!`);
       }
-      
-      if (dailyRemaining && parseInt(dailyRemaining) < 1000) {
+
+      // Daily warning at <500 remaining (more conservative)
+      if (dailyRemaining && parseInt(dailyRemaining) < 500) {
         console.warn(`⚠️ HubSpot API Daily Limit Warning: Only ${dailyRemaining}/${dailyLimit} requests remaining today`);
       }
       
