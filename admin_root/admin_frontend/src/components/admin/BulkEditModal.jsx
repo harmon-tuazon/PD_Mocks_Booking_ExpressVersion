@@ -96,16 +96,16 @@ const BulkEditModal = ({
     [selectedSessions]
   );
 
-  // Reset form when modal opens/closes
+  // Reset form when modal opens/closes - use sentinel values for selects
   useEffect(() => {
     if (!isOpen) {
       setFormData({
-        location: '',
-        mock_type: '',
-        mock_set: '',
+        location: '__keep_current__',
+        mock_type: '__keep_current__',
+        mock_set: '__keep_current__',
         capacity: '',
         exam_date: '',
-        is_active: '',
+        is_active: '__keep_current__',
         scheduled_activation_datetime: ''
       });
       setConfirmationInput('');
