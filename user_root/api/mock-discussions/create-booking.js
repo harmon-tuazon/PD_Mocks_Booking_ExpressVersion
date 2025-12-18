@@ -17,7 +17,8 @@ const {
 const {
   createBookingAtomic,
   getContactCreditsFromSupabase,
-  checkExistingBookingInSupabase
+  checkExistingBookingInSupabase,
+  supabaseAdmin
 } = require('../_shared/supabase-data');
 
 /**
@@ -358,6 +359,80 @@ module.exports = async function handler(req, res) {
       error.status = 400;
       error.code = 'DISCUSSION_NOT_ACTIVE';
       throw error;
+    }
+
+    // ========================================================================
+    // PREREQUISITE VALIDATION - Verify user has booked all prerequisite exams
+    // ========================================================================
+    // Mock Discussions may require attendance at Clinical Skills or Situational
+    // Judgment exams before booking. This check verifies the user has an active
+    // or completed booking for each prerequisite exam.
+    // ========================================================================
+
+    // PREREQUISITE VALIDATION - Supabase-first pattern
+    let prerequisiteExamIds = [];
+
+    try {
+      // Fast path: Read from Supabase (~50ms)
+      const { data: examData, error: examError } = await supabaseAdmin
+        .from('hubspot_mock_exams')
+        .select('prerequisite_exam_ids')
+        .eq('hubspot_id', mock_exam_id)
+        .single();
+
+      if (!examError && examData?.prerequisite_exam_ids) {
+        prerequisiteExamIds = examData.prerequisite_exam_ids;
+        console.log(`✅ [SUPABASE] Found ${prerequisiteExamIds.length} prerequisites for ${mock_exam_id}`);
+      } else {
+        // Fallback to HubSpot if not in Supabase
+        console.log(`📭 [SUPABASE MISS] Falling back to HubSpot for prerequisites`);
+        prerequisiteExamIds = await hubspot.getMockExamPrerequisites(mock_exam_id);
+      }
+    } catch (err) {
+      console.error(`⚠️ [PREREQUISITE] Error fetching from Supabase, using HubSpot:`, err.message);
+      prerequisiteExamIds = await hubspot.getMockExamPrerequisites(mock_exam_id);
+    }
+
+    if (prerequisiteExamIds.length > 0) {
+      console.log(`📋 [PREREQUISITE CHECK] Mock Discussion ${mock_exam_id} requires ${prerequisiteExamIds.length} prerequisite exam(s)`);
+
+      // Fetch user's bookings from Supabase (fast path ~50ms)
+      const { getBookingsByContactFromSupabase } = require('../_shared/supabase-data');
+      const userBookings = await getBookingsByContactFromSupabase(hubspot_id);
+
+      // Check each prerequisite - user must have an Active or Completed booking
+      const missingPrerequisites = [];
+
+      for (const prereqId of prerequisiteExamIds) {
+        const hasPrereqBooking = userBookings.some(booking =>
+          booking.associated_mock_exam === prereqId &&
+          (booking.is_active === 'Active' || booking.is_active === 'active' ||
+           booking.is_active === 'Completed' || booking.is_active === 'completed')
+        );
+
+        if (!hasPrereqBooking) {
+          missingPrerequisites.push(prereqId);
+        }
+      }
+
+      if (missingPrerequisites.length > 0) {
+        console.log(`❌ [PREREQUISITE CHECK] User ${hubspot_id} missing ${missingPrerequisites.length} prerequisite booking(s): [${missingPrerequisites.join(', ')}]`);
+
+        const error = new Error(
+          `You must book the prerequisite exam session(s) before booking this Mock Discussion. ` +
+          `Please complete the required Clinical Skills or Situational Judgment booking first.`
+        );
+        error.status = 400;
+        error.code = 'PREREQUISITE_NOT_MET';
+        error.details = {
+          missing_prerequisites: missingPrerequisites,
+          total_required: prerequisiteExamIds.length,
+          total_missing: missingPrerequisites.length
+        };
+        throw error;
+      }
+
+      console.log(`✅ [PREREQUISITE CHECK] User ${hubspot_id} has all ${prerequisiteExamIds.length} prerequisite booking(s)`);
     }
 
     // Check capacity using Redis (authoritative source)

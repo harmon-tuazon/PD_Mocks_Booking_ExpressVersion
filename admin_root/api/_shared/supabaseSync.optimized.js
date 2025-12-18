@@ -234,6 +234,31 @@ async function fetchModifiedMockExams(sinceTimestamp) {
 }
 
 /**
+ * Fetch prerequisite exam IDs for a Mock Discussion exam
+ * Uses HubSpot V4 associations API to find "requires attendance at" (typeId 1340) associations
+ * @param {string} examId - HubSpot exam ID
+ * @returns {Array<string>} - Array of prerequisite exam HubSpot IDs
+ */
+async function fetchPrerequisiteExamIds(examId) {
+  try {
+    const response = await hubspotApiCall(
+      'GET',
+      `/crm/v4/objects/${HUBSPOT_OBJECTS.mock_exams}/${examId}/associations/${HUBSPOT_OBJECTS.mock_exams}`
+    );
+
+    // Filter for association type 1340 ("requires attendance at")
+    const prerequisiteIds = (response.results || [])
+      .filter(assoc => assoc.associationTypes?.some(t => t.typeId === 1340))
+      .map(a => String(a.toObjectId));
+
+    return prerequisiteIds;
+  } catch (error) {
+    console.warn(`⚠️ Failed to fetch prerequisites for exam ${examId}: ${error.message}`);
+    return [];
+  }
+}
+
+/**
  * Fetch bookings for a specific exam (unchanged - already efficient with batch read)
  */
 async function fetchBookingsForExam(examId) {
@@ -273,9 +298,20 @@ async function fetchBookingsForExam(examId) {
  * Sync exam to Supabase
  * NOTE: total_bookings is NOT synced - it's managed by atomic increment/decrement operations
  * The cron job does NOT update total_bookings to avoid overwriting real-time counts
+ *
+ * For Mock Discussion exams, also fetches and syncs prerequisite_exam_ids
  */
 async function syncExamToSupabase(exam) {
   const props = exam.properties;
+
+  // Fetch prerequisite exam IDs for Mock Discussion exams
+  let prerequisiteExamIds = [];
+  if (props.mock_type === 'Mock Discussion') {
+    prerequisiteExamIds = await fetchPrerequisiteExamIds(exam.id);
+    if (prerequisiteExamIds.length > 0) {
+      console.log(`📋 Found ${prerequisiteExamIds.length} prerequisite(s) for Mock Discussion ${exam.id}`);
+    }
+  }
 
   const record = {
     hubspot_id: exam.id,
@@ -290,6 +326,7 @@ async function syncExamToSupabase(exam) {
     // Do NOT sync total_bookings - it's managed by atomic operations in booking endpoints
     is_active: props.is_active,
     scheduled_activation_datetime: props.scheduled_activation_datetime || null,
+    prerequisite_exam_ids: prerequisiteExamIds,
     created_at: props.hs_createdate,
     updated_at: props.hs_lastmodifieddate,
     synced_at: new Date().toISOString()
@@ -596,6 +633,7 @@ module.exports = {
   syncAllData,
   fetchModifiedMockExams,
   fetchBookingsForExam,
+  fetchPrerequisiteExamIds,
   syncExamToSupabase,
   syncBookingsToSupabase,
   backfillBookingHubSpotIds,  // New: backfill function for external use

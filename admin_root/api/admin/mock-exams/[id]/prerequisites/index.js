@@ -13,10 +13,57 @@ const { validateInput } = require('../../../../_shared/validation');
 const hubspot = require('../../../../_shared/hubspot');
 const { HUBSPOT_OBJECTS } = require('../../../../_shared/hubspot');
 const Joi = require('joi');
+const { supabaseAdmin } = require('../../../../_shared/supabase');
 
 // Association type ID for "requires attendance at" relationship
 const PREREQUISITE_ASSOCIATION_TYPE_ID = 1340;
 const { getCache } = require('../../../../_shared/cache');
+
+/**
+ * Sync prerequisite changes to Supabase array (fire-and-forget)
+ * @param {string} examId - HubSpot exam ID
+ * @param {string[]} addIds - IDs to add
+ * @param {string[]} removeIds - IDs to remove
+ */
+async function syncPrerequisitesToSupabase(examId, addIds, removeIds) {
+  try {
+    const { data, error } = await supabaseAdmin.rpc('update_exam_prerequisites', {
+      p_exam_id: examId,
+      p_add_ids: addIds || [],
+      p_remove_ids: removeIds || []
+    });
+
+    if (error) {
+      console.error(`⚠️ [SUPABASE SYNC] Failed to sync prerequisites for ${examId}:`, error.message);
+    } else {
+      console.log(`✅ [SUPABASE SYNC] Prerequisites synced for ${examId}:`, data);
+    }
+  } catch (err) {
+    console.error(`⚠️ [SUPABASE SYNC] Error syncing prerequisites for ${examId}:`, err.message);
+  }
+}
+
+/**
+ * Set prerequisites in Supabase (full replacement, fire-and-forget)
+ * @param {string} examId - HubSpot exam ID
+ * @param {string[]} prerequisiteIds - Full list of prerequisite IDs
+ */
+async function setPrerequisitesInSupabase(examId, prerequisiteIds) {
+  try {
+    const { data, error } = await supabaseAdmin.rpc('set_exam_prerequisites', {
+      p_exam_id: examId,
+      p_prerequisite_ids: prerequisiteIds || []
+    });
+
+    if (error) {
+      console.error(`⚠️ [SUPABASE SYNC] Failed to set prerequisites for ${examId}:`, error.message);
+    } else {
+      console.log(`✅ [SUPABASE SYNC] Prerequisites set for ${examId}:`, data);
+    }
+  } catch (err) {
+    console.error(`⚠️ [SUPABASE SYNC] Error setting prerequisites for ${examId}:`, err.message);
+  }
+}
 
 module.exports = async (req, res) => {
   try {
@@ -148,6 +195,11 @@ async function handlePostRequest(req, res, mockExamId, adminEmail) {
       console.log(`🗑️ Cache invalidated for mock exam ${mockExamId}`);
 
       console.log(`Admin ${adminEmail} cleared all prerequisites from Mock Discussion ${mockExamId}`);
+
+      // Sync to Supabase (fire-and-forget)
+      setPrerequisitesInSupabase(mockExamId, []).catch(err => {
+        console.error(`⚠️ [SUPABASE SYNC] Non-blocking error:`, err.message);
+      });
 
       return res.status(200).json({
         success: true,
@@ -303,6 +355,11 @@ async function handlePostRequest(req, res, mockExamId, adminEmail) {
     // Log the operation for audit trail
     console.log(`Admin ${adminEmail} updated prerequisites for Mock Discussion ${mockExamId}: added ${toCreate.length}, removed ${toDelete.length}`);
 
+    // Sync to Supabase using delta-based approach (fire-and-forget)
+    syncPrerequisitesToSupabase(mockExamId, toCreate, toDelete).catch(err => {
+      console.error(`⚠️ [SUPABASE SYNC] Non-blocking error:`, err.message);
+    });
+
     return res.status(200).json({
       success: true,
       data: {
@@ -352,10 +409,73 @@ async function handlePostRequest(req, res, mockExamId, adminEmail) {
 
 /**
  * Handle GET request to retrieve prerequisite associations
+ * Uses Supabase-first pattern for fast reads, falls back to HubSpot
  */
 async function handleGetRequest(req, res, mockExamId) {
   try {
-    // Fetch the mock exam to verify it exists
+    // Try Supabase first for fast reads (~50ms vs ~500ms HubSpot)
+    let prerequisiteIds = [];
+    let dataSource = 'hubspot';
+
+    try {
+      const { data: examData, error: supabaseError } = await supabaseAdmin
+        .from('hubspot_mock_exams')
+        .select('prerequisite_exam_ids, mock_type')
+        .eq('hubspot_id', mockExamId)
+        .single();
+
+      if (!supabaseError && examData?.prerequisite_exam_ids?.length > 0) {
+        console.log(`✅ [SUPABASE HIT] Found ${examData.prerequisite_exam_ids.length} prerequisites for ${mockExamId}`);
+        prerequisiteIds = examData.prerequisite_exam_ids;
+        dataSource = 'supabase';
+
+        // Fetch prerequisite exam details from Supabase
+        const { data: prereqExams, error: prereqError } = await supabaseAdmin
+          .from('hubspot_mock_exams')
+          .select('hubspot_id, mock_type, exam_date, location, start_time, end_time, capacity, total_bookings, is_active')
+          .in('hubspot_id', prerequisiteIds);
+
+        if (!prereqError && prereqExams?.length > 0) {
+          // Format prerequisite details from Supabase
+          const prerequisiteDetails = prereqExams.map(exam => ({
+            id: exam.hubspot_id,
+            mock_type: exam.mock_type,
+            exam_date: exam.exam_date,
+            location: exam.location || 'Not specified',
+            start_time: exam.start_time,
+            end_time: exam.end_time,
+            capacity: parseInt(exam.capacity || '0'),
+            total_bookings: parseInt(exam.total_bookings || '0'),
+            is_active: exam.is_active === 'true' || exam.is_active === true
+          }));
+
+          // Sort by exam date (earliest first)
+          prerequisiteDetails.sort((a, b) => {
+            const dateA = new Date(a.exam_date);
+            const dateB = new Date(b.exam_date);
+            return dateA - dateB;
+          });
+
+          return res.status(200).json({
+            success: true,
+            data: {
+              mock_exam_id: mockExamId,
+              mock_exam_type: examData.mock_type,
+              total_prerequisites: prerequisiteDetails.length,
+              prerequisite_exam_ids: prerequisiteIds,
+              prerequisite_exams: prerequisiteDetails
+            },
+            meta: { source: 'supabase' }
+          });
+        }
+      } else {
+        console.log(`📭 [SUPABASE MISS] No prerequisites in Supabase for ${mockExamId}, falling back to HubSpot`);
+      }
+    } catch (supabaseErr) {
+      console.error(`⚠️ [SUPABASE] Error fetching prerequisites, falling back to HubSpot:`, supabaseErr.message);
+    }
+
+    // Fallback to HubSpot
     const mockExam = await hubspot.getMockExam(mockExamId);
 
     if (!mockExam) {
@@ -368,7 +488,7 @@ async function handleGetRequest(req, res, mockExamId) {
       });
     }
 
-    // Get prerequisite associations
+    // Get prerequisite associations from HubSpot
     const prerequisites = await hubspot.getMockExamAssociations(mockExamId, PREREQUISITE_ASSOCIATION_TYPE_ID);
 
     // Format prerequisite details
@@ -391,14 +511,24 @@ async function handleGetRequest(req, res, mockExamId) {
       return dateA - dateB;
     });
 
+    // Auto-populate Supabase with HubSpot data (fire-and-forget)
+    if (prerequisites.length > 0) {
+      const prereqIds = prerequisites.map(p => p.id);
+      setPrerequisitesInSupabase(mockExamId, prereqIds).catch(err => {
+        console.error(`⚠️ [SUPABASE SYNC] Auto-populate error:`, err.message);
+      });
+    }
+
     return res.status(200).json({
       success: true,
       data: {
         mock_exam_id: mockExamId,
         mock_exam_type: mockExam.properties.mock_type,
         total_prerequisites: prerequisiteDetails.length,
+        prerequisite_exam_ids: prerequisites.map(p => p.id),
         prerequisite_exams: prerequisiteDetails
-      }
+      },
+      meta: { source: 'hubspot' }
     });
 
   } catch (error) {

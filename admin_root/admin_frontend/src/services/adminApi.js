@@ -221,6 +221,49 @@ export const mockExamsApi = {
   },
 
   /**
+   * Get prerequisite exams for a mock exam (alias for getPrerequisites)
+   * @param {string} examId - Mock exam ID
+   * @returns {Promise<Object>} List of prerequisite exams
+   */
+  getExamPrerequisites: async (examId) => {
+    const response = await api.get(`/admin/mock-exams/${examId}/prerequisites`);
+    return response.data;
+  },
+
+  /**
+   * Update prerequisites using delta (add/remove) operations
+   * @param {string} examId - Mock exam ID
+   * @param {Array<string>} addIds - Array of prerequisite exam IDs to add
+   * @param {Array<string>} removeIds - Array of prerequisite exam IDs to remove
+   * @returns {Promise<Object>} Update result with current prerequisites
+   */
+  updatePrerequisitesDelta: async (examId, addIds = [], removeIds = []) => {
+    const response = await api.patch(`/admin/mock-exams/${examId}/prerequisites/delta`, {
+      add_prerequisites: addIds,
+      remove_prerequisites: removeIds
+    });
+    return response.data;
+  },
+
+  /**
+   * Get available exams that can be used as prerequisites (SJ/CS types before a date)
+   * @param {string} beforeDate - ISO date string; only exams before this date are returned
+   * @returns {Promise<Object>} List of eligible prerequisite exams
+   */
+  getAvailablePrerequisiteExams: async (beforeDate) => {
+    const response = await api.get('/admin/mock-exams/list', {
+      params: {
+        mock_type: ['Clinical Skills', 'Situational Judgment'],
+        exam_date_before: beforeDate,
+        limit: 100,
+        sort_by: 'exam_date',
+        sort_order: 'desc'
+      }
+    });
+    return response.data;
+  },
+
+  /**
    * Create a booking on behalf of a trainee (admin-authenticated)
    * @param {Object} bookingData - Booking creation data
    * @returns {Promise<Object>} Created booking result

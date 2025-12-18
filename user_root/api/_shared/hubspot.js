@@ -494,6 +494,47 @@ class HubSpotService {
     return await this.apiCall('GET', `/crm/v3/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}?properties=${properties}`);
   }
 
+
+  /**
+   * Get prerequisite associations for a mock exam
+   * Uses HubSpot V4 associations API to fetch mock-exam-to-mock-exam associations
+   * @param {string} mockExamId - The mock exam ID to get prerequisites for
+   * @param {number} associationTypeId - The association type ID (default: 1340 = "requires attendance at")
+   * @returns {Promise<Array>} Array of prerequisite exam IDs (strings)
+   */
+  async getMockExamPrerequisites(mockExamId, associationTypeId = 1340) {
+    try {
+      // Use V4 associations API for consistent response structure
+      const response = await this.apiCall(
+        'GET',
+        `/crm/v4/objects/${HUBSPOT_OBJECTS.mock_exams}/${mockExamId}/associations/${HUBSPOT_OBJECTS.mock_exams}`
+      );
+
+      // Filter associations by the specific type (1340 = "requires attendance at")
+      const prerequisiteAssociations = (response.results || []).filter(assoc =>
+        assoc.associationTypes?.some(type =>
+          type.category === 'USER_DEFINED' &&
+          type.typeId === associationTypeId
+        )
+      );
+
+      // Return just the IDs for efficient checking
+      const prerequisiteIds = prerequisiteAssociations.map(a => String(a.toObjectId));
+
+      if (prerequisiteIds.length > 0) {
+        console.log(`📋 Found ${prerequisiteIds.length} prerequisite(s) for Mock Discussion ${mockExamId}: [${prerequisiteIds.join(', ')}]`);
+      }
+
+      return prerequisiteIds;
+    } catch (error) {
+      console.error('Error getting mock exam prerequisites:', error);
+      if (error.response?.status === 404) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
   /**
    * Get active bookings count for a mock exam by querying actual associations
    * This ensures we only count non-deleted bookings
