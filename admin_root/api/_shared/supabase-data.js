@@ -191,6 +191,52 @@ async function getExamsFromSupabase(filters = {}) {
   return data || [];
 }
 
+
+/**
+ * Fetch mock exams from Supabase by their HubSpot IDs
+ * Used for Supabase-first reads with HubSpot fallback
+ * @param {Array<string>} hubspotIds - Array of HubSpot exam IDs
+ * @returns {Promise<Array>} Array of exam objects with properties in HubSpot format
+ */
+async function getExamsByIdsFromSupabase(hubspotIds) {
+  if (!hubspotIds || hubspotIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('hubspot_mock_exams')
+    .select('*')
+    .in('hubspot_id', hubspotIds);
+
+  if (error) {
+    console.error(`❌ Supabase exam batch read error:`, error.message);
+    throw error;
+  }
+
+  // Transform Supabase format to HubSpot format for compatibility
+  // This allows the rest of the code to work with either source
+  return (data || []).map(exam => ({
+    id: exam.hubspot_id,
+    createdAt: exam.created_at,
+    updatedAt: exam.updated_at,
+    properties: {
+      mock_type: exam.mock_type,
+      mock_set: exam.mock_set,
+      exam_date: exam.exam_date,
+      start_time: exam.start_time,
+      end_time: exam.end_time,
+      capacity: exam.capacity?.toString(),
+      total_bookings: exam.total_bookings?.toString(),
+      location: exam.location,
+      is_active: exam.is_active,
+      mock_exam_name: exam.mock_exam_name,
+      scheduled_activation_datetime: exam.scheduled_activation_datetime,
+      hs_createdate: exam.created_at,
+      hs_lastmodifieddate: exam.updated_at
+    }
+  }));
+}
+
 /**
  * Get single exam by ID from Supabase
  * @param {string} examId - HubSpot ID
@@ -713,6 +759,7 @@ module.exports = {
   getBookingsFromSupabase,
   getBookingsByContactFromSupabase,
   getExamsFromSupabase,
+  getExamsByIdsFromSupabase,
   getExamByIdFromSupabase,
   getBookingByIdFromSupabase,
   getActiveBookingsCountFromSupabase,

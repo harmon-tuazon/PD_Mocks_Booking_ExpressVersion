@@ -32,7 +32,7 @@ const { requirePermission } = require('../middleware/requirePermission');
 const { validationMiddleware } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const hubspot = require('../../_shared/hubspot');
-const { syncExamToSupabase } = require('../../_shared/supabase-data');
+const { syncExamToSupabase, getExamsByIdsFromSupabase } = require('../../_shared/supabase-data');
 const { triggerExamCascade, shouldCascadeUpdate, extractCascadeProperties } = require('../../_shared/supabase-webhook');
 
 // HubSpot Object Type ID for mock exams
@@ -110,9 +110,31 @@ module.exports = async (req, res) => {
       return acc;
     }, {});
 
-    // Always fetch current state from HubSpot (simplifies code, avoids frontend pass-through complexity)
-    console.log(`🔍 [BULK-UPDATE] Fetching ${targetSessionIds.length} sessions from HubSpot...`);
-    const fetchedSessions = await hubspot.batchFetchMockExams(targetSessionIds);
+    // SUPABASE-FIRST: Fetch current state from Supabase with HubSpot fallback
+    let fetchedSessions = [];
+    try {
+      console.log(`🔍 [BULK-UPDATE] Fetching ${targetSessionIds.length} sessions from Supabase...`);
+      fetchedSessions = await getExamsByIdsFromSupabase(targetSessionIds);
+
+      if (fetchedSessions.length > 0) {
+        console.log(`✅ [BULK-UPDATE] Fetched ${fetchedSessions.length} sessions from Supabase`);
+      }
+
+      // Check if any sessions are missing from Supabase
+      const foundIds = new Set(fetchedSessions.map(s => s.id));
+      const missingIds = targetSessionIds.filter(id => !foundIds.has(id));
+
+      if (missingIds.length > 0) {
+        console.log(`⚠️ [BULK-UPDATE] ${missingIds.length} sessions not in Supabase, fetching from HubSpot...`);
+        const hubspotSessions = await hubspot.batchFetchMockExams(missingIds);
+        fetchedSessions = [...fetchedSessions, ...hubspotSessions];
+      }
+    } catch (supabaseError) {
+      // Fallback to HubSpot if Supabase fails
+      console.error(`❌ [BULK-UPDATE] Supabase fetch failed, falling back to HubSpot:`, supabaseError.message);
+      fetchedSessions = await hubspot.batchFetchMockExams(targetSessionIds);
+      console.log(`⚠️ [BULK-UPDATE] Fallback: Fetched ${fetchedSessions.length} sessions from HubSpot`);
+    }
 
     // Transform to processing format
     const processSessions = fetchedSessions.map(session => ({

@@ -99,11 +99,11 @@ const useBulkEdit = () => {
       });
 
       // Optimistically update aggregate queries (group view)
+      // Note: useFetchAggregates returns a direct array, not wrapped in { data: [...] }
       aggregateQueries.forEach(([queryKey, data]) => {
-        if (data?.data && Array.isArray(data.data)) {
-          queryClient.setQueryData(queryKey, {
-            ...data,
-            data: data.data.map(aggregate => {
+        if (Array.isArray(data)) {
+          queryClient.setQueryData(queryKey,
+            data.map(aggregate => {
               // Check if this aggregate contains any of the updated sessions
               if (aggregate.sessions && Array.isArray(aggregate.sessions)) {
                 const updatedSessions = aggregate.sessions.map(session => {
@@ -116,7 +116,7 @@ const useBulkEdit = () => {
               }
               return aggregate;
             })
-          });
+          );
         }
       });
 
