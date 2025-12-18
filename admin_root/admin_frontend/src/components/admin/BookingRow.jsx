@@ -164,6 +164,19 @@ const BookingRow = ({
           </td>
         );
 
+      case 'mock_set':
+        return (
+          <td key={columnId} className={baseClasses} style={cellStyle}>
+            {booking.mock_set ? (
+              <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                {booking.mock_set}
+              </span>
+            ) : (
+              <span className="text-gray-400 dark:text-gray-500">-</span>
+            )}
+          </td>
+        );
+
       case 'exam_date':
         return (
           <td key={columnId} className={baseClasses} style={cellStyle}>

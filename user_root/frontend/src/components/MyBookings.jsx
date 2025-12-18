@@ -627,7 +627,12 @@ const MyBookings = () => {
       <div className="flex justify-between items-start mb-2">
         <div className="flex-1">
           <p className="font-semibold text-sm text-primary-900 dark:text-primary-400">{formatBookingNumber(booking)}</p>
-          <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mt-1">{booking.mock_type || 'Mock Exam'}</p>
+          <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mt-1">
+            {booking.mock_type || 'Mock Exam'}
+            {booking.mock_set && (
+              <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Set {booking.mock_set}</span>
+            )}
+          </p>
         </div>
         {getStatusBadge(booking)}
       </div>
@@ -1126,6 +1131,9 @@ const MyBookings = () => {
                               <SortIcon field="exam_type" />
                             </div>
                           </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider">
+                            Set
+                          </th>
                           <th
                             className="px-6 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-dark-card transition-colors"
                             onClick={() => handleSort('date_time')}
@@ -1176,6 +1184,15 @@ const MyBookings = () => {
                               <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {booking.mock_type || 'Mock Exam'}
                               </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {booking.mock_set ? (
+                                <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                  {booking.mock_set}
+                                </span>
+                              ) : (
+                                <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900 dark:text-gray-100">

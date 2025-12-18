@@ -313,6 +313,8 @@ module.exports = async (req, res) => {
           dominant_hand,
           attending_location,
           token_used: 'Admin Override',
+          mock_type: mockExam.mock_type || null,
+          mock_set: mockExam.mock_set || null,
           start_time: mockExam.start_time,
           end_time: mockExam.end_time,
           createdate: new Date().toISOString()

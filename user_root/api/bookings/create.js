@@ -95,6 +95,7 @@ module.exports = async (req, res) => {
 
     const {
       mock_type,
+      mock_set,  // Exam set (A-H) to copy to booking
       exam_date,
       start_time,
       end_time,
@@ -327,7 +328,8 @@ module.exports = async (req, res) => {
         p_token_used: tokenUsed,
         p_credit_field: creditToDeduct,
         p_idempotency_key: idempotencyKey,
-        p_new_credit_value: newCreditValue
+        p_new_credit_value: newCreditValue,
+        p_mock_set: mock_set || null  // Copy exam set (A-H) from session
       }
     );
 

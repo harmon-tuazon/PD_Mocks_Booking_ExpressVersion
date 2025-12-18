@@ -212,6 +212,7 @@ async function syncBookingToSupabase(booking, examId) {
     token_refunded_at: props.token_refunded_at ? new Date(parseInt(props.token_refunded_at)).toISOString() : null,
     token_refund_admin: props.token_refund_admin,
     mock_type: props.mock_type,
+    mock_set: props.mock_set || null,  // Exam set (A-H) copied from session
     start_time: props.start_time,
     end_time: props.end_time,
     ndecc_exam_date: props.ndecc_exam_date,
@@ -574,9 +575,10 @@ async function createBookingAtomic({
   dominantHand,
   idempotencyKey,
   creditField,
-  newCreditValue
+  newCreditValue,
+  mockSet  // NEW: Exam set (A-H) copied from session
 }) {
-  console.log('[SUPABASE] Creating booking atomically:', { bookingId, studentId });
+  console.log('[SUPABASE] Creating booking atomically:', { bookingId, studentId, mockSet });
 
   const { data, error } = await supabaseAdmin.rpc('create_booking_atomic', {
     p_booking_id: bookingId,
@@ -589,7 +591,8 @@ async function createBookingAtomic({
     p_dominant_hand: dominantHand,
     p_idempotency_key: idempotencyKey,
     p_credit_field: creditField,
-    p_new_credit_value: newCreditValue
+    p_new_credit_value: newCreditValue,
+    p_mock_set: mockSet || null  // NEW: Pass mock_set to RPC
   });
 
   if (error) {

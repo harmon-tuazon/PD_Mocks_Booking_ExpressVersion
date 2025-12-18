@@ -236,6 +236,7 @@ async function handler(req, res) {
               start_time: booking.start_time,
               end_time: booking.end_time,
               mock_type: booking.mock_type || '',
+              mock_set: booking.mock_set || null,
               location: booking.attending_location || booking.location || 'TBD',
               is_active: booking.is_active,
               attendance: booking.attendance,

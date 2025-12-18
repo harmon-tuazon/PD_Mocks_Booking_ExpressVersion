@@ -183,6 +183,7 @@ module.exports = async (req, res) => {
             hs_lastmodifieddate: booking.updated_at,
             // Mock exam details from Supabase sync
             mock_type: booking.mock_type,
+            mock_set: booking.mock_set,
             exam_date: booking.exam_date,
             location: booking.attending_location, // Use attending_location as primary
             start_time: booking.start_time,
@@ -330,6 +331,7 @@ module.exports = async (req, res) => {
         mock_exam_id: props.mock_exam_id || '',
         // Mock exam details (read-only calculated properties from associated mock exam)
         mock_exam_type: props.mock_type || '',
+        mock_set: props.mock_set || null,
         exam_date: props.exam_date || '',
         start_time: props.start_time || '',
         end_time: props.end_time || '',

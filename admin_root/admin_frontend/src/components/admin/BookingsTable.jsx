@@ -369,6 +369,7 @@ const BookingsTable = ({
                     case 'attendance':
                     case 'status':
                     case 'mock_type':
+                    case 'mock_set':
                       // Non-sortable columns
                       return (
                         <NonSortableHeader key={columnDef.id} column={columnDef.id} align="center">

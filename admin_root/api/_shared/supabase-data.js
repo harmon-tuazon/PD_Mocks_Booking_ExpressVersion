@@ -414,6 +414,7 @@ async function syncBookingToSupabase(booking, examId) {
     token_refunded_at: parseTimestamp(props.token_refunded_at),
     token_refund_admin: props.token_refund_admin || null,
     mock_type: props.mock_type || null,
+    mock_set: props.mock_set || null,  // Exam set (A-H) copied from session
     start_time: props.start_time || null,
     end_time: props.end_time || null,
     ndecc_exam_date: parseDateString(props.ndecc_exam_date),

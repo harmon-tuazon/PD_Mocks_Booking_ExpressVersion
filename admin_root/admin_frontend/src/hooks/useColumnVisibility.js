@@ -18,7 +18,8 @@ export const COLUMN_DEFINITIONS = [
 
 // Trainee-only columns (not available in admin column selector, only shown in trainee dashboard)
 export const TRAINEE_ONLY_COLUMNS = [
-  { id: 'mock_type', label: 'Mock Type', minWidth: '150px' }
+  { id: 'mock_type', label: 'Mock Type', minWidth: '150px' },
+  { id: 'mock_set', label: 'Set', minWidth: '60px' }
 ];
 
 // Fixed columns that are always visible (but not sticky - they scroll with the table)
