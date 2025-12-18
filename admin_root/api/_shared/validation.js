@@ -552,12 +552,25 @@ const schemas = {
       }),
     filter_mock_type: Joi.alternatives()
       .try(
+        // Single value
         Joi.string().valid('Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion'),
-        Joi.array().items(Joi.string().valid('Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion'))
+        // Array of values (from parsed query params)
+        Joi.array().items(Joi.string().valid('Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion')),
+        // Comma-separated string (from axios paramsSerializer)
+        Joi.string().custom((value, helpers) => {
+          const validTypes = ['Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion'];
+          const types = value.split(',').map(t => t.trim());
+          const invalidTypes = types.filter(t => !validTypes.includes(t));
+          if (invalidTypes.length > 0) {
+            return helpers.error('any.invalid');
+          }
+          return types; // Return as array for downstream processing
+        }, 'comma-separated mock types')
       )
       .optional()
       .messages({
         'any.only': 'filter_mock_type must be one of: Situational Judgment, Clinical Skills, Mini-mock, or Mock Discussion',
+        'any.invalid': 'filter_mock_type contains invalid mock type values',
         'alternatives.types': 'filter_mock_type must be a string or array of valid mock types'
       }),
     filter_status: Joi.string()

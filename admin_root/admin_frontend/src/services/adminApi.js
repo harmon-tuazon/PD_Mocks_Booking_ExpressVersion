@@ -8,12 +8,31 @@ import axios from 'axios';
 // Configure base URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
+/**
+ * Custom params serializer to handle arrays correctly for Express/Vercel
+ * Converts arrays like ['a', 'b'] to 'a,b' format which is easier to parse
+ */
+function paramsSerializer(params) {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null) continue;
+    if (Array.isArray(value)) {
+      // Serialize arrays as comma-separated values
+      searchParams.append(key, value.join(','));
+    } else {
+      searchParams.append(key, value);
+    }
+  }
+  return searchParams.toString();
+}
+
 // Create axios instance with defaults
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  paramsSerializer
 });
 
 // Add request interceptor to include auth token
