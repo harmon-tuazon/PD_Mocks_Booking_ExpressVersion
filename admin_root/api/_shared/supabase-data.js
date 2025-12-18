@@ -224,7 +224,12 @@ async function getExamsFromSupabase(filters = {}) {
     query = query.lte('exam_date', filters.endDate);
   }
   if (filters.mock_type) {
-    query = query.eq('mock_type', filters.mock_type);
+    // Handle both single value and array of mock types
+    if (Array.isArray(filters.mock_type)) {
+      query = query.in('mock_type', filters.mock_type);
+    } else {
+      query = query.eq('mock_type', filters.mock_type);
+    }
   }
   if (filters.location) {
     query = query.eq('location', filters.location);
