@@ -20,11 +20,12 @@ export function usePrerequisiteExams(mockExamId, discussionExamDate, options = {
       const today = new Date().toISOString().split('T')[0];
 
       // Build query parameters
+      // Note: Backend validation expects 'filter_' prefix for filter params
       const params = {
-        mock_type: ['Clinical Skills', 'Situational Judgment'],
-        is_active: 'true', // String value for HubSpot
-        exam_date_from: today,
-        exam_date_to: discussionExamDate,
+        filter_mock_type: ['Clinical Skills', 'Situational Judgment'],
+        filter_status: 'active', // 'active' matches is_active = 'true' in DB
+        filter_date_from: today,
+        filter_date_to: discussionExamDate,
         sort_by: 'exam_date',
         sort_order: 'asc',
         limit: 100

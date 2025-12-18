@@ -272,8 +272,9 @@ export const mockExamsApi = {
   getAvailablePrerequisiteExams: async (beforeDate) => {
     const response = await api.get('/admin/mock-exams/list', {
       params: {
-        mock_type: ['Clinical Skills', 'Situational Judgment'],
-        exam_date_before: beforeDate,
+        filter_mock_type: ['Clinical Skills', 'Situational Judgment'],
+        filter_date_to: beforeDate,
+        filter_status: 'active',
         limit: 100,
         sort_by: 'exam_date',
         sort_order: 'desc'
