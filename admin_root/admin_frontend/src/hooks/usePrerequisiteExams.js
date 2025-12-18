@@ -19,9 +19,9 @@ export function usePrerequisiteExams(mockExamId, discussionExamDate, options = {
       // Get today's date in YYYY-MM-DD format
       const today = new Date().toISOString().split('T')[0];
 
-      // Build query parameters
+      // Build base query parameters
       // Note: Backend validation expects 'filter_' prefix for filter params
-      const params = {
+      const baseParams = {
         filter_mock_type: ['Clinical Skills', 'Situational Judgment'],
         filter_status: 'active', // 'active' matches is_active = 'true' in DB
         filter_date_from: today,
@@ -31,22 +31,40 @@ export function usePrerequisiteExams(mockExamId, discussionExamDate, options = {
         limit: 100
       };
 
-      // Make API call
-      const response = await mockExamsApi.list(params);
+      // Fetch all pages to get complete list of available prerequisites
+      let allExams = [];
+      let currentPage = 1;
+      let hasMorePages = true;
 
-      // Return the mock exams array from the response
-      // Handle different possible response structures
-      if (response?.data?.mock_exams) {
-        return response.data.mock_exams;
-      } else if (response?.data && Array.isArray(response.data)) {
-        return response.data;
-      } else if (Array.isArray(response)) {
-        return response;
+      while (hasMorePages) {
+        const response = await mockExamsApi.list({ ...baseParams, page: currentPage });
+
+        // Extract exams from response
+        let pageExams = [];
+        if (response?.data && Array.isArray(response.data)) {
+          pageExams = response.data;
+        } else if (Array.isArray(response)) {
+          pageExams = response;
+        }
+
+        allExams = [...allExams, ...pageExams];
+
+        // Check if there are more pages
+        const pagination = response?.pagination;
+        if (pagination && pagination.current_page < pagination.total_pages) {
+          currentPage++;
+        } else {
+          hasMorePages = false;
+        }
+
+        // Safety limit to prevent infinite loops (max 10 pages = 1000 exams)
+        if (currentPage > 10) {
+          console.warn('Prerequisite exams fetch hit safety limit of 10 pages');
+          hasMorePages = false;
+        }
       }
 
-      // Default to empty array if structure is unexpected
-      console.warn('Unexpected response structure from mock exams API:', response);
-      return [];
+      return allExams;
     },
     // Only fetch when we have a discussion exam date
     enabled: !!discussionExamDate,
