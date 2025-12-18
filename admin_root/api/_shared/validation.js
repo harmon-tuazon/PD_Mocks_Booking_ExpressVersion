@@ -550,11 +550,15 @@ const schemas = {
       .messages({
         'any.only': 'filter_location must be one of: Mississauga, Mississauga - B9, Mississauga - Lab D, Calgary, Vancouver, Montreal, Richmond Hill, or Online'
       }),
-    filter_mock_type: Joi.string()
-      .valid('Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion')
+    filter_mock_type: Joi.alternatives()
+      .try(
+        Joi.string().valid('Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion'),
+        Joi.array().items(Joi.string().valid('Situational Judgment', 'Clinical Skills', 'Mini-mock', 'Mock Discussion'))
+      )
       .optional()
       .messages({
-        'any.only': 'filter_mock_type must be one of: Situational Judgment, Clinical Skills, Mini-mock, or Mock Discussion'
+        'any.only': 'filter_mock_type must be one of: Situational Judgment, Clinical Skills, Mini-mock, or Mock Discussion',
+        'alternatives.types': 'filter_mock_type must be a string or array of valid mock types'
       }),
     filter_status: Joi.string()
       .valid('all', 'active', 'inactive', 'scheduled')
