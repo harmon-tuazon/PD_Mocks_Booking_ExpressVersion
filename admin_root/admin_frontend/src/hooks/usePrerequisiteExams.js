@@ -21,6 +21,10 @@ export function usePrerequisiteExams(mockExamId, discussionExamDate, options = {
 
       // Build base query parameters
       // Note: Backend validation expects 'filter_' prefix for filter params
+      // Using limit=500 to minimize API calls while staying within reasonable response sizes
+      const PAGE_SIZE = 500;
+      const MAX_PAGES = 20; // Safety limit: 500 * 20 = 10,000 exams max
+
       const baseParams = {
         filter_mock_type: ['Clinical Skills', 'Situational Judgment'],
         filter_status: 'active', // 'active' matches is_active = 'true' in DB
@@ -28,7 +32,7 @@ export function usePrerequisiteExams(mockExamId, discussionExamDate, options = {
         filter_date_to: discussionExamDate,
         sort_by: 'exam_date',
         sort_order: 'asc',
-        limit: 100
+        limit: PAGE_SIZE
       };
 
       // Fetch all pages to get complete list of available prerequisites
@@ -57,9 +61,9 @@ export function usePrerequisiteExams(mockExamId, discussionExamDate, options = {
           hasMorePages = false;
         }
 
-        // Safety limit to prevent infinite loops (max 10 pages = 1000 exams)
-        if (currentPage > 10) {
-          console.warn('Prerequisite exams fetch hit safety limit of 10 pages');
+        // Safety limit to prevent infinite loops
+        if (currentPage > MAX_PAGES) {
+          console.warn(`Prerequisite exams fetch hit safety limit of ${MAX_PAGES} pages (${MAX_PAGES * PAGE_SIZE} exams)`);
           hasMorePages = false;
         }
       }

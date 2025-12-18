@@ -511,14 +511,14 @@ const schemas = {
     limit: Joi.number()
       .integer()
       .min(1)
-      .max(100)
+      .max(500) // Increased from 100 to support bulk fetching (e.g., prerequisite exams)
       .optional()
       .default(50)
       .messages({
         'number.base': 'Limit must be a number',
         'number.integer': 'Limit must be an integer',
         'number.min': 'Limit must be at least 1',
-        'number.max': 'Limit cannot exceed 100'
+        'number.max': 'Limit cannot exceed 500'
       }),
     sort_by: Joi.string()
       .valid(
