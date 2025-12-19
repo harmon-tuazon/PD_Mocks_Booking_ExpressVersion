@@ -7,12 +7,15 @@
  * {
  *   bookings: [
  *     {
- *       id: string,           // Booking HubSpot ID
- *       student_id: string,   // For reference only
- *       email: string,        // For reference only
- *       reason?: string       // Optional cancellation reason
+ *       id: string,                    // Supabase UUID (primary identifier)
+ *       hubspot_id?: string,           // HubSpot numeric ID (may be null for Supabase-only bookings)
+ *       student_id?: string,           // For reference only
+ *       email?: string,                // For reference only
+ *       associated_contact_id?: string,// Contact ID for note creation
+ *       reason?: string                // Optional cancellation reason
  *     }
- *   ]
+ *   ],
+ *   refundTokens?: boolean  // Whether to refund tokens (default: true)
  * }
  *
  * Returns:
@@ -84,6 +87,12 @@ const batchCancelSchema = Joi.object({
       'array.min': 'At least one booking is required',
       'array.max': 'Cannot cancel more than 50 bookings at once',
       'any.required': 'Bookings array is required'
+    }),
+  refundTokens: Joi.boolean()
+    .optional()
+    .default(true)
+    .messages({
+      'boolean.base': 'refundTokens must be a boolean'
     })
 });
 
@@ -93,8 +102,13 @@ const batchCancelSchema = Joi.object({
  * - First checks if hubspot_id is provided
  * - Falls back to Supabase lookup if only Supabase UUID is provided
  * - Supports Supabase-only bookings (those not yet synced to HubSpot)
+ *
+ * @param {Object} hubspot - HubSpot service instance
+ * @param {Object} bookingData - Booking data with id, hubspot_id, reason
+ * @param {Object} redis - Redis service instance
+ * @param {boolean} refundTokens - Whether to refund tokens (default: true)
  */
-async function cancelSingleBooking(hubspot, bookingData, redis) {
+async function cancelSingleBooking(hubspot, bookingData, redis, refundTokens = true) {
   const { id: supabaseId, hubspot_id: providedHubspotId, reason } = bookingData;
   const result = {
     booking_id: supabaseId,
@@ -339,10 +353,15 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
     let bookingsDecremented = false;
 
     // Step 8: Restore credits to contact using refundService (Supabase-first pattern)
+    // Only refund if refundTokens flag is true (controlled by checkbox in UI)
     let creditsRestored = null;
     const tokenUsed = bookingProperties.token_used;
 
-    if (tokenUsed && supabaseId) {
+    if (!refundTokens) {
+      console.log(`⏭️ Token refund skipped for booking ${supabaseId} (refundTokens=false)`);
+      result.actions_completed.credits_restored = false;
+      result.credit_restoration = { skipped: true, reason: 'Refund not requested' };
+    } else if (tokenUsed && supabaseId) {
       try {
         console.log(`💳 Restoring credits for cancelled booking ${supabaseId}`);
 
@@ -572,7 +591,11 @@ async function handler(req, res) {
       });
     }
 
-    console.log(`✅ [VALIDATION SUCCESS] Processing ${validatedData.bookings.length} booking(s)`);
+    // Extract refundTokens flag (defaults to true if not provided)
+    const { bookings, refundTokens = true } = validatedData;
+
+    console.log(`✅ [VALIDATION SUCCESS] Processing ${bookings.length} booking(s)`);
+    console.log(`🔄 [CANCEL] Token refunds enabled: ${refundTokens}`);
 
     // Initialize HubSpot service and Redis
     const hubspot = new HubSpotService();
@@ -583,8 +606,8 @@ async function handler(req, res) {
     let successCount = 0;
     let failedCount = 0;
 
-    for (const booking of validatedData.bookings) {
-      const result = await cancelSingleBooking(hubspot, booking, redis);
+    for (const booking of bookings) {
+      const result = await cancelSingleBooking(hubspot, booking, redis, refundTokens);
 
       if (result.success) {
         successCount++;
@@ -597,9 +620,10 @@ async function handler(req, res) {
 
     // Prepare response summary
     const summary = {
-      total: validatedData.bookings.length,
+      total: bookings.length,
       successful: successCount,
-      failed: failedCount
+      failed: failedCount,
+      refundTokensEnabled: refundTokens
     };
 
     console.log(`📊 [Admin] Batch cancellation summary:`, summary);
@@ -608,7 +632,7 @@ async function handler(req, res) {
     let statusCode = 200;
     let message = 'Batch cancellation completed';
 
-    if (failedCount === validatedData.bookings.length) {
+    if (failedCount === bookings.length) {
       // All failed
       statusCode = 400;
       message = 'All booking cancellations failed';
