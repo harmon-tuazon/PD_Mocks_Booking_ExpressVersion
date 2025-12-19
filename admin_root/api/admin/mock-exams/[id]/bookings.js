@@ -136,11 +136,10 @@ module.exports = async (req, res) => {
       if (supabaseBookings && supabaseBookings.length > 0) {
         console.log(`✅ [SUPABASE HIT] Found ${supabaseBookings.length} bookings in Supabase`);
 
-        // Transform Supabase bookings to HubSpot format
-        // Include both hubspot_id and supabase_id for Supabase-first bookings
+        // Transform Supabase bookings - use Supabase UUID as id, hubspot_id separate
         allBookings = supabaseBookings.map(booking => ({
-          id: booking.hubspot_id,
-          supabase_id: booking.id,  // Supabase UUID - used for bookings not yet synced to HubSpot
+          id: booking.id,  // Supabase UUID as primary identifier
+          hubspot_id: booking.hubspot_id,  // HubSpot ID for legacy operations
           properties: {
             booking_id: booking.booking_id,
             name: booking.name,
@@ -235,7 +234,13 @@ module.exports = async (req, res) => {
             });
 
             if (batchResponse.results) {
-              allBookings = allBookings.concat(batchResponse.results);
+              // For HubSpot-sourced bookings, use HubSpot ID as both id and hubspot_id
+              const hubspotBookings = batchResponse.results.map(b => ({
+                id: b.id,  // HubSpot ID as fallback (will be string)
+                hubspot_id: b.id,  // Also store as hubspot_id for consistency
+                properties: b.properties
+              }));
+              allBookings = allBookings.concat(hubspotBookings);
             }
           } catch (batchError) {
             console.error(`Error fetching booking batch:`, batchError);
@@ -325,7 +330,8 @@ module.exports = async (req, res) => {
       }
 
       return {
-        id: booking.id,
+        id: booking.id,  // Supabase UUID (or HubSpot ID for legacy)
+        hubspot_id: booking.hubspot_id || null,  // HubSpot ID for legacy operations
         booking_id: props.booking_id || '',
         name: props.name || '',
         email: props.email || '',
