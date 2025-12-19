@@ -32,10 +32,14 @@ const RedisLockService = require('../_shared/redis');
 const {
   updateContactCreditsInSupabase,
   updateBookingStatusInSupabase,
-  updateExamBookingCountInSupabase
+  updateExamBookingCountInSupabase,
+  getBookingCascading
 } = require('../_shared/supabase-data');
 
 // Validation schema for batch cancellation
+// Updated to support cascading lookup pattern:
+// - id: Supabase UUID (primary identifier)
+// - hubspot_id: HubSpot numeric ID (may be null for Supabase-only bookings)
 const batchCancelSchema = Joi.object({
   bookings: Joi.array()
     .items(
@@ -46,6 +50,12 @@ const batchCancelSchema = Joi.object({
             'any.required': 'Booking ID is required',
             'string.base': 'Booking ID must be a string'
           }),
+        hubspot_id: Joi.string()
+          .optional()
+          .allow(null, '')
+          .messages({
+            'string.base': 'HubSpot ID must be a string'
+          }),
         student_id: Joi.string()
           .optional()
           .allow(''),
@@ -53,6 +63,9 @@ const batchCancelSchema = Joi.object({
           .email()
           .optional()
           .allow(''),
+        associated_contact_id: Joi.string()
+          .optional()
+          .allow('', null),
         reason: Joi.string()
           .max(500)
           .optional()
@@ -74,11 +87,16 @@ const batchCancelSchema = Joi.object({
 
 /**
  * Process single booking cancellation (admin version - no authentication per booking)
+ * Updated to support cascading lookup pattern:
+ * - First checks if hubspot_id is provided
+ * - Falls back to Supabase lookup if only Supabase UUID is provided
+ * - Supports Supabase-only bookings (those not yet synced to HubSpot)
  */
 async function cancelSingleBooking(hubspot, bookingData, redis) {
-  const { id: bookingId, reason } = bookingData;
+  const { id: supabaseId, hubspot_id: providedHubspotId, reason } = bookingData;
   const result = {
-    booking_id: bookingId,
+    booking_id: supabaseId,
+    hubspot_id: providedHubspotId || null,
     success: false,
     error: null,
     actions_completed: {
@@ -91,22 +109,76 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
   };
 
   try {
-    console.log(`🗑️ [Admin] Processing cancellation for booking ${bookingId}`);
+    console.log(`🗑️ [Admin] Processing cancellation for booking ${supabaseId} (hubspot_id: ${providedHubspotId || 'none'})`);
+
+    // Step 0: Resolve HubSpot ID using cascading lookup
+    let hubspotId = providedHubspotId;
+    let supabaseRecord = null;
+    let isSupabaseOnly = false;
+
+    if (!hubspotId) {
+      // No HubSpot ID provided - use cascading lookup
+      console.log(`🔍 [CASCADING] Looking up booking ${supabaseId} in Supabase...`);
+      supabaseRecord = await getBookingCascading(supabaseId);
+
+      if (supabaseRecord) {
+        hubspotId = supabaseRecord.hubspot_id;
+        if (hubspotId) {
+          console.log(`  ✓ Resolved ${supabaseId} → hubspot_id: ${hubspotId}`);
+        } else {
+          console.log(`  ✓ Found Supabase-only booking ${supabaseId} (no HubSpot ID)`);
+          isSupabaseOnly = true;
+        }
+      } else {
+        console.error(`❌ Booking not found in Supabase: ${supabaseId}`);
+        result.error = 'Booking not found';
+        result.error_code = 'BOOKING_NOT_FOUND';
+        return result;
+      }
+    }
+
+    result.hubspot_id = hubspotId;
 
     // Step 1: Get comprehensive booking data with associations
     let booking;
-    try {
-      booking = await hubspot.getBookingWithAssociations(bookingId);
-    } catch (error) {
-      console.error(`❌ Booking not found: ${bookingId}`);
-      result.error = 'Booking not found';
-      result.error_code = 'BOOKING_NOT_FOUND';
-      return result;
+    let bookingProperties;
+
+    if (isSupabaseOnly) {
+      // Supabase-only booking - use Supabase data directly
+      console.log(`📦 [SUPABASE-ONLY] Using Supabase data for booking ${supabaseId}`);
+      bookingProperties = {
+        booking_id: supabaseRecord.booking_id,
+        is_active: supabaseRecord.is_active,
+        status: supabaseRecord.is_active === 'Cancelled' ? 'cancelled' : 'active',
+        token_used: supabaseRecord.token_used,
+        name: supabaseRecord.name,
+        email: supabaseRecord.student_email,
+        mock_type: supabaseRecord.mock_type,
+        exam_date: supabaseRecord.exam_date,
+        location: supabaseRecord.attending_location
+      };
+      booking = {
+        id: supabaseId,
+        properties: bookingProperties,
+        associations: {}
+      };
+    } else {
+      // Has HubSpot ID - fetch from HubSpot
+      try {
+        booking = await hubspot.getBookingWithAssociations(hubspotId);
+      } catch (error) {
+        console.error(`❌ Booking not found in HubSpot: ${hubspotId}`);
+        result.error = 'Booking not found in HubSpot';
+        result.error_code = 'BOOKING_NOT_FOUND';
+        return result;
+      }
     }
 
     // Normalize booking data structure
     const bookingDataObj = booking.data || booking;
-    const bookingProperties = bookingDataObj.properties || {};
+    if (!bookingProperties) {
+      bookingProperties = bookingDataObj.properties || {};
+    }
 
     // Step 2: Check if already cancelled
     const currentStatus = bookingProperties.status;
@@ -115,7 +187,7 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
     if (currentStatus === 'canceled' || currentStatus === 'cancelled' ||
         isActive === 'Cancelled' || isActive === 'cancelled' ||
         isActive === false || isActive === 'false') {
-      console.log(`⚠️ Booking ${bookingId} already cancelled`);
+      console.log(`⚠️ Booking ${supabaseId} already cancelled`);
       result.error = 'Booking is already cancelled';
       result.error_code = 'ALREADY_CANCELED';
       return result;
@@ -124,35 +196,54 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
     // Step 3: Get associated Contact ID
     let contactId = null;
     let contact = null;
-    const contactAssociations = booking.associations?.[HUBSPOT_OBJECTS.contacts]?.results || [];
 
-    if (contactAssociations.length > 0) {
-      contactId = contactAssociations[0].id || contactAssociations[0].toObjectId;
-      console.log(`📞 Found Contact association: ${contactId}`);
-
-      try {
-        const contactResponse = await hubspot.apiCall('GET', `/crm/v3/objects/contacts/${contactId}`, null, {
-          properties: ['firstname', 'lastname', 'email', 'sj_credits', 'cs_credits', 'sjmini_credits', 'shared_mock_credits']
-        });
-        contact = contactResponse;
-      } catch (contactError) {
-        console.warn(`⚠️ Failed to fetch Contact details: ${contactError.message}`);
+    if (isSupabaseOnly) {
+      // Supabase-only booking - use associated_contact_id from Supabase record
+      contactId = supabaseRecord.associated_contact_id || bookingData.associated_contact_id;
+      if (contactId) {
+        console.log(`📞 Using Contact ID from Supabase: ${contactId}`);
+        // Try to fetch contact details from HubSpot for credit restoration
+        try {
+          const contactResponse = await hubspot.apiCall('GET', `/crm/v3/objects/contacts/${contactId}`, null, {
+            properties: ['firstname', 'lastname', 'email', 'sj_credits', 'cs_credits', 'sjmini_credits', 'shared_mock_credits']
+          });
+          contact = contactResponse;
+        } catch (contactError) {
+          console.warn(`⚠️ Failed to fetch Contact details: ${contactError.message}`);
+        }
       }
-    }
+    } else {
+      // HubSpot booking - get from associations
+      const contactAssociations = booking.associations?.[HUBSPOT_OBJECTS.contacts]?.results || [];
 
-    // Fallback: Use associated_contact_id from frontend if association lookup failed
-    if (!contactId && bookingData.associated_contact_id) {
-      contactId = bookingData.associated_contact_id;
-      console.log(`📞 Using Contact ID from frontend data: ${contactId}`);
+      if (contactAssociations.length > 0) {
+        contactId = contactAssociations[0].id || contactAssociations[0].toObjectId;
+        console.log(`📞 Found Contact association: ${contactId}`);
 
-      // Try to fetch contact details with fallback ID
-      try {
-        const contactResponse = await hubspot.apiCall('GET', `/crm/v3/objects/contacts/${contactId}`, null, {
-          properties: ['firstname', 'lastname', 'email', 'sj_credits', 'cs_credits', 'sjmini_credits', 'shared_mock_credits']
-        });
-        contact = contactResponse;
-      } catch (contactError) {
-        console.warn(`⚠️ Failed to fetch Contact details with fallback ID: ${contactError.message}`);
+        try {
+          const contactResponse = await hubspot.apiCall('GET', `/crm/v3/objects/contacts/${contactId}`, null, {
+            properties: ['firstname', 'lastname', 'email', 'sj_credits', 'cs_credits', 'sjmini_credits', 'shared_mock_credits']
+          });
+          contact = contactResponse;
+        } catch (contactError) {
+          console.warn(`⚠️ Failed to fetch Contact details: ${contactError.message}`);
+        }
+      }
+
+      // Fallback: Use associated_contact_id from frontend if association lookup failed
+      if (!contactId && bookingData.associated_contact_id) {
+        contactId = bookingData.associated_contact_id;
+        console.log(`📞 Using Contact ID from frontend data: ${contactId}`);
+
+        // Try to fetch contact details with fallback ID
+        try {
+          const contactResponse = await hubspot.apiCall('GET', `/crm/v3/objects/contacts/${contactId}`, null, {
+            properties: ['firstname', 'lastname', 'email', 'sj_credits', 'cs_credits', 'sjmini_credits', 'shared_mock_credits']
+          });
+          contact = contactResponse;
+        } catch (contactError) {
+          console.warn(`⚠️ Failed to fetch Contact details with fallback ID: ${contactError.message}`);
+        }
       }
     }
 
@@ -160,18 +251,35 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
     let mockExamId = null;
     let mockExamDetails = null;
 
-    const mockExamAssociations = booking.associations?.[HUBSPOT_OBJECTS.mock_exams]?.results || [];
-    if (mockExamAssociations.length > 0) {
-      mockExamId = mockExamAssociations[0].id || mockExamAssociations[0].toObjectId;
-      console.log(`📚 Found Mock Exam association: ${mockExamId}`);
-
-      try {
-        const mockExamResponse = await hubspot.getMockExam(mockExamId);
-        if (mockExamResponse?.data) {
-          mockExamDetails = mockExamResponse.data.properties;
+    if (isSupabaseOnly) {
+      // Supabase-only booking - use associated_mock_exam from Supabase record
+      mockExamId = supabaseRecord.associated_mock_exam;
+      if (mockExamId) {
+        console.log(`📚 Using Mock Exam ID from Supabase: ${mockExamId}`);
+        try {
+          const mockExamResponse = await hubspot.getMockExam(mockExamId);
+          if (mockExamResponse?.data) {
+            mockExamDetails = mockExamResponse.data.properties;
+          }
+        } catch (examError) {
+          console.warn(`⚠️ Failed to fetch Mock Exam details: ${examError.message}`);
         }
-      } catch (examError) {
-        console.warn(`⚠️ Failed to fetch Mock Exam details: ${examError.message}`);
+      }
+    } else {
+      // HubSpot booking - get from associations
+      const mockExamAssociations = booking.associations?.[HUBSPOT_OBJECTS.mock_exams]?.results || [];
+      if (mockExamAssociations.length > 0) {
+        mockExamId = mockExamAssociations[0].id || mockExamAssociations[0].toObjectId;
+        console.log(`📚 Found Mock Exam association: ${mockExamId}`);
+
+        try {
+          const mockExamResponse = await hubspot.getMockExam(mockExamId);
+          if (mockExamResponse?.data) {
+            mockExamDetails = mockExamResponse.data.properties;
+          }
+        } catch (examError) {
+          console.warn(`⚠️ Failed to fetch Mock Exam details: ${examError.message}`);
+        }
       }
     }
 
@@ -209,7 +317,7 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
 
     if (contactId && contact && tokenUsed) {
       try {
-        console.log(`💳 Restoring credits for cancelled booking ${bookingId}`);
+        console.log(`💳 Restoring credits for cancelled booking ${supabaseId}`);
 
         const currentCredits = {
           sj_credits: parseInt(contact.properties?.sj_credits) || 0,
@@ -219,7 +327,7 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
         };
 
         creditsRestored = await hubspot.restoreCredits(contactId, tokenUsed, currentCredits);
-        console.log(`✅ Credits restored successfully for booking ${bookingId}`);
+        console.log(`✅ Credits restored successfully for booking ${supabaseId}`);
         result.actions_completed.credits_restored = true;
         result.credit_restoration = creditsRestored;
 
@@ -279,28 +387,45 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
     }
 
     // Step 9: Perform soft delete (mark as cancelled)
-    try {
-      await hubspot.softDeleteBooking(bookingId);
-      console.log(`✅ Booking ${bookingId} marked as cancelled`);
-      result.actions_completed.soft_delete = true;
-    } catch (deleteError) {
-      console.error(`❌ Failed to soft delete booking: ${deleteError}`);
-      result.error = 'Failed to cancel booking';
-      result.error_code = 'SOFT_DELETE_FAILED';
-      return result;
-    }
+    if (isSupabaseOnly) {
+      // Supabase-only booking - update directly in Supabase
+      try {
+        await updateBookingStatusInSupabase(supabaseId, 'Cancelled');
+        console.log(`✅ Supabase-only booking ${supabaseId} marked as cancelled`);
+        result.actions_completed.soft_delete = true;
+      } catch (supabaseError) {
+        console.error(`❌ Failed to cancel Supabase-only booking: ${supabaseError.message}`);
+        result.error = 'Failed to cancel booking in Supabase';
+        result.error_code = 'SUPABASE_DELETE_FAILED';
+        return result;
+      }
+    } else {
+      // Has HubSpot ID - soft delete in HubSpot
+      try {
+        await hubspot.softDeleteBooking(hubspotId);
+        console.log(`✅ Booking ${hubspotId} marked as cancelled in HubSpot`);
+        result.actions_completed.soft_delete = true;
+      } catch (deleteError) {
+        console.error(`❌ Failed to soft delete booking: ${deleteError}`);
+        result.error = 'Failed to cancel booking';
+        result.error_code = 'SOFT_DELETE_FAILED';
+        return result;
+      }
 
-    // Step 9.5: Sync booking cancellation to Supabase
-    try {
-      await updateBookingStatusInSupabase(bookingId, 'Cancelled');
-      console.log(`✅ [SUPABASE] Updated booking ${bookingId} status to Cancelled`);
-    } catch (supabaseError) {
-      console.error(`⚠️ [SUPABASE] Failed to sync booking status (non-blocking):`, supabaseError.message);
-      // Non-blocking - cron will reconcile
+      // Step 9.5: Sync booking cancellation to Supabase (for HubSpot bookings)
+      try {
+        // Use Supabase ID if available, otherwise fall back to HubSpot ID
+        const idForSupabase = supabaseId || hubspotId;
+        await updateBookingStatusInSupabase(idForSupabase, 'Cancelled');
+        console.log(`✅ [SUPABASE] Updated booking ${idForSupabase} status to Cancelled`);
+      } catch (supabaseError) {
+        console.error(`⚠️ [SUPABASE] Failed to sync booking status (non-blocking):`, supabaseError.message);
+        // Non-blocking - cron will reconcile
+      }
     }
 
     // Step 10: Clear Redis duplicate detection cache (ENHANCED LOGGING)
-    console.log(`🔍 [REDIS DEBUG] Starting cache invalidation for booking ${bookingId}`);
+    console.log(`🔍 [REDIS DEBUG] Starting cache invalidation for booking ${supabaseId}`);
     console.log(`🔍 [REDIS DEBUG] - Redis instance exists: ${!!redis}`);
     console.log(`🔍 [REDIS DEBUG] - contactId: ${contactId}`);
     console.log(`🔍 [REDIS DEBUG] - exam_date: ${cancellationData.exam_date}`);
@@ -409,11 +534,11 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
     result.status = 'cancelled';
     result.cancelled_at = new Date().toISOString();
 
-    console.log(`✅ [Admin] Booking ${bookingId} cancellation completed successfully`);
+    console.log(`✅ [Admin] Booking ${supabaseId} cancellation completed successfully`);
     return result;
 
   } catch (error) {
-    console.error(`❌ Error cancelling booking ${bookingId}:`, error.message);
+    console.error(`❌ Error cancelling booking ${supabaseId}:`, error.message);
     result.error = error.message || 'Internal server error';
     result.error_code = error.code || 'INTERNAL_ERROR';
     return result;
