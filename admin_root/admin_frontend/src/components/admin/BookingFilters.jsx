@@ -120,7 +120,41 @@ const BookingFilters = ({ bookings = [], filters, onFiltersChange, className = '
 
       {/* Filter controls - two-row layout for better organization */}
       <div className="space-y-3">
-        {/* Row 1: Main filters */}
+        {/* Row 1: Date Range and Cancel Button (on top for quick access) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
+          {/* Date From */}
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+              <Calendar className="h-3 w-3" />
+              From
+            </label>
+            <DatePicker
+              value={localFilters.dateFrom}
+              onChange={(date) => handleFilterChange('dateFrom', date)}
+              placeholder="From date"
+            />
+          </div>
+
+          {/* Date To */}
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+              <Calendar className="h-3 w-3" />
+              To
+            </label>
+            <DatePicker
+              value={localFilters.dateTo}
+              onChange={(date) => handleFilterChange('dateTo', date)}
+              placeholder="To date"
+            />
+          </div>
+
+          {/* Cancel Bookings button */}
+          <div className="flex items-end">
+            {cancelButton}
+          </div>
+        </div>
+
+        {/* Row 2: Additional filters */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Filter 1: Location */}
           <div className="space-y-1.5">
@@ -289,40 +323,6 @@ const BookingFilters = ({ bookings = [], filters, onFiltersChange, className = '
                 </SelectItem>
               </SelectContent>
             </Select>
-          </div>
-        </div>
-
-        {/* Row 2: Date Range and Cancel Button */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
-          {/* Date From */}
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-              <Calendar className="h-3 w-3" />
-              From
-            </label>
-            <DatePicker
-              value={localFilters.dateFrom}
-              onChange={(date) => handleFilterChange('dateFrom', date)}
-              placeholder="From date"
-            />
-          </div>
-
-          {/* Date To */}
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-              <Calendar className="h-3 w-3" />
-              To
-            </label>
-            <DatePicker
-              value={localFilters.dateTo}
-              onChange={(date) => handleFilterChange('dateTo', date)}
-              placeholder="To date"
-            />
-          </div>
-
-          {/* Cancel Bookings button */}
-          <div className="flex items-end">
-            {cancelButton}
           </div>
         </div>
       </div>

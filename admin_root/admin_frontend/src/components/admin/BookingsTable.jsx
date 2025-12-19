@@ -398,7 +398,7 @@ const BookingsTable = ({
                   onToggleSelection = attendanceData.onToggleSelection;
                 } else if (isCancellationMode) {
                   isSelected = cancellationData.isSelected?.(booking.id) || false;
-                  onToggleSelection = cancellationData.onToggleSelection;
+                  onToggleSelection = cancellationData.toggleSelection;
                   // Disable if booking is already cancelled
                   isDisabled = !cancellationData.canCancel?.(booking.id);
                 }
