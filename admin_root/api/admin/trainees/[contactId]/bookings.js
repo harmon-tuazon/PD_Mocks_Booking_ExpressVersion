@@ -162,9 +162,10 @@ module.exports = async (req, res) => {
       if (supabaseBookings && supabaseBookings.length > 0) {
         console.log(`✅ [SUPABASE HIT] Found ${supabaseBookings.length} bookings in Supabase`);
 
-        // Transform Supabase bookings to match expected HubSpot format
+        // Transform Supabase bookings - use Supabase UUID as id, hubspot_id separate
         allBookings = supabaseBookings.map(booking => ({
-          id: booking.hubspot_id,
+          id: booking.id,  // Supabase UUID as primary identifier
+          hubspot_id: booking.hubspot_id,  // HubSpot ID for legacy operations
           properties: {
             booking_id: booking.booking_id,
             mock_exam_id: booking.associated_mock_exam,
@@ -264,7 +265,13 @@ module.exports = async (req, res) => {
             });
 
             if (batchResponse.results) {
-              allBookings = allBookings.concat(batchResponse.results);
+              // For HubSpot-sourced bookings, use HubSpot ID as both id and hubspot_id
+              const hubspotBookings = batchResponse.results.map(b => ({
+                id: b.id,  // HubSpot ID as fallback (will be string)
+                hubspot_id: b.id,  // Also store as hubspot_id for consistency
+                properties: b.properties
+              }));
+              allBookings = allBookings.concat(hubspotBookings);
             }
           } catch (batchError) {
             console.error(`Error fetching booking batch:`, batchError);
@@ -327,7 +334,8 @@ module.exports = async (req, res) => {
       }
 
       return {
-        id: booking.id,
+        id: booking.id,  // Supabase UUID (or HubSpot ID for legacy)
+        hubspot_id: booking.hubspot_id || null,  // HubSpot ID for legacy operations
         mock_exam_id: props.mock_exam_id || '',
         // Mock exam details (read-only calculated properties from associated mock exam)
         mock_exam_type: props.mock_type || '',
