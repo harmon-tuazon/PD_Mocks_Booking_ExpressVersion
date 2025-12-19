@@ -385,15 +385,26 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
             totalItems={filteredCount}
             hideTraineeInfo={true}  // Hide trainee columns in trainee dashboard view
             hideSearch={true}  // Hide search bar in trainee dashboard view
-            // Pass empty attendance and cancellation states since we're in read-only mode
+            // Pass empty attendance state - trainee dashboard doesn't use attendance mode
             attendanceState={{
               isAttendanceMode: false,
+              isSubmitting: false,
               selectedIds: [],
               selectedCount: 0,
+              selectableCount: 0,
               action: '',
               attendedCount: summary?.attended || 0,
               noShowCount: summary?.no_show || 0,
-              unmarkedCount: summary?.unmarked || 0
+              unmarkedCount: summary?.unmarked || 0,
+              totalCount: processedBookings.length,
+              // Provide no-op functions to prevent "not a function" errors
+              onToggleMode: () => {},
+              onSelectAll: () => {},
+              onClearAll: () => {},
+              onSetAction: () => {},
+              onApplyAction: () => {},
+              isSelected: () => false,
+              onToggleSelection: () => {}
             }}
             cancellationState={{
               isCancellationMode: cancellationState?.isCancellationMode,
