@@ -40,6 +40,7 @@ const {
   updateExamBookingCountInSupabase,
   getBookingCascading
 } = require('../_shared/supabase-data');
+const { getCache } = require('../_shared/cache');
 
 // Validation schema for batch cancellation
 // Updated to support cascading lookup pattern:
@@ -627,6 +628,41 @@ async function handler(req, res) {
     };
 
     console.log(`📊 [Admin] Batch cancellation summary:`, summary);
+
+    // Step: Invalidate trainee bookings Redis cache for affected contacts
+    // This ensures the frontend gets fresh data when re-fetching bookings
+    if (successCount > 0) {
+      try {
+        const cacheService = getCache();
+
+        // Collect unique contact IDs from successfully cancelled bookings
+        const contactIdsToInvalidate = new Set();
+        for (let i = 0; i < results.length; i++) {
+          if (results[i].success) {
+            const contactId = bookings[i].associated_contact_id;
+            if (contactId) {
+              contactIdsToInvalidate.add(contactId);
+            }
+          }
+        }
+
+        // Invalidate cache for each affected contact
+        for (const contactId of contactIdsToInvalidate) {
+          // Delete both cache key variants (with and without :all suffix)
+          const cacheKey = `admin:trainee:${contactId}:bookings`;
+          const cacheKeyAll = `admin:trainee:${contactId}:bookings:all`;
+
+          await cacheService.delete(cacheKey);
+          await cacheService.delete(cacheKeyAll);
+          console.log(`🗑️ [CACHE] Invalidated trainee bookings cache for contact ${contactId}`);
+        }
+
+        console.log(`✅ [CACHE] Invalidated bookings cache for ${contactIdsToInvalidate.size} contact(s)`);
+      } catch (cacheError) {
+        // Non-blocking - log but don't fail the request
+        console.error(`⚠️ [CACHE] Failed to invalidate trainee bookings cache:`, cacheError.message);
+      }
+    }
 
     // Determine response status based on results
     let statusCode = 200;
