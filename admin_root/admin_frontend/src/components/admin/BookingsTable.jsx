@@ -251,10 +251,10 @@ const BookingsTable = ({
                 selectedCount={cancellationData.selectedCount}
                 cancellableCount={cancellationData.cancellableCount}
                 totalCount={cancellationData.totalCount}
-                onToggleMode={cancellationData.onToggleMode}
-                onSelectAll={cancellationData.onSelectAll}
-                onClearAll={cancellationData.onClearAll}
-                onOpenModal={cancellationData.onOpenModal}
+                onToggleMode={cancellationData.toggleMode}
+                onSelectAll={cancellationData.selectAll}
+                onClearAll={cancellationData.clearAll}
+                onOpenModal={cancellationData.openModal}
               />
             </div>
           )}

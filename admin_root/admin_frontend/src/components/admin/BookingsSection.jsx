@@ -43,9 +43,6 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
     direction: 'desc'
   });
 
-  // Cancellation functionality
-  const cancellationState = useBatchCancellation(bookings || []);
-
   // Sort handler
   const handleSort = (column) => {
     setSortConfig(prevConfig => ({
@@ -228,6 +225,10 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
 
     return sortedBookings;
   }, [bookings, filters, sortConfig]);
+
+  // Cancellation functionality - uses processedBookings (filtered view) to ensure
+  // selection state matches what's displayed in the table
+  const cancellationState = useBatchCancellation(processedBookings);
 
   // Calculate counts
   const totalBookings = bookings?.length || 0;
