@@ -398,14 +398,17 @@ const BookingsTable = ({
                   onToggleSelection = attendanceData.onToggleSelection;
                 } else if (isCancellationMode) {
                   isSelected = cancellationData.isSelected?.(booking.id) || false;
-                  onToggleSelection = cancellationData.toggleSelection;
+                  onToggleSelection = cancellationData.onToggleSelection;
                   // Disable if booking is already cancelled
                   isDisabled = !cancellationData.canCancel?.(booking.id);
                 }
 
+                // Use Supabase UUID as primary key, fallback to hubspot_id for legacy bookings
+                const bookingKey = booking.id || booking.hubspot_id || `booking-${booking.booking_id}`;
+
                 return (
                   <BookingRow
-                    key={booking.id}
+                    key={bookingKey}
                     booking={booking}
                     isAttendanceMode={isAttendanceMode}
                     isCancellationMode={isCancellationMode}

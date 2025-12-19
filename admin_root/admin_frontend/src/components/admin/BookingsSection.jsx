@@ -395,7 +395,20 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
               noShowCount: summary?.no_show || 0,
               unmarkedCount: summary?.unmarked || 0
             }}
-            cancellationState={cancellationState}
+            cancellationState={{
+              isCancellationMode: cancellationState?.isCancellationMode,
+              isSubmitting: cancellationState?.isSubmitting,
+              selectedCount: cancellationState?.selectedCount,
+              cancellableCount: cancellationState?.cancellableCount,
+              totalCount: processedBookings.length,
+              toggleMode: cancellationState?.toggleMode,
+              selectAll: cancellationState?.selectAll,
+              clearAll: cancellationState?.clearAll,
+              openModal: cancellationState?.openModal,
+              isSelected: cancellationState?.isSelected,
+              onToggleSelection: cancellationState?.toggleSelection,
+              canCancel: cancellationState?.canCancel
+            }}
             onSort={handleSort}  // Enable sorting in trainee dashboard view
             sortConfig={sortConfig}
             currentPage={1}
