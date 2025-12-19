@@ -158,6 +158,7 @@ function TraineeDashboard() {
               loading={isLoadingBookings}
               error={bookingsError}
               onRefresh={refetchBookings}
+              contactId={contactId}
             />
           </>
         )}

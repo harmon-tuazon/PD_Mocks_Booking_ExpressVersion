@@ -27,7 +27,7 @@ const LoadingSkeleton = () => {
  * Wrapper component for bookings table with summary badges
  * Handles loading, error, and empty states
  */
-const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
+const BookingsSection = ({ bookings, summary, loading, error, onRefresh, contactId }) => {
   const queryClient = useQueryClient();
 
   // State for active filters
@@ -76,7 +76,7 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
           id: b.id,
           hubspot_id: b.hubspot_id || null,
           student_id: b.student_id,
-          associated_contact_id: b.associated_contact_id || b.contact_id,
+          associated_contact_id: contactId, // Use contactId prop from TraineeDashboard
           email: b.email,
           reason: 'Admin cancelled from trainee dashboard'
         })),
