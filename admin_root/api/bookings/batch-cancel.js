@@ -26,9 +26,11 @@
 // Import shared utilities
 require('dotenv').config();
 const Joi = require('joi');
+const hubspotModule = require('../_shared/hubspot');
 const { HubSpotService, HUBSPOT_OBJECTS } = require('../_shared/hubspot');
 const { requireAdmin } = require('../admin/middleware/requireAdmin');
 const RedisLockService = require('../_shared/redis');
+const refundService = require('../_shared/refund');
 const {
   updateContactCreditsInSupabase,
   updateBookingStatusInSupabase,
@@ -295,14 +297,39 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
       token_used: bookingProperties.token_used || 'Not specified'
     };
 
-    // Step 6: Create cancellation note on Contact timeline
+    // Step 6: Create cancellation note on Contact timeline (using direct HubSpot API)
     let noteCreated = false;
     if (contactId) {
       try {
-        await hubspot.createBookingCancellationNote(contactId, cancellationData);
-        console.log(`✅ Cancellation note created for Contact ${contactId}`);
-        noteCreated = true;
-        result.actions_completed.note_created = true;
+        const noteContent = `
+          <strong>🗑️ Booking Cancelled</strong><br/>
+          <hr/>
+          <strong>Booking Details:</strong><br/>
+          • Booking ID: ${cancellationData.booking_id}<br/>
+          • Mock Type: ${cancellationData.mock_type}<br/>
+          • Exam Date: ${cancellationData.exam_date || 'N/A'}<br/>
+          • Location: ${cancellationData.location}<br/>
+          • Token Used: ${cancellationData.token_used}<br/>
+          <br/>
+          <strong>Reason:</strong> ${cancellationData.reason}<br/>
+          <strong>Timestamp:</strong> ${new Date().toISOString()}<br/>
+        `;
+
+        // Create note using HubSpot API (hubspotModule is the module export with apiCall)
+        const noteResponse = await hubspotModule.apiCall('POST', '/crm/v3/objects/notes', {
+          properties: {
+            hs_note_body: noteContent,
+            hs_timestamp: Date.now()
+          }
+        });
+
+        // Associate note with contact
+        if (noteResponse?.id) {
+          await hubspotModule.createAssociation('0-46', noteResponse.id, '0-1', contactId);
+          console.log(`✅ Cancellation note created for Contact ${contactId}`);
+          noteCreated = true;
+          result.actions_completed.note_created = true;
+        }
       } catch (noteError) {
         console.error(`❌ Failed to create cancellation note: ${noteError.message}`);
       }
@@ -311,79 +338,35 @@ async function cancelSingleBooking(hubspot, bookingData, redis) {
     // Step 7: Trigger webhook to sync total_bookings (will be done after Redis decrement in Step 10)
     let bookingsDecremented = false;
 
-    // Step 8: Restore credits to contact
+    // Step 8: Restore credits to contact using refundService (Supabase-first pattern)
     let creditsRestored = null;
     const tokenUsed = bookingProperties.token_used;
 
-    if (contactId && contact && tokenUsed) {
+    if (tokenUsed && supabaseId) {
       try {
         console.log(`💳 Restoring credits for cancelled booking ${supabaseId}`);
 
-        const currentCredits = {
-          sj_credits: parseInt(contact.properties?.sj_credits) || 0,
-          cs_credits: parseInt(contact.properties?.cs_credits) || 0,
-          sjmini_credits: parseInt(contact.properties?.sjmini_credits) || 0,
-          shared_mock_credits: parseInt(contact.properties?.shared_mock_credits) || 0
-        };
+        // Use refundService.refundToken which handles:
+        // - Cascading lookup (Supabase UUID → HubSpot ID)
+        // - Supabase-first credit update
+        // - HubSpot sync (fire-and-forget)
+        const refundResult = await refundService.refundToken(supabaseId, 'admin@prepdoctors.com');
 
-        creditsRestored = await hubspot.restoreCredits(contactId, tokenUsed, currentCredits);
-        console.log(`✅ Credits restored successfully for booking ${supabaseId}`);
-        result.actions_completed.credits_restored = true;
-        result.credit_restoration = creditsRestored;
-
-        // Sync credit restoration to Supabase (non-blocking)
-        if (creditsRestored) {
-          // Map token to mock_type for Supabase sync
-          const tokenToMockTypeMapping = {
-            'Situational Judgment Token': 'Situational Judgment',
-            'Clinical Skills Token': 'Clinical Skills',
-            'Mini-mock Token': 'Mini-mock',
-            'Mock Discussion Token': 'Mock Discussion',
-            'Shared Token': mockExamDetails?.mock_type || bookingProperties.mock_type || 'Situational Judgment'
+        if (refundResult.success) {
+          console.log(`✅ Credits restored successfully for booking ${supabaseId}`);
+          result.actions_completed.credits_restored = true;
+          result.credit_restoration = {
+            credit_type: refundResult.token_type,
+            previous_balance: refundResult.previous_credits,
+            new_balance: refundResult.credits_restored
           };
-
-          const mockTypeForSync = tokenToMockTypeMapping[tokenUsed] || mockExamDetails?.mock_type || bookingProperties.mock_type;
-
-          // Calculate new credit values for Supabase sync
-          const newCredits = { ...currentCredits };
-          newCredits[creditsRestored.credit_type] = creditsRestored.new_balance;
-
-          // Determine specific and shared credits based on credit_type
-          let newSpecificCredits = 0;
-          let newSharedCredits = newCredits.shared_mock_credits;
-
-          if (creditsRestored.credit_type === 'sj_credits') {
-            newSpecificCredits = newCredits.sj_credits;
-          } else if (creditsRestored.credit_type === 'cs_credits') {
-            newSpecificCredits = newCredits.cs_credits;
-          } else if (creditsRestored.credit_type === 'sjmini_credits') {
-            newSpecificCredits = newCredits.sjmini_credits;
-            newSharedCredits = 0;
-          } else if (creditsRestored.credit_type === 'mock_discussion_token') {
-            newSpecificCredits = newCredits.mock_discussion_token;
-            newSharedCredits = 0;
-          } else if (creditsRestored.credit_type === 'shared_mock_credits') {
-            newSharedCredits = newCredits.shared_mock_credits;
-            if (mockTypeForSync === 'Situational Judgment') {
-              newSpecificCredits = newCredits.sj_credits;
-            } else if (mockTypeForSync === 'Clinical Skills') {
-              newSpecificCredits = newCredits.cs_credits;
-            }
-          }
-
-          updateContactCreditsInSupabase(contactId, mockTypeForSync, newSpecificCredits, newSharedCredits)
-            .then(() => {
-              console.log(`✅ [SUPABASE SYNC] Contact credits synced for ${contactId} (admin batch cancel)`);
-            })
-            .catch(supabaseError => {
-              console.error(`⚠️ [SUPABASE SYNC] Failed to sync contact credits (non-blocking):`, supabaseError.message);
-            });
         }
       } catch (creditError) {
+        // Non-blocking - booking cancellation should still proceed
         console.error(`❌ Failed to restore credits: ${creditError.message}`);
       }
     } else {
-      console.warn(`⚠️ Cannot restore credits: missing contactId or tokenUsed property`);
+      console.warn(`⚠️ Cannot restore credits: missing tokenUsed (${tokenUsed}) or supabaseId (${supabaseId})`);
     }
 
     // Step 9: Perform soft delete (mark as cancelled)
