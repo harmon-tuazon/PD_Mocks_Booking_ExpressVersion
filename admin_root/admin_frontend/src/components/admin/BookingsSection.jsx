@@ -93,18 +93,14 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
       cancellationState?.closeModal?.();
       cancellationState?.toggleMode?.(); // Exit cancellation mode
 
-      // Set refreshing state and add a small delay to ensure backend has completed processing
+      // Refetch bookings to get fresh data from server
       if (onRefresh) {
         setIsRefreshing(true);
-
-        // Wait a moment for backend to complete, then refresh
-        setTimeout(async () => {
-          try {
-            await onRefresh(); // Wait for refresh to complete
-          } finally {
-            setIsRefreshing(false); // Clear refreshing state regardless of success/failure
-          }
-        }, 300);
+        try {
+          await onRefresh();
+        } finally {
+          setIsRefreshing(false);
+        }
       }
     } catch (error) {
       cancellationState?.returnToSelecting?.();

@@ -114,10 +114,9 @@ const useCancelBookingsMutation = (mockExamId) => {
         }
       }
 
-      // Only invalidate mock exam detail query to update capacity counts
-      // The bookings list was already optimistically updated in onMutate
-      // This minimizes API calls while keeping capacity/booking counts accurate
-      await queryClient.invalidateQueries(['mockExam', mockExamId]);
+      // Invalidate bookings cache to force fresh data from server
+      // This ensures the UI reflects the true server state after cancellation
+      await queryClient.invalidateQueries(['bookings', mockExamId]);
     },
 
     onError: (error, variables, context) => {
