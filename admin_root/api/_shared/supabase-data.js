@@ -562,25 +562,45 @@ async function syncExamToSupabase(exam) {
 
 /**
  * Update booking status in Supabase (for cancellations)
- * @param {string} bookingId - HubSpot ID
- * @param {string} newStatus - New is_active status
+ * Supports cascading lookup: tries hubspot_id first, then Supabase UUID
+ *
+ * @param {string} bookingId - Either HubSpot ID (numeric string) or Supabase UUID
+ * @param {string} newStatus - New is_active status ('Active', 'Cancelled', 'Completed')
  */
 async function updateBookingStatusInSupabase(bookingId, newStatus) {
-  const { error } = await supabaseAdmin
-    .from('hubspot_bookings')
-    .update({
-      is_active: newStatus,
-      updated_at: new Date().toISOString(),
-      synced_at: new Date().toISOString()
-    })
-    .eq('hubspot_id', bookingId);
+  // Determine if this is a UUID (Supabase ID) or numeric string (HubSpot ID)
+  const isUUID = bookingId && bookingId.includes('-') && bookingId.length === 36;
 
-  if (error) {
-    console.error(`❌ Supabase booking status update error:`, error.message);
-    throw error;
+  let result;
+
+  if (isUUID) {
+    // Look up by Supabase UUID (id column)
+    result = await supabaseAdmin
+      .from('hubspot_bookings')
+      .update({
+        is_active: newStatus,
+        updated_at: new Date().toISOString(),
+        synced_at: new Date().toISOString()
+      })
+      .eq('id', bookingId);
+  } else {
+    // Look up by HubSpot ID (hubspot_id column)
+    result = await supabaseAdmin
+      .from('hubspot_bookings')
+      .update({
+        is_active: newStatus,
+        updated_at: new Date().toISOString(),
+        synced_at: new Date().toISOString()
+      })
+      .eq('hubspot_id', bookingId);
   }
 
-  console.log(`✅ Updated booking ${bookingId} status to ${newStatus} in Supabase`);
+  if (result.error) {
+    console.error(`❌ Supabase booking status update error:`, result.error.message);
+    throw result.error;
+  }
+
+  console.log(`✅ Updated booking ${bookingId} status to ${newStatus} in Supabase (lookup by ${isUUID ? 'UUID' : 'hubspot_id'})`);
 }
 
 /**
