@@ -66,14 +66,16 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
     cancellationState?.startSubmitting?.();
 
     try {
-      // Use authenticated API method
+      // Use authenticated API method with refundTokens from cancellation state
+      const shouldRefundTokens = cancellationState?.refundTokens ?? true;
       const result = await traineeApi.batchCancelBookings(
         selectedBookings.map(b => ({
           id: b.id,
           student_id: b.student_id || b.associated_contact_id || b.contact_id,
           email: b.email,
           reason: 'Admin cancelled from trainee dashboard'
-        }))
+        })),
+        shouldRefundTokens
       );
 
       if (!result.success) {

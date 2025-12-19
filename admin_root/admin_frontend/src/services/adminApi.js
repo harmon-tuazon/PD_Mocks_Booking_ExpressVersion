@@ -363,12 +363,13 @@ export const traineeApi = {
     return response.data;
   },
 
-  batchCancelBookings: async (bookings) => {
+  batchCancelBookings: async (bookings, refundTokens = true) => {
     if (!bookings || bookings.length === 0) {
       throw new Error('Bookings array is required');
     }
     const response = await api.post('/bookings/batch-cancel', {
-      bookings
+      bookings,
+      refundTokens
     });
     return response.data;
   }
