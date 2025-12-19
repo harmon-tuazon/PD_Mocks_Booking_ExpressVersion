@@ -32,6 +32,65 @@ const HUBSPOT_OBJECTS = {
   'mock_exams': '2-50158913'     // PRIMARY for this feature
 };
 
+
+/**
+ * Transform dominant hand value to HubSpot format
+ * HubSpot expects: true (right-handed) or false (left-handed)
+ * Supabase stores: "Right", "Left", or null
+ * @param {string|boolean|null} dominantHand - The dominant hand value from Supabase
+ * @returns {boolean|null} - HubSpot-compatible boolean or null
+ */
+function mapDominantHandToHubSpot(dominantHand) {
+  if (dominantHand === null || dominantHand === undefined) {
+    return null;
+  }
+  
+  // Handle already boolean values
+  if (typeof dominantHand === 'boolean') {
+    return dominantHand;
+  }
+  
+  // Convert string to boolean
+  const normalized = String(dominantHand).toLowerCase().trim();
+  
+  // "Right" → true, "Left" → false
+  if (normalized === 'right' || normalized === 'true') {
+    return true;
+  }
+  if (normalized === 'left' || normalized === 'false') {
+    return false;
+  }
+  
+  // Unknown value - log warning and return null
+  console.warn(`[HubSpot] Unknown dominant_hand value: "${dominantHand}", defaulting to null`);
+  return null;
+}
+
+/**
+ * Transform location to HubSpot format (proper case)
+ * HubSpot expects: "Mississauga", "Calgary", "Vancouver", "Montreal", "Richmond Hill", "Online"
+ * Supabase may store: "mississauga", "calgary", etc.
+ * @param {string} location - The location from Supabase
+ * @returns {string} - HubSpot-compatible properly-cased location
+ */
+function mapLocationToHubSpot(location) {
+  if (!location) return location;
+  
+  const normalizedLocation = String(location).toLowerCase().trim();
+  
+  const locationMapping = {
+    'mississauga': 'Mississauga',
+    'calgary': 'Calgary',
+    'vancouver': 'Vancouver',
+    'montreal': 'Montreal',
+    'richmond_hill': 'Richmond Hill',
+    'richmond hill': 'Richmond Hill',
+    'online': 'Online'
+  };
+  
+  return locationMapping[normalizedLocation] || location;
+}
+
 /**
  * Helper function to format time to 12-hour AM/PM format
  * Handles Unix timestamps, ISO timestamps, and HH:MM format
@@ -542,14 +601,17 @@ class HubSpotService {
     }
 
     // Add conditional fields based on what's provided
-    // dominant_hand is optional - only set if provided and not null
+    // dominant_hand: Transform "Right"/"Left" to true/false for HubSpot
     if (bookingData.dominantHand != null) {
-      properties.dominant_hand = bookingData.dominantHand.toString();
+      const transformedHand = mapDominantHandToHubSpot(bookingData.dominantHand);
+      if (transformedHand !== null) {
+        properties.dominant_hand = transformedHand;
+      }
     }
-    // If dominantHand is null or undefined, we simply don't include it in the HubSpot properties
 
+    // attending_location: Transform to proper case for HubSpot (e.g., "mississauga" → "Mississauga")
     if (bookingData.attendingLocation) {
-      properties.attending_location = bookingData.attendingLocation;
+      properties.attending_location = mapLocationToHubSpot(bookingData.attendingLocation);
     }
 
     const payload = { properties };
