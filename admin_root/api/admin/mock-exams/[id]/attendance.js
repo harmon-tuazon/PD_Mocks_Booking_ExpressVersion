@@ -31,6 +31,7 @@ const { validationMiddleware } = require('../../../_shared/validation');
 const { getCache } = require('../../../_shared/cache');
 const hubspot = require('../../../_shared/hubspot');
 const { supabaseAdmin } = require('../../../_shared/supabase');
+const { getBookingCascading } = require('../../../_shared/supabase-data');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -111,13 +112,64 @@ module.exports = async (req, res) => {
     console.log(`📋 [ATTENDANCE] Processing batch attendance update for mock exam ${mockExamId}`);
     console.log(`📋 [ATTENDANCE] Total bookings to process: ${bookings.length}`);
 
-    // Extract booking IDs for batch fetch
-    const bookingIds = bookings.map(b => b.bookingId);
-    const bookingMap = new Map(bookings.map(b => [b.bookingId, b]));
+    // Step 1: Resolve HubSpot IDs using cascading lookup
+    // Some bookings may only exist in Supabase (hubspot_id is null)
+    console.log(`🔍 [ATTENDANCE] Resolving booking IDs via cascading lookup...`);
 
-    // Fetch all bookings in batches to verify they exist and get current attendance status
-    console.log(`🔍 [ATTENDANCE] Fetching booking details from HubSpot...`);
-    const existingBookings = await fetchBookingsBatch(bookingIds);
+    const resolvedBookings = [];
+    const supabaseOnlyBookings = []; // Bookings without HubSpot IDs
+
+    for (const booking of bookings) {
+      // Try to get hubspot_id from the request first
+      let hubspotId = booking.hubspot_id;
+      let supabaseRecord = null;
+
+      // If no hubspot_id provided, use cascading lookup
+      if (!hubspotId) {
+        // Use the bookingId (could be UUID or HubSpot ID) for lookup
+        const identifier = booking.id || booking.bookingId;
+        supabaseRecord = await getBookingCascading(identifier);
+
+        if (supabaseRecord) {
+          hubspotId = supabaseRecord.hubspot_id;
+          console.log(`  ✓ Resolved ${identifier} → hubspot_id: ${hubspotId || 'NULL (Supabase-only)'}`);
+        } else {
+          console.warn(`  ⚠ Could not find booking with identifier: ${identifier}`);
+        }
+      }
+
+      if (hubspotId) {
+        // Has HubSpot ID - will update HubSpot + Supabase
+        resolvedBookings.push({
+          ...booking,
+          hubspot_id: hubspotId,
+          supabaseRecord
+        });
+      } else if (supabaseRecord) {
+        // Supabase-only booking - will update Supabase directly
+        supabaseOnlyBookings.push({
+          ...booking,
+          supabaseRecord
+        });
+      } else {
+        // Could not find booking at all - will be marked as failed later
+        resolvedBookings.push({
+          ...booking,
+          hubspot_id: null,
+          notFound: true
+        });
+      }
+    }
+
+    console.log(`📊 [ATTENDANCE] Resolved: ${resolvedBookings.length} with HubSpot ID, ${supabaseOnlyBookings.length} Supabase-only`);
+
+    // Build booking map using hubspot_id for HubSpot lookups
+    const bookingIds = resolvedBookings.filter(b => b.hubspot_id).map(b => b.hubspot_id);
+    const bookingMap = new Map(resolvedBookings.map(b => [b.hubspot_id || b.bookingId, b]));
+
+    // Fetch all bookings in batches from HubSpot to verify they exist and get current attendance status
+    console.log(`🔍 [ATTENDANCE] Fetching booking details from HubSpot for ${bookingIds.length} bookings...`);
+    const existingBookings = bookingIds.length > 0 ? await fetchBookingsBatch(bookingIds) : new Map();
 
     // Initialize result tracking
     const results = {
@@ -126,26 +178,34 @@ module.exports = async (req, res) => {
       skipped: []
     };
 
-    // Validate and prepare updates
-    const updates = [];
+    // Validate and prepare updates for HubSpot-synced bookings
+    const hubspotUpdates = [];
+    const supabaseDirectUpdates = []; // For Supabase-only bookings
 
-    for (const booking of bookings) {
-      const existingBooking = existingBookings.get(booking.bookingId);
-      const requestedUpdate = bookingMap.get(booking.bookingId);
-
-      // Check if booking exists
-      if (!existingBooking) {
+    // Process resolved bookings (those with HubSpot IDs)
+    for (const booking of resolvedBookings) {
+      // Handle bookings that couldn't be found
+      if (booking.notFound) {
         results.failed.push({
           bookingId: booking.bookingId,
-          error: 'Booking not found',
+          error: 'Booking not found in Supabase or HubSpot',
           code: 'BOOKING_NOT_FOUND'
         });
         continue;
       }
 
-      // Note: No need to check if booking belongs to exam - the bookings list endpoint
-      // already filters by exam association, so if the frontend is sending these IDs,
-      // they must belong to this exam. This avoids a redundant HubSpot API call.
+      const existingBooking = existingBookings.get(booking.hubspot_id);
+
+      // Check if booking exists in HubSpot
+      if (!existingBooking) {
+        results.failed.push({
+          bookingId: booking.bookingId,
+          hubspot_id: booking.hubspot_id,
+          error: 'Booking not found in HubSpot',
+          code: 'BOOKING_NOT_FOUND'
+        });
+        continue;
+      }
 
       // Check if booking is cancelled
       if (existingBooking.properties.is_active === 'Cancelled') {
@@ -159,9 +219,9 @@ module.exports = async (req, res) => {
 
       // Determine the new attendance value (handles true, false, and null)
       let newAttendance;
-      if (requestedUpdate.attended === null || requestedUpdate.attended === undefined) {
+      if (booking.attended === null || booking.attended === undefined) {
         newAttendance = ATTENDANCE_VALUES.EMPTY;
-      } else if (requestedUpdate.attended === true) {
+      } else if (booking.attended === true) {
         newAttendance = ATTENDANCE_VALUES.YES;
       } else {
         newAttendance = ATTENDANCE_VALUES.NO;
@@ -184,42 +244,145 @@ module.exports = async (req, res) => {
       };
 
       // Set is_active based on attendance status
-      // - When attendance is marked (Yes or No), set is_active to "Completed"
-      // - When attendance is cleared (empty), set is_active back to "Active"
       if (newAttendance === ATTENDANCE_VALUES.YES || newAttendance === ATTENDANCE_VALUES.NO) {
         properties.is_active = 'Completed';
       } else if (newAttendance === ATTENDANCE_VALUES.EMPTY) {
         properties.is_active = 'Active';
       }
 
-      updates.push({
-        id: booking.bookingId,
+      hubspotUpdates.push({
+        id: booking.hubspot_id,  // Use resolved HubSpot ID
+        originalBookingId: booking.bookingId,
+        supabaseId: booking.supabaseRecord?.id || booking.id,
+        attended: booking.attended,
         properties
       });
     }
 
-    // Process updates in batches
-    if (updates.length > 0) {
-      console.log(`⚡ [ATTENDANCE] Processing ${updates.length} attendance updates...`);
+    // Process Supabase-only bookings (no HubSpot ID)
+    for (const booking of supabaseOnlyBookings) {
+      const supabaseRecord = booking.supabaseRecord;
 
-      const updateResults = await processAttendanceUpdates(updates);
+      // Check if booking is cancelled
+      if (supabaseRecord.is_active === 'Cancelled') {
+        results.failed.push({
+          bookingId: booking.bookingId,
+          error: 'Cannot update attendance for cancelled booking',
+          code: 'BOOKING_CANCELLED'
+        });
+        continue;
+      }
 
-      // Process results
+      // Determine the new attendance value
+      let newAttendance;
+      if (booking.attended === null || booking.attended === undefined) {
+        newAttendance = ATTENDANCE_VALUES.EMPTY;
+      } else if (booking.attended === true) {
+        newAttendance = ATTENDANCE_VALUES.YES;
+      } else {
+        newAttendance = ATTENDANCE_VALUES.NO;
+      }
+      const currentAttendance = supabaseRecord.attendance || ATTENDANCE_VALUES.EMPTY;
+
+      // Check if update is needed (idempotency)
+      if (currentAttendance === newAttendance) {
+        results.skipped.push({
+          bookingId: booking.bookingId,
+          reason: 'Already has the requested attendance value',
+          currentValue: currentAttendance
+        });
+        continue;
+      }
+
+      // Determine is_active based on attendance
+      let isActive;
+      if (newAttendance === ATTENDANCE_VALUES.YES || newAttendance === ATTENDANCE_VALUES.NO) {
+        isActive = 'Completed';
+      } else {
+        isActive = 'Active';
+      }
+
+      supabaseDirectUpdates.push({
+        supabaseId: supabaseRecord.id,
+        originalBookingId: booking.bookingId,
+        attended: booking.attended,
+        newAttendance,
+        isActive
+      });
+    }
+
+    // Legacy variable for backward compatibility
+    const updates = hubspotUpdates;
+
+    // Process HubSpot updates in batches
+    if (hubspotUpdates.length > 0) {
+      console.log(`⚡ [ATTENDANCE] Processing ${hubspotUpdates.length} HubSpot attendance updates...`);
+
+      const updateResults = await processAttendanceUpdates(hubspotUpdates);
+
+      // Process results - map HubSpot IDs back to original booking IDs
       for (const result of updateResults.successful) {
-        const originalRequest = bookingMap.get(result.id);
+        // Find the original update request by HubSpot ID
+        const originalUpdate = hubspotUpdates.find(u => u.id === result.id);
         results.successful.push({
-          bookingId: result.id,
-          status: originalRequest.attended ? 'attended' : 'no_show',
-          message: 'Successfully updated'
+          bookingId: originalUpdate?.originalBookingId || result.id,
+          hubspot_id: result.id,
+          supabaseId: originalUpdate?.supabaseId,
+          status: originalUpdate?.attended ? 'attended' : 'no_show',
+          message: 'Successfully updated in HubSpot'
         });
       }
 
       for (const error of updateResults.failed) {
+        const originalUpdate = hubspotUpdates.find(u => u.id === error.id);
         results.failed.push({
-          bookingId: error.id,
-          error: error.message || 'Failed to update attendance',
+          bookingId: originalUpdate?.originalBookingId || error.id,
+          hubspot_id: error.id,
+          error: error.message || 'Failed to update attendance in HubSpot',
           code: 'UPDATE_FAILED'
         });
+      }
+    }
+
+    // Process Supabase-only updates directly
+    if (supabaseDirectUpdates.length > 0) {
+      console.log(`⚡ [ATTENDANCE] Processing ${supabaseDirectUpdates.length} Supabase-only attendance updates...`);
+
+      for (const update of supabaseDirectUpdates) {
+        try {
+          const { error } = await supabaseAdmin
+            .from('hubspot_bookings')
+            .update({
+              attendance: update.newAttendance,
+              is_active: update.isActive,
+              updated_at: new Date().toISOString(),
+              synced_at: new Date().toISOString()
+            })
+            .eq('id', update.supabaseId);
+
+          if (error) {
+            results.failed.push({
+              bookingId: update.originalBookingId,
+              supabaseId: update.supabaseId,
+              error: error.message || 'Failed to update attendance in Supabase',
+              code: 'SUPABASE_UPDATE_FAILED'
+            });
+          } else {
+            results.successful.push({
+              bookingId: update.originalBookingId,
+              supabaseId: update.supabaseId,
+              status: update.attended ? 'attended' : 'no_show',
+              message: 'Successfully updated in Supabase (no HubSpot sync needed)'
+            });
+          }
+        } catch (err) {
+          results.failed.push({
+            bookingId: update.originalBookingId,
+            supabaseId: update.supabaseId,
+            error: err.message || 'Unexpected error updating Supabase',
+            code: 'SUPABASE_UPDATE_FAILED'
+          });
+        }
       }
     }
 
@@ -229,65 +392,67 @@ module.exports = async (req, res) => {
       console.log(`🗑️ [ATTENDANCE] Caches invalidated for mock exam ${mockExamId}`);
     }
 
-    // Sync attendance updates to Supabase
+    // Sync HubSpot-updated bookings to Supabase
+    // Note: Supabase-only bookings were already updated directly in the processing section
     let supabaseSynced = false;
-    if (results.successful.length > 0) {
+    const hubspotSuccessful = results.successful.filter(r => r.hubspot_id);
+
+    if (hubspotSuccessful.length > 0) {
       try {
-        const supabaseUpdates = results.successful.map(result => {
-          // result is our custom object with bookingId (from lines 208-214)
-          const bookingId = result.bookingId;
+        console.log(`🔄 [ATTENDANCE] Syncing ${hubspotSuccessful.length} HubSpot updates to Supabase...`);
 
-          if (!bookingId) {
-            console.warn(`⚠️ Could not extract booking ID from result:`, JSON.stringify(result));
-            return null;
-          }
-
-          const originalRequest = bookingMap.get(bookingId.toString());
-
-          // Skip if we can't find the original request
-          if (!originalRequest) {
-            console.warn(`⚠️ Could not find original request for booking ${bookingId}`);
-            return null;
-          }
-
+        const supabaseSyncPromises = hubspotSuccessful.map(result => {
+          // Determine attendance value from status
           let newAttendance;
-          if (originalRequest.attended === null || originalRequest.attended === undefined) {
-            newAttendance = '';
-          } else if (originalRequest.attended === true) {
+          if (result.status === 'attended') {
             newAttendance = 'Yes';
-          } else {
+          } else if (result.status === 'no_show') {
             newAttendance = 'No';
+          } else {
+            newAttendance = '';
           }
 
           // Determine is_active based on attendance
-          let isActive;
-          if (newAttendance === 'Yes' || newAttendance === 'No') {
-            isActive = 'Completed';
-          } else {
-            isActive = 'Active';
-          }
+          const isActive = (newAttendance === 'Yes' || newAttendance === 'No') ? 'Completed' : 'Active';
 
-          return supabaseAdmin
-            .from('hubspot_bookings')
-            .update({
-              attendance: newAttendance,
-              is_active: isActive,
-              updated_at: new Date().toISOString(),
-              synced_at: new Date().toISOString()
-            })
-            .eq('hubspot_id', bookingId.toString());
+          // Prefer Supabase UUID for lookup, fallback to HubSpot ID
+          if (result.supabaseId) {
+            return supabaseAdmin
+              .from('hubspot_bookings')
+              .update({
+                attendance: newAttendance,
+                is_active: isActive,
+                updated_at: new Date().toISOString(),
+                synced_at: new Date().toISOString()
+              })
+              .eq('id', result.supabaseId);
+          } else {
+            return supabaseAdmin
+              .from('hubspot_bookings')
+              .update({
+                attendance: newAttendance,
+                is_active: isActive,
+                updated_at: new Date().toISOString(),
+                synced_at: new Date().toISOString()
+              })
+              .eq('hubspot_id', result.hubspot_id);
+          }
         });
 
-        // Filter out null entries (bookings that couldn't be found)
-        const validUpdates = supabaseUpdates.filter(update => update !== null);
-        const supabaseResults = await Promise.allSettled(validUpdates);
+        const supabaseResults = await Promise.allSettled(supabaseSyncPromises);
         const syncedCount = supabaseResults.filter(r => r.status === 'fulfilled').length;
-        console.log(`✅ [ATTENDANCE] Synced ${syncedCount}/${results.successful.length} attendance updates to Supabase`);
-        supabaseSynced = syncedCount === results.successful.length;
+        console.log(`✅ [ATTENDANCE] Synced ${syncedCount}/${hubspotSuccessful.length} HubSpot updates to Supabase`);
+
+        // Consider synced if all HubSpot updates + Supabase-only updates succeeded
+        const supabaseOnlyCount = results.successful.filter(r => !r.hubspot_id).length;
+        supabaseSynced = (syncedCount + supabaseOnlyCount) === results.successful.length;
       } catch (supabaseError) {
         console.error('❌ Supabase attendance sync failed:', supabaseError.message);
-        // Continue - HubSpot is source of truth
+        // Continue - HubSpot is source of truth for HubSpot-synced bookings
       }
+    } else {
+      // All successful updates were Supabase-only
+      supabaseSynced = true;
     }
 
     // Calculate summary

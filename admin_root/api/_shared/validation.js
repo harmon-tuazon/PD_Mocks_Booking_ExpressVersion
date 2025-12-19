@@ -958,16 +958,34 @@ const schemas = {
   }).options({ stripUnknown: true }),
 
   // Schema for batch attendance update (Admin)
+  // Updated to support cascading lookup pattern:
+  // - bookingId: Primary identifier (HubSpot ID or Supabase UUID)
+  // - id: Supabase UUID for cascading lookup
+  // - hubspot_id: HubSpot numeric ID (may be null for Supabase-only bookings)
   batchAttendanceUpdate: Joi.object({
     bookings: Joi.array()
       .items(
         Joi.object({
+          // Primary booking identifier - accepts both HubSpot numeric ID and Supabase UUID
           bookingId: Joi.string()
-            .pattern(/^\d+$/)
             .required()
             .messages({
-              'string.pattern.base': 'Booking ID must be numeric',
               'any.required': 'Booking ID is required'
+            }),
+          // Supabase UUID for cascading lookup (optional, for enhanced lookup)
+          id: Joi.string()
+            .optional()
+            .allow(null)
+            .messages({
+              'string.base': 'ID must be a string'
+            }),
+          // HubSpot numeric ID (optional, may be null for Supabase-only bookings)
+          hubspot_id: Joi.string()
+            .pattern(/^\d+$/)
+            .optional()
+            .allow(null)
+            .messages({
+              'string.pattern.base': 'HubSpot ID must be numeric'
             }),
           attended: Joi.alternatives()
             .try(
@@ -999,26 +1017,27 @@ const schemas = {
   }),
 
   // Schema for batch booking cancellation (Admin) - Supports booking objects with refund data
-  // Supports both HubSpot-synced bookings (id) and Supabase-first bookings (supabase_id)
+  // Updated naming convention:
+  // - id: Supabase UUID (primary identifier)
+  // - hubspot_id: HubSpot numeric ID (may be null for Supabase-only bookings)
   batchBookingCancellation: Joi.object({
     bookings: Joi.array()
       .items(
         Joi.object({
-          // HubSpot ID - numeric string, optional for Supabase-first bookings
+          // Supabase UUID - primary identifier
           id: Joi.string()
+            .allow(null)
+            .optional()
+            .messages({
+              'string.base': 'ID must be a string'
+            }),
+          // HubSpot numeric ID - may be null for Supabase-only bookings
+          hubspot_id: Joi.string()
             .pattern(/^\d+$/)
             .allow(null)
             .optional()
             .messages({
-              'string.pattern.base': 'Booking ID must be numeric'
-            }),
-          // Supabase UUID - for bookings not yet synced to HubSpot
-          supabase_id: Joi.string()
-            .uuid()
-            .allow(null)
-            .optional()
-            .messages({
-              'string.guid': 'Supabase ID must be a valid UUID'
+              'string.pattern.base': 'HubSpot ID must be numeric'
             }),
           token_used: Joi.string()
             .allow('')
@@ -1047,15 +1066,15 @@ const schemas = {
               'string.email': 'Email must be a valid email address'
             })
         })
-        // Custom validation: at least one of id or supabase_id must be provided
+        // Custom validation: at least one of id or hubspot_id must be provided
         .custom((value, helpers) => {
-          if (!value.id && !value.supabase_id) {
+          if (!value.id && !value.hubspot_id) {
             return helpers.error('object.missingId');
           }
           return value;
         })
         .messages({
-          'object.missingId': 'Either booking id (HubSpot) or supabase_id must be provided'
+          'object.missingId': 'Either booking id (Supabase UUID) or hubspot_id must be provided'
         })
       )
       .min(1)

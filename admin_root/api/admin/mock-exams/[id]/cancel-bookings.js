@@ -9,6 +9,7 @@
  * - Token refund processing (configurable via refundTokens flag)
  * - Partial failure handling with detailed error reporting
  * - HubSpot batch API optimization with automatic chunking
+ * - Supabase-only booking support (bookings not yet synced to HubSpot)
  * - Cache invalidation for affected resources
  * - Audit logging with booking names and refund results
  *
@@ -16,7 +17,8 @@
  * {
  *   "bookings": [
  *     {
- *       "id": "string",
+ *       "id": "string (Supabase UUID - primary identifier)",
+ *       "hubspot_id": "string (HubSpot numeric ID - may be null for Supabase-only bookings)",
  *       "token_used": "string (optional)",
  *       "associated_contact_id": "string (optional)",
  *       "name": "string (optional)",
@@ -99,16 +101,19 @@ module.exports = async (req, res) => {
 
     const { bookings, refundTokens = true } = req.validatedData;
 
-    // Separate bookings into HubSpot-synced (has id) and Supabase-only (has only supabase_id)
-    const hubspotBookings = bookings.filter(b => b.id);  // Has HubSpot ID
-    const supabaseOnlyBookings = bookings.filter(b => !b.id && b.supabase_id);  // Supabase-first, not synced
+    // Updated naming convention:
+    // - id: Supabase UUID (primary identifier)
+    // - hubspot_id: HubSpot numeric ID (may be null for Supabase-only bookings)
+    // Separate bookings into HubSpot-synced (has hubspot_id) and Supabase-only (has only id)
+    const hubspotBookings = bookings.filter(b => b.hubspot_id);  // Has HubSpot ID
+    const supabaseOnlyBookings = bookings.filter(b => !b.hubspot_id && b.id);  // Supabase-first, not synced
 
     console.log(`🗑️ [CANCEL] Processing batch cancellation for mock exam ${mockExamId}`);
     console.log(`🗑️ [CANCEL] Total bookings: ${bookings.length} (HubSpot: ${hubspotBookings.length}, Supabase-only: ${supabaseOnlyBookings.length})`);
     console.log(`🔄 [CANCEL] Token refunds enabled: ${refundTokens}`);
 
     // Extract HubSpot booking IDs for processing
-    const bookingIds = hubspotBookings.map(b => b.id);
+    const bookingIds = hubspotBookings.map(b => b.hubspot_id);
 
     // Check if bookings array is within limits
     if (bookings.length > MAX_BOOKINGS_PER_REQUEST) {
@@ -161,7 +166,7 @@ module.exports = async (req, res) => {
       // Merge frontend contact_id into bookingDataMap
       // Frontend provides associated_contact_id which is more reliable than HubSpot property
       for (const booking of hubspotBookings) {
-        const hubspotData = bookingDataMap.get(booking.id);
+        const hubspotData = bookingDataMap.get(booking.hubspot_id);
         if (hubspotData && booking.associated_contact_id) {
           hubspotData.contact_id = booking.associated_contact_id;
         }
@@ -173,10 +178,10 @@ module.exports = async (req, res) => {
     // For Supabase-only bookings, fetch data from Supabase
     if (supabaseOnlyBookings.length > 0) {
       console.log(`🔍 [CANCEL] Fetching booking data from Supabase for ${supabaseOnlyBookings.length} Supabase-only bookings...`);
-      const { getSupabaseAdmin } = require('../../../_shared/supabase-data');
-      const supabaseAdmin = getSupabaseAdmin();
+      const { supabaseAdmin } = require('../../../_shared/supabase');
 
-      const supabaseIds = supabaseOnlyBookings.map(b => b.supabase_id);
+      // Use id (Supabase UUID) for lookup
+      const supabaseIds = supabaseOnlyBookings.map(b => b.id);
       const { data: supabaseData, error: supabaseError } = await supabaseAdmin
         .from('hubspot_bookings')
         .select('id, is_active, exam_date, associated_contact_id')
@@ -186,7 +191,7 @@ module.exports = async (req, res) => {
         console.error(`❌ [CANCEL] Error fetching Supabase booking data:`, supabaseError);
       } else if (supabaseData) {
         for (const booking of supabaseData) {
-          // Use supabase_id as the key (prefixed to distinguish from HubSpot IDs)
+          // Use id (Supabase UUID) as the key (prefixed to distinguish from HubSpot IDs)
           bookingDataMap.set(`supabase:${booking.id}`, {
             is_active: booking.is_active,
             exam_date: booking.exam_date,
@@ -215,9 +220,10 @@ module.exports = async (req, res) => {
 
     for (const booking of bookings) {
       // Determine which ID to use for lookup
-      const isSupabaseOnly = !booking.id && booking.supabase_id;
-      const lookupKey = isSupabaseOnly ? `supabase:${booking.supabase_id}` : booking.id;
-      const displayId = booking.id || booking.supabase_id;
+      // New naming: id = Supabase UUID, hubspot_id = HubSpot numeric ID
+      const isSupabaseOnly = !booking.hubspot_id && booking.id;
+      const lookupKey = isSupabaseOnly ? `supabase:${booking.id}` : booking.hubspot_id;
+      const displayId = booking.hubspot_id || booking.id;
 
       console.log(`🔍 [DEBUG] Processing booking ${displayId} (isSupabaseOnly: ${isSupabaseOnly})...`);
       const bookingData = bookingDataMap.get(lookupKey);
@@ -227,7 +233,8 @@ module.exports = async (req, res) => {
         console.log(`❌ [DEBUG] Booking ${displayId} not found in bookingDataMap`);
         results.failed.push({
           bookingId: displayId,
-          supabase_id: booking.supabase_id,
+          id: booking.id,  // Supabase UUID
+          hubspot_id: booking.hubspot_id,
           error: 'Booking not found',
           code: 'BOOKING_NOT_FOUND'
         });
@@ -241,7 +248,8 @@ module.exports = async (req, res) => {
         console.log(`⏭️ [DEBUG] Booking ${displayId} already cancelled, skipping`);
         results.skipped.push({
           bookingId: displayId,
-          supabase_id: booking.supabase_id,
+          id: booking.id,  // Supabase UUID
+          hubspot_id: booking.hubspot_id,
           reason: 'Already cancelled',
           currentStatus: 'Cancelled'
         });
@@ -251,16 +259,17 @@ module.exports = async (req, res) => {
       console.log(`✅ [DEBUG] Booking ${displayId} ready for cancellation`);
 
       if (isSupabaseOnly) {
-        // Prepare Supabase-only update
+        // Prepare Supabase-only update (use id which is Supabase UUID)
         supabaseOnlyUpdates.push({
-          supabase_id: booking.supabase_id,
+          id: booking.id,  // Supabase UUID
           contact_id: bookingData.contact_id,
           exam_date: bookingData.exam_date
         });
       } else {
-        // Prepare HubSpot update
+        // Prepare HubSpot update (use hubspot_id)
         hubspotUpdates.push({
-          id: booking.id,
+          id: booking.hubspot_id,  // HubSpot numeric ID
+          supabaseId: booking.id,  // Supabase UUID for Supabase sync
           properties: {
             is_active: 'Cancelled'
           }
@@ -270,7 +279,8 @@ module.exports = async (req, res) => {
       // Store booking details for audit log (using frontend data)
       bookingDetailsForAudit.push({
         id: displayId,
-        supabase_id: booking.supabase_id,
+        hubspot_id: booking.hubspot_id,
+        supabase_id: booking.id,  // Now id is Supabase UUID
         name: booking.name || 'Unknown',
         email: booking.email || 'No email'
       });
@@ -306,8 +316,7 @@ module.exports = async (req, res) => {
     // Process Supabase-only cancellations (bookings not synced to HubSpot)
     if (supabaseOnlyUpdates.length > 0) {
       console.log(`⚡ [CANCEL] Processing ${supabaseOnlyUpdates.length} Supabase-only cancellations...`);
-      const { getSupabaseAdmin } = require('../../../_shared/supabase-data');
-      const supabaseAdmin = getSupabaseAdmin();
+      const { supabaseAdmin } = require('../../../_shared/supabase');
 
       for (const update of supabaseOnlyUpdates) {
         try {
@@ -317,24 +326,24 @@ module.exports = async (req, res) => {
               is_active: 'Cancelled',
               updated_at: new Date().toISOString()
             })
-            .eq('id', update.supabase_id);
+            .eq('id', update.id);  // Use id which is now Supabase UUID
 
           if (updateError) {
             throw updateError;
           }
 
           results.successful.push({
-            bookingId: update.supabase_id,
-            supabase_id: update.supabase_id,
+            bookingId: update.id,
+            id: update.id,  // Supabase UUID
             status: 'cancelled',
             message: 'Successfully cancelled in Supabase (not yet synced to HubSpot)'
           });
-          console.log(`✅ [CANCEL] Cancelled Supabase-only booking ${update.supabase_id}`);
+          console.log(`✅ [CANCEL] Cancelled Supabase-only booking ${update.id}`);
         } catch (error) {
-          console.error(`❌ [CANCEL] Failed to cancel Supabase-only booking ${update.supabase_id}:`, error);
+          console.error(`❌ [CANCEL] Failed to cancel Supabase-only booking ${update.id}:`, error);
           results.failed.push({
-            bookingId: update.supabase_id,
-            supabase_id: update.supabase_id,
+            bookingId: update.id,
+            id: update.id,
             error: error.message || 'Failed to cancel booking in Supabase',
             code: 'SUPABASE_UPDATE_FAILED'
           });
@@ -352,8 +361,10 @@ module.exports = async (req, res) => {
 
       for (const result of results.successful) {
         // Determine the correct lookup key based on whether it's a HubSpot or Supabase-only booking
-        const lookupKey = result.supabase_id && !result.bookingId?.match(/^\d+$/)
-          ? `supabase:${result.supabase_id}`
+        // result.id is Supabase UUID, result.bookingId could be either HubSpot ID or Supabase UUID
+        const isSupabaseOnly = result.id && !result.bookingId?.match(/^\d+$/);
+        const lookupKey = isSupabaseOnly
+          ? `supabase:${result.id}`
           : result.bookingId;
         const bookingData = bookingDataMap.get(lookupKey);
 
@@ -458,11 +469,14 @@ module.exports = async (req, res) => {
 
       const refundService = require('../../../_shared/refund');
 
-      // Get bookings that were successfully cancelled (match by either HubSpot ID or Supabase ID)
+      // Get bookings that were successfully cancelled (match by either HubSpot ID or Supabase UUID)
+      // Note: result.bookingId can be HubSpot ID or Supabase UUID, result.id is always Supabase UUID
       const successfulBookingIds = results.successful.map(r => r.bookingId);
-      const successfulSupabaseIds = results.successful.filter(r => r.supabase_id).map(r => r.supabase_id);
+      const successfulSupabaseIds = results.successful.filter(r => r.id).map(r => r.id);
       const bookingsToRefund = bookings.filter(b =>
-        successfulBookingIds.includes(b.id) || successfulSupabaseIds.includes(b.supabase_id)
+        successfulBookingIds.includes(b.hubspot_id) ||
+        successfulBookingIds.includes(b.id) ||
+        successfulSupabaseIds.includes(b.id)
       );
 
       try {

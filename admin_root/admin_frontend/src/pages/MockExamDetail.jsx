@@ -142,9 +142,11 @@ function MockExamDetail() {
     attendance.startSubmitting();
 
     // Call mutation with current action
+    // Pass both selectedIds (for backward compat) and selectedBookings (with id + hubspot_id)
     markAttendanceMutation.mutate(
       {
         bookingIds: attendance.selectedIds,
+        selectedBookings: attendance.selectedBookings,
         action: attendance.action
       },
       {

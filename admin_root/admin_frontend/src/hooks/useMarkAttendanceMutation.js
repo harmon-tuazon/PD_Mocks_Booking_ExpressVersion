@@ -19,7 +19,8 @@ const useMarkAttendanceMutation = (mockExamId) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ bookingIds, action, notes }) => {
+    // Now accepts selectedBookings array with { id, hubspot_id } objects
+    mutationFn: async ({ bookingIds, selectedBookings, action, notes }) => {
       // Map action to attended value
       let attended;
       switch (action) {
@@ -37,9 +38,14 @@ const useMarkAttendanceMutation = (mockExamId) => {
       }
 
       // Transform data to match backend expected format
+      // Send both id (Supabase UUID) and hubspot_id for cascading lookup
       const requestBody = {
-        bookings: bookingIds.map(id => ({
-          bookingId: id,
+        bookings: (selectedBookings || []).map((booking, index) => ({
+          // Use hubspot_id if available, otherwise use id (Supabase UUID)
+          // Backend will use cascading lookup to resolve the HubSpot ID
+          bookingId: booking.hubspot_id || booking.id,
+          id: booking.id, // Supabase UUID for fallback
+          hubspot_id: booking.hubspot_id, // May be null for Supabase-only bookings
           attended: attended,
           notes: notes || ''
         }))

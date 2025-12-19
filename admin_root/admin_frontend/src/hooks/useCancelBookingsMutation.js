@@ -24,11 +24,13 @@ const useCancelBookingsMutation = (mockExamId) => {
   return useMutation({
     mutationFn: async ({ bookings, refundTokens }) => {
       // Send full booking objects from memory (optimization)
-      // Include both id (HubSpot) and supabase_id for Supabase-first bookings
+      // Updated naming convention:
+      // - id: Supabase UUID (primary identifier)
+      // - hubspot_id: HubSpot numeric ID (may be null for Supabase-only bookings)
       const requestBody = {
         bookings: bookings.map(b => ({
-          id: b.id || null,                           // HubSpot ID (null for Supabase-first bookings)
-          supabase_id: b.supabase_id || null,         // Supabase UUID (for bookings not yet synced to HubSpot)
+          id: b.id || null,                           // Supabase UUID (primary identifier)
+          hubspot_id: b.hubspot_id || null,           // HubSpot ID (null for Supabase-only bookings)
           token_used: b.token_used || '',
           associated_contact_id: b.associated_contact_id || '',
           name: b.name || 'Unknown',
@@ -50,9 +52,9 @@ const useCancelBookingsMutation = (mockExamId) => {
       // Snapshot the previous value
       const previousBookings = queryClient.getQueryData(['bookings', mockExamId]);
 
-      // Extract booking IDs (both HubSpot IDs and Supabase UUIDs)
-      const bookingIds = bookings.map(b => b.id).filter(Boolean);
-      const supabaseIds = bookings.map(b => b.supabase_id).filter(Boolean);
+      // Extract booking IDs (Supabase UUIDs and HubSpot IDs)
+      const supabaseIds = bookings.map(b => b.id).filter(Boolean);
+      const hubspotIds = bookings.map(b => b.hubspot_id).filter(Boolean);
 
       // Optimistically update to show bookings as cancelled
       queryClient.setQueryData(['bookings', mockExamId], (old) => {
@@ -61,10 +63,10 @@ const useCancelBookingsMutation = (mockExamId) => {
         return {
           ...old,
           data: old.data.map(booking => {
-            // Match by either HubSpot ID or Supabase UUID
-            const matchById = booking.id && bookingIds.includes(booking.id);
-            const matchBySupabaseId = booking.supabase_id && supabaseIds.includes(booking.supabase_id);
-            if (matchById || matchBySupabaseId) {
+            // Match by either Supabase UUID (id) or HubSpot ID
+            const matchBySupabaseId = booking.id && supabaseIds.includes(booking.id);
+            const matchByHubspotId = booking.hubspot_id && hubspotIds.includes(booking.hubspot_id);
+            if (matchBySupabaseId || matchByHubspotId) {
               return {
                 ...booking,
                 is_active: 'Cancelled'
