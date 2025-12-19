@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import BookingsTable from './BookingsTable';
 import BookingFilters from './BookingFilters';
@@ -27,6 +28,8 @@ const LoadingSkeleton = () => {
  * Handles loading, error, and empty states
  */
 const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
+  const queryClient = useQueryClient();
+
   // State for active filters
   const [filters, setFilters] = useState({
     locations: [],
@@ -93,14 +96,16 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh }) => {
       cancellationState?.closeModal?.();
       cancellationState?.toggleMode?.(); // Exit cancellation mode
 
-      // Refetch bookings to get fresh data from server
-      if (onRefresh) {
-        setIsRefreshing(true);
-        try {
+      // Invalidate cache and refetch to get fresh data from server
+      // invalidateQueries marks data as stale, forcing a fresh fetch
+      setIsRefreshing(true);
+      try {
+        await queryClient.invalidateQueries({ queryKey: ['trainee-bookings'] });
+        if (onRefresh) {
           await onRefresh();
-        } finally {
-          setIsRefreshing(false);
         }
+      } finally {
+        setIsRefreshing(false);
       }
     } catch (error) {
       cancellationState?.returnToSelecting?.();
