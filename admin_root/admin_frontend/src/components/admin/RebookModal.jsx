@@ -4,6 +4,9 @@
  *
  * UI Pattern: Based on PrerequisiteExamSelector (single-select variant)
  * Uses Headless UI Dialog for modal implementation
+ *
+ * Location and mock_type are automatically filtered based on original booking
+ * (no user selection needed - exams shown are same type and location)
  */
 
 import React, { useState, useMemo, useCallback, useEffect, Fragment } from 'react';
@@ -20,7 +23,7 @@ import {
   ExclamationTriangleIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
-import { useAvailableLocations, useAvailableExamsForRebook } from '../../hooks/useRebooking';
+import { useAvailableExamsForRebook } from '../../hooks/useRebooking';
 import { formatDateLong } from '../../utils/dateUtils';
 import { formatTime } from '../../utils/timeFormatters';
 
@@ -34,58 +37,44 @@ const RebookModal = ({
   // Selected exam state (single selection)
   const [selectedExamId, setSelectedExamId] = useState(null);
 
-  // Filter state
-  const [filters, setFilters] = useState({
-    dateFrom: '',
-    location: ''
-  });
+  // Date filter state (only filter needed - location/type come from booking)
+  const [dateFrom, setDateFrom] = useState('');
 
-  // Get booking info
+  // Get booking info - these are used to filter exams automatically
   const mockType = booking?.mock_exam_type || booking?.mock_type;
   const currentExamId = booking?.associated_mock_exam;
   const currentLocation = booking?.attending_location || booking?.location;
-
-  // Initialize location filter with current booking's location when modal opens
-  useEffect(() => {
-    if (isOpen && currentLocation) {
-      setFilters(prev => ({ ...prev, location: currentLocation }));
-    }
-  }, [isOpen, currentLocation]);
 
   // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
       setSelectedExamId(null);
-      setFilters({ dateFrom: '', location: '' });
+      setDateFrom('');
     }
   }, [isOpen]);
 
-  // Fetch locations for dropdown (separate lightweight query)
-  const { data: locationsData } = useAvailableLocations(mockType, isOpen);
-  const uniqueLocations = locationsData?.locations || [];
-
-  // Fetch exams ONLY when location is selected (location is required)
+  // Fetch exams filtered by booking's mock_type and location (automatic)
   const {
     data: examData,
     isLoading,
     isError
-  } = useAvailableExamsForRebook(mockType, filters.location, currentExamId, isOpen && !!filters.location);
+  } = useAvailableExamsForRebook(mockType, currentLocation, currentExamId, isOpen && !!mockType && !!currentLocation);
 
   // Extract exams from API response
   const availableExams = examData?.exams || [];
 
-  // Apply date filter client-side (location is already filtered server-side)
+  // Apply date filter client-side (mock_type and location already filtered server-side)
   const filteredExams = useMemo(() => {
     return availableExams.filter(exam => {
       // Date filter (applied client-side)
-      if (filters.dateFrom) {
+      if (dateFrom) {
         const examDate = new Date(exam.exam_date);
-        const fromDate = new Date(filters.dateFrom);
+        const fromDate = new Date(dateFrom);
         if (examDate < fromDate) return false;
       }
       return true;
     });
-  }, [availableExams, filters.dateFrom]);
+  }, [availableExams, dateFrom]);
 
   // Handle exam selection (single select - toggle)
   const handleExamSelect = useCallback((examId) => {
@@ -193,50 +182,32 @@ const RebookModal = ({
                   </div>
                 </div>
 
-                {/* Filters */}
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div>
-                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
-                      From Date
-                    </label>
-                    <DatePicker
-                      value={filters.dateFrom}
-                      onChange={(date) => setFilters(prev => ({ ...prev, dateFrom: date }))}
-                      placeholder="Filter by date"
-                      disabled={isLoading || isSubmitting}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
-                      Location <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={filters.location}
-                      onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
-                      disabled={isLoading || isSubmitting || uniqueLocations.length === 0}
-                      className="w-full h-8 text-sm px-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    >
-                      <option value="">Select a location...</option>
-                      {uniqueLocations.map(location => (
-                        <option key={location} value={location}>{location}</option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Date Filter Only */}
+                <div className="mb-4">
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                    Filter by Date (Optional)
+                  </label>
+                  <DatePicker
+                    value={dateFrom}
+                    onChange={setDateFrom}
+                    placeholder="Show exams from this date"
+                    disabled={isLoading || isSubmitting}
+                    className="h-8 text-sm max-w-xs"
+                  />
                 </div>
 
                 {/* Available Exams List */}
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg">
                   <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                     <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                      Available {mockType} Sessions {filters.location && `(${filteredExams.length})`}
+                      Available {mockType} Sessions in {currentLocation} ({filteredExams.length})
                     </p>
                   </div>
 
                   <ScrollArea className="h-[250px]">
                     <div className="p-2 space-y-1">
-                      {/* Loading state - only show when location is selected */}
-                      {filters.location && isLoading && (
+                      {/* Loading state */}
+                      {isLoading && (
                         <div className="flex items-center justify-center py-8">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
                           <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
@@ -246,7 +217,7 @@ const RebookModal = ({
                       )}
 
                       {/* Error state */}
-                      {filters.location && isError && (
+                      {isError && (
                         <div className="text-center py-8">
                           <ExclamationTriangleIcon className="mx-auto h-8 w-8 text-red-400" />
                           <p className="mt-2 text-sm text-red-600 dark:text-red-400">
@@ -255,28 +226,18 @@ const RebookModal = ({
                         </div>
                       )}
 
-                      {/* No location selected state */}
-                      {!filters.location && (
-                        <div className="text-center py-8">
-                          <MapPinIcon className="mx-auto h-8 w-8 text-gray-400" />
-                          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                            Select a location to view available {mockType} sessions
-                          </p>
-                        </div>
-                      )}
-
                       {/* Empty state */}
-                      {filters.location && !isLoading && !isError && filteredExams.length === 0 && (
+                      {!isLoading && !isError && filteredExams.length === 0 && (
                         <div className="text-center py-8">
                           <CalendarIcon className="mx-auto h-8 w-8 text-gray-400" />
                           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                            No available {mockType} sessions found in {filters.location}
+                            No available {mockType} sessions found in {currentLocation}
                           </p>
                         </div>
                       )}
 
                       {/* Exam list */}
-                      {filters.location && !isLoading && !isError && filteredExams.map(exam => {
+                      {!isLoading && !isError && filteredExams.map(exam => {
                         const isSelected = selectedExamId === exam.hubspot_id;
                         const availableSlots = Math.max(0, (exam.capacity || 0) - (exam.total_bookings || 0));
 
@@ -317,11 +278,6 @@ const RebookModal = ({
                             {/* Exam Details */}
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-center gap-2 text-sm">
-                                {/* Location */}
-                                <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                                  <MapPinIcon className="h-3.5 w-3.5" />
-                                  <span>{exam.location || 'N/A'}</span>
-                                </div>
                                 {/* Date */}
                                 <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
                                   <CalendarIcon className="h-3.5 w-3.5" />

@@ -3,16 +3,16 @@
  * Fetch available exams for rebooking - reads directly from Supabase
  *
  * DATA FLOW:
- * 1. Query Supabase hubspot_mock_exams table
+ * 1. Query Supabase hubspot_mock_exams table filtered by mock_type and location
  * 2. NO HubSpot fallback - Supabase is source of truth for reads
  *
  * Query Parameters:
- * - mock_type (required): Filter by mock type (must match original booking)
- * - location (required): Filter by location (exact match)
+ * - mock_type (required): Filter by mock type (from original booking)
+ * - location (required): Filter by location (from original booking)
  * - exclude_exam_id (optional): Exclude current exam from results
  *
  * Returns:
- * - 200: Success with exams array and locations
+ * - 200: Success with exams array (filtered by location)
  * - 400: Invalid request (missing required params)
  * - 401: Unauthorized (admin auth required)
  * - 500: Server error
@@ -60,7 +60,7 @@ async function handler(req, res) {
     // 3. Get today's date for filtering
     const today = new Date().toISOString().split('T')[0];
 
-    // 4. Build Supabase query - filter by mock_type and location (both required)
+    // 4. Build Supabase query - filter by mock_type and location
     let query = supabaseAdmin
       .from('hubspot_mock_exams')
       .select('*')
@@ -86,21 +86,7 @@ async function handler(req, res) {
       });
     }
 
-    // 5. Fetch all locations for the mock_type (for dropdown - separate query)
-    const { data: allExamsForLocations } = await supabaseAdmin
-      .from('hubspot_mock_exams')
-      .select('location')
-      .eq('mock_type', mock_type)
-      .eq('is_active', 'true')
-      .gt('exam_date', today);
-
-    const uniqueLocations = [...new Set(
-      (allExamsForLocations || [])
-        .map(exam => exam.location)
-        .filter(loc => loc && loc !== 'N/A')
-    )].sort();
-
-    // 6. Calculate available slots for each exam
+    // 5. Calculate available slots for each exam
     const examsWithSlots = (exams || []).map(exam => ({
       ...exam,
       available_slots: Math.max(0, (exam.capacity || 0) - (exam.total_bookings || 0))
@@ -108,12 +94,11 @@ async function handler(req, res) {
 
     console.log(`✅ [REBOOK] Found ${examsWithSlots.length} available exams in ${location}`);
 
-    // 7. Return response
+    // 6. Return response
     return res.status(200).json({
       success: true,
       data: {
         exams: examsWithSlots,
-        locations: uniqueLocations,
         total_count: examsWithSlots.length
       },
       meta: {

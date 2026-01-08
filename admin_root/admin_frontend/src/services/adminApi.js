@@ -375,31 +375,14 @@ export const traineeApi = {
   },
 
   /**
-   * Get available locations for rebooking a specific mock type
-   * Lightweight query to populate location dropdown
-   *
-   * @param {string} mockType - Filter by mock type (required)
-   * @returns {Promise<Object>} Response with locations array
-   */
-  getAvailableLocationsForRebook: async (mockType) => {
-    if (!mockType) {
-      throw new Error('Mock type is required');
-    }
-    const params = new URLSearchParams({ mock_type: mockType });
-    const response = await api.get(
-      `/admin/mock-exams/available-locations-for-rebook?${params}`
-    );
-    return response.data.data;
-  },
-
-  /**
    * Get available exams for rebooking
    * Reads from Supabase - no HubSpot fallback
+   * Location and mock_type are passed from the original booking
    *
-   * @param {string} mockType - Filter by mock type (required)
-   * @param {string} location - Filter by location (required)
+   * @param {string} mockType - Filter by mock type (from original booking)
+   * @param {string} location - Filter by location (from original booking)
    * @param {string} excludeExamId - Exclude current exam from results (optional)
-   * @returns {Promise<Object>} Response with exams array and locations
+   * @returns {Promise<Object>} Response with exams array
    */
   getAvailableExamsForRebook: async (mockType, location, excludeExamId = null) => {
     if (!mockType) {

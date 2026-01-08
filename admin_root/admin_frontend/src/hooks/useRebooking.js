@@ -10,34 +10,15 @@ import { traineeApi } from '../services/adminApi';
 import toast from 'react-hot-toast';
 
 /**
- * Fetch available locations for a mock type
- * Used to populate the location dropdown before exams are fetched
- *
- * @param {string} mockType - Filter by mock type (required)
- * @param {boolean} enabled - Whether to enable the query
- * @returns {Object} Query result with locations array
- */
-export function useAvailableLocations(mockType, enabled = true) {
-  return useQuery({
-    queryKey: ['available-locations-rebook', mockType],
-    queryFn: () => traineeApi.getAvailableLocationsForRebook(mockType),
-    enabled: enabled && !!mockType,
-    staleTime: 60 * 1000, // 1 minute cache for locations
-    select: (data) => ({
-      locations: data?.locations || []
-    })
-  });
-}
-
-/**
  * Fetch available exams for rebooking
  * Reads directly from Supabase - no HubSpot fallback
+ * Location is automatically filtered based on original booking's location
  *
- * @param {string} mockType - Filter by mock type (required)
- * @param {string} location - Filter by location (required)
+ * @param {string} mockType - Filter by mock type (from original booking)
+ * @param {string} location - Filter by location (from original booking)
  * @param {string} excludeExamId - Exclude current exam from results
  * @param {boolean} enabled - Whether to enable the query
- * @returns {Object} Query result with exams and locations
+ * @returns {Object} Query result with exams
  */
 export function useAvailableExamsForRebook(mockType, location, excludeExamId, enabled = true) {
   return useQuery({
@@ -47,7 +28,6 @@ export function useAvailableExamsForRebook(mockType, location, excludeExamId, en
     staleTime: 30 * 1000, // 30 seconds
     select: (data) => ({
       exams: data?.exams || [],
-      locations: data?.locations || [],
       total_count: data?.total_count || 0
     })
   });
