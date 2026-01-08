@@ -52,12 +52,19 @@ async function syncBookingToHubSpot(bookingHubSpotId, updateData) {
     console.log(`[HUBSPOT SYNC] Syncing rebook for booking ${bookingHubSpotId}`);
 
     // Update booking properties in HubSpot
-    await hubspot.updateBooking(bookingHubSpotId, {
+    const hubspotProperties = {
       associated_mock_exam: updateData.associated_mock_exam,
       exam_date: updateData.exam_date,
       start_time: updateData.start_time,
       end_time: updateData.end_time
-    });
+    };
+
+    // Include mock_set if provided
+    if (updateData.mock_set !== undefined) {
+      hubspotProperties.mock_set = updateData.mock_set;
+    }
+
+    await hubspot.updateBooking(bookingHubSpotId, hubspotProperties);
 
     console.log(`[HUBSPOT SYNC] Successfully synced booking ${bookingHubSpotId}`);
   } catch (error) {
@@ -231,6 +238,7 @@ async function handler(req, res) {
       exam_date: targetExam.exam_date,
       start_time: targetExam.start_time,
       end_time: targetExam.end_time,
+      mock_set: targetExam.mock_set || null,  // Copy mock_set from target exam
       updated_at: new Date().toISOString()
     };
 
@@ -265,7 +273,8 @@ async function handler(req, res) {
         associated_mock_exam: targetExam.hubspot_id,
         exam_date: targetExam.exam_date,
         start_time: targetExam.start_time,
-        end_time: targetExam.end_time
+        end_time: targetExam.end_time,
+        mock_set: targetExam.mock_set || null
       }).catch(err => console.error('[REBOOK] HubSpot sync failed (non-blocking):', err.message));
 
       // Update HubSpot association (old exam -> new exam) (fire-and-forget)
