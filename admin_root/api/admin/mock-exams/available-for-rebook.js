@@ -22,7 +22,7 @@
  */
 
 require('dotenv').config();
-const { requireAdmin } = require('../../middleware/requireAdmin');
+const { requireAdmin } = require('../middleware/requireAdmin');
 const { supabaseAdmin } = require('../../_shared/supabase');
 
 async function handler(req, res) {
