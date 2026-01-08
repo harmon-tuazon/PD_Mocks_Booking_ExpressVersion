@@ -13,6 +13,8 @@ import { traineeApi } from '../../services/adminApi';
  * LoadingSkeleton Component
  * Shows loading state for bookings table
  */
+
+/*loading */
 const LoadingSkeleton = () => {
   return (
     <div className="animate-pulse">
