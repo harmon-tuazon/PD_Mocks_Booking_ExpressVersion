@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import BookingsTable from './BookingsTable';
 import BookingFilters from './BookingFilters';
 import useBatchCancellation from '../../hooks/useBatchCancellation';
 import CancelBookingsModal from '../shared/CancelBookingsModal';
+import RebookModal from './RebookModal';
+import { useRebookBooking } from '../../hooks/useRebooking';
 import { traineeApi } from '../../services/adminApi';
 
 /**
@@ -59,6 +61,54 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh, contact
 
   // State to track if we're refreshing after cancellation
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // State for rebook modal
+  const [rebookModalOpen, setRebookModalOpen] = useState(false);
+  const [selectedBookingForRebook, setSelectedBookingForRebook] = useState(null);
+
+  // Rebook mutation
+  const rebookMutation = useRebookBooking({
+    contactId,
+    onSuccess: async () => {
+      setRebookModalOpen(false);
+      setSelectedBookingForRebook(null);
+      // Refresh bookings list after successful rebook
+      setIsRefreshing(true);
+      try {
+        await queryClient.invalidateQueries({ queryKey: ['trainee-bookings'] });
+        if (contactId) {
+          await queryClient.invalidateQueries({ queryKey: ['trainee-bookings', contactId] });
+        }
+        if (onRefresh) {
+          await onRefresh();
+        }
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
+  });
+
+  // Handler for opening rebook modal
+  const handleRebookClick = useCallback((booking) => {
+    setSelectedBookingForRebook(booking);
+    setRebookModalOpen(true);
+  }, []);
+
+  // Handler for confirming rebook
+  const handleRebookConfirm = useCallback((newExamId) => {
+    if (selectedBookingForRebook) {
+      rebookMutation.mutate({
+        bookingId: selectedBookingForRebook.id,
+        newMockExamId: newExamId
+      });
+    }
+  }, [selectedBookingForRebook, rebookMutation]);
+
+  // Handler for closing rebook modal
+  const handleRebookClose = useCallback(() => {
+    setRebookModalOpen(false);
+    setSelectedBookingForRebook(null);
+  }, []);
 
   // Handle booking cancellation using simplified batch endpoint
   const handleCancelBookings = async () => {
@@ -429,6 +479,7 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh, contact
             sortConfig={sortConfig}
             currentPage={1}
             onPageChange={() => {}} // No pagination in this context (showing all bookings)
+            onRebook={handleRebookClick}  // Enable rebooking in trainee dashboard view
           />
         </div>
       )}
@@ -442,6 +493,15 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh, contact
         isLoading={cancellationState?.isSubmitting || false}
         refundTokens={cancellationState?.refundTokens ?? true}
         onToggleRefund={cancellationState?.toggleRefund}
+      />
+
+      {/* Rebook Modal */}
+      <RebookModal
+        isOpen={rebookModalOpen}
+        onClose={handleRebookClose}
+        booking={selectedBookingForRebook}
+        onConfirm={handleRebookConfirm}
+        isSubmitting={rebookMutation.isPending}
       />
     </div>
   );

@@ -39,7 +39,9 @@ const BookingsTable = ({
   // Hide search bar prop
   hideSearch = false,
   // Hide trainee info columns (name, email, student_id, dominant_hand)
-  hideTraineeInfo = false
+  hideTraineeInfo = false,
+  // Rebooking callback - when provided, shows Actions column
+  onRebook = null
 }) => {
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm || '');
 
@@ -384,6 +386,12 @@ const BookingsTable = ({
                       );
                   }
                 })}
+                {/* Actions column - shown when rebooking is available (hideTraineeInfo mode) */}
+                {hideTraineeInfo && onRebook && (
+                  <NonSortableHeader column="actions" align="center">
+                    Actions
+                  </NonSortableHeader>
+                )}
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
@@ -419,6 +427,7 @@ const BookingsTable = ({
                     visibleColumns={hideTraineeInfo ? traineeViewColumns : visibleColumns}
                     columnOrder={hideTraineeInfo ? traineeViewColumns : getColumnOrder()}
                     sizeClass={getCellClasses()}
+                    onRebook={hideTraineeInfo ? onRebook : null}
                   />
                 );
               })}

@@ -12,7 +12,9 @@
 
 import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 import { formatTime } from '../../utils/timeFormatters';
 import { formatDateLong } from '../../utils/dateUtils';
 import { COLUMN_DEFINITIONS, FIXED_COLUMNS, TRAINEE_ONLY_COLUMNS } from '../../hooks/useColumnVisibility';
@@ -27,7 +29,8 @@ const BookingRow = ({
   hideTraineeInfo = false,
   visibleColumns = [],
   columnOrder = [],
-  sizeClass = ''
+  sizeClass = '',
+  onRebook = null
 }) => {
   // Format dominant hand display
   const formatDominantHand = (hand) => {
@@ -357,6 +360,25 @@ const BookingRow = ({
 
       {/* For trainee view (hideTraineeInfo=true), only render visible dynamic columns */}
       {hideTraineeInfo && visibleColumns.map(columnId => renderCell(columnId))}
+
+      {/* Actions column - shown when onRebook is provided */}
+      {hideTraineeInfo && onRebook && (
+        <td className="px-4 py-3 text-center">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent row selection
+              onRebook(booking);
+            }}
+            disabled={isCancelled}
+            className="text-xs"
+          >
+            <ArrowPathIcon className="h-3.5 w-3.5 mr-1" />
+            Rebook
+          </Button>
+        </td>
+      )}
     </tr>
   );
 };

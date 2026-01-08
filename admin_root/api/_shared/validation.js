@@ -1193,6 +1193,23 @@ const schemas = {
       })
   }),
 
+  // Schema for rebooking a booking to a different exam (Admin)
+  // Note: No "reason" field - rebooking doesn't require a reason per PRD
+  rebookBooking: Joi.object({
+    booking_id: Joi.string()
+      .required()
+      .messages({
+        'any.required': 'Booking ID is required',
+        'string.base': 'Booking ID must be a string'
+      }),
+    new_mock_exam_id: Joi.string()
+      .required()
+      .messages({
+        'any.required': 'New mock exam ID is required',
+        'string.base': 'New mock exam ID must be a string'
+      })
+  }),
+
   // Schema for updating trainee tokens (Admin)
   updateTraineeTokens: Joi.object({
     tokens: Joi.object({

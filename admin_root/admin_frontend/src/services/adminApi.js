@@ -372,6 +372,76 @@ export const traineeApi = {
       refundTokens
     });
     return response.data;
+  },
+
+  /**
+   * Get available locations for rebooking a specific mock type
+   * Lightweight query to populate location dropdown
+   *
+   * @param {string} mockType - Filter by mock type (required)
+   * @returns {Promise<Object>} Response with locations array
+   */
+  getAvailableLocationsForRebook: async (mockType) => {
+    if (!mockType) {
+      throw new Error('Mock type is required');
+    }
+    const params = new URLSearchParams({ mock_type: mockType });
+    const response = await api.get(
+      `/admin/mock-exams/available-locations-for-rebook?${params}`
+    );
+    return response.data.data;
+  },
+
+  /**
+   * Get available exams for rebooking
+   * Reads from Supabase - no HubSpot fallback
+   *
+   * @param {string} mockType - Filter by mock type (required)
+   * @param {string} location - Filter by location (required)
+   * @param {string} excludeExamId - Exclude current exam from results (optional)
+   * @returns {Promise<Object>} Response with exams array and locations
+   */
+  getAvailableExamsForRebook: async (mockType, location, excludeExamId = null) => {
+    if (!mockType) {
+      throw new Error('Mock type is required');
+    }
+    if (!location) {
+      throw new Error('Location is required');
+    }
+    const params = new URLSearchParams({
+      mock_type: mockType,
+      location: location
+    });
+    if (excludeExamId) {
+      params.append('exclude_exam_id', excludeExamId);
+    }
+
+    const response = await api.get(
+      `/admin/mock-exams/available-for-rebook?${params}`
+    );
+    return response.data.data;
+  },
+
+  /**
+   * Rebook a booking to a different exam session
+   * Writes to Supabase first, then syncs to HubSpot if hubspot_id exists
+   *
+   * @param {string} bookingId - Booking UUID or HubSpot ID
+   * @param {string} newMockExamId - Target exam HubSpot ID
+   * @returns {Promise<Object>} Response with updated booking data
+   */
+  rebookBooking: async (bookingId, newMockExamId) => {
+    if (!bookingId) {
+      throw new Error('Booking ID is required');
+    }
+    if (!newMockExamId) {
+      throw new Error('New mock exam ID is required');
+    }
+    const response = await api.patch('/bookings/rebook', {
+      booking_id: bookingId,
+      new_mock_exam_id: newMockExamId
+    });
+    return response.data.data;
   }
 };
 
