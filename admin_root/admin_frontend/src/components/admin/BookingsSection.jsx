@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import BookingsTable from './BookingsTable';
 import BookingFilters from './BookingFilters';
 import useBatchCancellation from '../../hooks/useBatchCancellation';
+import useRebookSelection from '../../hooks/useRebookSelection';
 import CancelBookingsModal from '../shared/CancelBookingsModal';
 import RebookModal from './RebookModal';
 import { useRebookBooking } from '../../hooks/useRebooking';
@@ -68,7 +69,7 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh, contact
   const [rebookModalOpen, setRebookModalOpen] = useState(false);
   const [selectedBookingForRebook, setSelectedBookingForRebook] = useState(null);
 
-  // Rebook mutation
+  // Rebook mutation - note: rebookSelectionState is used later, defined after processedBookings
   const rebookMutation = useRebookBooking({
     contactId,
     onSuccess: async () => {
@@ -90,12 +91,6 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh, contact
     }
   });
 
-  // Handler for opening rebook modal
-  const handleRebookClick = useCallback((booking) => {
-    setSelectedBookingForRebook(booking);
-    setRebookModalOpen(true);
-  }, []);
-
   // Handler for confirming rebook
   const handleRebookConfirm = useCallback((newExamId) => {
     if (selectedBookingForRebook) {
@@ -106,11 +101,6 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh, contact
     }
   }, [selectedBookingForRebook, rebookMutation]);
 
-  // Handler for closing rebook modal
-  const handleRebookClose = useCallback(() => {
-    setRebookModalOpen(false);
-    setSelectedBookingForRebook(null);
-  }, []);
 
   // Handle booking cancellation using simplified batch endpoint
   const handleCancelBookings = async () => {
@@ -287,6 +277,25 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh, contact
   // selection state matches what's displayed in the table
   const cancellationState = useBatchCancellation(processedBookings);
 
+  // Rebook selection functionality - single selection mode
+  const rebookSelectionState = useRebookSelection(processedBookings);
+
+  // When a booking is selected in rebook mode, open the modal
+  useEffect(() => {
+    if (rebookSelectionState.isRebookMode && rebookSelectionState.selectedBooking) {
+      setSelectedBookingForRebook(rebookSelectionState.selectedBooking);
+      setRebookModalOpen(true);
+    }
+  }, [rebookSelectionState.isRebookMode, rebookSelectionState.selectedBooking]);
+
+  // Exit rebook mode when modal closes (if not from a successful rebook)
+  const handleRebookCloseWithModeExit = useCallback(() => {
+    setRebookModalOpen(false);
+    setSelectedBookingForRebook(null);
+    // Clear selection but stay in rebook mode so user can select another
+    rebookSelectionState.clearSelection();
+  }, [rebookSelectionState]);
+
   // Calculate counts
   const totalBookings = bookings?.length || 0;
   const filteredCount = processedBookings.length;
@@ -310,7 +319,7 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh, contact
         </h2>
       </div>
 
-      {/* Booking Filters with Cancel Button */}
+      {/* Booking Filters with Cancel and Rebook Buttons */}
       {!loading && !error && bookings && bookings.length > 0 && (
         <BookingFilters
           bookings={bookings}
@@ -318,22 +327,80 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh, contact
           onFiltersChange={setFilters}
           className="mb-6"
           cancelButton={
-            <button
-              onClick={() => cancellationState?.toggleMode()}
-              className={`inline-flex h-9 items-center justify-between whitespace-nowrap px-3 py-2 text-sm font-medium rounded-md transition-colors shadow-sm ${
-                cancellationState?.isCancellationMode
-                  ? 'text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500'
-                  : 'text-red-700 dark:text-red-400 bg-white dark:bg-[#1a4166] border border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-1 focus:ring-red-500'
-              }`}
-              disabled={processedBookings.length === 0}
-            >
-              <svg className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              {cancellationState?.isCancellationMode ? 'Exit Cancel Mode' : 'Cancel Bookings'}
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Rebook Button */}
+              <button
+                onClick={() => {
+                  // Exit cancellation mode if active before entering rebook mode
+                  if (cancellationState?.isCancellationMode) {
+                    cancellationState?.toggleMode();
+                  }
+                  rebookSelectionState.toggleMode();
+                }}
+                className={`inline-flex h-9 items-center justify-between whitespace-nowrap px-3 py-2 text-sm font-medium rounded-md transition-colors shadow-sm ${
+                  rebookSelectionState.isRebookMode
+                    ? 'text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500'
+                    : 'text-blue-700 dark:text-blue-400 bg-white dark:bg-[#1a4166] border border-gray-300 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 focus:outline-none focus:ring-1 focus:ring-blue-500'
+                }`}
+                disabled={processedBookings.length === 0 || cancellationState?.isCancellationMode}
+              >
+                <svg className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                {rebookSelectionState.isRebookMode ? 'Exit Rebook Mode' : 'Rebook Booking'}
+              </button>
+
+              {/* Cancel Button */}
+              <button
+                onClick={() => {
+                  // Exit rebook mode if active before entering cancellation mode
+                  if (rebookSelectionState.isRebookMode) {
+                    rebookSelectionState.exitMode();
+                  }
+                  cancellationState?.toggleMode();
+                }}
+                className={`inline-flex h-9 items-center justify-between whitespace-nowrap px-3 py-2 text-sm font-medium rounded-md transition-colors shadow-sm ${
+                  cancellationState?.isCancellationMode
+                    ? 'text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500'
+                    : 'text-red-700 dark:text-red-400 bg-white dark:bg-[#1a4166] border border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-1 focus:ring-red-500'
+                }`}
+                disabled={processedBookings.length === 0 || rebookSelectionState.isRebookMode}
+              >
+                <svg className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                {cancellationState?.isCancellationMode ? 'Exit Cancel Mode' : 'Cancel Bookings'}
+              </button>
+            </div>
           }
         />
+      )}
+
+      {/* Rebook Selection Banner */}
+      {!loading && !error && bookings && bookings.length > 0 && rebookSelectionState.isRebookMode && (
+        <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {rebookSelectionState.selectedCount === 0
+                  ? 'Click on a booking row to select it for rebooking'
+                  : `1 booking selected`}
+              </span>
+            </div>
+            <button
+              onClick={() => rebookSelectionState.exitMode()}
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
+            >
+              <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Exit
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+            Note: Only active bookings can be rebooked. Select one booking to change its exam session.
+          </p>
+        </div>
       )}
 
       {/* Cancellation Selection Banner */}
@@ -477,11 +544,22 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh, contact
               onToggleSelection: cancellationState?.toggleSelection,
               canCancel: cancellationState?.canCancel
             }}
+            rebookState={{
+              isRebookMode: rebookSelectionState.isRebookMode,
+              selectedBookingId: rebookSelectionState.selectedBookingId,
+              selectedCount: rebookSelectionState.selectedCount,
+              rebookableCount: rebookSelectionState.rebookableCount,
+              totalCount: processedBookings.length,
+              onToggleMode: rebookSelectionState.toggleMode,
+              onClearSelection: rebookSelectionState.clearSelection,
+              isSelected: rebookSelectionState.isSelected,
+              onToggleSelection: rebookSelectionState.toggleSelection,
+              canRebook: rebookSelectionState.canRebook
+            }}
             onSort={handleSort}  // Enable sorting in trainee dashboard view
             sortConfig={sortConfig}
             currentPage={1}
             onPageChange={() => {}} // No pagination in this context (showing all bookings)
-            onRebook={handleRebookClick}  // Enable rebooking in trainee dashboard view
           />
         </div>
       )}
@@ -500,7 +578,7 @@ const BookingsSection = ({ bookings, summary, loading, error, onRefresh, contact
       {/* Rebook Modal */}
       <RebookModal
         isOpen={rebookModalOpen}
-        onClose={handleRebookClose}
+        onClose={handleRebookCloseWithModeExit}
         booking={selectedBookingForRebook}
         onConfirm={handleRebookConfirm}
         isSubmitting={rebookMutation.isPending}

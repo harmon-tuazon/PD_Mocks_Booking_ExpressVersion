@@ -36,12 +36,12 @@ const BookingsTable = ({
   attendanceState = null,
   // Cancellation props
   cancellationState = null,
+  // Rebook selection props (toolbar-based single selection)
+  rebookState = null,
   // Hide search bar prop
   hideSearch = false,
   // Hide trainee info columns (name, email, student_id, dominant_hand)
-  hideTraineeInfo = false,
-  // Rebooking callback - when provided, shows Actions column
-  onRebook = null
+  hideTraineeInfo = false
 }) => {
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm || '');
 
@@ -208,8 +208,12 @@ const BookingsTable = ({
   const isCancellationMode = cancellationState?.isCancellationMode || false;
   const cancellationData = cancellationState || {};
 
+  // Extract rebook props if provided
+  const isRebookMode = rebookState?.isRebookMode || false;
+  const rebookData = rebookState || {};
+
   // Determine which mode is active (they're mutually exclusive)
-  const isSelectionMode = isAttendanceMode || isCancellationMode;
+  const isSelectionMode = isAttendanceMode || isCancellationMode || isRebookMode;
 
   // Get all column IDs for trainee view (show all columns + trainee-only columns)
   const traineeViewColumns = [
@@ -386,12 +390,6 @@ const BookingsTable = ({
                       );
                   }
                 })}
-                {/* Actions column - shown when rebooking is available (hideTraineeInfo mode) */}
-                {hideTraineeInfo && onRebook && (
-                  <NonSortableHeader column="actions" align="center">
-                    Actions
-                  </NonSortableHeader>
-                )}
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
@@ -409,6 +407,11 @@ const BookingsTable = ({
                   onToggleSelection = cancellationData.onToggleSelection;
                   // Disable if booking is already cancelled
                   isDisabled = !cancellationData.canCancel?.(booking.id);
+                } else if (isRebookMode) {
+                  isSelected = rebookData.isSelected?.(booking.id) || false;
+                  onToggleSelection = rebookData.onToggleSelection;
+                  // Disable if booking is cancelled (cannot rebook cancelled bookings)
+                  isDisabled = !rebookData.canRebook?.(booking.id);
                 }
 
                 // Use Supabase UUID as primary key, fallback to hubspot_id for legacy bookings
@@ -420,6 +423,7 @@ const BookingsTable = ({
                     booking={booking}
                     isAttendanceMode={isAttendanceMode}
                     isCancellationMode={isCancellationMode}
+                    isRebookMode={isRebookMode}
                     isSelected={isSelected}
                     onToggleSelection={onToggleSelection}
                     isDisabled={isDisabled}
@@ -427,7 +431,6 @@ const BookingsTable = ({
                     visibleColumns={hideTraineeInfo ? traineeViewColumns : visibleColumns}
                     columnOrder={hideTraineeInfo ? traineeViewColumns : getColumnOrder()}
                     sizeClass={getCellClasses()}
-                    onRebook={hideTraineeInfo ? onRebook : null}
                   />
                 );
               })}

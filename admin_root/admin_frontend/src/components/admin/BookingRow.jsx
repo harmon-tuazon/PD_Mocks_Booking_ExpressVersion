@@ -12,9 +12,7 @@
 
 import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Button } from '@/components/ui/button';
 import { formatTime } from '../../utils/timeFormatters';
 import { formatDateLong } from '../../utils/dateUtils';
 import { COLUMN_DEFINITIONS, FIXED_COLUMNS, TRAINEE_ONLY_COLUMNS } from '../../hooks/useColumnVisibility';
@@ -23,14 +21,14 @@ const BookingRow = ({
   booking,
   isAttendanceMode = false,
   isCancellationMode = false,
+  isRebookMode = false,
   isSelected = false,
   onToggleSelection,
   isDisabled = false,
   hideTraineeInfo = false,
   visibleColumns = [],
   columnOrder = [],
-  sizeClass = '',
-  onRebook = null
+  sizeClass = ''
 }) => {
   // Format dominant hand display
   const formatDominantHand = (hand) => {
@@ -62,11 +60,11 @@ const BookingRow = ({
     return id;
   };
 
-  // Check if booking is cancelled (cannot be selected in cancellation mode)
+  // Check if booking is cancelled (cannot be selected in cancellation/rebook mode)
   const isCancelled = booking.is_active === 'Cancelled';
 
   // Determine if selection mode is active
-  const isSelectionMode = isAttendanceMode || isCancellationMode;
+  const isSelectionMode = isAttendanceMode || isCancellationMode || isRebookMode;
 
   // Determine if this row can be selected
   const canBeSelected = isSelectionMode && onToggleSelection && !isDisabled;
@@ -322,6 +320,8 @@ const BookingRow = ({
           : isSelected
           ? isCancellationMode
             ? 'bg-red-50 dark:bg-red-900/20'
+            : isRebookMode
+            ? 'bg-blue-50 dark:bg-blue-900/20'
             : 'bg-primary-50 dark:bg-primary-900/20'
           : canBeSelected
           ? 'hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer'
@@ -360,25 +360,6 @@ const BookingRow = ({
 
       {/* For trainee view (hideTraineeInfo=true), only render visible dynamic columns */}
       {hideTraineeInfo && visibleColumns.map(columnId => renderCell(columnId))}
-
-      {/* Actions column - shown when onRebook is provided */}
-      {hideTraineeInfo && onRebook && (
-        <td className="px-4 py-3 text-center">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent row selection
-              onRebook(booking);
-            }}
-            disabled={isCancelled}
-            className="text-xs"
-          >
-            <ArrowPathIcon className="h-3.5 w-3.5 mr-1" />
-            Rebook
-          </Button>
-        </td>
-      )}
     </tr>
   );
 };
