@@ -137,12 +137,12 @@ module.exports = async (req, res) => {
       // TIER 1: Try Redis first (real-time count - authoritative source)
       let totalBookings = await redis.get(`exam:${exam.id}:bookings`);
 
-      // TIER 2: Fallback to HubSpot if Redis doesn't have it
+      // TIER 2: Fallback to Supabase if Redis doesn't have it
       if (totalBookings === null) {
         totalBookings = parseInt(exam.properties.total_bookings) || 0;
-        // Seed Redis with HubSpot value (TTL: 1 week for self-healing)
-        const TTL_1_WEEK = 7 * 24 * 60 * 60; // 604,800 seconds
-        await redis.setex(`exam:${exam.id}:bookings`, TTL_1_WEEK, totalBookings);
+        // Seed Redis with Supabase value (TTL: 1 hour to prevent stale data drift)
+        const TTL_1_HOUR = 60 * 60; // 3,600 seconds
+        await redis.setex(`exam:${exam.id}:bookings`, TTL_1_HOUR, totalBookings);
       } else {
         totalBookings = parseInt(totalBookings);
       }
