@@ -9,7 +9,8 @@ const {
   createBookingAtomic,
   checkIdempotencyKey,
   checkExistingBookingInSupabase,
-  supabaseAdmin
+  supabaseAdmin,
+  updateExamBookingCountInSupabase
 } = require('../_shared/supabase-data');
 const {
   setCorsHeaders,
@@ -355,7 +356,7 @@ module.exports = async (req, res) => {
     // in /api/mock-exams/available. This MUST be incremented to prevent showing
     // full sessions as available.
     const counterKey = `exam:${mock_exam_id}:bookings`;
-    const TTL_1_WEEK = 7 * 24 * 60 * 60; // 604,800 seconds
+    const TTL_1_HOUR = 60 * 60; // 3,600 seconds - reduced from 1 week to prevent stale data
 
     // Check if key exists - if not, seed it with current Supabase value + 1
     const existingCount = await redis.get(counterKey);
@@ -364,7 +365,7 @@ module.exports = async (req, res) => {
     if (existingCount === null) {
       // Key doesn't exist - seed with currentTotalBookings + 1 (for this booking)
       newTotalBookings = currentTotalBookings + 1;
-      await redis.setex(counterKey, TTL_1_WEEK, newTotalBookings);
+      await redis.setex(counterKey, TTL_1_HOUR, newTotalBookings);
       console.log(`✅ [REDIS] Seeded exam counter with TTL: ${counterKey} = ${newTotalBookings}`);
     } else {
       // Key exists - increment it
@@ -373,18 +374,14 @@ module.exports = async (req, res) => {
     }
 
     // ========================================================================
-    // STEP 10b: Sync total_bookings to Supabase (non-blocking)
+    // STEP 10b: Sync total_bookings to Supabase (atomic increment)
     // ========================================================================
-    const { error: examUpdateError } = await supabaseAdmin
-      .from('hubspot_mock_exams')
-      .update({ total_bookings: newTotalBookings })
-      .eq('hubspot_id', mock_exam_id);
-
-    if (examUpdateError) {
-      console.error(`⚠️ [BOOKING-CREATE] Failed to update exam total_bookings in Supabase:`, examUpdateError);
+    try {
+      await updateExamBookingCountInSupabase(mock_exam_id, 1, 'increment');
+      console.log(`✅ [BOOKING-CREATE] Supabase exam total_bookings incremented atomically`);
+    } catch (examUpdateError) {
+      console.error(`⚠️ [BOOKING-CREATE] Failed to increment exam total_bookings in Supabase:`, examUpdateError.message);
       // Non-blocking - cron will reconcile
-    } else {
-      console.log(`✅ [BOOKING-CREATE] Supabase exam total_bookings updated: ${newTotalBookings}`);
     }
 
     // ========================================================================
