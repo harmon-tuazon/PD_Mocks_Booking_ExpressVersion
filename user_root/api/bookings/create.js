@@ -155,14 +155,28 @@ module.exports = async (req, res) => {
     console.log(`✅ [BOOKING-CREATE] Lock acquired: ${lockToken}`);
 
     // ========================================================================
-    // STEP 4: Check capacity (Supabase-first)
+    // STEP 4: Check capacity using ACTUAL booking count (authoritative)
     // ========================================================================
-    console.log(`📊 [BOOKING-CREATE] Checking capacity: ${currentTotalBookings}/${capacity}`);
+    // Count actual active bookings from database instead of trusting total_bookings property
+    // This prevents overbooking when the property drifts from actual count
+    const { count: actualBookingCount, error: countError } = await supabaseAdmin
+      .from('hubspot_bookings')
+      .select('*', { count: 'exact', head: true })
+      .eq('associated_mock_exam', mock_exam_id)
+      .eq('is_active', 'Active');
 
-    if (currentTotalBookings >= capacity) {
+    if (countError) {
+      console.error(`⚠️ [BOOKING-CREATE] Failed to count bookings, falling back to property:`, countError.message);
+    }
+
+    // Use actual count if available, otherwise fall back to property
+    const effectiveBookingCount = countError ? currentTotalBookings : actualBookingCount;
+    console.log(`📊 [BOOKING-CREATE] Checking capacity: ${effectiveBookingCount}/${capacity} (actual count: ${actualBookingCount}, property: ${currentTotalBookings})`);
+
+    if (effectiveBookingCount >= capacity) {
       await redis.releaseLock(mock_exam_id, lockToken);
       lockToken = null;
-      console.error(`❌ [BOOKING-CREATE] Exam is full`);
+      console.error(`❌ [BOOKING-CREATE] Exam is full (${effectiveBookingCount}/${capacity})`);
       return res.status(409).json({
         success: false,
         error: {

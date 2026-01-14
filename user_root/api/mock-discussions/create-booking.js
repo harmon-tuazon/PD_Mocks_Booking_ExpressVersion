@@ -435,30 +435,38 @@ module.exports = async function handler(req, res) {
       console.log(`✅ [PREREQUISITE CHECK] User ${hubspot_id} has all ${prerequisiteExamIds.length} prerequisite booking(s)`);
     }
 
-    // Check capacity using Redis (authoritative source)
+    // Check capacity using ACTUAL booking count (authoritative source)
     const capacity = parseInt(mockDiscussion.properties.capacity) || 0;
+    const propertyBookings = parseInt(mockDiscussion.properties.total_bookings) || 0;
 
-    // TIER 1: Try Redis first (real-time, authoritative source)
-    let totalBookings = await redis.get(`exam:${mock_exam_id}:bookings`);
+    // Count actual active bookings from database instead of trusting total_bookings property
+    // This prevents overbooking when the property drifts from actual count
+    const { count: actualBookingCount, error: countError } = await supabaseAdmin
+      .from('hubspot_bookings')
+      .select('*', { count: 'exact', head: true })
+      .eq('associated_mock_exam', mock_exam_id)
+      .eq('is_active', 'Active');
 
-    // TIER 2: Fallback to HubSpot if Redis doesn't have it yet
-    if (totalBookings === null) {
-      totalBookings = parseInt(mockDiscussion.properties.total_bookings) || 0;
-      // Seed Redis with current HubSpot value (TTL: 1 week)
-      const TTL_1_WEEK = 7 * 24 * 60 * 60; // 604,800 seconds
-      await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_1_WEEK, totalBookings);
-      console.log(`📊 Seeded Redis counter from HubSpot: exam:${mock_exam_id}:bookings = ${totalBookings}`);
-    } else {
-      totalBookings = parseInt(totalBookings);
+    if (countError) {
+      console.error(`⚠️ [DISCUSSION-CREATE] Failed to count bookings, falling back to property:`, countError.message);
     }
 
-    // CRITICAL: This check now uses real-time Redis data to prevent overbooking
-    if (totalBookings >= capacity) {
+    // Use actual count if available, otherwise fall back to property
+    const effectiveBookingCount = countError ? propertyBookings : actualBookingCount;
+    console.log(`📊 [DISCUSSION-CREATE] Checking capacity: ${effectiveBookingCount}/${capacity} (actual count: ${actualBookingCount}, property: ${propertyBookings})`);
+
+    // CRITICAL: This check now uses actual DB count to prevent overbooking
+    if (effectiveBookingCount >= capacity) {
       const error = new Error('This Mock Discussion session is now full');
       error.status = 400;
       error.code = 'DISCUSSION_FULL';
       throw error;
     }
+
+    // Update Redis counter with actual count for fast reads elsewhere (TTL: 1 hour)
+    const TTL_1_HOUR = 60 * 60; // 3,600 seconds - reduced from 1 week to prevent stale data
+    await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_1_HOUR, effectiveBookingCount);
+    console.log(`📊 [DISCUSSION-CREATE] Updated Redis counter: exam:${mock_exam_id}:bookings = ${effectiveBookingCount}`);
 
     // Step 3: Verify contact and credits (Supabase-first for performance)
     let contact = null;
