@@ -116,8 +116,8 @@ module.exports = async (req, res) => {
     if (totalBookings === null) {
       // Seed from Supabase if not in Redis (Supabase data is flat)
       totalBookings = parseInt(mockExam.total_bookings) || 0;
-      const TTL_1_WEEK = 7 * 24 * 60 * 60; // 604,800 seconds
-      await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_1_WEEK, totalBookings);
+      const TTL_1_HOUR = 60 * 60; // 3,600 seconds - reduced from 1 week to prevent stale data
+      await redis.setex(`exam:${mock_exam_id}:bookings`, TTL_1_HOUR, totalBookings);
       console.log(`📊 [ADMIN BOOKING] Seeded Redis counter from Supabase: ${totalBookings}`);
     } else {
       totalBookings = parseInt(totalBookings);
@@ -259,9 +259,9 @@ module.exports = async (req, res) => {
 
     if (existingCount === null) {
       // Key doesn't exist (edge case) - seed with totalBookings + 1
-      const TTL_1_WEEK = 7 * 24 * 60 * 60; // 604,800 seconds
+      const TTL_1_HOUR = 60 * 60; // 3,600 seconds - reduced from 1 week to prevent stale data
       newTotalBookings = totalBookings + 1;
-      await redis.setex(counterKey, TTL_1_WEEK, newTotalBookings);
+      await redis.setex(counterKey, TTL_1_HOUR, newTotalBookings);
       console.log(`✅ [ADMIN BOOKING] Seeded exam counter with TTL: ${counterKey} = ${newTotalBookings}`);
     } else {
       newTotalBookings = await redis.incr(counterKey);
