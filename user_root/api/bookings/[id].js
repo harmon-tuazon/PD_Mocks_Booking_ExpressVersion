@@ -456,42 +456,91 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
 
     const creditField = tokenToCreditFieldMapping[tokenUsed];
 
-    if (!creditField) {
-      console.warn(`⚠️ Unknown token type: ${tokenUsed}, cannot restore credits`);
-    }
+    // Get current credits to calculate restored value (only if we have a valid credit field)
+    let currentCredits = null;
+    let restoredCreditValue = null;
 
-    // Get current credits to calculate restored value
-    const currentCredits = await getContactCreditsFromSupabase(
-      bookingData.student_id,
-      bookingData.student_email
-    );
+    if (creditField) {
+      currentCredits = await getContactCreditsFromSupabase(
+        bookingData.student_id,
+        bookingData.student_email
+      );
+      restoredCreditValue = (currentCredits?.[creditField] || 0) + 1;
 
-    const restoredCreditValue = (currentCredits?.[creditField] || 0) + 1;
-
-    console.log('💳 Credit restoration plan:', {
-      tokenUsed,
-      creditField,
-      currentValue: currentCredits?.[creditField] || 0,
-      restoredValue: restoredCreditValue
-    });
-
-    // Step 4: Cancel booking atomically (Supabase-first)
-    let cancellationResult;
-    try {
-      cancellationResult = await cancelBookingAtomic({
-        bookingId: bookingData.id,  // UUID primary key
+      console.log('💳 Credit restoration plan:', {
+        tokenUsed,
         creditField,
-        restoredCreditValue
-      });
-
-      console.log('✅ Booking cancelled atomically:', {
-        bookingId: bookingData.id,
-        booking_code: bookingData.booking_id,
-        creditField,
+        currentValue: currentCredits?.[creditField] || 0,
         restoredValue: restoredCreditValue
       });
+    } else {
+      console.warn(`⚠️ Unknown token type: ${tokenUsed}, skipping credit restoration (Admin Override or legacy booking)`);
+    }
+
+    // Step 4: Cancel booking (Supabase-first)
+    // Use atomic RPC if credit restoration needed, otherwise simple update
+    let cancellationResult;
+    try {
+      if (creditField && restoredCreditValue !== null) {
+        // Standard cancellation with credit restoration via atomic RPC
+        cancellationResult = await cancelBookingAtomic({
+          bookingId: bookingData.id,  // UUID primary key
+          creditField,
+          restoredCreditValue
+        });
+
+        console.log('✅ Booking cancelled atomically with credit restoration:', {
+          bookingId: bookingData.id,
+          booking_code: bookingData.booking_id,
+          creditField,
+          restoredValue: restoredCreditValue
+        });
+      } else {
+        // Admin Override or unknown token - cancel without credit restoration
+        // Direct Supabase update (no RPC needed)
+        const { createClient } = require('@supabase/supabase-js');
+        const supabaseAdmin = createClient(
+          process.env.SUPABASE_URL,
+          process.env.SUPABASE_SERVICE_ROLE_KEY,
+          {
+            auth: { persistSession: false, autoRefreshToken: false },
+            db: { schema: process.env.SUPABASE_SCHEMA_NAME || 'hubspot_sync' }
+          }
+        );
+
+        const { data, error: updateError } = await supabaseAdmin
+          .from('hubspot_bookings')
+          .update({
+            is_active: 'Cancelled',
+            updated_at: new Date().toISOString(),
+            synced_at: new Date().toISOString()
+          })
+          .eq('id', bookingData.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          throw new Error(updateError.message);
+        }
+
+        cancellationResult = {
+          success: true,
+          data: {
+            booking_id: data.id,
+            booking_hubspot_id: data.hubspot_id,
+            student_id: data.student_id,
+            mock_exam_id: data.associated_mock_exam
+          }
+        };
+
+        console.log('✅ Booking cancelled (no credit restoration - Admin Override):', {
+          bookingId: bookingData.id,
+          booking_code: bookingData.booking_id,
+          tokenUsed
+        });
+      }
     } catch (cancelError) {
-      console.error('❌ Atomic cancellation failed:', cancelError.message);
+      console.error('❌ Booking cancellation failed:', cancelError.message);
       const error = new Error('Failed to cancel booking');
       error.status = 500;
       error.code = 'CANCEL_FAILED';
@@ -537,29 +586,32 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
         }
 
         // Webhook 2: Sync contact credits to HubSpot (restore credit)
-        const restoredCredits = {
-          sj_credits: currentCredits?.sj_credits || 0,
-          cs_credits: currentCredits?.cs_credits || 0,
-          sjmini_credits: currentCredits?.sjmini_credits || 0,
-          mock_discussion_token: currentCredits?.mock_discussion_token || 0,
-          shared_mock_credits: currentCredits?.shared_mock_credits || 0
-        };
+        // Only sync if we actually restored credits (skip for Admin Override bookings)
+        if (creditField && currentCredits) {
+          const restoredCredits = {
+            sj_credits: currentCredits?.sj_credits || 0,
+            cs_credits: currentCredits?.cs_credits || 0,
+            sjmini_credits: currentCredits?.sjmini_credits || 0,
+            mock_discussion_token: currentCredits?.mock_discussion_token || 0,
+            shared_mock_credits: currentCredits?.shared_mock_credits || 0
+          };
 
-        // Update the restored field
-        if (creditField) {
+          // Update the restored field
           restoredCredits[creditField] = restoredCreditValue;
-        }
 
-        const creditsSyncResult = await HubSpotWebhookService.syncContactCredits(
-          contactId,
-          bookingData.student_email,
-          restoredCredits
-        );
+          const creditsSyncResult = await HubSpotWebhookService.syncContactCredits(
+            contactId,
+            bookingData.student_email,
+            restoredCredits
+          );
 
-        if (creditsSyncResult.success) {
-          console.log(`✅ [WEBHOOK-CREDITS] HubSpot credits synced after cancellation: ${creditsSyncResult.message}`);
+          if (creditsSyncResult.success) {
+            console.log(`✅ [WEBHOOK-CREDITS] HubSpot credits synced after cancellation: ${creditsSyncResult.message}`);
+          } else {
+            console.error(`❌ [WEBHOOK-CREDITS] Credits sync failed after cancellation: ${creditsSyncResult.message}`);
+          }
         } else {
-          console.error(`❌ [WEBHOOK-CREDITS] Credits sync failed after cancellation: ${creditsSyncResult.message}`);
+          console.log(`ℹ️ [WEBHOOK-CREDITS] Skipping credit sync - no credit restoration for Admin Override booking`);
         }
       })().catch(err => {
         console.error('❌ [WEBHOOK] Unexpected error in webhook sync:', err.message);
