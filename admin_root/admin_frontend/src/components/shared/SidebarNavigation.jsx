@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { ResponsiveLogo } from './Logo';
@@ -11,11 +11,14 @@ import DarkModeToggle from './DarkModeToggle';
  * - Desktop: Full vertical sidebar
  * - Mobile: Collapsible hamburger menu
  * - Includes PrepDoctors branding and active state indicators
+ * - Data Management submenu with hover-to-close behavior
  */
 const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const [dataManagementOpen, setDataManagementOpen] = useState(false);
+  const dataManagementRef = useRef(null);
 
   // Navigation items for admin
   const navigationItems = [
@@ -38,6 +41,19 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
         </svg>
       ),
       requiresAuth: true
+    }
+  ];
+
+  // Data Management submenu items
+  const dataManagementItems = [
+    {
+      name: 'Bulk Bookings',
+      href: '/data-management/bulk-bookings',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+        </svg>
+      )
     }
   ];
 
@@ -181,6 +197,92 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                   </li>
                 );
               })}
+
+              {/* Data Management Menu with Submenu */}
+              <li
+                ref={dataManagementRef}
+                className="relative"
+                onMouseLeave={() => setDataManagementOpen(false)}
+              >
+                <button
+                  onClick={() => setDataManagementOpen(!dataManagementOpen)}
+                  className={`
+                    w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg
+                    transition-all duration-200 text-left
+                    ${dataManagementOpen || location.pathname.startsWith('/data-management')
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-dark-hover'
+                    }
+                    focus:outline-none focus:ring-2 focus:ring-primary-400 dark:focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800
+                  `}
+                >
+                  <span className={`
+                    mr-3 flex-shrink-0
+                    ${dataManagementOpen || location.pathname.startsWith('/data-management')
+                      ? 'text-primary-600 dark:text-primary-400'
+                      : 'text-gray-400 dark:text-gray-500'
+                    }
+                  `}>
+                    {/* Database/Data Management Icon */}
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                    </svg>
+                  </span>
+                  <span className="flex-1">Data Management</span>
+
+                  {/* Chevron indicator */}
+                  <span className="ml-auto">
+                    <svg
+                      className={`w-4 h-4 transition-transform duration-200 ${dataManagementOpen ? 'rotate-90' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                </button>
+
+                {/* Submenu - appears to the right like HubSpot */}
+                {dataManagementOpen && (
+                  <div
+                    className="absolute left-full top-0 ml-2 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg z-50"
+                    onMouseLeave={() => setDataManagementOpen(false)}
+                  >
+                    <div className="py-2">
+                      {dataManagementItems.map((subItem) => {
+                        const isSubActive = isActivePath(subItem.href);
+
+                        return (
+                          <button
+                            key={subItem.name}
+                            onClick={() => {
+                              handleNavigation(subItem.href);
+                              setDataManagementOpen(false);
+                            }}
+                            className={`
+                              w-full flex items-center px-4 py-2.5 text-sm font-medium
+                              transition-all duration-200 text-left
+                              ${isSubActive
+                                ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-dark-hover'
+                              }
+                            `}
+                          >
+                            <span className={`
+                              mr-3 flex-shrink-0
+                              ${isSubActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'}
+                            `}>
+                              {subItem.icon}
+                            </span>
+                            <span>{subItem.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </li>
             </ul>
           </nav>
 
