@@ -512,7 +512,7 @@ PREP003,987654321,cs_credits`;
   return (
     <div className="p-8">
       {/* Page Header */}
-      <div className="mb-8">
+      <div className="mb-8 max-w-3xl mx-auto">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           Bulk Bookings Import
         </h1>
@@ -522,7 +522,7 @@ PREP003,987654321,cs_credits`;
       </div>
 
       {/* Main Content */}
-      <div className="max-w-3xl">
+      <div className="max-w-3xl mx-auto">
         {/* Upload Zone or File Preview */}
         {importState === 'processing' ? (
           renderProcessing()
