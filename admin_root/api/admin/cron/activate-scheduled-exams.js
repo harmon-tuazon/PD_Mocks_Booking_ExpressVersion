@@ -2,7 +2,9 @@
  * GET /api/admin/cron/activate-scheduled-exams
  * Vercel Cron Job - Automatically activate scheduled mock exam sessions
  *
- * Schedule: Runs daily at 6:00 PM UTC (0 18 * * *) = 1:00 PM EST / 2:00 PM EDT - configured in vercel.json
+ * Schedule: Runs twice daily - configured in vercel.json
+ *   - 5:00 PM UTC (0 17 * * *) = 12:00 PM EST / 1:00 PM EDT
+ *   - 6:00 PM UTC (0 18 * * *) = 1:00 PM EST / 2:00 PM EDT
  * Purpose: Finds sessions where scheduled_activation_datetime <= now() and activates them
  *
  * Security: Requires CRON_SECRET from Vercel (set in environment variables)
