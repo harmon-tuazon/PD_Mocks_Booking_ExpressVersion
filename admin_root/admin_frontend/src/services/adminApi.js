@@ -451,6 +451,21 @@ export const authApi = {
   }
 };
 
+/**
+ * Bulk Bookings API endpoints
+ */
+export const bulkBookingsApi = {
+  /**
+   * Create multiple bookings from CSV data
+   * @param {string} csvData - CSV string with student_id, mock_exam_id, token_used columns
+   * @returns {Promise<Object>} Result with created bookings and errors
+   */
+  createFromCSV: async (csvData) => {
+    const response = await api.post('/admin/bookings/bulk-create', { csv_data: csvData });
+    return response.data;
+  }
+};
+
 // Export the axios instance as adminApi for direct use in hooks
 export const adminApi = api;
 
