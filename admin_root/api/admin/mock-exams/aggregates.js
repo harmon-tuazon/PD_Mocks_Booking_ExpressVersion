@@ -120,7 +120,8 @@ module.exports = async (req, res) => {
             total_bookings: totalBookings,
             available_slots: Math.max(0, capacity - totalBookings),
             utilization_rate: utilizationRate,
-            is_active: exam.is_active
+            is_active: exam.is_active,
+            scheduled_activation_datetime: exam.scheduled_activation_datetime || null  // For tooltip on "Scheduled" status
           });
         });
 
