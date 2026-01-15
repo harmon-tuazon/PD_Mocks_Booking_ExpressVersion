@@ -243,10 +243,11 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                   </span>
                 </button>
 
-                {/* Submenu - appears to the right like HubSpot */}
+                {/* Submenu - fixed position to overlay on main content area */}
                 {dataManagementOpen && (
                   <div
-                    className="absolute left-full top-0 ml-2 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg z-50"
+                    className="fixed left-64 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-xl z-[100]"
+                    style={{ marginTop: '-44px' }}
                     onMouseLeave={() => setDataManagementOpen(false)}
                   >
                     <div className="py-2">
