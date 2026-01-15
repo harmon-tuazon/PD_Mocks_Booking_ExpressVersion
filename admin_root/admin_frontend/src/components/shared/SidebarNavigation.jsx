@@ -19,6 +19,22 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
   const { user, signOut } = useAuth();
   const [dataManagementOpen, setDataManagementOpen] = useState(false);
   const dataManagementRef = useRef(null);
+  const closeTimeoutRef = useRef(null);
+
+  // Handle delayed close for submenu (prevents accidental closure)
+  const handleMouseLeave = () => {
+    closeTimeoutRef.current = setTimeout(() => {
+      setDataManagementOpen(false);
+    }, 200); // 200ms delay before closing
+  };
+
+  // Cancel close timeout when mouse re-enters
+  const handleMouseEnter = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  };
 
   // Navigation items for admin
   const navigationItems = [
@@ -202,7 +218,8 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
               <li
                 ref={dataManagementRef}
                 className="relative"
-                onMouseLeave={() => setDataManagementOpen(false)}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
               >
                 <button
                   onClick={() => setDataManagementOpen(!dataManagementOpen)}
@@ -248,7 +265,8 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                   <div
                     className="fixed left-64 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-xl z-[100]"
                     style={{ marginTop: '-44px' }}
-                    onMouseLeave={() => setDataManagementOpen(false)}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
                   >
                     <div className="py-2">
                       {dataManagementItems.map((subItem) => {
