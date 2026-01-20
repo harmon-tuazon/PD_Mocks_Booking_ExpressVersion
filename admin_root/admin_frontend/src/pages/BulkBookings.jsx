@@ -536,9 +536,14 @@ PREP003,987654321,clinical skills`;
                       <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{row.mock_type}</td>
                       <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{formatDate(row.exam_date)}</td>
                       <td className="px-3 py-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
-                          {row.token_display_name}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+                            {row.token_display_name}
+                          </span>
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300" title={`${row.credits_before} available → ${row.credits_after} after`}>
+                            {row.credits_before} → {row.credits_after}
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   ))}

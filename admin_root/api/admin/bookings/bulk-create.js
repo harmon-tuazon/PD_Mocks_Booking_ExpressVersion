@@ -511,8 +511,14 @@ async function bulkCreateBookingsHandler(req, res) {
         continue;
       }
 
+      // Capture available credits BEFORE decrementing (this is what user currently has)
+      const creditsBeforeBooking = creditUsageTracker[row.student_id][normalizedTokenType];
+
       // Decrement credit in tracker (for subsequent rows in same import)
       creditUsageTracker[row.student_id][normalizedTokenType] -= 1;
+
+      // Credits remaining after this booking
+      const creditsAfterBooking = creditUsageTracker[row.student_id][normalizedTokenType];
 
       // Add to set to prevent duplicates within same upload
       existingBookingIds.add(bookingId);
@@ -523,7 +529,9 @@ async function bulkCreateBookingsHandler(req, res) {
         normalizedTokenType,
         contact,
         exam,
-        bookingId
+        bookingId,
+        creditsBeforeBooking,
+        creditsAfterBooking
       });
     }
 
@@ -553,7 +561,9 @@ async function bulkCreateBookingsHandler(req, res) {
           token_used: v.row.token_used,
           token_used_normalized: v.normalizedTokenType,
           token_display_name: getTokenDisplayName(v.normalizedTokenType),
-          booking_id: v.bookingId
+          booking_id: v.bookingId,
+          credits_before: v.creditsBeforeBooking,
+          credits_after: v.creditsAfterBooking
         })),
         invalid_rows: invalidRows.sort((a, b) => a.row - b.row),
         meta: {
