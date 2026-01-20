@@ -653,13 +653,14 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
         hasExamDate: !!bookingData.exam_date
       });
 
-      if (bookingData.associated_contact_id && bookingData.exam_date) {
+      if (bookingData.associated_contact_id && bookingData.exam_date && bookingData.mock_type) {
         // Normalize date to YYYY-MM-DD format (Supabase returns ISO timestamp)
         // Extract just the date portion: "2026-03-01T00:00:00+00:00" -> "2026-03-01"
         const normalizedDate = bookingData.exam_date.split('T')[0];
 
-        const duplicateKey = `booking:${bookingData.associated_contact_id}:${normalizedDate}`;
-        console.log(`🔍 [DEBUG] Attempting to delete cache key: ${duplicateKey} (normalized date: ${normalizedDate})`);
+        // New cache key format includes mock_type (Option B)
+        const duplicateKey = `booking:${bookingData.associated_contact_id}:${normalizedDate}:${bookingData.mock_type}`;
+        console.log(`🔍 [DEBUG] Attempting to delete cache key: ${duplicateKey} (normalized date: ${normalizedDate}, mock_type: ${bookingData.mock_type})`);
         const deletedCount = await redis.del(duplicateKey);
 
         if (deletedCount > 0) {
@@ -667,10 +668,15 @@ async function handleDeleteRequest(req, res, hubspot, bookingId, contactId, cont
         } else {
           console.warn(`⚠️ [REDIS] Cache key not found: ${duplicateKey} (may have already expired or never existed)`);
         }
+
+        // Also try to delete old format key (for backwards compatibility during transition)
+        const oldFormatKey = `booking:${bookingData.associated_contact_id}:${normalizedDate}`;
+        await redis.del(oldFormatKey);
       } else {
         console.error(`❌ [REDIS] Cannot invalidate cache - missing data:`, {
           associated_contact_id: bookingData.associated_contact_id,
-          exam_date: bookingData.exam_date
+          exam_date: bookingData.exam_date,
+          mock_type: bookingData.mock_type
         });
       }
 

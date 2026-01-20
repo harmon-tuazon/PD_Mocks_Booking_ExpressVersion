@@ -18,6 +18,7 @@ const {
   createBookingAtomic,
   getContactCreditsFromSupabase,
   checkExistingBookingInSupabase,
+  checkExistingBookingByMockType,
   supabaseAdmin
 } = require('../_shared/supabase-data');
 
@@ -246,13 +247,13 @@ module.exports = async function handler(req, res) {
     const bookingId = `Mock Discussion-${student_id}-${formattedDate}`;
 
     // ========================================================================
-    // DUAL-TIER DUPLICATE DETECTION - Prevents duplicate Mock Discussion bookings
+    // DUAL-TIER DUPLICATE DETECTION - Prevents duplicate Mock Discussion bookings (Option B)
     // ========================================================================
     // TIER 1: Check Redis cache for existing Active bookings (fast path ~1ms)
     // TIER 2: Query Supabase to verify no active bookings exist (~50ms)
     //
-    // Cache Key Format: booking:{hubspot_contact_id}:{exam_date}
-    // Cache Value: "{bookingId}:Active" - Active booking exists (TTL: until exam date)
+    // Cache Key Format: booking:{hubspot_contact_id}:{exam_date}:{mock_type}
+    // Cache Value: "{bookingId}" - Active booking exists (TTL: until exam date)
     // ========================================================================
 
     // Initialize Redis for duplicate detection cache
@@ -261,16 +262,15 @@ module.exports = async function handler(req, res) {
     // Format cache key: Use hubspot_id (numeric HubSpot contact ID) for consistency
     // Normalize exam_date to YYYY-MM-DD format for consistent cache keys
     const normalizedExamDate = exam_date.includes('T') ? exam_date.split('T')[0] : exam_date;
-    const redisKey = `booking:${hubspot_id}:${normalizedExamDate}`;
+    const mockType = 'Mock Discussion';
+    const redisKey = `booking:${hubspot_id}:${normalizedExamDate}:${mockType}`;
     const cachedResult = await redis.get(redisKey);
 
     console.log(`[Mock Discussion Duplicate Check] Cache key: ${redisKey}, Result: ${cachedResult}`);
 
     // TIER 1: Check Redis cache for existing Active bookings (fast path)
-    if (cachedResult && cachedResult.includes('Active')) {
-      // Cache contains booking_id:status (e.g., "Mock Discussion-1599999-March 1, 2026:Active")
-      const [cachedBookingId] = cachedResult.split(':');
-      console.log(`❌ Redis cache hit: Active Mock Discussion booking ${cachedBookingId} found for contact ${hubspot_id} on ${exam_date}`);
+    if (cachedResult) {
+      console.log(`❌ Redis cache hit: Active Mock Discussion booking found for contact ${hubspot_id} on ${exam_date}`);
 
       const error = new Error('Duplicate booking detected: You already have an active Mock Discussion booking for this date');
       error.status = 400;
@@ -278,20 +278,20 @@ module.exports = async function handler(req, res) {
       throw error;
     }
 
-    // TIER 2: Cache miss or non-Active status - verify with Supabase
+    // TIER 2: Cache miss - verify with Supabase (authoritative check with mock_type)
     // Use Supabase-only approach (10x faster than HubSpot: ~50ms vs ~500ms)
-    console.log(`⚠️ Redis cache miss or non-Active status - verifying with Supabase for contact ${hubspot_id} on ${exam_date}`);
+    console.log(`⚠️ Redis cache miss - verifying with Supabase for contact ${hubspot_id} on ${exam_date} (${mockType})`);
 
-    const isDuplicate = await checkExistingBookingInSupabase(hubspot_id, exam_date);
+    const duplicateCheck = await checkExistingBookingByMockType(hubspot_id, normalizedExamDate, mockType);
 
-    if (isDuplicate) {
+    if (duplicateCheck.exists) {
       // Active duplicate found in Supabase - cache it for future fast-path rejection
       console.log(`❌ [SUPABASE] Duplicate check: Active Mock Discussion booking found for contact ${hubspot_id} on ${exam_date}`);
       const examDateTime = new Date(`${exam_date}T23:59:59Z`);
-      const ttlSeconds = Math.max((examDateTime - Date.now()) / 1000, 86400);
-      await redis.setex(redisKey, Math.floor(ttlSeconds), `${bookingId}:Active`);
+      const ttlSeconds = Math.max(Math.floor((examDateTime - Date.now()) / 1000), 86400);
+      await redis.setex(redisKey, ttlSeconds, duplicateCheck.existingBooking.booking_id);
 
-      const error = new Error('Duplicate booking detected: You already have a Mock Discussion booking for this date');
+      const error = new Error(`Duplicate booking detected: You already have a Mock Discussion booking for this date (${duplicateCheck.existingBooking.booking_id})`);
       error.status = 400;
       error.code = 'DUPLICATE_BOOKING';
       throw error;
@@ -599,11 +599,11 @@ module.exports = async function handler(req, res) {
     console.log(`✅ Atomic booking created: ${bookingId}, Total bookings: ${newTotalBookings}`);
 
     // Cache Active booking status in Redis to prevent duplicate bookings (until exam date)
-    // Use normalized date (YYYY-MM-DD) for consistent cache keys
-    const verifiedRedisKey = `booking:${hubspot_id}:${normalizedExamDate}`;
+    // Use normalized date (YYYY-MM-DD) + mock_type for Option B cache keys
+    const verifiedRedisKey = `booking:${hubspot_id}:${normalizedExamDate}:${mockType}`;
     const examDateTime = new Date(`${normalizedExamDate}T23:59:59Z`);
     const ttlSeconds = Math.max((examDateTime - Date.now()) / 1000, 86400);
-    await redis.setex(verifiedRedisKey, Math.floor(ttlSeconds), `${bookingId}:Active`);
+    await redis.setex(verifiedRedisKey, Math.floor(ttlSeconds), bookingId);
     console.log(`✅ Cached Active Mock Discussion booking in Redis: ${verifiedRedisKey} (TTL: ${Math.floor(ttlSeconds)}s)`);
 
     // ========================================================================

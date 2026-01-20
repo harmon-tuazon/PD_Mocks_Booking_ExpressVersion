@@ -174,6 +174,40 @@ async function checkExistingBookingInSupabase(contactId, examDate) {
   return data && data.length > 0;
 }
 
+/**
+ * Check if active booking exists for contact on specific exam date AND mock type
+ * Used for Option B duplicate detection - prevents multiple same-type bookings on same day
+ * @param {string} contactId - Numeric HubSpot contact ID (associated_contact_id)
+ * @param {string} examDate - Exam date in YYYY-MM-DD format
+ * @param {string} mockType - Mock exam type (e.g., 'Mini-mock', 'Clinical Skills', 'Situational Judgment')
+ * @returns {Promise<{exists: boolean, existingBooking: object|null}>} - Result with existing booking details if found
+ */
+async function checkExistingBookingByMockType(contactId, examDate, mockType) {
+  // Normalize exam date to YYYY-MM-DD format
+  const normalizedDate = examDate.includes('T') ? examDate.split('T')[0] : examDate;
+
+  const { data, error } = await supabaseAdmin
+    .from('hubspot_bookings')
+    .select('id, booking_id, mock_type, exam_date, start_time, end_time, is_active')
+    .eq('associated_contact_id', contactId)
+    .eq('exam_date', normalizedDate)
+    .eq('mock_type', mockType)
+    .neq('is_active', 'Cancelled')
+    .neq('is_active', 'cancelled')
+    .limit(1);
+
+  if (error) {
+    console.error(`❌ Supabase duplicate check error for contact ${contactId} on ${examDate} (${mockType}):`, error.message);
+    throw error;
+  }
+
+  const exists = data && data.length > 0;
+  return {
+    exists,
+    existingBooking: exists ? data[0] : null
+  };
+}
+
 // ============== WRITE SYNC OPERATIONS (after HubSpot write) ==============
 
 /**
@@ -755,6 +789,7 @@ module.exports = {
   getBookingByIdFromSupabase,
   getActiveBookingsCountFromSupabase,
   checkExistingBookingInSupabase,
+  checkExistingBookingByMockType,
   getContactCreditsFromSupabase,
   getBookingCascading,
   // Write syncs
