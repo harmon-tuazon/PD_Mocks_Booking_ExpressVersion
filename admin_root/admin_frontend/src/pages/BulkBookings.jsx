@@ -6,27 +6,34 @@ import { bulkBookingsApi } from '../services/adminApi';
  * Bulk Bookings Page
  *
  * Allows admins to create multiple bookings by uploading a CSV file.
+ * Features a two-step flow:
+ * 1. Preview & Validate - Shows valid vs invalid rows before creation
+ * 2. Create Bookings - Only creates valid rows, reports all errors
+ *
  * CSV requires only 3 columns: student_id, mock_exam_id, token_used
- * Missing properties are auto-filled from the database.
+ * Token types accept flexible input (e.g., "SJ", "situational judgment", "sj_credits")
  */
 
 // Constants
 const MAX_ROWS = 500;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const VALID_TOKEN_TYPES = [
-  'sj_credits',
-  'cs_credits',
-  'sjmini_credits',
-  'mock_discussion_token',
-  'shared_mock_credits'
+
+// Token type examples for user guidance
+const TOKEN_EXAMPLES = [
+  { label: 'Situational Judgment', examples: ['sj', 'sj_credits', 'situational judgment'] },
+  { label: 'Clinical Skills', examples: ['cs', 'cs_credits', 'clinical skills'] },
+  { label: 'Mini-mock', examples: ['sjmini', 'mini-mock', 'sjmini_credits'] },
+  { label: 'Mock Discussion', examples: ['md', 'discussion', 'mock_discussion_token'] },
+  { label: 'Shared', examples: ['shared', 'shared_mock_credits'] }
 ];
 
 const BulkBookings = () => {
   // State
-  const [importState, setImportState] = useState('idle'); // idle, parsing, processing, success, error
+  const [importState, setImportState] = useState('idle'); // idle, parsing, previewing, processing, success, error
   const [selectedFile, setSelectedFile] = useState(null);
   const [parsedData, setParsedData] = useState(null);
-  const [result, setResult] = useState(null);
+  const [validationResult, setValidationResult] = useState(null);
+  const [createResult, setCreateResult] = useState(null);
   const [dragActive, setDragActive] = useState(false);
 
   // Refs
@@ -102,6 +109,8 @@ const BulkBookings = () => {
 
     setSelectedFile(file);
     setImportState('parsing');
+    setValidationResult(null);
+    setCreateResult(null);
 
     // Read file content
     const reader = new FileReader();
@@ -167,11 +176,48 @@ const BulkBookings = () => {
   };
 
   /**
-   * Process the upload
+   * Validate and preview the CSV data
    */
-  const handleUpload = async () => {
+  const handleValidatePreview = async () => {
     if (!parsedData?.rawContent) {
       toast.error('No file selected');
+      return;
+    }
+
+    setImportState('previewing');
+
+    try {
+      const response = await bulkBookingsApi.previewFromCSV(parsedData.rawContent);
+      setValidationResult(response);
+      setImportState('idle');
+
+      // Show toast based on results
+      if (response.summary.invalid_count === 0) {
+        toast.success(`All ${response.summary.valid_count} rows validated successfully`);
+      } else if (response.summary.valid_count > 0) {
+        toast.success(`${response.summary.valid_count} valid, ${response.summary.invalid_count} invalid rows`);
+      } else {
+        toast.error(`All ${response.summary.invalid_count} rows have errors`);
+      }
+
+    } catch (error) {
+      console.error('Validation error:', error);
+      setImportState('error');
+      toast.error(`Validation failed: ${error.message}`);
+    }
+  };
+
+  /**
+   * Create bookings from validated data
+   */
+  const handleCreateBookings = async () => {
+    if (!parsedData?.rawContent) {
+      toast.error('No file selected');
+      return;
+    }
+
+    if (!validationResult || validationResult.summary.valid_count === 0) {
+      toast.error('No valid rows to create');
       return;
     }
 
@@ -179,31 +225,22 @@ const BulkBookings = () => {
 
     try {
       const response = await bulkBookingsApi.createFromCSV(parsedData.rawContent);
-
-      setResult(response);
+      setCreateResult(response);
       setImportState('success');
 
       // Show toast based on results
-      if (response.summary.errors === 0) {
+      if (response.summary.skipped === 0) {
         toast.success(`Successfully created ${response.summary.created} bookings`);
       } else if (response.summary.created > 0) {
-        toast.success(`Created ${response.summary.created} bookings with ${response.summary.errors} errors`);
+        toast.success(`Created ${response.summary.created} bookings, ${response.summary.skipped} skipped`);
       } else {
-        toast.error(`All ${response.summary.errors} rows failed to import`);
-      }
-
-      // Auto-download error report if there are errors
-      if (response.errors && response.errors.length > 0) {
-        downloadErrorReport(response.errors);
+        toast.error(`All rows failed to import`);
       }
 
     } catch (error) {
       console.error('Bulk import error:', error);
       setImportState('error');
-
-      // Handle different error types
-      const errorMessage = error.message || 'Failed to process bulk bookings';
-      toast.error(`Import failed: ${errorMessage}`);
+      toast.error(`Import failed: ${error.message}`);
     }
   };
 
@@ -211,7 +248,7 @@ const BulkBookings = () => {
    * Download error report as CSV
    */
   const downloadErrorReport = (errors) => {
-    const headers = ['row_number', 'student_id', 'mock_exam_id', 'token_used', 'error_code', 'error_message'];
+    const headers = ['row_number', 'student_id', 'mock_exam_id', 'token_used', 'token_normalized', 'error_code', 'error_message'];
     const csvContent = [
       headers.join(','),
       ...errors.map(err => [
@@ -219,6 +256,7 @@ const BulkBookings = () => {
         err.student_id || '',
         err.mock_exam_id || '',
         err.token_used || '',
+        err.token_used_normalized || '',
         err.error_code || '',
         `"${(err.error_message || '').replace(/"/g, '""')}"`
       ].join(','))
@@ -238,9 +276,9 @@ const BulkBookings = () => {
    */
   const downloadTemplate = () => {
     const template = `student_id,mock_exam_id,token_used
-PREP001,123456789,sj_credits
-PREP002,123456789,shared_mock_credits
-PREP003,987654321,cs_credits`;
+PREP001,123456789,sj
+PREP002,123456789,shared
+PREP003,987654321,clinical skills`;
 
     const blob = new Blob([template], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -258,10 +296,30 @@ PREP003,987654321,cs_credits`;
     setImportState('idle');
     setSelectedFile(null);
     setParsedData(null);
-    setResult(null);
+    setValidationResult(null);
+    setCreateResult(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  /**
+   * Go back to file preview (before validation)
+   */
+  const handleBackToFile = () => {
+    setValidationResult(null);
+  };
+
+  /**
+   * Format date for display
+   */
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
   };
 
   /**
@@ -287,7 +345,7 @@ PREP003,987654321,cs_credits`;
         accept=".csv"
         onChange={handleFileInputChange}
         className="hidden"
-        disabled={importState === 'processing'}
+        disabled={importState === 'processing' || importState === 'previewing'}
       />
 
       <div className="mx-auto w-12 h-12 bg-gray-100 dark:bg-dark-hover rounded-full flex items-center justify-center mb-4">
@@ -305,7 +363,7 @@ PREP003,987654321,cs_credits`;
 
       <button
         onClick={() => fileInputRef.current?.click()}
-        disabled={importState === 'processing'}
+        disabled={importState === 'processing' || importState === 'previewing'}
         className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 disabled:opacity-50"
       >
         Browse Files
@@ -318,28 +376,28 @@ PREP003,987654321,cs_credits`;
   );
 
   /**
-   * Render file preview
+   * Render file preview (before validation)
    */
   const renderFilePreview = () => (
     <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
           <div>
             <p className="font-medium text-gray-900 dark:text-gray-100">{selectedFile?.name}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {parsedData?.rowCount} rows to import
+              {parsedData?.rowCount} rows to validate
             </p>
           </div>
         </div>
 
         <button
           onClick={handleReset}
-          disabled={importState === 'processing'}
+          disabled={importState === 'previewing'}
           className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -381,33 +439,204 @@ PREP003,987654321,cs_credits`;
         </div>
       )}
 
-      {/* Upload button */}
+      {/* Validate button */}
       <div className="mt-6 flex justify-end">
         <button
-          onClick={handleUpload}
-          disabled={importState === 'processing'}
+          onClick={handleValidatePreview}
+          disabled={importState === 'previewing'}
           className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 disabled:opacity-50 flex items-center gap-2"
         >
-          {importState === 'processing' ? (
+          {importState === 'previewing' ? (
             <>
               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Processing...
+              Validating...
             </>
           ) : (
             <>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Import {parsedData?.rowCount} Bookings
+              Validate & Preview
             </>
           )}
         </button>
       </div>
     </div>
   );
+
+  /**
+   * Render validation preview (after validation, before creation)
+   */
+  const renderValidationPreview = () => {
+    const { valid_rows, invalid_rows, summary } = validationResult;
+
+    return (
+      <div className="space-y-6">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-gray-50 dark:bg-dark-bg rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {summary.total_rows}
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Total Rows</p>
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              {summary.valid_count}
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Valid</p>
+          </div>
+          <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+              {summary.invalid_count}
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Invalid</p>
+          </div>
+        </div>
+
+        {/* Valid Rows Section */}
+        {valid_rows.length > 0 && (
+          <div className="bg-white dark:bg-dark-card border border-green-200 dark:border-green-800 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800">
+              <h3 className="font-medium text-green-800 dark:text-green-200 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Valid Bookings ({valid_rows.length})
+              </h3>
+            </div>
+            <div className="overflow-x-auto max-h-64 overflow-y-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 dark:bg-dark-bg sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Row</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Student ID</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Name</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Exam Type</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Exam Date</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Token Used</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {valid_rows.map((row, idx) => (
+                    <tr key={idx} className="border-b border-gray-100 dark:border-dark-border/50 hover:bg-gray-50 dark:hover:bg-dark-hover">
+                      <td className="px-3 py-2 text-gray-500 dark:text-gray-400">{row.row}</td>
+                      <td className="px-3 py-2 text-gray-900 dark:text-gray-100 font-mono text-xs">{row.student_id}</td>
+                      <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{row.student_name}</td>
+                      <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{row.mock_type}</td>
+                      <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{formatDate(row.exam_date)}</td>
+                      <td className="px-3 py-2">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+                          {row.token_display_name}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Invalid Rows Section */}
+        {invalid_rows.length > 0 && (
+          <div className="bg-white dark:bg-dark-card border border-red-200 dark:border-red-800 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 flex items-center justify-between">
+              <h3 className="font-medium text-red-800 dark:text-red-200 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Invalid Rows ({invalid_rows.length}) - Will be skipped
+              </h3>
+              <button
+                onClick={() => downloadErrorReport(invalid_rows)}
+                className="text-sm text-red-600 dark:text-red-400 hover:underline flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download Error Report
+              </button>
+            </div>
+            <div className="overflow-x-auto max-h-64 overflow-y-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 dark:bg-dark-bg sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Row</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Student ID</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Exam ID</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Error</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invalid_rows.map((row, idx) => (
+                    <tr key={idx} className="border-b border-gray-100 dark:border-dark-border/50 hover:bg-gray-50 dark:hover:bg-dark-hover">
+                      <td className="px-3 py-2 text-gray-500 dark:text-gray-400">{row.row}</td>
+                      <td className="px-3 py-2 text-gray-900 dark:text-gray-100 font-mono text-xs">{row.student_id || '-'}</td>
+                      <td className="px-3 py-2 text-gray-900 dark:text-gray-100 font-mono text-xs">{row.mock_exam_id || '-'}</td>
+                      <td className="px-3 py-2">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200">
+                          {row.error_code}
+                        </span>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{row.error_message}</p>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-dark-border">
+          <button
+            onClick={handleBackToFile}
+            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200 flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to File
+          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleReset}
+              className="px-4 py-2 border border-gray-300 dark:border-dark-border text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCreateBookings}
+              disabled={summary.valid_count === 0 || importState === 'processing'}
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {importState === 'processing' ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Create {summary.valid_count} Bookings
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   /**
    * Render processing state
@@ -422,10 +651,10 @@ PREP003,987654321,cs_credits`;
       </div>
 
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-        Processing...
+        Creating Bookings...
       </h3>
       <p className="text-gray-600 dark:text-gray-400 mb-4">
-        Creating {parsedData?.rowCount} bookings
+        Creating {validationResult?.summary?.valid_count || parsedData?.rowCount} bookings
       </p>
       <p className="text-sm text-gray-500 dark:text-gray-500">
         Please don't close this page
@@ -436,98 +665,132 @@ PREP003,987654321,cs_credits`;
   /**
    * Render success state
    */
-  const renderSuccess = () => (
-    <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg p-8">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
-          <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-          Import Completed
-        </h3>
-      </div>
+  const renderSuccess = () => {
+    const result = createResult;
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="bg-gray-50 dark:bg-dark-bg rounded-lg p-4 text-center">
-          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {result?.summary?.total_rows || 0}
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
-        </div>
-        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-            {result?.summary?.created || 0}
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Created</p>
-        </div>
-        <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 text-center">
-          <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-            {result?.summary?.errors || 0}
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Errors</p>
-        </div>
-      </div>
-
-      {/* Error notice */}
-      {result?.errors && result.errors.length > 0 && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+    return (
+      <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg p-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <div>
-              <p className="font-medium text-amber-800 dark:text-amber-200">
-                {result.errors.length} rows had errors and were not imported.
-              </p>
-              <button
-                onClick={() => downloadErrorReport(result.errors)}
-                className="text-sm text-amber-600 dark:text-amber-400 hover:underline mt-1 flex items-center gap-1"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download Error Report (CSV)
-              </button>
-            </div>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Import Completed
+          </h3>
+        </div>
+
+        {/* Summary cards */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="bg-gray-50 dark:bg-dark-bg rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {result?.summary?.total_rows || 0}
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              {result?.summary?.created || 0}
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Created</p>
+          </div>
+          <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+              {result?.summary?.skipped || 0}
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Skipped</p>
           </div>
         </div>
-      )}
 
-      {/* Action button */}
-      <div className="text-center">
-        <button
-          onClick={handleReset}
-          className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
-        >
-          Import Another File
-        </button>
+        {/* Skipped rows notice */}
+        {result?.skipped_rows && result.skipped_rows.length > 0 && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <p className="font-medium text-amber-800 dark:text-amber-200">
+                  {result.skipped_rows.length} rows were skipped due to errors.
+                </p>
+                <button
+                  onClick={() => downloadErrorReport(result.skipped_rows)}
+                  className="text-sm text-amber-600 dark:text-amber-400 hover:underline mt-1 flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download Error Report (CSV)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Created bookings list */}
+        {result?.created_bookings && result.created_bookings.length > 0 && (
+          <div className="mb-6">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Created Bookings ({result.created_bookings.length})
+            </h4>
+            <div className="bg-gray-50 dark:bg-dark-bg rounded-lg p-3 max-h-40 overflow-y-auto">
+              <div className="space-y-1">
+                {result.created_bookings.slice(0, 10).map((booking, idx) => (
+                  <div key={idx} className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                    <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="font-mono">{booking.student_id}</span>
+                    <span className="text-gray-400">-</span>
+                    <span>{booking.booking_id}</span>
+                  </div>
+                ))}
+                {result.created_bookings.length > 10 && (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                    ... and {result.created_bookings.length - 10} more
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Action button */}
+        <div className="text-center">
+          <button
+            onClick={handleReset}
+            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
+          >
+            Import Another File
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="p-8">
       {/* Page Header */}
-      <div className="mb-8 max-w-3xl mx-auto">
+      <div className="mb-8 max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           Bulk Bookings Import
         </h1>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Create multiple bookings by uploading a CSV file.
+          Create multiple bookings by uploading a CSV file. Rows are validated before creation.
         </p>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-3xl mx-auto">
-        {/* Upload Zone or File Preview */}
+      <div className="max-w-4xl mx-auto">
+        {/* Upload Zone or File Preview or Validation Preview */}
         {importState === 'processing' ? (
           renderProcessing()
         ) : importState === 'success' ? (
           renderSuccess()
+        ) : validationResult ? (
+          renderValidationPreview()
         ) : parsedData ? (
           renderFilePreview()
         ) : (
@@ -535,7 +798,7 @@ PREP003,987654321,cs_credits`;
         )}
 
         {/* Template Download */}
-        {importState !== 'success' && (
+        {importState !== 'success' && !validationResult && (
           <div className="mt-6">
             <button
               onClick={downloadTemplate}
@@ -550,7 +813,7 @@ PREP003,987654321,cs_credits`;
         )}
 
         {/* Instructions */}
-        {importState !== 'success' && (
+        {importState !== 'success' && !validationResult && (
           <div className="mt-8 bg-gray-50 dark:bg-dark-bg rounded-lg p-6">
             <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-4">
               Required Columns
@@ -566,12 +829,28 @@ PREP003,987654321,cs_credits`;
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">token_used</span>
-                <span>Credit type: {VALID_TOKEN_TYPES.join(', ')}</span>
+                <span>Credit type (flexible input accepted)</span>
               </li>
             </ul>
 
+            {/* Token type examples */}
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-dark-border">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Accepted Token Types
+              </h4>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {TOKEN_EXAMPLES.map((token, idx) => (
+                  <div key={idx} className="flex items-start gap-2">
+                    <span className="font-medium text-gray-600 dark:text-gray-400 min-w-[100px]">{token.label}:</span>
+                    <span className="text-gray-500 dark:text-gray-500">{token.examples.join(', ')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-dark-border">
               <p className="text-xs text-gray-500 dark:text-gray-500">
+                Credits are validated per row. Each student must have sufficient credits of the specified type.
                 All other booking properties (name, email, exam date, etc.) will be automatically filled from the database.
               </p>
             </div>

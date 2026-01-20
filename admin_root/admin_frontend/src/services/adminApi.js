@@ -456,9 +456,19 @@ export const authApi = {
  */
 export const bulkBookingsApi = {
   /**
+   * Preview/validate bulk bookings from CSV data without creating them
+   * @param {string} csvData - CSV string with student_id, mock_exam_id, token_used columns
+   * @returns {Promise<Object>} Validation result with valid_rows and invalid_rows
+   */
+  previewFromCSV: async (csvData) => {
+    const response = await api.post('/admin/bookings/bulk-create?preview=true', { csv_data: csvData });
+    return response.data;
+  },
+
+  /**
    * Create multiple bookings from CSV data
    * @param {string} csvData - CSV string with student_id, mock_exam_id, token_used columns
-   * @returns {Promise<Object>} Result with created bookings and errors
+   * @returns {Promise<Object>} Result with created bookings and skipped rows
    */
   createFromCSV: async (csvData) => {
     const response = await api.post('/admin/bookings/bulk-create', { csv_data: csvData });
