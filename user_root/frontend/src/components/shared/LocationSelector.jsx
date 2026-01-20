@@ -2,11 +2,11 @@ import React from 'react';
 
 const LocationSelector = ({ value, onChange, required = false }) => {
   const locations = [
-    { value: 'mississauga', label: 'Mississauga' },
-    { value: 'calgary', label: 'Calgary' },
-    { value: 'vancouver', label: 'Vancouver' },
-    { value: 'montreal', label: 'Montreal' },
-    { value: 'richmond_hill', label: 'Richmond Hill' }
+    { value: 'Mississauga', label: 'Mississauga' },
+    { value: 'Calgary', label: 'Calgary' },
+    { value: 'Vancouver', label: 'Vancouver' },
+    { value: 'Montreal', label: 'Montreal' },
+    { value: 'Richmond Hill', label: 'Richmond Hill' }
   ];
 
   return (
