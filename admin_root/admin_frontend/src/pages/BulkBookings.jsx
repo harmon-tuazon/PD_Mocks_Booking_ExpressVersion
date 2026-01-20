@@ -519,31 +519,40 @@ PREP003,987654321,clinical skills`;
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-50 dark:bg-dark-bg sticky top-0">
                   <tr>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Row</th>
                     <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Student ID</th>
                     <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Name</th>
                     <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Exam Type</th>
                     <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Exam Date</th>
                     <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Token Used</th>
+                    <th className="px-3 py-2 text-center font-medium text-gray-600 dark:text-gray-400">Before</th>
+                    <th className="px-3 py-2 text-center font-medium text-gray-600 dark:text-gray-400">After</th>
                   </tr>
                 </thead>
                 <tbody>
                   {valid_rows.map((row, idx) => (
                     <tr key={idx} className="border-b border-gray-100 dark:border-dark-border/50 hover:bg-gray-50 dark:hover:bg-dark-hover">
-                      <td className="px-3 py-2 text-gray-500 dark:text-gray-400">{row.row}</td>
                       <td className="px-3 py-2 text-gray-900 dark:text-gray-100 font-mono text-xs">{row.student_id}</td>
                       <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{row.student_name}</td>
                       <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{row.mock_type}</td>
                       <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{formatDate(row.exam_date)}</td>
                       <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
-                            {row.token_display_name}
-                          </span>
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300" title={`${row.credits_before} available → ${row.credits_after} after`}>
-                            {row.credits_before} → {row.credits_after}
-                          </span>
-                        </div>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+                          {row.token_display_name}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <span className="inline-flex items-center justify-center w-8 h-6 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                          {row.credits_before}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <span className={`inline-flex items-center justify-center w-8 h-6 rounded text-xs font-medium ${
+                          row.credits_after === 0
+                            ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                            : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                        }`}>
+                          {row.credits_after}
+                        </span>
                       </td>
                     </tr>
                   ))}
