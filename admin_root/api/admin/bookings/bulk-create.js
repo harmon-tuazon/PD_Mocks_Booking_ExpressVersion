@@ -122,17 +122,38 @@ function normalizeTokenType(input) {
 /**
  * Get display name for a token type
  * @param {string} tokenType - Database column name
- * @returns {string} - Human-readable name
+ * @returns {string} - Human-readable name with "Token" suffix
  */
 function getTokenDisplayName(tokenType) {
   const displayNames = {
-    'sj_credits': 'Situational Judgment',
-    'cs_credits': 'Clinical Skills',
-    'sjmini_credits': 'Mini-mock',
-    'mock_discussion_token': 'Mock Discussion',
-    'shared_mock_credits': 'Shared'
+    'sj_credits': 'Situational Judgment Token',
+    'cs_credits': 'Clinical Skills Token',
+    'sjmini_credits': 'Mini-mock Token',
+    'mock_discussion_token': 'Mock Discussion Token',
+    'shared_mock_credits': 'Shared Token'
   };
   return displayNames[tokenType] || tokenType;
+}
+
+/**
+ * Generate a simple hash for idempotency key
+ * @param {string} input - String to hash
+ * @returns {string} - Hex hash string
+ */
+function generateHash(input) {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    const char = input.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  // Convert to hex and pad to ensure consistent length
+  const hex = Math.abs(hash).toString(16).padStart(8, '0');
+  // Create a longer hash by combining multiple variations
+  const hash2 = Math.abs((hash * 31) ^ (hash >> 16)).toString(16).padStart(8, '0');
+  const hash3 = Math.abs((hash * 17) ^ (hash << 8)).toString(16).padStart(8, '0');
+  const hash4 = Math.abs((hash * 13) ^ (hash >> 8)).toString(16).padStart(8, '0');
+  return hex + hash2 + hash3 + hash4;
 }
 
 /**
@@ -224,21 +245,6 @@ function formatDateForBookingId(dateString) {
     day: 'numeric',
     year: 'numeric'
   });
-}
-
-/**
- * Get mock type abbreviation for booking_id
- * @param {string} mockType - Full mock type name
- * @returns {string} - Abbreviation
- */
-function getMockTypeAbbreviation(mockType) {
-  const map = {
-    'Situational Judgment': 'SJ',
-    'Clinical Skills': 'CS',
-    'Mini-mock': 'MINI',
-    'Mock Discussion': 'MD'
-  };
-  return map[mockType] || mockType?.substring(0, 2)?.toUpperCase() || 'XX';
 }
 
 // ============== MAIN HANDLER ==============
@@ -380,9 +386,8 @@ async function bulkCreateBookingsHandler(req, res) {
     const potentialBookingIds = formatValidRows.map(r => {
       const exam = examMap[r.row.mock_exam_id];
       if (!exam) return null;
-      const mockTypeAbbr = getMockTypeAbbreviation(exam.mock_type);
       const formattedDate = formatDateForBookingId(exam.exam_date);
-      return `${mockTypeAbbr}-${r.row.student_id}-${formattedDate}`;
+      return `${exam.mock_type}-${r.row.student_id}-${formattedDate}`;
     }).filter(Boolean);
 
     const { data: existingBookings, error: existingError } = await supabaseAdmin
@@ -450,10 +455,9 @@ async function bulkCreateBookingsHandler(req, res) {
         continue;
       }
 
-      // Build booking_id
-      const mockTypeAbbr = getMockTypeAbbreviation(exam.mock_type);
+      // Build booking_id using full mock type name
       const formattedDate = formatDateForBookingId(exam.exam_date);
-      const bookingId = `${mockTypeAbbr}-${row.student_id}-${formattedDate}`;
+      const bookingId = `${exam.mock_type}-${row.student_id}-${formattedDate}`;
 
       // Check for duplicate in database
       if (existingBookingIds.has(bookingId)) {
@@ -578,28 +582,34 @@ async function bulkCreateBookingsHandler(req, res) {
     console.log(`[BULK-CREATE] Ready to insert ${validRows.length} bookings`);
 
     // Build booking objects for insertion
-    const bookingsToInsert = validRows.map(v => ({
-      booking_id: v.bookingId,
-      associated_mock_exam: v.row.mock_exam_id,
-      associated_contact_id: v.contact.hubspot_id,
-      student_id: v.row.student_id,
-      name: [v.contact.firstname, v.contact.lastname].filter(Boolean).join(' ') || v.row.student_id,
-      student_email: v.contact.email,
-      mock_type: v.exam.mock_type,
-      mock_set: v.exam.mock_set || null,
-      exam_date: v.exam.exam_date,
-      start_time: v.exam.start_time,
-      end_time: v.exam.end_time,
-      attending_location: v.exam.location,
-      token_used: v.normalizedTokenType, // Use normalized token type
-      is_active: 'Active',
-      attendance: null,
-      dominant_hand: null,
-      idempotency_key: `bulk-${v.contact.hubspot_id}-${v.row.mock_exam_id}-${Date.now()}-${v.row._rowNumber}`,
-      created_at: now,
-      updated_at: now,
-      synced_at: now
-    }));
+    const bookingsToInsert = validRows.map(v => {
+      // Generate idempotency key with idem_ prefix and hash
+      const idempotencyInput = `${v.contact.hubspot_id}-${v.row.mock_exam_id}-${v.exam.exam_date}-${v.row.student_id}`;
+      const idempotencyKey = `idem_${generateHash(idempotencyInput)}`;
+
+      return {
+        booking_id: v.bookingId,
+        associated_mock_exam: v.row.mock_exam_id,
+        associated_contact_id: v.contact.hubspot_id,
+        student_id: v.row.student_id,
+        name: [v.contact.firstname, v.contact.lastname].filter(Boolean).join(' ') || v.row.student_id,
+        student_email: v.contact.email,
+        mock_type: v.exam.mock_type,
+        mock_set: v.exam.mock_set || null,
+        exam_date: v.exam.exam_date,
+        start_time: v.exam.start_time,
+        end_time: v.exam.end_time,
+        attending_location: v.exam.location,
+        token_used: getTokenDisplayName(v.normalizedTokenType), // Use human-readable display name
+        is_active: 'Active',
+        attendance: null,
+        dominant_hand: null,
+        idempotency_key: idempotencyKey,
+        created_at: now,
+        updated_at: now,
+        synced_at: now
+      };
+    });
 
     // ========== STEP 6: Bulk insert bookings ==========
     let insertedBookings = [];
@@ -623,13 +633,19 @@ async function bulkCreateBookingsHandler(req, res) {
       console.log(`[BULK-CREATE] Decrementing credits for ${insertedBookings.length} bookings...`);
 
       // Group bookings by contact and token type for efficient updates
+      // Use validRows data which has the normalized token type (database column name)
       const creditUpdates = {};
       for (const booking of insertedBookings) {
-        const key = `${booking.student_id}:${booking.token_used}`;
+        // Find the corresponding validRow to get the normalized token type
+        const validRow = validRows.find(v => v.row.student_id === booking.student_id && v.bookingId === booking.booking_id);
+        if (!validRow) continue;
+
+        const tokenType = validRow.normalizedTokenType; // Database column name (e.g., 'sj_credits')
+        const key = `${booking.student_id}:${tokenType}`;
         if (!creditUpdates[key]) {
           creditUpdates[key] = {
             student_id: booking.student_id,
-            token_type: booking.token_used,
+            token_type: tokenType,
             count: 0
           };
         }
