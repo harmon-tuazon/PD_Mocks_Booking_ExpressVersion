@@ -83,7 +83,7 @@ const TOKEN_ALIASES = {
   'shared_mock_credits': 'shared_mock_credits'
 };
 
-const MAX_ROWS = 500;
+const MAX_ROWS = 20;
 const STUDENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,50}$/;
 const EXAM_ID_PATTERN = /^[0-9]{1,20}$/;
 
