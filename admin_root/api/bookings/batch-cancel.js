@@ -434,13 +434,15 @@ async function cancelSingleBooking(hubspot, bookingData, redis, refundTokens = t
     console.log(`🔍 [REDIS DEBUG] - exam_date: ${cancellationData.exam_date}`);
     console.log(`🔍 [REDIS DEBUG] - mockExamId: ${mockExamId}`);
 
-    if (redis && contactId && cancellationData.exam_date) {
+    if (redis && contactId && cancellationData.exam_date && cancellationData.mock_type) {
       try {
         // Normalize exam_date to YYYY-MM-DD format for consistent cache keys
         const normalizedExamDate = cancellationData.exam_date.includes('T')
           ? cancellationData.exam_date.split('T')[0]
           : cancellationData.exam_date;
-        const redisKey = `booking:${contactId}:${normalizedExamDate}`;
+
+        // New cache key format includes mock_type (Option B)
+        const redisKey = `booking:${contactId}:${normalizedExamDate}:${cancellationData.mock_type}`;
         console.log(`🔍 [REDIS DEBUG] Attempting to delete cache key: "${redisKey}"`);
 
         // Check if key exists before deletion
@@ -456,10 +458,14 @@ async function cancelSingleBooking(hubspot, bookingData, redis, refundTokens = t
         console.log(`🔍 [REDIS DEBUG] Cache key exists after deletion: ${keyExistsAfter !== null} (should be false)`);
 
         if (keyExistsAfter === null) {
-          console.log(`✅ [REDIS] Successfully cleared duplicate detection cache for contact ${contactId} on ${cancellationData.exam_date}`);
+          console.log(`✅ [REDIS] Successfully cleared duplicate detection cache for contact ${contactId} on ${cancellationData.exam_date} (${cancellationData.mock_type})`);
         } else {
           console.error(`❌ [REDIS] CRITICAL: Cache key still exists after deletion! Value: ${keyExistsAfter}`);
         }
+
+        // Also try to delete old format key (for backwards compatibility during transition)
+        const oldFormatKey = `booking:${contactId}:${normalizedExamDate}`;
+        await redis.del(oldFormatKey);
 
         // Decrement exam booking counter (with safety check)
         if (mockExamId) {

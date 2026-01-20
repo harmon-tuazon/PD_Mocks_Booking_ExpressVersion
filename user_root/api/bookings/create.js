@@ -9,6 +9,7 @@ const {
   createBookingAtomic,
   checkIdempotencyKey,
   checkExistingBookingInSupabase,
+  checkExistingBookingByMockType,
   supabaseAdmin,
   updateExamBookingCountInSupabase
 } = require('../_shared/supabase-data');
@@ -187,26 +188,53 @@ module.exports = async (req, res) => {
     }
 
     // ========================================================================
-    // STEP 5: Check for duplicate bookings using Redis cache
+    // STEP 5: Check for duplicate bookings (same date + same mock type)
     // ========================================================================
     // Normalize exam_date to YYYY-MM-DD format for consistent cache keys
     const normalizedExamDate = exam_date.includes('T') ? exam_date.split('T')[0] : exam_date;
-    const cacheKey = `booking:${contact_id}:${normalizedExamDate}`;
-    console.log(`🔍 [BOOKING-CREATE] Checking for duplicate booking: ${cacheKey}`);
 
-    const existingBooking = await redis.get(cacheKey);
-    if (existingBooking) {
+    // TIER 1: Redis cache check (fast path) - includes mock_type for Option B
+    const cacheKey = `booking:${contact_id}:${normalizedExamDate}:${mock_type}`;
+    console.log(`🔍 [BOOKING-CREATE] TIER 1 - Checking Redis cache: ${cacheKey}`);
+
+    const cachedBooking = await redis.get(cacheKey);
+    if (cachedBooking) {
       await redis.releaseLock(mock_exam_id, lockToken);
       lockToken = null;
-      console.error(`❌ [BOOKING-CREATE] Duplicate booking detected in cache`);
+      console.error(`❌ [BOOKING-CREATE] Duplicate booking detected in cache for ${mock_type} on ${normalizedExamDate}`);
       return res.status(409).json({
         success: false,
         error: {
           code: 'DUPLICATE_BOOKING',
-          message: 'You already have a booking for this date'
+          message: `You already have a ${mock_type} booking for this date`
         }
       });
     }
+
+    // TIER 2: Supabase check (authoritative) - prevents same date + same mock type
+    console.log(`🔍 [BOOKING-CREATE] TIER 2 - Checking Supabase for existing ${mock_type} booking on ${normalizedExamDate}`);
+
+    const duplicateCheck = await checkExistingBookingByMockType(contact_id, normalizedExamDate, mock_type);
+
+    if (duplicateCheck.exists) {
+      // Cache the result for future fast-path rejection
+      const examDateTime = new Date(`${normalizedExamDate}T23:59:59Z`);
+      const ttlSeconds = Math.max(Math.floor((examDateTime - Date.now()) / 1000), 86400);
+      await redis.setex(cacheKey, ttlSeconds, duplicateCheck.existingBooking.booking_id);
+
+      await redis.releaseLock(mock_exam_id, lockToken);
+      lockToken = null;
+      console.error(`❌ [BOOKING-CREATE] Duplicate ${mock_type} booking found in Supabase: ${duplicateCheck.existingBooking.booking_id}`);
+      return res.status(409).json({
+        success: false,
+        error: {
+          code: 'DUPLICATE_BOOKING',
+          message: `You already have a ${mock_type} booking for this date (${duplicateCheck.existingBooking.booking_id})`
+        }
+      });
+    }
+
+    console.log(`✅ [BOOKING-CREATE] No duplicate ${mock_type} booking found for ${normalizedExamDate}`);
 
     // ========================================================================
     // STEP 6: Validate student has sufficient credits

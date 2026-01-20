@@ -138,13 +138,13 @@ module.exports = async (req, res) => {
     if (hubspotBookings.length > 0) {
       console.log(`🔍 [CANCEL] Fetching booking data from HubSpot for ${hubspotBookings.length} bookings...`);
 
-      // Fetch is_active and exam_date (needed for Redis cache clearing)
+      // Fetch is_active, exam_date, and mock_type (needed for Redis cache clearing)
       for (let i = 0; i < bookingIds.length; i += HUBSPOT_BATCH_SIZE) {
         const chunk = bookingIds.slice(i, i + HUBSPOT_BATCH_SIZE);
 
         try {
           const response = await hubspot.apiCall('POST', `/crm/v3/objects/${HUBSPOT_OBJECTS.bookings}/batch/read`, {
-            properties: ['is_active', 'exam_date'],  // Properties for validation + cache clearing
+            properties: ['is_active', 'exam_date', 'mock_type'],  // Properties for validation + cache clearing (Option B)
             inputs: chunk.map(id => ({ id }))
           });
 
@@ -152,7 +152,8 @@ module.exports = async (req, res) => {
             for (const booking of response.results) {
               bookingDataMap.set(booking.id, {
                 is_active: booking.properties.is_active,
-                exam_date: booking.properties.exam_date
+                exam_date: booking.properties.exam_date,
+                mock_type: booking.properties.mock_type
                 // Note: contact_id will be added from frontend data below
               });
             }
@@ -184,7 +185,7 @@ module.exports = async (req, res) => {
       const supabaseIds = supabaseOnlyBookings.map(b => b.id);
       const { data: supabaseData, error: supabaseError } = await supabaseAdmin
         .from('hubspot_bookings')
-        .select('id, is_active, exam_date, associated_contact_id')
+        .select('id, is_active, exam_date, associated_contact_id, mock_type')
         .in('id', supabaseIds);
 
       if (supabaseError) {
@@ -195,7 +196,8 @@ module.exports = async (req, res) => {
           bookingDataMap.set(`supabase:${booking.id}`, {
             is_active: booking.is_active,
             exam_date: booking.exam_date,
-            contact_id: booking.associated_contact_id
+            contact_id: booking.associated_contact_id,
+            mock_type: booking.mock_type
           });
         }
         console.log(`✅ [CANCEL] Fetched data for ${supabaseData.length} bookings from Supabase`);
@@ -371,13 +373,16 @@ module.exports = async (req, res) => {
           console.log(`🔍 [REDIS DEBUG] Processing booking ${result.bookingId}:`);
           console.log(`🔍 [REDIS DEBUG] - contact_id: ${bookingData?.contact_id}`);
           console.log(`🔍 [REDIS DEBUG] - exam_date: ${bookingData?.exam_date}`);
+          console.log(`🔍 [REDIS DEBUG] - mock_type: ${bookingData?.mock_type}`);
 
-          if (bookingData?.contact_id && bookingData?.exam_date) {
+          if (bookingData?.contact_id && bookingData?.exam_date && bookingData?.mock_type) {
             // Normalize exam_date to YYYY-MM-DD format for consistent cache keys
             const normalizedExamDate = bookingData.exam_date.includes('T')
               ? bookingData.exam_date.split('T')[0]
               : bookingData.exam_date;
-            const redisKey = `booking:${bookingData.contact_id}:${normalizedExamDate}`;
+
+            // New cache key format includes mock_type (Option B)
+            const redisKey = `booking:${bookingData.contact_id}:${normalizedExamDate}:${bookingData.mock_type}`;
             console.log(`🔍 [REDIS DEBUG] Attempting to delete cache key: "${redisKey}"`);
 
             try {
@@ -388,6 +393,10 @@ module.exports = async (req, res) => {
               // Delete the cache key using wrapper method
               const deletedCount = await redis.del(redisKey);
               console.log(`🔍 [REDIS DEBUG] redis.del() returned: ${deletedCount} (1 = deleted, 0 = key didn't exist)`);
+
+              // Also try to delete old format key (for backwards compatibility during transition)
+              const oldFormatKey = `booking:${bookingData.contact_id}:${normalizedExamDate}`;
+              await redis.del(oldFormatKey);
 
               // Verify deletion
               const keyExistsAfter = await redis.get(redisKey);
@@ -418,7 +427,7 @@ module.exports = async (req, res) => {
               finalExamCount = newCount;
 
               if (keyExistsAfter === null) {
-                console.log(`✅ [REDIS] Successfully cleared cache for contact ${bookingData.contact_id} on ${bookingData.exam_date}`);
+                console.log(`✅ [REDIS] Successfully cleared cache for contact ${bookingData.contact_id} on ${bookingData.exam_date} (${bookingData.mock_type})`);
                 console.log(`✅ [REDIS] Updated exam counter: ${counterBefore} → ${newCount}`);
               } else {
                 console.error(`❌ [REDIS] CRITICAL: Cache key still exists after deletion! Value: ${keyExistsAfter}`);
@@ -428,14 +437,16 @@ module.exports = async (req, res) => {
                 error: redisError.message,
                 stack: redisError.stack,
                 contact_id: bookingData.contact_id,
-                exam_date: bookingData.exam_date
+                exam_date: bookingData.exam_date,
+                mock_type: bookingData.mock_type
               });
               // Don't fail the cancellation if Redis clearing fails
             }
           } else {
-            console.warn(`⚠️ [REDIS] Missing contact_id or exam_date for booking ${result.bookingId}:`, {
+            console.warn(`⚠️ [REDIS] Missing contact_id, exam_date, or mock_type for booking ${result.bookingId}:`, {
               hasContactId: !!bookingData?.contact_id,
               hasExamDate: !!bookingData?.exam_date,
+              hasMockType: !!bookingData?.mock_type,
               bookingData
             });
           }
