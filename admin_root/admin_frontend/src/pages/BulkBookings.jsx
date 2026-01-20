@@ -191,13 +191,20 @@ const BulkBookings = () => {
       setValidationResult(response);
       setImportState('idle');
 
-      // Show toast based on results
-      if (response.summary.invalid_count === 0) {
-        toast.success(`All ${response.summary.valid_count} rows validated successfully`);
-      } else if (response.summary.valid_count > 0) {
-        toast.success(`${response.summary.valid_count} valid, ${response.summary.invalid_count} invalid rows`);
+      // Auto-download error CSV if there are invalid rows
+      if (response.invalid_rows && response.invalid_rows.length > 0) {
+        downloadErrorReport(response.invalid_rows);
+        toast.error(
+          `${response.summary.invalid_count} row(s) have errors - error report downloaded`,
+          { duration: 5000 }
+        );
+      }
+
+      // Show success toast for valid rows
+      if (response.summary.valid_count > 0) {
+        toast.success(`${response.summary.valid_count} row(s) ready to create`);
       } else {
-        toast.error(`All ${response.summary.invalid_count} rows have errors`);
+        toast.error('No valid rows found. Please check the error report.');
       }
 
     } catch (error) {
@@ -541,53 +548,27 @@ PREP003,987654321,clinical skills`;
           </div>
         )}
 
-        {/* Invalid Rows Section */}
+        {/* Invalid Rows Notice */}
         {invalid_rows.length > 0 && (
-          <div className="bg-white dark:bg-dark-card border border-red-200 dark:border-red-800 rounded-lg overflow-hidden">
-            <div className="px-4 py-3 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 flex items-center justify-between">
-              <h3 className="font-medium text-red-800 dark:text-red-200 flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                Invalid Rows ({invalid_rows.length}) - Will be skipped
-              </h3>
-              <button
-                onClick={() => downloadErrorReport(invalid_rows)}
-                className="text-sm text-red-600 dark:text-red-400 hover:underline flex items-center gap-1"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download Error Report
-              </button>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="text-sm text-red-800 dark:text-red-200">
+                <span className="font-medium">{invalid_rows.length} row(s) have errors</span>
+                <span className="text-red-600 dark:text-red-400"> — Error report has been downloaded automatically</span>
+              </p>
             </div>
-            <div className="overflow-x-auto max-h-64 overflow-y-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-gray-50 dark:bg-dark-bg sticky top-0">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Row</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Student ID</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Exam ID</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Error</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invalid_rows.map((row, idx) => (
-                    <tr key={idx} className="border-b border-gray-100 dark:border-dark-border/50 hover:bg-gray-50 dark:hover:bg-dark-hover">
-                      <td className="px-3 py-2 text-gray-500 dark:text-gray-400">{row.row}</td>
-                      <td className="px-3 py-2 text-gray-900 dark:text-gray-100 font-mono text-xs">{row.student_id || '-'}</td>
-                      <td className="px-3 py-2 text-gray-900 dark:text-gray-100 font-mono text-xs">{row.mock_exam_id || '-'}</td>
-                      <td className="px-3 py-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200">
-                          {row.error_code}
-                        </span>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{row.error_message}</p>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <button
+              onClick={() => downloadErrorReport(invalid_rows)}
+              className="text-sm text-red-600 dark:text-red-400 hover:underline flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download Again
+            </button>
           </div>
         )}
 
