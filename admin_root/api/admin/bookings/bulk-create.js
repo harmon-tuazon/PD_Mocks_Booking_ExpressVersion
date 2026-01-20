@@ -56,6 +56,7 @@ const TOKEN_ALIASES = {
   'mini-mock': 'sjmini_credits',
   'mini mock': 'sjmini_credits',
   'minimock': 'sjmini_credits',
+  'mini': 'sjmini_credits',
   'sjmini': 'sjmini_credits',
   'sj mini': 'sjmini_credits',
   'situational judgment mini-mock': 'sjmini_credits',

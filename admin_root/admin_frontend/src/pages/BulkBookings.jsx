@@ -18,13 +18,12 @@ import { bulkBookingsApi } from '../services/adminApi';
 const MAX_ROWS = 20;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-// Token type examples for user guidance
+// Token type short codes for user guidance
 const TOKEN_EXAMPLES = [
-  { label: 'Situational Judgment', examples: ['sj', 'sj_credits', 'situational judgment'] },
-  { label: 'Clinical Skills', examples: ['cs', 'cs_credits', 'clinical skills'] },
-  { label: 'Mini-mock', examples: ['sjmini', 'mini-mock', 'sjmini_credits'] },
-  { label: 'Mock Discussion', examples: ['md', 'discussion', 'mock_discussion_token'] },
-  { label: 'Shared', examples: ['shared', 'shared_mock_credits'] }
+  { label: 'Situational Judgment', code: 'SJ' },
+  { label: 'Clinical Skills', code: 'CS' },
+  { label: 'Mini-mock', code: 'MINI' },
+  { label: 'Mock Discussion', code: 'MD' }
 ];
 
 const BulkBookings = () => {
@@ -840,16 +839,16 @@ PREP003,987654321,clinical skills`;
               </li>
             </ul>
 
-            {/* Token type examples */}
+            {/* Token type codes */}
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-dark-border">
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 Accepted Token Types
               </h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex flex-wrap gap-3">
                 {TOKEN_EXAMPLES.map((token, idx) => (
-                  <div key={idx} className="flex items-start gap-2">
-                    <span className="font-medium text-gray-600 dark:text-gray-400 min-w-[100px]">{token.label}:</span>
-                    <span className="text-gray-500 dark:text-gray-500">{token.examples.join(', ')}</span>
+                  <div key={idx} className="flex items-center gap-2 bg-gray-100 dark:bg-dark-card px-3 py-1.5 rounded-lg">
+                    <span className="font-mono font-bold text-primary-600 dark:text-primary-400">{token.code}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">({token.label})</span>
                   </div>
                 ))}
               </div>
