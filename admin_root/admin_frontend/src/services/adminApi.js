@@ -452,6 +452,31 @@ export const authApi = {
 };
 
 /**
+ * Bulk Mock Exams API endpoints
+ */
+export const bulkMockExamsApi = {
+  /**
+   * Preview/validate bulk mock exams from CSV data without creating them
+   * @param {string} csvData - CSV string with required columns
+   * @returns {Promise<Object>} Validation result with valid_rows and invalid_rows
+   */
+  previewFromCSV: async (csvData) => {
+    const response = await api.post('/admin/mock-exams/bulk-create-csv?preview=true', { csv_data: csvData });
+    return response.data;
+  },
+
+  /**
+   * Create multiple mock exams from CSV data
+   * @param {string} csvData - CSV string with required columns
+   * @returns {Promise<Object>} Result with created exams and skipped rows
+   */
+  createFromCSV: async (csvData) => {
+    const response = await api.post('/admin/mock-exams/bulk-create-csv', { csv_data: csvData });
+    return response.data;
+  }
+};
+
+/**
  * Bulk Bookings API endpoints
  */
 export const bulkBookingsApi = {
