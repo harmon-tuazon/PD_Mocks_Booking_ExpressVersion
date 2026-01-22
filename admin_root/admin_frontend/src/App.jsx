@@ -9,6 +9,7 @@ import MockExamsDashboard from './pages/MockExamsDashboard'
 import MockExamDetail from './pages/MockExamDetail'
 import TraineeDashboard from './pages/TraineeDashboard'
 import BulkBookings from './pages/BulkBookings'
+import BulkMocks from './pages/BulkMocks'
 import Login from './pages/Login'
 import PasswordReset from './pages/PasswordReset'
 import MainLayout from './components/layout/MainLayout'
@@ -97,6 +98,7 @@ function App() {
 
                 {/* Data Management Routes */}
                 <Route path="data-management/bulk-bookings" element={<BulkBookings />} />
+                <Route path="data-management/bulk-mocks" element={<BulkMocks />} />
               </Route>
             </Routes>
           </AuthProvider>
