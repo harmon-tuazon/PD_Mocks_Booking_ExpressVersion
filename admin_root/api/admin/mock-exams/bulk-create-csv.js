@@ -38,17 +38,22 @@ const VALID_MOCK_TYPES = [
   'Mock Discussion'
 ];
 
-// Mock type aliases for flexible input
+// Mock type aliases for flexible input (all lowercase for matching)
 const MOCK_TYPE_ALIASES = {
-  // Situational Judgment
+  // Situational Judgment - various case combinations handled by toLowerCase()
   'situational judgment': 'Situational Judgment',
+  'situationaljudgment': 'Situational Judgment',
   'situational': 'Situational Judgment',
   'sj': 'Situational Judgment',
+  'sit judgment': 'Situational Judgment',
+  'sit. judgment': 'Situational Judgment',
 
   // Clinical Skills
   'clinical skills': 'Clinical Skills',
+  'clinicalskills': 'Clinical Skills',
   'clinical': 'Clinical Skills',
   'cs': 'Clinical Skills',
+  'clin skills': 'Clinical Skills',
 
   // Mini-mock
   'mini-mock': 'Mini-mock',
@@ -56,11 +61,17 @@ const MOCK_TYPE_ALIASES = {
   'minimock': 'Mini-mock',
   'mini': 'Mini-mock',
   'sjmini': 'Mini-mock',
+  'sj mini': 'Mini-mock',
+  'sj-mini': 'Mini-mock',
+  'minmock': 'Mini-mock',
 
   // Mock Discussion
   'mock discussion': 'Mock Discussion',
+  'mockdiscussion': 'Mock Discussion',
   'discussion': 'Mock Discussion',
-  'md': 'Mock Discussion'
+  'md': 'Mock Discussion',
+  'mock disc': 'Mock Discussion',
+  'disc': 'Mock Discussion'
 };
 
 const VALID_LOCATIONS = [
@@ -74,21 +85,45 @@ const VALID_LOCATIONS = [
   'Online'
 ];
 
-// Location aliases for flexible input
+// Location aliases for flexible input (all lowercase for matching)
 const LOCATION_ALIASES = {
+  // Mississauga main
   'mississauga': 'Mississauga',
+  'miss': 'Mississauga',
+  'mssg': 'Mississauga',
+
+  // Mississauga - B9
   'mississauga - b9': 'Mississauga - B9',
+  'mississauga-b9': 'Mississauga - B9',
   'mississauga b9': 'Mississauga - B9',
+  'miss b9': 'Mississauga - B9',
+  'miss-b9': 'Mississauga - B9',
   'b9': 'Mississauga - B9',
+
+  // Mississauga - Lab D
   'mississauga - lab d': 'Mississauga - Lab D',
+  'mississauga-lab d': 'Mississauga - Lab D',
   'mississauga lab d': 'Mississauga - Lab D',
+  'miss lab d': 'Mississauga - Lab D',
+  'miss-lab d': 'Mississauga - Lab D',
   'lab d': 'Mississauga - Lab D',
+  'labd': 'Mississauga - Lab D',
+
+  // Other locations
   'calgary': 'Calgary',
+  'calg': 'Calgary',
   'vancouver': 'Vancouver',
+  'vanc': 'Vancouver',
+  'van': 'Vancouver',
   'montreal': 'Montreal',
+  'mtl': 'Montreal',
   'richmond hill': 'Richmond Hill',
   'richmondhill': 'Richmond Hill',
-  'online': 'Online'
+  'richmond': 'Richmond Hill',
+  'rhill': 'Richmond Hill',
+  'online': 'Online',
+  'virtual': 'Online',
+  'remote': 'Online'
 };
 
 const VALID_MOCK_SETS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -162,11 +197,16 @@ function normalizeIsActive(input) {
   if (!input || input === '') return 'true'; // Default
   const normalized = String(input).toLowerCase().trim();
 
-  // Handle common variations
-  if (normalized === 'active' || normalized === 'yes' || normalized === '1') return 'true';
-  if (normalized === 'inactive' || normalized === 'no' || normalized === '0') return 'false';
-  if (normalized === 'scheduled') return 'scheduled';
-  if (normalized === 'true' || normalized === 'false') return normalized;
+  // Handle common variations for 'true' (active)
+  const trueValues = ['true', 'active', 'yes', 'y', '1', 'on', 'enabled'];
+  if (trueValues.includes(normalized)) return 'true';
+
+  // Handle common variations for 'false' (inactive)
+  const falseValues = ['false', 'inactive', 'no', 'n', '0', 'off', 'disabled'];
+  if (falseValues.includes(normalized)) return 'false';
+
+  // Handle scheduled
+  if (normalized === 'scheduled' || normalized === 'sched') return 'scheduled';
 
   return null; // Invalid
 }
