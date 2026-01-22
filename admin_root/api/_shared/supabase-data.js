@@ -516,24 +516,38 @@ async function syncExamToSupabase(exam) {
   const createdAt = exam.createdAt || props.hs_createdate || props.createdate || props.created_at || now;
   const updatedAt = exam.updatedAt || props.hs_lastmodifieddate || props.lastmodifieddate || props.updated_at || now;
 
+  /**
+   * Helper to convert HubSpot timestamp (Unix ms or ISO string) to ISO format for Supabase TIMESTAMPTZ
+   * @param {string|number} value - Unix timestamp in milliseconds or ISO string
+   * @returns {string|null} - ISO string or null
+   */
+  const convertTimestamp = (value) => {
+    if (!value) return null;
+    // Already ISO format (contains 'T')
+    if (typeof value === 'string' && value.includes('T')) return value;
+    // Unix timestamp - convert to ISO
+    const timestamp = parseInt(value);
+    if (!isNaN(timestamp)) {
+      return new Date(timestamp).toISOString();
+    }
+    return null;
+  };
+
   const record = {
     hubspot_id: exam.id,
     mock_exam_name: props.mock_exam_name || null,
     mock_type: props.mock_type || null,
     mock_set: props.mock_set || null,
     exam_date: props.exam_date || null,
-    start_time: props.start_time || null,
-    end_time: props.end_time || null,
+    // Convert Unix timestamp (milliseconds) to ISO string for Supabase TIMESTAMPTZ
+    start_time: convertTimestamp(props.start_time),
+    end_time: convertTimestamp(props.end_time),
     location: props.location || null,
     capacity: parseInt(props.capacity) || 0,
     total_bookings: parseInt(props.total_bookings) || 0,
     is_active: props.is_active || null,
     // Convert Unix timestamp (milliseconds) to ISO string for Supabase TIMESTAMPTZ
-    scheduled_activation_datetime: props.scheduled_activation_datetime
-      ? (typeof props.scheduled_activation_datetime === 'string' && props.scheduled_activation_datetime.includes('T')
-          ? props.scheduled_activation_datetime // Already ISO format
-          : new Date(parseInt(props.scheduled_activation_datetime)).toISOString()) // Convert Unix timestamp
-      : null,
+    scheduled_activation_datetime: convertTimestamp(props.scheduled_activation_datetime),
     // Defensive timestamps with multiple fallbacks
     created_at: createdAt,
     updated_at: updatedAt,
