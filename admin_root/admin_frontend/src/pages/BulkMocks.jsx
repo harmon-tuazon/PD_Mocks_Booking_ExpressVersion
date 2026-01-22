@@ -416,16 +416,16 @@ Mock Discussion,2026-03-17,6,Online,14:00,15:00,C,scheduled,2026-03-10T09:00:00Z
         disabled={importState === 'processing' || importState === 'previewing'}
       />
 
-      <div className="mx-auto w-12 h-12 bg-gray-100 dark:bg-dark-hover rounded-full flex items-center justify-center mb-4">
-        <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="mx-auto w-12 h-12 bg-gray-200 dark:bg-dark-hover rounded-full flex items-center justify-center mb-4">
+        <svg className="w-6 h-6 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
       </div>
 
-      <p className="text-gray-600 dark:text-gray-400 mb-2">
+      <p className="text-gray-700 dark:text-gray-300 mb-2">
         Drag and drop your CSV file here
       </p>
-      <p className="text-gray-500 dark:text-gray-500 text-sm mb-4">
+      <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
         or
       </p>
 
@@ -437,7 +437,7 @@ Mock Discussion,2026-03-17,6,Online,14:00,15:00,C,scheduled,2026-03-10T09:00:00Z
         Browse Files
       </button>
 
-      <p className="text-gray-400 dark:text-gray-500 text-xs mt-4">
+      <p className="text-gray-600 dark:text-gray-400 text-xs mt-4">
         Accepted format: .csv (max {MAX_ROWS} rows)
       </p>
     </div>
