@@ -15,7 +15,7 @@
 require('dotenv').config();
 const https = require('https');
 
-const HS_TOKEN = "pat-na1-caf844b4-e964-4cbd-b7db-756f1184ed84"
+const HS_TOKEN = process.env.HS_PRIVATE_APP_TOKEN;
 const NOTES_OBJECT = '0-46';  // Notes object type
 const MOCK_EXAMS_OBJECT = '2-50158913';  // Mock Exams object type
 
