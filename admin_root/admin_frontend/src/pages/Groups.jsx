@@ -13,6 +13,7 @@ import GroupsTable from '../components/admin/GroupsTable';
 import GroupForm from '../components/admin/GroupForm';
 import GroupsSelectionToolbar from '../components/admin/GroupsSelectionToolbar';
 import CloneGroupsModal from '../components/admin/CloneGroupsModal';
+import GroupViewModal from '../components/admin/GroupViewModal';
 import useGroupsBulkSelection from '../hooks/useGroupsBulkSelection';
 
 /**
@@ -63,9 +64,11 @@ const StatCard = ({ name, value, icon: Icon, bgColor, textColor, isLoading }) =>
 function Groups() {
   const queryClient = useQueryClient();
 
-  // Modal state - only Create modal is needed on this page
+  // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCloneModal, setShowCloneModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewGroupId, setViewGroupId] = useState(null);
 
   // Filter and pagination state (sent to API)
   const [filters, setFilters] = useState({
@@ -208,6 +211,17 @@ function Groups() {
     toast.success(`Successfully cloned ${selectedCount} group(s)`);
   };
 
+  // View modal handlers
+  const handleViewGroup = (groupId) => {
+    setViewGroupId(groupId);
+    setShowViewModal(true);
+  };
+
+  const handleCloseViewModal = () => {
+    setShowViewModal(false);
+    setViewGroupId(null);
+  };
+
   // Statistics
   const stats = statsData?.data || {};
 
@@ -344,6 +358,8 @@ function Groups() {
           onToggleSelection={toggleSelection}
           onSelectAll={selectAll}
           selectedCount={selectedCount}
+          // View modal handler
+          onViewGroup={handleViewGroup}
         />
 
         {/* Create Modal */}
@@ -362,6 +378,13 @@ function Groups() {
           selectedGroups={selectedGroups}
           onSuccess={handleCloneSuccess}
           setSubmittingState={setSubmittingState}
+        />
+
+        {/* View Modal */}
+        <GroupViewModal
+          isOpen={showViewModal}
+          onClose={handleCloseViewModal}
+          groupId={viewGroupId}
         />
       </div>
     </div>

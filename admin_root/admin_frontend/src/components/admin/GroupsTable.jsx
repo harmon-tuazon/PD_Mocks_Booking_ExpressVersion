@@ -22,7 +22,9 @@ const GroupsTable = ({
   isSelected = () => false,
   onToggleSelection = () => {},
   onSelectAll = () => {},
-  selectedCount = 0
+  selectedCount = 0,
+  // View modal handler
+  onViewGroup
 }) => {
   const navigate = useNavigate();
   // Calculate pagination display values
@@ -176,10 +178,13 @@ const GroupsTable = ({
                       className="h-4 w-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-gray-700 cursor-pointer"
                     />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => navigate(`/data-management/groups/${group.group_id}`)}
+                      className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:underline"
+                    >
                       {group.group_name}
-                    </div>
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">
@@ -229,7 +234,7 @@ const GroupsTable = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => navigate(`/data-management/groups/${group.group_id}`)}
+                      onClick={() => onViewGroup?.(group.group_id)}
                       className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                     >
                       <EyeIcon className="h-4 w-4 mr-1" />
