@@ -27,6 +27,13 @@ const GroupForm = ({
     'Online'
   ];
 
+  // Status options
+  const STATUS_OPTIONS = [
+    { value: 'active', label: 'Active' },
+    { value: 'inactive', label: 'Inactive' },
+    { value: 'completed', label: 'Completed' }
+  ];
+
   // Form state
   const [formData, setFormData] = useState({
     groupName: '',
@@ -34,7 +41,8 @@ const GroupForm = ({
     timePeriod: 'AM',
     startDate: '',
     endDate: '',
-    maxCapacity: 20
+    maxCapacity: 20,
+    status: 'active'
   });
 
   const [errors, setErrors] = useState({});
@@ -49,7 +57,8 @@ const GroupForm = ({
           timePeriod: initialData.time_period || 'AM',
           startDate: initialData.start_date || '',
           endDate: initialData.end_date || '',
-          maxCapacity: initialData.max_capacity || 20
+          maxCapacity: initialData.max_capacity || 20,
+          status: initialData.status || 'active'
         });
       } else {
         setFormData({
@@ -58,7 +67,8 @@ const GroupForm = ({
           timePeriod: 'AM',
           startDate: '',
           endDate: '',
-          maxCapacity: 20
+          maxCapacity: 20,
+          status: 'active'
         });
       }
       setErrors({});
@@ -131,7 +141,8 @@ const GroupForm = ({
       timePeriod: formData.timePeriod,
       startDate: formData.startDate,
       endDate: formData.endDate || null,
-      maxCapacity: formData.maxCapacity
+      maxCapacity: formData.maxCapacity,
+      status: formData.status
     };
 
     // For clone mode, add the includeStudents flag
@@ -283,8 +294,8 @@ const GroupForm = ({
                     )}
                   </div>
 
-                  {/* Time Period and Max Capacity - side by side */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Time Period, Status, and Max Capacity */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label htmlFor="timePeriod" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Time Period <span className="text-red-500">*</span>
@@ -303,6 +314,24 @@ const GroupForm = ({
                       {errors.timePeriod && (
                         <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.timePeriod}</p>
                       )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Status <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        name="status"
+                        id="status"
+                        value={formData.status}
+                        onChange={handleChange}
+                        disabled={isLoading}
+                        className={inputNormalClass}
+                      >
+                        {STATUS_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>

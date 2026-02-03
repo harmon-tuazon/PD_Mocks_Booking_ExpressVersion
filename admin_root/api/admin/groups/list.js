@@ -138,9 +138,9 @@ module.exports = async (req, res) => {
       data: transformedGroups
     };
 
-    // Cache the response (2 minutes TTL)
-    await cache.set(cacheKey, response, 120);
-    console.log(`[Cached] ${transformedGroups.length} groups for 2 minutes`);
+    // Cache the response (10 minutes TTL)
+    await cache.set(cacheKey, response, 600);
+    console.log(`[Cached] ${transformedGroups.length} groups for 10 minutes`);
 
     res.status(200).json(response);
 

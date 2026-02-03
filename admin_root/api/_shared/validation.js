@@ -1329,6 +1329,12 @@ const schemas = {
       .messages({
         'number.min': 'Max capacity must be at least 1',
         'number.max': 'Max capacity cannot exceed 100'
+      }),
+    status: Joi.string()
+      .valid('active', 'inactive', 'completed')
+      .default('active')
+      .messages({
+        'any.only': 'Status must be one of: active, inactive, completed'
       })
   }).custom((value, helpers) => {
     // Validate end date is after start date
@@ -1446,6 +1452,12 @@ const schemas = {
         'any.only': 'Location must be one of: Mississauga, Vancouver, Calgary, Montreal, Richmond Hill, Online'
       }),
     timePeriod: Joi.string().valid('AM', 'PM').required(),
+    status: Joi.string()
+      .valid('active', 'inactive', 'completed')
+      .optional()
+      .messages({
+        'any.only': 'Status must be one of: active, inactive, completed'
+      }),
     startDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
     endDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow(null, ''),
     maxCapacity: Joi.number().integer().min(1).max(100),

@@ -61,6 +61,7 @@ module.exports = async (req, res) => {
       groupName,
       location,
       timePeriod,
+      status,
       startDate,
       endDate,
       maxCapacity,
@@ -135,7 +136,7 @@ module.exports = async (req, res) => {
         start_date: startDate,
         end_date: endDate || null,
         max_capacity: maxCapacity || sourceGroup.max_capacity,
-        status: 'active'
+        status: status || sourceGroup.status || 'active'
       })
       .select()
       .single();

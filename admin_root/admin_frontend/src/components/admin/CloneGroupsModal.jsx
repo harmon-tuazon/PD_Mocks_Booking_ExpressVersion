@@ -32,6 +32,13 @@ const CloneGroupsModal = ({
     'Online'
   ];
 
+  // Status options
+  const STATUS_OPTIONS = [
+    { value: 'active', label: 'Active' },
+    { value: 'inactive', label: 'Inactive' },
+    { value: 'completed', label: 'Completed' }
+  ];
+
   // Form state
   const [formData, setFormData] = useState({
     groupName: '',
@@ -39,6 +46,7 @@ const CloneGroupsModal = ({
     endDate: '',
     timePeriod: '',
     location: '',
+    status: '',
     maxCapacity: '',
     includeStudents: false
   });
@@ -57,6 +65,7 @@ const CloneGroupsModal = ({
             groupName: overrides.groupName || `${group.group_name} (Copy)`,
             timePeriod: overrides.timePeriod || group.time_period,
             location: overrides.location || group.location || 'Mississauga',
+            status: overrides.status || group.status || 'active',
             startDate: overrides.startDate,
             endDate: overrides.endDate || group.end_date || null,
             maxCapacity: overrides.maxCapacity ? parseInt(overrides.maxCapacity) : group.max_capacity,
@@ -132,6 +141,7 @@ const CloneGroupsModal = ({
         endDate: newEndDate,
         timePeriod: source.time_period || '',
         location: source.location || '',
+        status: '',
         maxCapacity: '',
         includeStudents: false
       });
@@ -143,6 +153,7 @@ const CloneGroupsModal = ({
         endDate: '',
         timePeriod: '',
         location: '',
+        status: '',
         maxCapacity: '',
         includeStudents: false
       });
@@ -234,6 +245,7 @@ const CloneGroupsModal = ({
       endDate: formData.endDate || null,
       timePeriod: formData.timePeriod || null,
       location: formData.location || null,
+      status: formData.status || null,
       maxCapacity: formData.maxCapacity || null,
       includeStudents: formData.includeStudents
     };
@@ -439,6 +451,25 @@ const CloneGroupsModal = ({
                               <option value="">Keep original</option>
                               {LOCATION_OPTIONS.map((loc) => (
                                 <option key={loc} value={loc}>{loc}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Status */}
+                          <div>
+                            <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Status
+                            </label>
+                            <select
+                              id="status"
+                              value={formData.status}
+                              onChange={(e) => handleFieldChange('status', e.target.value)}
+                              disabled={cloneMutation.isPending}
+                              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 sm:text-sm"
+                            >
+                              <option value="">Keep original</option>
+                              {STATUS_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
                               ))}
                             </select>
                           </div>
