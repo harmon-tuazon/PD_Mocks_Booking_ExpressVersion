@@ -131,6 +131,43 @@ async function handleGet(req, res, id) {
     }));
   }
 
+  // Fetch instructors for this group
+  const { data: groupInstructors, error: instructorsError } = await supabaseAdmin
+    .from('groups_instructors')
+    .select(`
+      id,
+      instructor_id,
+      status,
+      created_at,
+      updated_at
+    `)
+    .eq('group_id', group.group_id)
+    .eq('status', 'active');
+
+  let instructors = [];
+  if (groupInstructors && groupInstructors.length > 0) {
+    // Fetch instructor details from instructors table
+    const instructorIds = groupInstructors.map(gi => gi.instructor_id);
+    const { data: instructorDetails } = await supabaseAdmin
+      .from('instructors')
+      .select('instructor_id, first_name, last_name, email')
+      .in('instructor_id', instructorIds);
+
+    // Merge instructor data with assignments
+    const instructorMap = (instructorDetails || []).reduce((acc, i) => {
+      acc[i.instructor_id] = i;
+      return acc;
+    }, {});
+
+    instructors = groupInstructors.map(gi => ({
+      assignment_id: gi.id,
+      instructor_id: gi.instructor_id,
+      status: gi.status,
+      assigned_at: gi.created_at,
+      instructor: instructorMap[gi.instructor_id] || null
+    }));
+  }
+
   res.status(200).json({
     success: true,
     data: {
@@ -145,7 +182,9 @@ async function handleGet(req, res, id) {
       created_at: group.created_at,
       updated_at: group.updated_at,
       students: students,
-      student_count: students.length
+      student_count: students.length,
+      instructors: instructors,
+      instructor_count: instructors.length
     }
   });
 }

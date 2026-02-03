@@ -5,7 +5,7 @@
 
 import { Fragment, useState, useEffect, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PencilIcon, DocumentDuplicateIcon, PlusIcon } from '@heroicons/react/24/outline';
 
 const GroupForm = ({
   isOpen,
@@ -155,9 +155,25 @@ const GroupForm = ({
     }
   };
 
+  const getIcon = () => {
+    switch (mode) {
+      case 'edit':
+        return <PencilIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" aria-hidden="true" />;
+      case 'clone':
+        return <DocumentDuplicateIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" aria-hidden="true" />;
+      default:
+        return <PlusIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" aria-hidden="true" />;
+    }
+  };
+
+  // Common input class
+  const inputBaseClass = "block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-1";
+  const inputNormalClass = `${inputBaseClass} border-gray-300 dark:border-gray-600 focus:border-primary-500 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100`;
+  const inputErrorClass = `${inputBaseClass} border-red-300 dark:border-red-500 focus:border-red-500 focus:ring-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100`;
+
   return (
     <Transition.Root show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={onClose}>
+      <Dialog as="div" className="relative z-50" onClose={isLoading ? () => {} : onClose}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -181,27 +197,42 @@ const GroupForm = ({
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white dark:bg-dark-card px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-                {/* Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
-                  <Dialog.Title as="h3" className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100">
-                    {getTitle()}
-                  </Dialog.Title>
+              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+                {/* Close button */}
+                <div className="absolute right-0 top-0 pr-4 pt-4 sm:block">
                   <button
                     type="button"
-                    className="rounded-md bg-white dark:bg-dark-card text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                    className="rounded-md bg-white dark:bg-gray-800 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                     onClick={onClose}
+                    disabled={isLoading}
                   >
                     <span className="sr-only">Close</span>
                     <XMarkIcon className="h-6 w-6" aria-hidden="true" />
                   </button>
                 </div>
 
+                {/* Header with Icon */}
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30 sm:mx-0 sm:h-10 sm:w-10">
+                    {getIcon()}
+                  </div>
+                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                    <Dialog.Title as="h3" className="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
+                      {getTitle()}
+                    </Dialog.Title>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {mode === 'create' && 'Fill in the details below to create a new group.'}
+                      {mode === 'edit' && 'Update the group details below.'}
+                      {mode === 'clone' && 'Create a copy of the selected group.'}
+                    </p>
+                  </div>
+                </div>
+
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+                <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                   {/* Group Name */}
                   <div>
-                    <label htmlFor="groupName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label htmlFor="groupName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Group Name <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -211,21 +242,18 @@ const GroupForm = ({
                       id="groupName"
                       value={formData.groupName}
                       onChange={handleChange}
-                      className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
-                        errors.groupName
-                          ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                          : 'border-gray-300 dark:border-gray-600 focus:border-primary-500 focus:ring-primary-500'
-                      } dark:bg-gray-800 dark:text-gray-100`}
+                      disabled={isLoading}
+                      className={errors.groupName ? inputErrorClass : inputNormalClass}
                       placeholder="e.g., Group 1"
                     />
                     {errors.groupName && (
-                      <p className="mt-1 text-sm text-red-600">{errors.groupName}</p>
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.groupName}</p>
                     )}
                   </div>
 
                   {/* Description */}
                   <div>
-                    <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Description
                     </label>
                     <textarea
@@ -234,22 +262,19 @@ const GroupForm = ({
                       rows={2}
                       value={formData.description}
                       onChange={handleChange}
-                      className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
-                        errors.description
-                          ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                          : 'border-gray-300 dark:border-gray-600 focus:border-primary-500 focus:ring-primary-500'
-                      } dark:bg-gray-800 dark:text-gray-100`}
+                      disabled={isLoading}
+                      className={errors.description ? inputErrorClass : inputNormalClass}
                       placeholder="Optional description..."
                     />
                     {errors.description && (
-                      <p className="mt-1 text-sm text-red-600">{errors.description}</p>
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.description}</p>
                     )}
                   </div>
 
                   {/* Time Period and Max Capacity - side by side */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="timePeriod" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label htmlFor="timePeriod" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Time Period <span className="text-red-500">*</span>
                       </label>
                       <select
@@ -257,22 +282,19 @@ const GroupForm = ({
                         id="timePeriod"
                         value={formData.timePeriod}
                         onChange={handleChange}
-                        className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
-                          errors.timePeriod
-                            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                            : 'border-gray-300 dark:border-gray-600 focus:border-primary-500 focus:ring-primary-500'
-                        } dark:bg-gray-800 dark:text-gray-100`}
+                        disabled={isLoading}
+                        className={errors.timePeriod ? inputErrorClass : inputNormalClass}
                       >
                         <option value="AM">AM</option>
                         <option value="PM">PM</option>
                       </select>
                       {errors.timePeriod && (
-                        <p className="mt-1 text-sm text-red-600">{errors.timePeriod}</p>
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.timePeriod}</p>
                       )}
                     </div>
 
                     <div>
-                      <label htmlFor="maxCapacity" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label htmlFor="maxCapacity" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Max Capacity <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -283,22 +305,19 @@ const GroupForm = ({
                         max={100}
                         value={formData.maxCapacity}
                         onChange={handleChange}
-                        className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
-                          errors.maxCapacity
-                            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                            : 'border-gray-300 dark:border-gray-600 focus:border-primary-500 focus:ring-primary-500'
-                        } dark:bg-gray-800 dark:text-gray-100`}
+                        disabled={isLoading}
+                        className={errors.maxCapacity ? inputErrorClass : inputNormalClass}
                       />
                       {errors.maxCapacity && (
-                        <p className="mt-1 text-sm text-red-600">{errors.maxCapacity}</p>
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.maxCapacity}</p>
                       )}
                     </div>
                   </div>
 
                   {/* Date Range - side by side */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Start Date <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -307,19 +326,16 @@ const GroupForm = ({
                         id="startDate"
                         value={formData.startDate}
                         onChange={handleChange}
-                        className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
-                          errors.startDate
-                            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                            : 'border-gray-300 dark:border-gray-600 focus:border-primary-500 focus:ring-primary-500'
-                        } dark:bg-gray-800 dark:text-gray-100`}
+                        disabled={isLoading}
+                        className={errors.startDate ? inputErrorClass : inputNormalClass}
                       />
                       {errors.startDate && (
-                        <p className="mt-1 text-sm text-red-600">{errors.startDate}</p>
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.startDate}</p>
                       )}
                     </div>
 
                     <div>
-                      <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         End Date
                       </label>
                       <input
@@ -329,21 +345,18 @@ const GroupForm = ({
                         value={formData.endDate}
                         onChange={handleChange}
                         min={formData.startDate || undefined}
-                        className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
-                          errors.endDate
-                            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                            : 'border-gray-300 dark:border-gray-600 focus:border-primary-500 focus:ring-primary-500'
-                        } dark:bg-gray-800 dark:text-gray-100`}
+                        disabled={isLoading}
+                        className={errors.endDate ? inputErrorClass : inputNormalClass}
                       />
                       {errors.endDate && (
-                        <p className="mt-1 text-sm text-red-600">{errors.endDate}</p>
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.endDate}</p>
                       )}
                     </div>
                   </div>
 
                   {/* Clone mode notice */}
                   {mode === 'clone' && (
-                    <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-3">
+                    <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-3">
                       <p className="text-sm text-blue-700 dark:text-blue-300">
                         Students from the original group will be copied to the new group.
                       </p>
@@ -351,21 +364,27 @@ const GroupForm = ({
                   )}
 
                   {/* Actions */}
-                  <div className="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="mt-6 sm:mt-5 sm:flex sm:flex-row-reverse sm:gap-3">
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="inline-flex w-full justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading && (
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
+                      {getSubmitText()}
+                    </button>
                     <button
                       type="button"
                       onClick={onClose}
                       disabled={isLoading}
-                      className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50"
+                      className="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:mt-0 sm:w-auto disabled:opacity-50"
                     >
                       Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="inline-flex justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {getSubmitText()}
                     </button>
                   </div>
                 </form>

@@ -606,6 +606,42 @@ export const groupsApi = {
   clone: async (id, data) => {
     const response = await api.post(`/admin/groups/${id}/clone`, data);
     return response.data;
+  },
+
+  /**
+   * Assign an instructor to a group
+   * @param {Object} data - { groupId, instructorId }
+   * @returns {Promise<Object>} Assignment result
+   */
+  assignInstructor: async (data) => {
+    const response = await api.post('/admin/groups/assign-instructor', data);
+    return response.data;
+  },
+
+  /**
+   * Remove an instructor from a group
+   * @param {string} groupId - Group ID
+   * @param {string} instructorId - Instructor ID or assignment ID
+   * @returns {Promise<Object>} Removal confirmation
+   */
+  removeInstructor: async (groupId, instructorId) => {
+    const response = await api.delete(`/admin/groups/${groupId}/instructors/${instructorId}`);
+    return response.data;
+  }
+};
+
+/**
+ * Instructors API endpoints
+ */
+export const instructorsApi = {
+  /**
+   * List all instructors with optional search
+   * @param {Object} params - Query parameters (search, page, limit)
+   * @returns {Promise<Object>} Paginated instructors
+   */
+  list: async (params = {}) => {
+    const response = await api.get('/admin/instructors/list', { params });
+    return response.data;
   }
 };
 

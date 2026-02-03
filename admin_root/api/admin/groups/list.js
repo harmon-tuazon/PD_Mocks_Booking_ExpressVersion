@@ -38,12 +38,10 @@ module.exports = async (req, res) => {
     // Initialize cache
     const cache = getCache();
 
-    // Generate cache key from query parameters
+    // Generate cache key from query parameters (sorting is frontend-side, not included)
     const cacheKey = `admin:groups:list:${JSON.stringify({
       page,
       limit,
-      sort_by,
-      sort_order,
       filter_status,
       search
     })}`;
@@ -74,9 +72,9 @@ module.exports = async (req, res) => {
       query = query.ilike('group_name', `%${search.trim()}%`);
     }
 
-    // Apply sorting
-    const ascending = sort_order === 'asc';
-    query = query.order(sort_by, { ascending });
+    // Note: Sorting is handled on the frontend for this table
+    // Default ordering by created_at for consistent pagination
+    query = query.order('created_at', { ascending: false });
 
     // Apply pagination
     const offset = (page - 1) * limit;

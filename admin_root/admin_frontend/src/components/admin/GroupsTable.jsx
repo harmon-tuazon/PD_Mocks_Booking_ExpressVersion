@@ -1,10 +1,11 @@
 /**
  * GroupsTable Component
  * Displays groups in a sortable, paginated table with actions
+ * Supports bulk selection for clone operations
  */
 
-import { useState } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, TrashIcon, DocumentDuplicateIcon, EyeIcon, UsersIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeftIcon, ChevronRightIcon, EyeIcon, UsersIcon } from '@heroicons/react/24/outline';
 
 const GroupsTable = ({
   data,
@@ -16,16 +17,14 @@ const GroupsTable = ({
   totalPages,
   totalItems,
   onPageChange,
-  // Action handlers
-  onView,
-  onEdit,
-  onDelete,
-  onClone,
-  // Permissions
-  canEdit = true,
-  canDelete = true,
-  canCreate = true
+  // Selection props
+  isSelectionMode = false,
+  isSelected = () => false,
+  onToggleSelection = () => {},
+  onSelectAll = () => {},
+  selectedCount = 0
 }) => {
+  const navigate = useNavigate();
   // Calculate pagination display values
   const itemsPerPage = 50;
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
@@ -121,6 +120,20 @@ const GroupsTable = ({
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
+              {/* Checkbox column for selection */}
+              <th scope="col" className="w-12 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={data.length > 0 && selectedCount === data.length}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      onSelectAll();
+                    }
+                  }}
+                  className="h-4 w-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-gray-700 cursor-pointer"
+                  title="Select all groups on this page"
+                />
+              </th>
               <SortableHeader column="group_name">Group Name</SortableHeader>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 ID
@@ -142,104 +155,90 @@ const GroupsTable = ({
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
-            {data.map((group) => (
-              <tr key={group.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {group.group_name}
-                  </div>
-                  {group.description && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">
-                      {group.description}
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                    {group.group_id}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs font-medium rounded ${
-                    group.time_period === 'AM'
-                      ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'
-                      : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300'
-                  }`}>
-                    {group.time_period}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {formatDate(group.start_date)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {formatDate(group.end_date)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {group.student_count || 0}
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
-                      / {group.max_capacity}
-                    </span>
-                  </div>
-                  {/* Capacity progress bar */}
-                  <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1">
-                    <div
-                      className={`h-1.5 rounded-full ${
-                        (group.student_count / group.max_capacity) >= 1
-                          ? 'bg-red-500'
-                          : (group.student_count / group.max_capacity) >= 0.8
-                            ? 'bg-yellow-500'
-                            : 'bg-green-500'
-                      }`}
-                      style={{ width: `${Math.min(100, (group.student_count / group.max_capacity) * 100)}%` }}
+            {data.map((group) => {
+              const selected = isSelected(group.group_id);
+              return (
+                <tr
+                  key={group.id}
+                  onClick={() => onToggleSelection(group.group_id)}
+                  className={`cursor-pointer transition-colors ${
+                    selected
+                      ? 'bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/30'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                  }`}
+                >
+                  {/* Selection checkbox */}
+                  <td className="w-12 px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => onToggleSelection(group.group_id)}
+                      className="h-4 w-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-gray-700 cursor-pointer"
                     />
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {getStatusBadge(group.status)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex items-center justify-end space-x-2">
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {group.group_name}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                      {group.group_id}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs font-medium rounded ${
+                      group.time_period === 'AM'
+                        ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'
+                        : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300'
+                    }`}>
+                      {group.time_period}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {formatDate(group.start_date)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {formatDate(group.end_date)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {group.student_count || 0}
+                      </span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
+                        / {group.max_capacity}
+                      </span>
+                    </div>
+                    {/* Capacity progress bar */}
+                    <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1">
+                      <div
+                        className={`h-1.5 rounded-full ${
+                          (group.student_count / group.max_capacity) >= 1
+                            ? 'bg-red-500'
+                            : (group.student_count / group.max_capacity) >= 0.8
+                              ? 'bg-yellow-500'
+                              : 'bg-green-500'
+                        }`}
+                        style={{ width: `${Math.min(100, (group.student_count / group.max_capacity) * 100)}%` }}
+                      />
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {getStatusBadge(group.status)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => onView?.(group)}
-                      className="text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 p-1 rounded"
-                      title="View Details"
+                      onClick={() => navigate(`/data-management/groups/${group.group_id}`)}
+                      className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                     >
-                      <EyeIcon className="h-5 w-5" />
+                      <EyeIcon className="h-4 w-4 mr-1" />
+                      View
                     </button>
-                    {canEdit && (
-                      <button
-                        onClick={() => onEdit?.(group)}
-                        className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-1 rounded"
-                        title="Edit Group"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                    )}
-                    {canCreate && (
-                      <button
-                        onClick={() => onClone?.(group)}
-                        className="text-gray-400 hover:text-green-600 dark:hover:text-green-400 p-1 rounded"
-                        title="Clone Group"
-                      >
-                        <DocumentDuplicateIcon className="h-5 w-5" />
-                      </button>
-                    )}
-                    {canDelete && (
-                      <button
-                        onClick={() => onDelete?.(group)}
-                        className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 p-1 rounded"
-                        title="Delete Group"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
