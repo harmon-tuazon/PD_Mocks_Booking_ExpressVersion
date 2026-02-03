@@ -99,7 +99,7 @@ async function handleGet(req, res, id) {
     .from('groups_students')
     .select(`
       id,
-      contact_id,
+      student_id,
       status,
       enrolled_at,
       updated_at
@@ -109,25 +109,25 @@ async function handleGet(req, res, id) {
 
   let students = [];
   if (groupStudents && groupStudents.length > 0) {
-    // Fetch contact details
-    const contactIds = groupStudents.map(gs => gs.contact_id);
+    // Fetch contact details by student_id
+    const studentIds = groupStudents.map(gs => gs.student_id);
     const { data: contacts } = await supabaseAdmin
       .from('hubspot_contact_credits')
       .select('id, student_id, email, firstname, lastname')
-      .in('id', contactIds);
+      .in('student_id', studentIds);
 
     // Merge contact data with student assignments
     const contactMap = (contacts || []).reduce((acc, c) => {
-      acc[c.id] = c;
+      acc[c.student_id] = c;
       return acc;
     }, {});
 
     students = groupStudents.map(gs => ({
       assignment_id: gs.id,
-      contact_id: gs.contact_id,
+      student_id: gs.student_id,
       status: gs.status,
       enrolled_at: gs.enrolled_at,
-      student: contactMap[gs.contact_id] || null
+      student: contactMap[gs.student_id] || null
     }));
   }
 
@@ -137,7 +137,6 @@ async function handleGet(req, res, id) {
       id: group.id,
       group_id: group.group_id,
       group_name: group.group_name,
-      description: group.description,
       time_period: group.time_period,
       start_date: group.start_date,
       end_date: group.end_date,
@@ -171,7 +170,6 @@ async function handlePut(req, res, id) {
   // Build update object with snake_case keys
   const updateData = {};
   if (updates.groupName) updateData.group_name = updates.groupName;
-  if (updates.description !== undefined) updateData.description = updates.description;
   if (updates.timePeriod) updateData.time_period = updates.timePeriod;
   if (updates.startDate) updateData.start_date = updates.startDate;
   if (updates.endDate !== undefined) updateData.end_date = updates.endDate;

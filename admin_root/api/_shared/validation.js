@@ -1294,13 +1294,6 @@ const schemas = {
         'string.max': 'Group name cannot exceed 100 characters',
         'any.required': 'Group name is required'
       }),
-    description: Joi.string()
-      .max(500)
-      .allow('', null)
-      .optional()
-      .messages({
-        'string.max': 'Description cannot exceed 500 characters'
-      }),
     timePeriod: Joi.string()
       .valid('AM', 'PM')
       .required()
@@ -1350,13 +1343,6 @@ const schemas = {
       .messages({
         'string.min': 'Group name must be at least 1 character',
         'string.max': 'Group name cannot exceed 100 characters'
-      }),
-    description: Joi.string()
-      .max(500)
-      .allow('', null)
-      .optional()
-      .messages({
-        'string.max': 'Description cannot exceed 500 characters'
       }),
     timePeriod: Joi.string()
       .valid('AM', 'PM')
@@ -1417,25 +1403,23 @@ const schemas = {
       .messages({
         'any.required': 'Group ID is required'
       }),
-    contactId: Joi.string()
-      .uuid()
+    studentId: Joi.string()
       .required()
       .messages({
-        'string.guid': 'Contact ID must be a valid UUID',
-        'any.required': 'Contact ID is required'
+        'any.required': 'Student ID is required'
       })
   }),
 
   // Schema for bulk student assignment
   bulkStudentAssignment: Joi.object({
     groupId: Joi.string().required(),
-    contactIds: Joi.array()
-      .items(Joi.string().uuid())
+    studentIds: Joi.array()
+      .items(Joi.string())
       .min(1)
       .max(100)
       .required()
       .messages({
-        'array.min': 'At least one contact ID is required',
+        'array.min': 'At least one student ID is required',
         'array.max': 'Cannot assign more than 100 students at once'
       })
   }),

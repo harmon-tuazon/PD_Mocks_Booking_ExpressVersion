@@ -44,26 +44,25 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Find the assignment
-    // studentId can be either the assignment id, contact_id (UUID), or we try both
+    // Find the assignment by student_id first, then by assignment UUID
     let assignment;
 
-    // Try by contact_id first (most common use case)
-    const { data: byContactId } = await supabaseAdmin
+    // Try by student_id first (most common use case)
+    const { data: byStudentId } = await supabaseAdmin
       .from('groups_students')
-      .select('id, contact_id, status')
+      .select('id, student_id, status')
       .eq('group_id', groupId)
-      .eq('contact_id', studentId)
+      .eq('student_id', studentId)
       .eq('status', 'active')
       .single();
 
-    if (byContactId) {
-      assignment = byContactId;
+    if (byStudentId) {
+      assignment = byStudentId;
     } else {
-      // Try by assignment id
+      // Try by assignment UUID
       const { data: byAssignmentId } = await supabaseAdmin
         .from('groups_students')
-        .select('id, contact_id, status')
+        .select('id, student_id, status')
         .eq('group_id', groupId)
         .eq('id', studentId)
         .eq('status', 'active')
@@ -94,14 +93,14 @@ module.exports = async (req, res) => {
     await cache.del('admin:groups:*');
     await cache.del('admin:groups:statistics');
 
-    console.log(`[Student Removed] ${assignment.contact_id} from ${groupId}`);
+    console.log(`[Student Removed] ${assignment.student_id} from ${groupId}`);
 
     res.status(200).json({
       success: true,
       message: 'Student removed from group successfully',
       data: {
         group_id: groupId,
-        contact_id: assignment.contact_id,
+        student_id: assignment.student_id,
         assignment_id: assignment.id
       }
     });

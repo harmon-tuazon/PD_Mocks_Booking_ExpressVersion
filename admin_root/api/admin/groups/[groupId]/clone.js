@@ -129,7 +129,6 @@ module.exports = async (req, res) => {
       .insert({
         group_id: newGroupId,
         group_name: groupName,
-        description: sourceGroup.description,
         time_period: timePeriod,
         start_date: startDate,
         end_date: endDate || null,
@@ -149,14 +148,14 @@ module.exports = async (req, res) => {
     if (includeStudents) {
       const { data: sourceStudents, error: studentsError } = await supabaseAdmin
         .from('groups_students')
-        .select('contact_id')
+        .select('student_id')
         .eq('group_id', sourceGroup.group_id)
         .eq('status', 'active');
 
       if (sourceStudents && sourceStudents.length > 0) {
         const studentInserts = sourceStudents.map(s => ({
           group_id: newGroupId,
-          contact_id: s.contact_id,
+          student_id: s.student_id,
           status: 'active'
         }));
 

@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
       });
     });
 
-    const { groupId, contactIds } = req.validatedData;
+    const { groupId, studentIds } = req.validatedData;
 
     // Verify group exists
     const { data: group, error: groupError } = await supabaseAdmin
@@ -54,28 +54,28 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Verify contacts exist
+    // Verify students exist in hubspot_contact_credits
     const { data: contacts, error: contactsError } = await supabaseAdmin
       .from('hubspot_contact_credits')
       .select('id, student_id, email, firstname, lastname')
-      .in('id', contactIds);
+      .in('student_id', studentIds);
 
     if (contactsError) {
-      throw new Error(`Failed to fetch contacts: ${contactsError.message}`);
+      throw new Error(`Failed to fetch students: ${contactsError.message}`);
     }
 
-    const foundContactIds = new Set(contacts.map(c => c.id));
-    const missingContacts = contactIds.filter(id => !foundContactIds.has(id));
+    const foundStudentIds = new Set(contacts.map(c => c.student_id));
+    const missingStudents = studentIds.filter(id => !foundStudentIds.has(id));
 
     // Check existing assignments
     const { data: existingAssignments } = await supabaseAdmin
       .from('groups_students')
-      .select('contact_id, status')
+      .select('student_id, status')
       .eq('group_id', groupId)
-      .in('contact_id', contactIds);
+      .in('student_id', studentIds);
 
     const existingMap = (existingAssignments || []).reduce((acc, a) => {
-      acc[a.contact_id] = a.status;
+      acc[a.student_id] = a.status;
       return acc;
     }, {});
 
@@ -84,7 +84,7 @@ module.exports = async (req, res) => {
       assigned: [],
       reactivated: [],
       alreadyAssigned: [],
-      notFound: missingContacts,
+      notFound: missingStudents,
       failed: []
     };
 
@@ -94,11 +94,10 @@ module.exports = async (req, res) => {
 
     for (const contact of contactsToProcess) {
       try {
-        const existingStatus = existingMap[contact.id];
+        const existingStatus = existingMap[contact.student_id];
 
         if (existingStatus === 'active') {
           results.alreadyAssigned.push({
-            contact_id: contact.id,
             student_id: contact.student_id,
             reason: 'Already assigned'
           });
@@ -111,17 +110,15 @@ module.exports = async (req, res) => {
             .from('groups_students')
             .update({ status: 'active', updated_at: new Date().toISOString() })
             .eq('group_id', groupId)
-            .eq('contact_id', contact.id);
+            .eq('student_id', contact.student_id);
 
           if (reactivateError) {
             results.failed.push({
-              contact_id: contact.id,
               student_id: contact.student_id,
               reason: reactivateError.message
             });
           } else {
             results.reactivated.push({
-              contact_id: contact.id,
               student_id: contact.student_id,
               firstname: contact.firstname,
               lastname: contact.lastname
@@ -133,19 +130,17 @@ module.exports = async (req, res) => {
             .from('groups_students')
             .insert({
               group_id: groupId,
-              contact_id: contact.id,
+              student_id: contact.student_id,
               status: 'active'
             });
 
           if (insertError) {
             results.failed.push({
-              contact_id: contact.id,
               student_id: contact.student_id,
               reason: insertError.message
             });
           } else {
             results.assigned.push({
-              contact_id: contact.id,
               student_id: contact.student_id,
               firstname: contact.firstname,
               lastname: contact.lastname
@@ -154,7 +149,6 @@ module.exports = async (req, res) => {
         }
       } catch (err) {
         results.failed.push({
-          contact_id: contact.id,
           student_id: contact.student_id,
           reason: err.message
         });
@@ -164,7 +158,6 @@ module.exports = async (req, res) => {
     // Add skipped due to capacity
     for (const contact of skippedDueToCapacity) {
       results.failed.push({
-        contact_id: contact.id,
         student_id: contact.student_id,
         reason: 'Group at capacity'
       });

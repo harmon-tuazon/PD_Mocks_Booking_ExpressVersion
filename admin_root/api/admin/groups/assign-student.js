@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
       });
     });
 
-    const { groupId, contactId } = req.validatedData;
+    const { groupId, studentId } = req.validatedData;
 
     // Verify group exists
     const { data: group, error: groupError } = await supabaseAdmin
@@ -39,17 +39,17 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Verify contact exists
+    // Verify student exists in hubspot_contact_credits
     const { data: contact, error: contactError } = await supabaseAdmin
       .from('hubspot_contact_credits')
       .select('id, student_id, email, firstname, lastname')
-      .eq('id', contactId)
+      .eq('student_id', studentId)
       .single();
 
     if (!contact) {
       return res.status(404).json({
         success: false,
-        error: { code: 'CONTACT_NOT_FOUND', message: `Contact ${contactId} not found` }
+        error: { code: 'STUDENT_NOT_FOUND', message: `Student ${studentId} not found` }
       });
     }
 
@@ -58,7 +58,7 @@ module.exports = async (req, res) => {
       .from('groups_students')
       .select('id, status')
       .eq('group_id', groupId)
-      .eq('contact_id', contactId)
+      .eq('student_id', studentId)
       .single();
 
     if (existing) {
@@ -92,7 +92,7 @@ module.exports = async (req, res) => {
         data: {
           id: reactivated.id,
           group_id: reactivated.group_id,
-          contact_id: reactivated.contact_id,
+          student_id: reactivated.student_id,
           status: reactivated.status,
           enrolled_at: reactivated.enrolled_at,
           student: {
@@ -125,7 +125,7 @@ module.exports = async (req, res) => {
       .from('groups_students')
       .insert({
         group_id: groupId,
-        contact_id: contactId,
+        student_id: studentId,
         status: 'active'
       })
       .select()
@@ -146,7 +146,7 @@ module.exports = async (req, res) => {
     await cache.del('admin:groups:*');
     await cache.del('admin:groups:statistics');
 
-    console.log(`[Student Assigned] ${contact.student_id} -> ${groupId}`);
+    console.log(`[Student Assigned] ${studentId} -> ${groupId}`);
 
     res.status(201).json({
       success: true,
@@ -154,7 +154,7 @@ module.exports = async (req, res) => {
       data: {
         id: assignment.id,
         group_id: assignment.group_id,
-        contact_id: assignment.contact_id,
+        student_id: assignment.student_id,
         status: assignment.status,
         enrolled_at: assignment.enrolled_at,
         student: {
