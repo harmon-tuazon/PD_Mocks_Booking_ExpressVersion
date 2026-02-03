@@ -122,20 +122,22 @@ const GroupsTable = ({
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
-              {/* Checkbox column for selection */}
-              <th scope="col" className="w-12 px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={data.length > 0 && selectedCount === data.length}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      onSelectAll();
-                    }
-                  }}
-                  className="h-4 w-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-gray-700 cursor-pointer"
-                  title="Select all groups on this page"
-                />
-              </th>
+              {/* Checkbox column for selection - only visible when in selection mode */}
+              {isSelectionMode && (
+                <th scope="col" className="w-12 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={data.length > 0 && selectedCount === data.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        onSelectAll();
+                      }
+                    }}
+                    className="h-4 w-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-gray-700 cursor-pointer"
+                    title="Select all groups on this page"
+                  />
+                </th>
+              )}
               <SortableHeader column="group_name">Group Name</SortableHeader>
               <SortableHeader column="location">Location</SortableHeader>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -167,15 +169,17 @@ const GroupsTable = ({
                       : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
                   }`}
                 >
-                  {/* Selection checkbox */}
-                  <td className="w-12 px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={selected}
-                      onChange={() => onToggleSelection(group.group_id)}
-                      className="h-4 w-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-gray-700 cursor-pointer"
-                    />
-                  </td>
+                  {/* Selection checkbox - only visible when in selection mode */}
+                  {isSelectionMode && (
+                    <td className="w-12 px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => onToggleSelection(group.group_id)}
+                        className="h-4 w-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-gray-700 cursor-pointer"
+                      />
+                    </td>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => navigate(`/data-management/groups/${group.group_id}`)}
