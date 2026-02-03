@@ -33,7 +33,7 @@ module.exports = async (req, res) => {
 
     // Get all groups
     const { data: groups, error: groupsError } = await supabaseAdmin
-      .from('hubspot_sync.groups')
+      .from('groups')
       .select('id, group_id, status, max_capacity');
 
     if (groupsError) {
@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
 
     // Get all active student assignments
     const { data: students, error: studentsError } = await supabaseAdmin
-      .from('hubspot_sync.groups_students')
+      .from('groups_students')
       .select('group_id')
       .eq('status', 'active');
 

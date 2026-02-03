@@ -61,7 +61,7 @@ module.exports = async (req, res) => {
 
     // Build Supabase query (using hubspot_sync schema)
     let query = supabaseAdmin
-      .from('hubspot_sync.groups')
+      .from('groups')
       .select('*', { count: 'exact' });
 
     // Apply status filter
@@ -95,7 +95,7 @@ module.exports = async (req, res) => {
     let studentCounts = {};
     if (groupIds.length > 0) {
       const { data: countData, error: countError } = await supabaseAdmin
-        .from('hubspot_sync.groups_students')
+        .from('groups_students')
         .select('group_id')
         .in('group_id', groupIds)
         .eq('status', 'active');

@@ -62,7 +62,7 @@ module.exports = async (req, res) => {
 
     while (!isUnique && attempts < maxAttempts) {
       const { data: existing } = await supabaseAdmin
-        .from('hubspot_sync.groups')
+        .from('groups')
         .select('group_id')
         .eq('group_id', groupId)
         .single();
@@ -87,7 +87,7 @@ module.exports = async (req, res) => {
 
     // Create group in Supabase
     const { data: newGroup, error } = await supabaseAdmin
-      .from('hubspot_sync.groups')
+      .from('groups')
       .insert({
         group_id: groupId,
         group_name: groupName,

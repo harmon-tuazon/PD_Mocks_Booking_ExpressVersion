@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
 
     // Verify group exists
     const { data: group } = await supabaseAdmin
-      .from('hubspot_sync.groups')
+      .from('groups')
       .select('group_id, group_name')
       .eq('group_id', groupId)
       .single();
@@ -50,7 +50,7 @@ module.exports = async (req, res) => {
 
     // Try by contact_id first (most common use case)
     const { data: byContactId } = await supabaseAdmin
-      .from('hubspot_sync.groups_students')
+      .from('groups_students')
       .select('id, contact_id, status')
       .eq('group_id', groupId)
       .eq('contact_id', studentId)
@@ -62,7 +62,7 @@ module.exports = async (req, res) => {
     } else {
       // Try by assignment id
       const { data: byAssignmentId } = await supabaseAdmin
-        .from('hubspot_sync.groups_students')
+        .from('groups_students')
         .select('id, contact_id, status')
         .eq('group_id', groupId)
         .eq('id', studentId)
@@ -81,7 +81,7 @@ module.exports = async (req, res) => {
 
     // Soft delete - set status to 'removed' instead of hard delete
     const { error: updateError } = await supabaseAdmin
-      .from('hubspot_sync.groups_students')
+      .from('groups_students')
       .update({ status: 'removed', updated_at: new Date().toISOString() })
       .eq('id', assignment.id);
 

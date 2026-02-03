@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
 
     // Verify group exists
     const { data: group, error: groupError } = await supabaseAdmin
-      .from('hubspot_sync.groups')
+      .from('groups')
       .select('group_id, group_name, max_capacity, status')
       .eq('group_id', groupId)
       .single();
@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
 
     // Check if already assigned
     const { data: existing } = await supabaseAdmin
-      .from('hubspot_sync.groups_students')
+      .from('groups_students')
       .select('id, status')
       .eq('group_id', groupId)
       .eq('contact_id', contactId)
@@ -71,7 +71,7 @@ module.exports = async (req, res) => {
 
       // Reactivate if previously removed
       const { data: reactivated, error: reactivateError } = await supabaseAdmin
-        .from('hubspot_sync.groups_students')
+        .from('groups_students')
         .update({ status: 'active', updated_at: new Date().toISOString() })
         .eq('id', existing.id)
         .select()
@@ -108,7 +108,7 @@ module.exports = async (req, res) => {
 
     // Check group capacity
     const { count: currentCount } = await supabaseAdmin
-      .from('hubspot_sync.groups_students')
+      .from('groups_students')
       .select('*', { count: 'exact', head: true })
       .eq('group_id', groupId)
       .eq('status', 'active');
@@ -122,7 +122,7 @@ module.exports = async (req, res) => {
 
     // Create assignment
     const { data: assignment, error: assignError } = await supabaseAdmin
-      .from('hubspot_sync.groups_students')
+      .from('groups_students')
       .insert({
         group_id: groupId,
         contact_id: contactId,

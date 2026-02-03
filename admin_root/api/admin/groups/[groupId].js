@@ -68,7 +68,7 @@ async function handleGet(req, res, id) {
 
   // First try group_id (custom ID like 260301AMGR1)
   const { data: byGroupId, error: error1 } = await supabaseAdmin
-    .from('hubspot_sync.groups')
+    .from('groups')
     .select('*')
     .eq('group_id', id)
     .single();
@@ -78,7 +78,7 @@ async function handleGet(req, res, id) {
   } else {
     // Try UUID
     const { data: byUuid, error: error2 } = await supabaseAdmin
-      .from('hubspot_sync.groups')
+      .from('groups')
       .select('*')
       .eq('id', id)
       .single();
@@ -96,7 +96,7 @@ async function handleGet(req, res, id) {
 
   // Fetch students for this group with contact details
   const { data: groupStudents, error: studentsError } = await supabaseAdmin
-    .from('hubspot_sync.groups_students')
+    .from('groups_students')
     .select(`
       id,
       contact_id,
@@ -183,7 +183,7 @@ async function handlePut(req, res, id) {
   let updateError;
 
   const { data: byGroupId, error: error1 } = await supabaseAdmin
-    .from('hubspot_sync.groups')
+    .from('groups')
     .update(updateData)
     .eq('group_id', id)
     .select()
@@ -193,7 +193,7 @@ async function handlePut(req, res, id) {
     result = byGroupId;
   } else {
     const { data: byUuid, error: error2 } = await supabaseAdmin
-      .from('hubspot_sync.groups')
+      .from('groups')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -232,7 +232,7 @@ async function handleDelete(req, res, id) {
   let deleted;
 
   const { data: byGroupId, error: error1 } = await supabaseAdmin
-    .from('hubspot_sync.groups')
+    .from('groups')
     .delete()
     .eq('group_id', id)
     .select()
@@ -242,7 +242,7 @@ async function handleDelete(req, res, id) {
     deleted = byGroupId;
   } else {
     const { data: byUuid, error: error2 } = await supabaseAdmin
-      .from('hubspot_sync.groups')
+      .from('groups')
       .delete()
       .eq('id', id)
       .select()

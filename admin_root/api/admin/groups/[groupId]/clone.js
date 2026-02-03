@@ -69,7 +69,7 @@ module.exports = async (req, res) => {
     // Find source group
     let sourceGroup;
     const { data: byGroupIdResult } = await supabaseAdmin
-      .from('hubspot_sync.groups')
+      .from('groups')
       .select('*')
       .eq('group_id', groupId)
       .single();
@@ -78,7 +78,7 @@ module.exports = async (req, res) => {
       sourceGroup = byGroupIdResult;
     } else {
       const { data: byUuid } = await supabaseAdmin
-        .from('hubspot_sync.groups')
+        .from('groups')
         .select('*')
         .eq('id', groupId)
         .single();
@@ -100,7 +100,7 @@ module.exports = async (req, res) => {
 
     while (!isUnique && attempts < maxAttempts) {
       const { data: existing } = await supabaseAdmin
-        .from('hubspot_sync.groups')
+        .from('groups')
         .select('group_id')
         .eq('group_id', newGroupId)
         .single();
@@ -125,7 +125,7 @@ module.exports = async (req, res) => {
 
     // Create new group
     const { data: newGroup, error: createError } = await supabaseAdmin
-      .from('hubspot_sync.groups')
+      .from('groups')
       .insert({
         group_id: newGroupId,
         group_name: groupName,
@@ -148,7 +148,7 @@ module.exports = async (req, res) => {
     // Clone students if requested
     if (includeStudents) {
       const { data: sourceStudents, error: studentsError } = await supabaseAdmin
-        .from('hubspot_sync.groups_students')
+        .from('groups_students')
         .select('contact_id')
         .eq('group_id', sourceGroup.group_id)
         .eq('status', 'active');
@@ -161,7 +161,7 @@ module.exports = async (req, res) => {
         }));
 
         const { error: insertError } = await supabaseAdmin
-          .from('hubspot_sync.groups_students')
+          .from('groups_students')
           .insert(studentInserts);
 
         if (!insertError) {
