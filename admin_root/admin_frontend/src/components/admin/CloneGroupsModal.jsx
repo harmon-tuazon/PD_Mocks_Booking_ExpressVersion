@@ -34,6 +34,7 @@ const CloneGroupsModal = ({
 
   // Form state
   const [formData, setFormData] = useState({
+    groupName: '',
     startDate: '',
     endDate: '',
     timePeriod: '',
@@ -53,7 +54,7 @@ const CloneGroupsModal = ({
         try {
           // Build clone data for this group
           const cloneData = {
-            groupName: `${group.group_name} (Copy)`,
+            groupName: overrides.groupName || `${group.group_name} (Copy)`,
             timePeriod: overrides.timePeriod || group.time_period,
             location: overrides.location || group.location || 'Mississauga',
             startDate: overrides.startDate,
@@ -126,6 +127,7 @@ const CloneGroupsModal = ({
       }
 
       setFormData({
+        groupName: `${source.group_name} (Copy)`,
         startDate: newStartDate,
         endDate: newEndDate,
         timePeriod: source.time_period || '',
@@ -134,8 +136,9 @@ const CloneGroupsModal = ({
         includeStudents: false
       });
     } else {
-      // Multiple groups - start with blank form
+      // Multiple groups - start with blank form (groupName not applicable for bulk clone)
       setFormData({
+        groupName: '',
         startDate: '',
         endDate: '',
         timePeriod: '',
@@ -226,6 +229,7 @@ const CloneGroupsModal = ({
 
     // Prepare overrides object
     const overrides = {
+      groupName: formData.groupName?.trim() || null,
       startDate: formData.startDate,
       endDate: formData.endDate || null,
       timePeriod: formData.timePeriod || null,
@@ -341,6 +345,25 @@ const CloneGroupsModal = ({
                         <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           Clone Settings
                         </h4>
+
+                        {/* Group Name - Only show for single group clone */}
+                        {selectedGroups.length === 1 && (
+                          <div>
+                            <label htmlFor="groupName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              New Group Name
+                            </label>
+                            <input
+                              type="text"
+                              id="groupName"
+                              value={formData.groupName}
+                              onChange={(e) => handleFieldChange('groupName', e.target.value)}
+                              disabled={cloneMutation.isPending}
+                              placeholder="Leave empty to use default name"
+                              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 sm:text-sm"
+                            />
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {/* Start Date - Required */}
                           <div>

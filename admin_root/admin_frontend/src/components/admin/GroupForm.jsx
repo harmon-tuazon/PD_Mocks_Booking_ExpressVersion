@@ -30,7 +30,6 @@ const GroupForm = ({
   // Form state
   const [formData, setFormData] = useState({
     groupName: '',
-    description: '',
     location: 'Mississauga',
     timePeriod: 'AM',
     startDate: '',
@@ -46,7 +45,6 @@ const GroupForm = ({
       if (initialData) {
         setFormData({
           groupName: mode === 'clone' ? `${initialData.group_name} - Copy` : initialData.group_name || '',
-          description: initialData.description || '',
           location: initialData.location || 'Mississauga',
           timePeriod: initialData.time_period || 'AM',
           startDate: initialData.start_date || '',
@@ -56,7 +54,6 @@ const GroupForm = ({
       } else {
         setFormData({
           groupName: '',
-          description: '',
           location: 'Mississauga',
           timePeriod: 'AM',
           startDate: '',
@@ -77,10 +74,6 @@ const GroupForm = ({
       newErrors.groupName = 'Group name is required';
     } else if (formData.groupName.length > 100) {
       newErrors.groupName = 'Group name cannot exceed 100 characters';
-    }
-
-    if (formData.description && formData.description.length > 500) {
-      newErrors.description = 'Description cannot exceed 500 characters';
     }
 
     if (!formData.timePeriod) {
@@ -134,7 +127,6 @@ const GroupForm = ({
     // Prepare data for API
     const submitData = {
       groupName: formData.groupName.trim(),
-      description: formData.description?.trim() || null,
       location: formData.location,
       timePeriod: formData.timePeriod,
       startDate: formData.startDate,
@@ -266,26 +258,6 @@ const GroupForm = ({
                     />
                     {errors.groupName && (
                       <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.groupName}</p>
-                    )}
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      name="description"
-                      id="description"
-                      rows={2}
-                      value={formData.description}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                      className={errors.description ? inputErrorClass : inputNormalClass}
-                      placeholder="Optional description..."
-                    />
-                    {errors.description && (
-                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.description}</p>
                     )}
                   </div>
 
