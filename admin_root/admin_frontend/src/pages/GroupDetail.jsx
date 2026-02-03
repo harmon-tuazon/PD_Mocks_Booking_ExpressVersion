@@ -8,7 +8,7 @@ import { useState, useMemo, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon, PencilIcon, TrashIcon, UserPlusIcon, XMarkIcon, CheckIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { Users, GraduationCap, Calendar, Clock } from 'lucide-react';
+import { Users, GraduationCap, Calendar, Clock, MapPin } from 'lucide-react';
 import { Dialog, Transition, Combobox } from '@headlessui/react';
 import toast from 'react-hot-toast';
 import { groupsApi, instructorsApi } from '../services/adminApi';
@@ -59,6 +59,16 @@ const TimePeriodBadge = ({ period }) => (
     {period}
   </span>
 );
+
+// Location options
+const LOCATION_OPTIONS = [
+  'Mississauga',
+  'Vancouver',
+  'Calgary',
+  'Montreal',
+  'Richmond Hill',
+  'Online'
+];
 
 function GroupDetail() {
   const { groupId } = useParams();
@@ -170,6 +180,7 @@ function GroupDetail() {
   const handleStartEdit = () => {
     setEditForm({
       groupName: group?.group_name || '',
+      location: group?.location || 'Mississauga',
       timePeriod: group?.time_period || 'AM',
       startDate: group?.start_date || '',
       endDate: group?.end_date || '',
@@ -342,6 +353,20 @@ function GroupDetail() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Location
+                  </label>
+                  <select
+                    value={editForm.location}
+                    onChange={(e) => handleFieldChange('location', e.target.value)}
+                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 sm:text-sm"
+                  >
+                    {LOCATION_OPTIONS.map((loc) => (
+                      <option key={loc} value={loc}>{loc}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Time Period
                   </label>
                   <select
@@ -407,6 +432,7 @@ function GroupDetail() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <InfoCard label="Group Name" value={group?.group_name} />
                 <InfoCard label="Group ID" value={group?.group_id} />
+                <InfoCard label="Location" value={group?.location} icon={MapPin} />
                 <div className="flex items-start space-x-3">
                   <div>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Time Period</dt>

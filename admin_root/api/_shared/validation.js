@@ -1294,6 +1294,12 @@ const schemas = {
         'string.max': 'Group name cannot exceed 100 characters',
         'any.required': 'Group name is required'
       }),
+    location: Joi.string()
+      .valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online')
+      .default('Mississauga')
+      .messages({
+        'any.only': 'Location must be one of: Mississauga, Vancouver, Calgary, Montreal, Richmond Hill, Online'
+      }),
     timePeriod: Joi.string()
       .valid('AM', 'PM')
       .required()
@@ -1343,6 +1349,12 @@ const schemas = {
       .messages({
         'string.min': 'Group name must be at least 1 character',
         'string.max': 'Group name cannot exceed 100 characters'
+      }),
+    location: Joi.string()
+      .valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online')
+      .optional()
+      .messages({
+        'any.only': 'Location must be one of: Mississauga, Vancouver, Calgary, Montreal, Richmond Hill, Online'
       }),
     timePeriod: Joi.string()
       .valid('AM', 'PM')
@@ -1427,6 +1439,12 @@ const schemas = {
   // Schema for group clone
   groupClone: Joi.object({
     groupName: Joi.string().min(1).max(100).required(),
+    location: Joi.string()
+      .valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online')
+      .optional()
+      .messages({
+        'any.only': 'Location must be one of: Mississauga, Vancouver, Calgary, Montreal, Richmond Hill, Online'
+      }),
     timePeriod: Joi.string().valid('AM', 'PM').required(),
     startDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
     endDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow(null, ''),

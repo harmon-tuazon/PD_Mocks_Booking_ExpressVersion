@@ -17,10 +17,21 @@ const GroupForm = ({
 }) => {
   const inputRef = useRef(null);
 
+  // Location options
+  const LOCATION_OPTIONS = [
+    'Mississauga',
+    'Vancouver',
+    'Calgary',
+    'Montreal',
+    'Richmond Hill',
+    'Online'
+  ];
+
   // Form state
   const [formData, setFormData] = useState({
     groupName: '',
     description: '',
+    location: 'Mississauga',
     timePeriod: 'AM',
     startDate: '',
     endDate: '',
@@ -36,6 +47,7 @@ const GroupForm = ({
         setFormData({
           groupName: mode === 'clone' ? `${initialData.group_name} - Copy` : initialData.group_name || '',
           description: initialData.description || '',
+          location: initialData.location || 'Mississauga',
           timePeriod: initialData.time_period || 'AM',
           startDate: initialData.start_date || '',
           endDate: initialData.end_date || '',
@@ -45,6 +57,7 @@ const GroupForm = ({
         setFormData({
           groupName: '',
           description: '',
+          location: 'Mississauga',
           timePeriod: 'AM',
           startDate: '',
           endDate: '',
@@ -72,6 +85,10 @@ const GroupForm = ({
 
     if (!formData.timePeriod) {
       newErrors.timePeriod = 'Time period is required';
+    }
+
+    if (!formData.location) {
+      newErrors.location = 'Location is required';
     }
 
     if (!formData.startDate) {
@@ -118,6 +135,7 @@ const GroupForm = ({
     const submitData = {
       groupName: formData.groupName.trim(),
       description: formData.description?.trim() || null,
+      location: formData.location,
       timePeriod: formData.timePeriod,
       startDate: formData.startDate,
       endDate: formData.endDate || null,
@@ -268,6 +286,28 @@ const GroupForm = ({
                     />
                     {errors.description && (
                       <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.description}</p>
+                    )}
+                  </div>
+
+                  {/* Location */}
+                  <div>
+                    <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Location <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="location"
+                      id="location"
+                      value={formData.location}
+                      onChange={handleChange}
+                      disabled={isLoading}
+                      className={errors.location ? inputErrorClass : inputNormalClass}
+                    >
+                      {LOCATION_OPTIONS.map((loc) => (
+                        <option key={loc} value={loc}>{loc}</option>
+                      ))}
+                    </select>
+                    {errors.location && (
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.location}</p>
                     )}
                   </div>
 

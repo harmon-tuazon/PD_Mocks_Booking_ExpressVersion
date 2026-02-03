@@ -59,6 +59,7 @@ module.exports = async (req, res) => {
 
     const {
       groupName,
+      location,
       timePeriod,
       startDate,
       endDate,
@@ -129,6 +130,7 @@ module.exports = async (req, res) => {
       .insert({
         group_id: newGroupId,
         group_name: groupName,
+        location: location || sourceGroup.location || 'Mississauga',
         time_period: timePeriod,
         start_date: startDate,
         end_date: endDate || null,

@@ -209,6 +209,7 @@ async function handlePut(req, res, id) {
   // Build update object with snake_case keys
   const updateData = {};
   if (updates.groupName) updateData.group_name = updates.groupName;
+  if (updates.location) updateData.location = updates.location;
   if (updates.timePeriod) updateData.time_period = updates.timePeriod;
   if (updates.startDate) updateData.start_date = updates.startDate;
   if (updates.endDate !== undefined) updateData.end_date = updates.endDate;
