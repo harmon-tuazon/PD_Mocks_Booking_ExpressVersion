@@ -22,11 +22,22 @@ const CloneGroupsModal = ({
 }) => {
   const queryClient = useQueryClient();
 
+  // Location options
+  const LOCATION_OPTIONS = [
+    'Mississauga',
+    'Vancouver',
+    'Calgary',
+    'Montreal',
+    'Richmond Hill',
+    'Online'
+  ];
+
   // Form state
   const [formData, setFormData] = useState({
     startDate: '',
     endDate: '',
     timePeriod: '',
+    location: '',
     maxCapacity: '',
     includeStudents: false
   });
@@ -44,6 +55,7 @@ const CloneGroupsModal = ({
           const cloneData = {
             groupName: `${group.group_name} (Copy)`,
             timePeriod: overrides.timePeriod || group.time_period,
+            location: overrides.location || group.location || 'Mississauga',
             startDate: overrides.startDate,
             endDate: overrides.endDate || group.end_date || null,
             maxCapacity: overrides.maxCapacity ? parseInt(overrides.maxCapacity) : group.max_capacity,
@@ -117,6 +129,7 @@ const CloneGroupsModal = ({
         startDate: newStartDate,
         endDate: newEndDate,
         timePeriod: source.time_period || '',
+        location: source.location || '',
         maxCapacity: '',
         includeStudents: false
       });
@@ -126,6 +139,7 @@ const CloneGroupsModal = ({
         startDate: '',
         endDate: '',
         timePeriod: '',
+        location: '',
         maxCapacity: '',
         includeStudents: false
       });
@@ -215,6 +229,7 @@ const CloneGroupsModal = ({
       startDate: formData.startDate,
       endDate: formData.endDate || null,
       timePeriod: formData.timePeriod || null,
+      location: formData.location || null,
       maxCapacity: formData.maxCapacity || null,
       includeStudents: formData.includeStudents
     };
@@ -383,6 +398,25 @@ const CloneGroupsModal = ({
                               <option value="">Keep original</option>
                               <option value="AM">AM</option>
                               <option value="PM">PM</option>
+                            </select>
+                          </div>
+
+                          {/* Location */}
+                          <div>
+                            <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Location
+                            </label>
+                            <select
+                              id="location"
+                              value={formData.location}
+                              onChange={(e) => handleFieldChange('location', e.target.value)}
+                              disabled={cloneMutation.isPending}
+                              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 sm:text-sm"
+                            >
+                              <option value="">Keep original</option>
+                              {LOCATION_OPTIONS.map((loc) => (
+                                <option key={loc} value={loc}>{loc}</option>
+                              ))}
                             </select>
                           </div>
 

@@ -11,7 +11,7 @@ import { ArrowLeftIcon, PencilIcon, TrashIcon, UserPlusIcon, XMarkIcon, CheckIco
 import { Users, GraduationCap, Calendar, Clock, MapPin } from 'lucide-react';
 import { Dialog, Transition, Combobox } from '@headlessui/react';
 import toast from 'react-hot-toast';
-import { groupsApi, instructorsApi } from '../services/adminApi';
+import { groupsApi, instructorsApi, traineeApi } from '../services/adminApi';
 
 /**
  * Info card for displaying a labeled value
@@ -136,6 +136,11 @@ function GroupDetail() {
   const [instructorSearch, setInstructorSearch] = useState('');
   const [selectedInstructor, setSelectedInstructor] = useState(null);
 
+  // Add student state
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState(null);
+
   // Fetch available instructors for dropdown
   const { data: instructorsData } = useQuery({
     queryKey: ['instructors-list', instructorSearch],
@@ -171,10 +176,34 @@ function GroupDetail() {
     }
   });
 
+  // Fetch available students for dropdown
+  const { data: studentsData } = useQuery({
+    queryKey: ['students-search', studentSearch],
+    queryFn: () => traineeApi.search(studentSearch),
+    enabled: showAddStudentModal && studentSearch.length >= 2
+  });
+
+  // Add student mutation
+  const addStudentMutation = useMutation({
+    mutationFn: (contactId) => groupsApi.assignStudent({ groupId: group?.group_id, contactId }),
+    onSuccess: () => {
+      toast.success('Student added to group');
+      queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      setShowAddStudentModal(false);
+      setSelectedStudent(null);
+      setStudentSearch('');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to add student');
+    }
+  });
+
   const group = groupData?.data;
   const students = group?.students || [];
   const instructors = group?.instructors || [];
   const availableInstructors = instructorsData?.data || [];
+  const availableStudents = studentsData?.data || [];
 
   // Initialize edit form when entering edit mode
   const handleStartEdit = () => {
@@ -577,7 +606,13 @@ function GroupDetail() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Students ({students.length})
               </h2>
-              {/* Add Student button - can be implemented later */}
+              <button
+                onClick={() => setShowAddStudentModal(true)}
+                className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              >
+                <UserPlusIcon className="h-4 w-4 mr-1" />
+                Add Student
+              </button>
             </div>
           </div>
 
@@ -845,6 +880,165 @@ function GroupDetail() {
                           setShowAddInstructorModal(false);
                           setSelectedInstructor(null);
                           setInstructorSearch('');
+                        }}
+                        className="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:col-start-1 sm:mt-0"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
+            </div>
+          </Dialog>
+        </Transition.Root>
+
+        {/* Add Student Modal */}
+        <Transition.Root show={showAddStudentModal} as={Fragment}>
+          <Dialog
+            as="div"
+            className="relative z-50"
+            onClose={() => {
+              setShowAddStudentModal(false);
+              setSelectedStudent(null);
+              setStudentSearch('');
+            }}
+          >
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 transition-opacity" />
+            </Transition.Child>
+
+            <div className="fixed inset-0 z-10 overflow-y-auto">
+              <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <Transition.Child
+                  as={Fragment}
+                  enter="ease-out duration-300"
+                  enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                  enterTo="opacity-100 translate-y-0 sm:scale-100"
+                  leave="ease-in duration-200"
+                  leaveFrom="opacity-100 translate-y-0 sm:scale-100"
+                  leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                >
+                  <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+                    <div>
+                      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30">
+                        <Users className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                      </div>
+                      <div className="mt-3 text-center sm:mt-5">
+                        <Dialog.Title as="h3" className="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
+                          Add Student to Group
+                        </Dialog.Title>
+                        <div className="mt-2">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Search for a student by name, email, or student ID.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5">
+                      <Combobox value={selectedStudent} onChange={setSelectedStudent}>
+                        <div className="relative">
+                          <div className="relative w-full cursor-default overflow-hidden rounded-lg bg-white dark:bg-gray-700 text-left border border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500">
+                            <Combobox.Input
+                              className="w-full border-none py-3 pl-10 pr-3 text-sm leading-5 text-gray-900 dark:text-gray-100 bg-transparent focus:ring-0"
+                              placeholder="Search students..."
+                              displayValue={(student) =>
+                                student ? `${student.firstname} ${student.lastname}` : ''
+                              }
+                              onChange={(event) => setStudentSearch(event.target.value)}
+                            />
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-3">
+                              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                            </div>
+                          </div>
+                          <Transition
+                            as={Fragment}
+                            leave="transition ease-in duration-100"
+                            leaveFrom="opacity-100"
+                            leaveTo="opacity-0"
+                          >
+                            <Combobox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-gray-700 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                              {availableStudents.length === 0 ? (
+                                <div className="relative cursor-default select-none py-2 px-4 text-gray-700 dark:text-gray-300">
+                                  {studentSearch.length < 2 ? 'Type at least 2 characters to search...' : 'No students found.'}
+                                </div>
+                              ) : (
+                                availableStudents.map((student) => {
+                                  // Check if already assigned
+                                  const isAssigned = students.some(s => s.student_id === student.student_id || s.student_id === student.hubspot_id);
+                                  return (
+                                    <Combobox.Option
+                                      key={student.hubspot_id || student.id}
+                                      className={({ active }) =>
+                                        `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                                          isAssigned
+                                            ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                                            : active
+                                              ? 'bg-primary-600 text-white'
+                                              : 'text-gray-900 dark:text-gray-100'
+                                        }`
+                                      }
+                                      value={student}
+                                      disabled={isAssigned}
+                                    >
+                                      {({ selected, active }) => (
+                                        <>
+                                          <div className="flex items-center">
+                                            <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
+                                              {student.firstname} {student.lastname}
+                                            </span>
+                                            {isAssigned && (
+                                              <span className="ml-2 text-xs">(Already assigned)</span>
+                                            )}
+                                          </div>
+                                          <span className={`block truncate text-xs ${active ? 'text-primary-200' : 'text-gray-500 dark:text-gray-400'}`}>
+                                            {student.email} {student.student_id && `• ${student.student_id}`}
+                                          </span>
+                                          {selected && (
+                                            <span className={`absolute inset-y-0 left-0 flex items-center pl-3 ${active ? 'text-white' : 'text-primary-600'}`}>
+                                              <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                                            </span>
+                                          )}
+                                        </>
+                                      )}
+                                    </Combobox.Option>
+                                  );
+                                })
+                              )}
+                            </Combobox.Options>
+                          </Transition>
+                        </div>
+                      </Combobox>
+                    </div>
+
+                    <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+                      <button
+                        type="button"
+                        disabled={!selectedStudent || addStudentMutation.isPending}
+                        onClick={() => {
+                          if (selectedStudent) {
+                            addStudentMutation.mutate(selectedStudent.hubspot_id || selectedStudent.id);
+                          }
+                        }}
+                        className="inline-flex w-full justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 sm:col-start-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {addStudentMutation.isPending ? 'Adding...' : 'Add Student'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddStudentModal(false);
+                          setSelectedStudent(null);
+                          setStudentSearch('');
                         }}
                         className="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:col-start-1 sm:mt-0"
                       >
