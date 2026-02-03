@@ -212,40 +212,46 @@ const GroupViewModal = ({ isOpen, onClose, groupId }) => {
                         {/* Overview Tab */}
                         <Tab.Panel>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <InfoCard label="Group Name" value={group?.group_name} />
-                            <InfoCard label="Group ID" value={group?.group_id} />
-                            <InfoCard label="Location" value={group?.location} icon={MapPin} />
-                            <div className="flex items-start space-x-3">
-                              <div>
-                                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Time Period</dt>
-                                <dd className="mt-1">
-                                  <TimePeriodBadge period={group?.time_period} />
-                                </dd>
+                            {/* Left column - fields without icons */}
+                            <div className="space-y-6">
+                              <InfoCard label="Group Name" value={group?.group_name} />
+                              <div className="flex items-start space-x-3">
+                                <div>
+                                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Time Period</dt>
+                                  <dd className="mt-1">
+                                    <TimePeriodBadge period={group?.time_period} />
+                                  </dd>
+                                </div>
+                              </div>
+                              <div className="flex items-start space-x-3">
+                                <div>
+                                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
+                                  <dd className="mt-1">
+                                    <StatusBadge status={group?.status} />
+                                  </dd>
+                                </div>
                               </div>
                             </div>
-                            <div className="flex items-start space-x-3">
-                              <div>
-                                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
-                                <dd className="mt-1">
-                                  <StatusBadge status={group?.status} />
-                                </dd>
-                              </div>
+
+                            {/* Right column - fields with icons */}
+                            <div className="space-y-6">
+                              <InfoCard label="Location" value={group?.location} icon={MapPin} />
+                              <InfoCard
+                                label="Start Date"
+                                value={formatDate(group?.start_date)}
+                                icon={Calendar}
+                              />
+                              <InfoCard
+                                label="End Date"
+                                value={formatDate(group?.end_date)}
+                                icon={Calendar}
+                              />
+                              <InfoCard
+                                label="Capacity"
+                                value={`${group?.student_count || 0} / ${group?.max_capacity}`}
+                                icon={Users}
+                              />
                             </div>
-                            <InfoCard
-                              label="Start Date"
-                              value={formatDate(group?.start_date)}
-                              icon={Calendar}
-                            />
-                            <InfoCard
-                              label="End Date"
-                              value={formatDate(group?.end_date)}
-                              icon={Calendar}
-                            />
-                            <InfoCard
-                              label="Capacity"
-                              value={`${group?.student_count || 0} / ${group?.max_capacity}`}
-                              icon={Users}
-                            />
                           </div>
                         </Tab.Panel>
 
