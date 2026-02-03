@@ -1277,6 +1277,177 @@ const schemas = {
       .messages({
         'any.required': 'Tokens object is required'
       })
+  }),
+
+  // ============================================================
+  // GROUP MANAGEMENT SCHEMAS
+  // ============================================================
+
+  // Schema for group creation
+  groupCreation: Joi.object({
+    groupName: Joi.string()
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'string.min': 'Group name must be at least 1 character',
+        'string.max': 'Group name cannot exceed 100 characters',
+        'any.required': 'Group name is required'
+      }),
+    description: Joi.string()
+      .max(500)
+      .allow('', null)
+      .optional()
+      .messages({
+        'string.max': 'Description cannot exceed 500 characters'
+      }),
+    timePeriod: Joi.string()
+      .valid('AM', 'PM')
+      .required()
+      .messages({
+        'any.only': 'Time period must be AM or PM',
+        'any.required': 'Time period is required'
+      }),
+    startDate: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Start date must be in YYYY-MM-DD format',
+        'any.required': 'Start date is required'
+      }),
+    endDate: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .allow(null, '')
+      .optional()
+      .messages({
+        'string.pattern.base': 'End date must be in YYYY-MM-DD format'
+      }),
+    maxCapacity: Joi.number()
+      .integer()
+      .min(1)
+      .max(100)
+      .default(20)
+      .messages({
+        'number.min': 'Max capacity must be at least 1',
+        'number.max': 'Max capacity cannot exceed 100'
+      })
+  }).custom((value, helpers) => {
+    // Validate end date is after start date
+    if (value.endDate && value.startDate && value.endDate <= value.startDate) {
+      return helpers.error('custom.endDateBeforeStart');
+    }
+    return value;
+  }).messages({
+    'custom.endDateBeforeStart': 'End date must be after start date'
+  }),
+
+  // Schema for group update
+  groupUpdate: Joi.object({
+    groupName: Joi.string()
+      .min(1)
+      .max(100)
+      .optional()
+      .messages({
+        'string.min': 'Group name must be at least 1 character',
+        'string.max': 'Group name cannot exceed 100 characters'
+      }),
+    description: Joi.string()
+      .max(500)
+      .allow('', null)
+      .optional()
+      .messages({
+        'string.max': 'Description cannot exceed 500 characters'
+      }),
+    timePeriod: Joi.string()
+      .valid('AM', 'PM')
+      .optional()
+      .messages({
+        'any.only': 'Time period must be AM or PM'
+      }),
+    startDate: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .optional()
+      .messages({
+        'string.pattern.base': 'Start date must be in YYYY-MM-DD format'
+      }),
+    endDate: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .allow(null, '')
+      .optional()
+      .messages({
+        'string.pattern.base': 'End date must be in YYYY-MM-DD format'
+      }),
+    maxCapacity: Joi.number()
+      .integer()
+      .min(1)
+      .max(100)
+      .optional()
+      .messages({
+        'number.min': 'Max capacity must be at least 1',
+        'number.max': 'Max capacity cannot exceed 100'
+      }),
+    status: Joi.string()
+      .valid('active', 'inactive', 'completed')
+      .optional()
+      .messages({
+        'any.only': 'Status must be one of: active, inactive, completed'
+      })
+  }).min(1).messages({
+    'object.min': 'At least one property must be provided for update'
+  }),
+
+  // Schema for group list query
+  groupList: Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(50),
+    sort_by: Joi.string()
+      .valid('start_date', 'group_name', 'created_at', 'status')
+      .default('start_date'),
+    sort_order: Joi.string().valid('asc', 'desc').default('desc'),
+    filter_status: Joi.string()
+      .valid('all', 'active', 'inactive', 'completed')
+      .default('all'),
+    search: Joi.string().max(100).allow('').optional()
+  }),
+
+  // Schema for student assignment
+  studentAssignment: Joi.object({
+    groupId: Joi.string()
+      .required()
+      .messages({
+        'any.required': 'Group ID is required'
+      }),
+    contactId: Joi.string()
+      .uuid()
+      .required()
+      .messages({
+        'string.guid': 'Contact ID must be a valid UUID',
+        'any.required': 'Contact ID is required'
+      })
+  }),
+
+  // Schema for bulk student assignment
+  bulkStudentAssignment: Joi.object({
+    groupId: Joi.string().required(),
+    contactIds: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one contact ID is required',
+        'array.max': 'Cannot assign more than 100 students at once'
+      })
+  }),
+
+  // Schema for group clone
+  groupClone: Joi.object({
+    groupName: Joi.string().min(1).max(100).required(),
+    timePeriod: Joi.string().valid('AM', 'PM').required(),
+    startDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    endDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow(null, ''),
+    maxCapacity: Joi.number().integer().min(1).max(100),
+    includeStudents: Joi.boolean().default(true)
   })
 
 };

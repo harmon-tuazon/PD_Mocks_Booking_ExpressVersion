@@ -1,28 +1,22 @@
 /**
  * Groups Page
  * Main dashboard for Workcheck Group Management
- * Allows admins to manage training groups, assign students and instructors
+ * Allows admins to manage training groups, assign students
  */
 
 import { useState } from 'react';
-import { Users, UserCheck, Calendar, FolderOpen } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Users, UserCheck, Calendar, FolderOpen, PlusIcon, Search } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
-
-/**
- * Permission check stub for future RBAC implementation
- * Currently always returns true per "Authentication-Only Model"
- * See CLAUDE.md: Authentication Policy section
- */
-const usePermission = (permission) => {
-  // TODO: Implement actual RBAC when needed
-  // For now, any authenticated user has full access
-  return true;
-};
+import { groupsApi } from '../services/adminApi';
+import GroupsTable from '../components/admin/GroupsTable';
+import GroupForm from '../components/admin/GroupForm';
 
 /**
  * Statistics card component for displaying group metrics
  */
-const StatCard = ({ name, value, icon, bgColor, textColor, isLoading }) => {
+const StatCard = ({ name, value, icon: Icon, bgColor, textColor, isLoading }) => {
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-dark-card overflow-hidden shadow dark:shadow-gray-900/50 rounded-lg animate-pulse">
@@ -44,7 +38,7 @@ const StatCard = ({ name, value, icon, bgColor, textColor, isLoading }) => {
       <div className="p-5">
         <div className="flex items-center">
           <div className={`flex-shrink-0 ${bgColor} dark:bg-opacity-20 rounded-md p-3`}>
-            {icon}
+            <Icon className={`h-6 w-6 ${textColor}`} />
           </div>
           <div className="ml-5 w-0 flex-1">
             <dl>
@@ -65,69 +59,171 @@ const StatCard = ({ name, value, icon, bgColor, textColor, isLoading }) => {
 };
 
 function Groups() {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Filter and pagination state
   const [filters, setFilters] = useState({
     page: 1,
     limit: 50,
+    sort_by: 'start_date',
+    sort_order: 'desc',
     filter_status: 'all',
     search: ''
   });
 
-  // Check permission using stub (future RBAC implementation)
-  const hasViewPermission = usePermission('groups.view');
+  // Fetch groups
+  const {
+    data: groupsData,
+    isLoading: groupsLoading,
+    error: groupsError
+  } = useQuery({
+    queryKey: ['groups', filters],
+    queryFn: () => groupsApi.list(filters)
+  });
 
-  // Access denied view for unauthorized users
-  if (!hasViewPermission) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
-        <div className="container-app py-8">
-          <div className="text-center py-12">
-            <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20 mb-4">
-              <svg className="h-8 w-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Access Denied</h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              You don't have permission to view workcheck groups.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Fetch statistics
+  const {
+    data: statsData,
+    isLoading: statsLoading
+  } = useQuery({
+    queryKey: ['groups-statistics'],
+    queryFn: () => groupsApi.getStatistics()
+  });
 
-  // Placeholder statistics (will be populated from API later)
-  const stats = [
-    {
-      name: 'Total Groups',
-      value: '--',
-      icon: <FolderOpen className="h-6 w-6 text-primary-600" />,
-      bgColor: 'bg-primary-50',
-      textColor: 'text-primary-600'
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: (data) => groupsApi.create(data),
+    onSuccess: () => {
+      toast.success('Group created successfully');
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['groups-statistics'] });
+      setShowCreateModal(false);
     },
-    {
-      name: 'Active Groups',
-      value: '--',
-      icon: <Calendar className="h-6 w-6 text-teal-600" />,
-      bgColor: 'bg-teal-50',
-      textColor: 'text-teal-600'
-    },
-    {
-      name: 'Total Students',
-      value: '--',
-      icon: <Users className="h-6 w-6 text-blue-600" />,
-      bgColor: 'bg-blue-50',
-      textColor: 'text-blue-600'
-    },
-    {
-      name: 'Instructors Assigned',
-      value: '--',
-      icon: <UserCheck className="h-6 w-6 text-coral-600" />,
-      bgColor: 'bg-coral-50',
-      textColor: 'text-coral-600'
+    onError: (error) => {
+      toast.error(error.message || 'Failed to create group');
     }
-  ];
+  });
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => groupsApi.update(id, data),
+    onSuccess: () => {
+      toast.success('Group updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['groups-statistics'] });
+      setShowEditModal(false);
+      setSelectedGroup(null);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update group');
+    }
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id) => groupsApi.delete(id),
+    onSuccess: () => {
+      toast.success('Group deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['groups-statistics'] });
+      setShowDeleteConfirm(false);
+      setSelectedGroup(null);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete group');
+    }
+  });
+
+  // Clone mutation
+  const cloneMutation = useMutation({
+    mutationFn: ({ id, data }) => groupsApi.clone(id, data),
+    onSuccess: (result) => {
+      toast.success(result.message || 'Group cloned successfully');
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['groups-statistics'] });
+      setShowCloneModal(false);
+      setSelectedGroup(null);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to clone group');
+    }
+  });
+
+  // Handlers
+  const handleSort = (column) => {
+    setFilters(prev => ({
+      ...prev,
+      sort_by: column,
+      sort_order: prev.sort_by === column && prev.sort_order === 'asc' ? 'desc' : 'asc',
+      page: 1
+    }));
+  };
+
+  const handlePageChange = (page) => {
+    setFilters(prev => ({ ...prev, page }));
+  };
+
+  const handleStatusFilterChange = (status) => {
+    setFilters(prev => ({ ...prev, filter_status: status, page: 1 }));
+  };
+
+  const handleSearch = (e) => {
+    const value = e.target.value;
+    setFilters(prev => ({ ...prev, search: value, page: 1 }));
+  };
+
+  const handleView = (group) => {
+    setSelectedGroup(group);
+    setShowEditModal(true);
+  };
+
+  const handleEdit = (group) => {
+    setSelectedGroup(group);
+    setShowEditModal(true);
+  };
+
+  const handleDelete = (group) => {
+    setSelectedGroup(group);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleClone = (group) => {
+    setSelectedGroup(group);
+    setShowCloneModal(true);
+  };
+
+  const handleCreateSubmit = (data) => {
+    createMutation.mutate(data);
+  };
+
+  const handleEditSubmit = (data) => {
+    if (selectedGroup) {
+      updateMutation.mutate({ id: selectedGroup.group_id, data });
+    }
+  };
+
+  const handleCloneSubmit = (data) => {
+    if (selectedGroup) {
+      cloneMutation.mutate({ id: selectedGroup.group_id, data });
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (selectedGroup) {
+      deleteMutation.mutate(selectedGroup.group_id);
+    }
+  };
+
+  // Statistics
+  const stats = statsData?.data || {};
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
@@ -139,19 +235,15 @@ function Groups() {
               Workcheck Group Management
             </h1>
             <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">
-              Manage training groups, assign students and instructors
+              Manage training groups and assign students
             </p>
           </div>
           <div>
-            {/* Create Group Button - Disabled until API is ready */}
             <button
-              disabled
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Coming soon - API endpoints need to be created first"
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
             >
-              <svg className="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
+              <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
               Create New Group
             </button>
           </div>
@@ -159,99 +251,183 @@ function Groups() {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-          {stats.map((stat) => (
-            <StatCard
-              key={stat.name}
-              name={stat.name}
-              value={stat.value}
-              icon={stat.icon}
-              bgColor={stat.bgColor}
-              textColor={stat.textColor}
-              isLoading={false}
-            />
-          ))}
+          <StatCard
+            name="Total Groups"
+            value={stats.total ?? '--'}
+            icon={FolderOpen}
+            bgColor="bg-primary-50"
+            textColor="text-primary-600"
+            isLoading={statsLoading}
+          />
+          <StatCard
+            name="Active Groups"
+            value={stats.active ?? '--'}
+            icon={Calendar}
+            bgColor="bg-teal-50"
+            textColor="text-teal-600"
+            isLoading={statsLoading}
+          />
+          <StatCard
+            name="Total Students"
+            value={stats.totalStudents ?? '--'}
+            icon={Users}
+            bgColor="bg-blue-50"
+            textColor="text-blue-600"
+            isLoading={statsLoading}
+          />
+          <StatCard
+            name="Avg Group Size"
+            value={stats.averageSize ?? '--'}
+            icon={UserCheck}
+            bgColor="bg-coral-50"
+            textColor="text-coral-600"
+            isLoading={statsLoading}
+          />
         </div>
 
-        {/* Placeholder Content */}
-        <div className="bg-white dark:bg-dark-card rounded-lg shadow dark:shadow-gray-900/50 overflow-hidden">
-          {/* Section Header */}
-          <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Groups
-            </h2>
-          </div>
-
-          {/* Placeholder Message */}
-          <div className="p-6">
-            <div className="text-center py-12">
-              <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
-                <FolderOpen className="h-8 w-8 text-gray-400 dark:text-gray-500" />
+        {/* Filters */}
+        <div className="bg-white dark:bg-dark-card rounded-lg shadow dark:shadow-gray-900/50 p-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search */}
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                Group Management Coming Soon
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-                The group management table will be implemented here once the backend API endpoints are created.
-                This page will allow you to:
-              </p>
-              <ul className="mt-4 text-sm text-gray-500 dark:text-gray-400 space-y-2">
-                <li className="flex items-center justify-center">
-                  <svg className="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Create and manage training groups
-                </li>
-                <li className="flex items-center justify-center">
-                  <svg className="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Assign students to groups
-                </li>
-                <li className="flex items-center justify-center">
-                  <svg className="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Assign instructors to groups
-                </li>
-                <li className="flex items-center justify-center">
-                  <svg className="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  View group schedules and attendance
-                </li>
-              </ul>
+              <input
+                type="text"
+                placeholder="Search groups..."
+                value={filters.search}
+                onChange={handleSearch}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-500 dark:text-gray-400">Status:</span>
+              <select
+                value={filters.filter_status}
+                onChange={(e) => handleStatusFilterChange(e.target.value)}
+                className="block w-auto pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              >
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="completed">Completed</option>
+              </select>
             </div>
           </div>
         </div>
 
-        {/* Development Notes Section */}
-        <div className="mt-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                Development Notice
-              </h3>
-              <div className="mt-2 text-sm text-amber-700 dark:text-amber-400">
-                <p>
-                  This page is a placeholder for the Workcheck Group Management feature.
-                  The following backend components need to be implemented:
-                </p>
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>API endpoint: GET /api/admin/groups/list</li>
-                  <li>API endpoint: POST /api/admin/groups/create</li>
-                  <li>API endpoint: PUT /api/admin/groups/:id</li>
-                  <li>API endpoint: DELETE /api/admin/groups/:id</li>
-                  <li>Supabase table: workcheck_groups</li>
-                </ul>
+        {/* Error state */}
+        {groupsError && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+            <p className="text-red-800 dark:text-red-300">
+              Error loading groups: {groupsError.message}
+            </p>
+          </div>
+        )}
+
+        {/* Groups Table */}
+        <GroupsTable
+          data={groupsData?.data || []}
+          isLoading={groupsLoading}
+          onSort={handleSort}
+          currentSort={{ sort_by: filters.sort_by, sort_order: filters.sort_order }}
+          currentPage={filters.page}
+          totalPages={groupsData?.pagination?.total_pages || 1}
+          totalItems={groupsData?.pagination?.total_records || 0}
+          onPageChange={handlePageChange}
+          onView={handleView}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onClone={handleClone}
+        />
+
+        {/* Create Modal */}
+        <GroupForm
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateSubmit}
+          isLoading={createMutation.isPending}
+          mode="create"
+        />
+
+        {/* Edit Modal */}
+        <GroupForm
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedGroup(null);
+          }}
+          onSubmit={handleEditSubmit}
+          isLoading={updateMutation.isPending}
+          initialData={selectedGroup}
+          mode="edit"
+        />
+
+        {/* Clone Modal */}
+        <GroupForm
+          isOpen={showCloneModal}
+          onClose={() => {
+            setShowCloneModal(false);
+            setSelectedGroup(null);
+          }}
+          onSubmit={handleCloneSubmit}
+          isLoading={cloneMutation.isPending}
+          initialData={selectedGroup}
+          mode="clone"
+        />
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+              <div className="fixed inset-0 bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 transition-opacity" onClick={() => setShowDeleteConfirm(false)} />
+              <div className="relative transform overflow-hidden rounded-lg bg-white dark:bg-dark-card px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20 sm:mx-0 sm:h-10 sm:w-10">
+                    <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                  </div>
+                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                    <h3 className="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
+                      Delete Group
+                    </h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Are you sure you want to delete <span className="font-medium">{selectedGroup?.group_name}</span>?
+                        This will also remove all student assignments. This action cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                  <button
+                    type="button"
+                    onClick={handleDeleteConfirm}
+                    disabled={deleteMutation.isPending}
+                    className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto disabled:opacity-50"
+                  >
+                    {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setSelectedGroup(null);
+                    }}
+                    disabled={deleteMutation.isPending}
+                    className="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 sm:mt-0 sm:w-auto disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

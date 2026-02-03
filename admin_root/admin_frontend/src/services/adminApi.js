@@ -501,6 +501,114 @@ export const bulkBookingsApi = {
   }
 };
 
+/**
+ * Groups API endpoints
+ * For Workcheck Group Management
+ */
+export const groupsApi = {
+  /**
+   * List groups with pagination, filtering, and sorting
+   * @param {Object} params - Query parameters (page, limit, sort_by, sort_order, filter_status, search)
+   * @returns {Promise<Object>} Paginated groups
+   */
+  list: async (params = {}) => {
+    const response = await api.get('/admin/groups/list', { params });
+    return response.data;
+  },
+
+  /**
+   * Create a new group
+   * @param {Object} data - Group data (groupName, description, timePeriod, startDate, endDate, maxCapacity)
+   * @returns {Promise<Object>} Created group
+   */
+  create: async (data) => {
+    const response = await api.post('/admin/groups/create', data);
+    return response.data;
+  },
+
+  /**
+   * Get single group with details and students
+   * @param {string} id - Group ID (group_id or UUID)
+   * @returns {Promise<Object>} Group details with students
+   */
+  getById: async (id) => {
+    const response = await api.get(`/admin/groups/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Update a group
+   * @param {string} id - Group ID (group_id or UUID)
+   * @param {Object} data - Update data
+   * @returns {Promise<Object>} Updated group
+   */
+  update: async (id, data) => {
+    const response = await api.put(`/admin/groups/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete a group
+   * @param {string} id - Group ID (group_id or UUID)
+   * @returns {Promise<Object>} Deletion confirmation
+   */
+  delete: async (id) => {
+    const response = await api.delete(`/admin/groups/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Get group statistics
+   * @returns {Promise<Object>} Statistics (total, active, totalStudents, averageSize)
+   */
+  getStatistics: async () => {
+    const response = await api.get('/admin/groups/statistics');
+    return response.data;
+  },
+
+  /**
+   * Assign a student to a group
+   * @param {Object} data - { groupId, contactId }
+   * @returns {Promise<Object>} Assignment result
+   */
+  assignStudent: async (data) => {
+    const response = await api.post('/admin/groups/assign-student', data);
+    return response.data;
+  },
+
+  /**
+   * Bulk assign students to a group
+   * @param {Object} data - { groupId, contactIds }
+   * @returns {Promise<Object>} Bulk assignment result
+   */
+  bulkAssignStudents: async (data) => {
+    const response = await api.post('/admin/groups/bulk-assign-students', data);
+    return response.data;
+  },
+
+  /**
+   * Remove a student from a group
+   * @param {string} groupId - Group ID
+   * @param {string} studentId - Contact ID or assignment ID
+   * @returns {Promise<Object>} Removal confirmation
+   */
+  removeStudent: async (groupId, studentId) => {
+    const response = await api.delete(`/admin/groups/${groupId}/students/${studentId}`);
+    return response.data;
+  },
+
+  /**
+   * Clone a group
+   * @param {string} id - Source group ID
+   * @param {Object} data - Clone data (groupName, timePeriod, startDate, endDate, maxCapacity, includeStudents)
+   * @returns {Promise<Object>} Cloned group
+   */
+  clone: async (id, data) => {
+    const response = await api.post(`/admin/groups/${id}/clone`, data);
+    return response.data;
+  }
+};
+
 // Export the axios instance as adminApi for direct use in hooks
 export const adminApi = api;
 
