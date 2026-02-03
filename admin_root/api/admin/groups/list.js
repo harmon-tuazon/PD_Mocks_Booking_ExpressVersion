@@ -112,6 +112,7 @@ module.exports = async (req, res) => {
       id: group.id,
       group_id: group.group_id,
       group_name: group.group_name,
+      location: group.location,
       time_period: group.time_period,
       start_date: group.start_date,
       end_date: group.end_date,

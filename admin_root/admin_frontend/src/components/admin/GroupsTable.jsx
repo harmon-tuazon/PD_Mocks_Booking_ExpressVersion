@@ -137,9 +137,7 @@ const GroupsTable = ({
                 />
               </th>
               <SortableHeader column="group_name">Group Name</SortableHeader>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                ID
-              </th>
+              <SortableHeader column="location">Location</SortableHeader>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Period
               </th>
@@ -187,8 +185,8 @@ const GroupsTable = ({
                     </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                      {group.group_id}
+                    <div className="text-sm text-gray-900 dark:text-gray-100">
+                      {group.location || '-'}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
