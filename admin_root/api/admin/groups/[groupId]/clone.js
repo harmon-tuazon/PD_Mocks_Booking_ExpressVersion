@@ -1,5 +1,5 @@
 /**
- * POST /api/admin/groups/[id]/clone
+ * POST /api/admin/groups/[groupId]/clone
  * Clone a group with optional student assignments
  * Permission: 'groups.create'
  */
@@ -39,9 +39,9 @@ module.exports = async (req, res) => {
     // Verify admin authentication and permission
     await requirePermission(req, 'groups.create');
 
-    const { id } = req.query;
+    const { groupId } = req.query;
 
-    if (!id) {
+    if (!groupId) {
       return res.status(400).json({
         success: false,
         error: { code: 'INVALID_REQUEST', message: 'Source group ID is required' }
@@ -68,19 +68,19 @@ module.exports = async (req, res) => {
 
     // Find source group
     let sourceGroup;
-    const { data: byGroupId } = await supabaseAdmin
+    const { data: byGroupIdResult } = await supabaseAdmin
       .from('hubspot_sync.groups')
       .select('*')
-      .eq('group_id', id)
+      .eq('group_id', groupId)
       .single();
 
-    if (byGroupId) {
-      sourceGroup = byGroupId;
+    if (byGroupIdResult) {
+      sourceGroup = byGroupIdResult;
     } else {
       const { data: byUuid } = await supabaseAdmin
         .from('hubspot_sync.groups')
         .select('*')
-        .eq('id', id)
+        .eq('id', groupId)
         .single();
       sourceGroup = byUuid;
     }
@@ -88,7 +88,7 @@ module.exports = async (req, res) => {
     if (!sourceGroup) {
       return res.status(404).json({
         success: false,
-        error: { code: 'GROUP_NOT_FOUND', message: `Source group ${id} not found` }
+        error: { code: 'GROUP_NOT_FOUND', message: `Source group ${groupId} not found` }
       });
     }
 

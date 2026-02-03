@@ -1,5 +1,5 @@
 /**
- * GET/PUT/DELETE /api/admin/groups/[id]
+ * GET/PUT/DELETE /api/admin/groups/[groupId]
  * Single group operations
  * Permissions:
  *   GET: 'groups.view'
@@ -13,9 +13,9 @@ const { getCache } = require('../../_shared/cache');
 const { supabaseAdmin } = require('../../_shared/supabase');
 
 module.exports = async (req, res) => {
-  const { id } = req.query;
+  const { groupId } = req.query;
 
-  if (!id) {
+  if (!groupId) {
     return res.status(400).json({
       success: false,
       error: { code: 'INVALID_REQUEST', message: 'Group ID is required' }
@@ -25,11 +25,11 @@ module.exports = async (req, res) => {
   try {
     switch (req.method) {
       case 'GET':
-        return await handleGet(req, res, id);
+        return await handleGet(req, res, groupId);
       case 'PUT':
-        return await handlePut(req, res, id);
+        return await handlePut(req, res, groupId);
       case 'DELETE':
-        return await handleDelete(req, res, id);
+        return await handleDelete(req, res, groupId);
       default:
         res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
         return res.status(405).json({
