@@ -210,8 +210,8 @@ async function handlePut(req, res, id) {
 
   // Invalidate cache
   const cache = getCache();
-  await cache.del('admin:groups:*');
-  await cache.del('admin:groups:statistics');
+  await cache.deletePattern('admin:groups:*');
+  await cache.delete('admin:groups:statistics');
 
   res.status(200).json({
     success: true,
@@ -258,8 +258,8 @@ async function handleDelete(req, res, id) {
 
   // Invalidate cache
   const cache = getCache();
-  await cache.del('admin:groups:*');
-  await cache.del('admin:groups:statistics');
+  await cache.deletePattern('admin:groups:*');
+  await cache.delete('admin:groups:statistics');
 
   res.status(200).json({
     success: true,

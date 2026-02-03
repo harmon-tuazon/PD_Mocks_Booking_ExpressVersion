@@ -83,8 +83,8 @@ module.exports = async (req, res) => {
 
       // Invalidate cache
       const cache = getCache();
-      await cache.del('admin:groups:*');
-      await cache.del('admin:groups:statistics');
+      await cache.deletePattern('admin:groups:*');
+      await cache.delete('admin:groups:statistics');
 
       return res.status(200).json({
         success: true,
@@ -143,8 +143,8 @@ module.exports = async (req, res) => {
 
     // Invalidate cache
     const cache = getCache();
-    await cache.del('admin:groups:*');
-    await cache.del('admin:groups:statistics');
+    await cache.deletePattern('admin:groups:*');
+    await cache.delete('admin:groups:statistics');
 
     console.log(`[Student Assigned] ${studentId} -> ${groupId}`);
 

@@ -165,8 +165,8 @@ module.exports = async (req, res) => {
 
     // Invalidate cache
     const cache = getCache();
-    await cache.del('admin:groups:*');
-    await cache.del('admin:groups:statistics');
+    await cache.deletePattern('admin:groups:*');
+    await cache.delete('admin:groups:statistics');
 
     const totalAssigned = results.assigned.length + results.reactivated.length;
     console.log(`[Bulk Assignment] ${totalAssigned} students assigned to ${groupId}`);

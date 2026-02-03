@@ -173,8 +173,8 @@ module.exports = async (req, res) => {
 
     // Invalidate cache
     const cache = getCache();
-    await cache.del('admin:groups:*');
-    await cache.del('admin:groups:statistics');
+    await cache.deletePattern('admin:groups:*');
+    await cache.delete('admin:groups:statistics');
 
     console.log(`[Group Cloned] ${sourceGroup.group_id} -> ${newGroupId} (${clonedStudents} students)`);
 
