@@ -2,16 +2,6 @@
 
 This file provides critical guidance to Claude Code (claude.ai/code) for this project.
 
-# Core Development Philosophy #
-KISS (Keep It Simple, Stupid)
-Simplicity should be a key goal in design. Choose straightforward solutions over complex ones whenever possible. Simple solutions are easier to understand, maintain, and debug.
-
-YAGNI (You Aren't Gonna Need It)
-Avoid building functionality on speculation. Implement features only when they are needed, not when you anticipate they might be useful in the future.
-
-IF IT'S NOT BROKEN, DON'T FIX IT 
-Prioritize reusing old components, endpoints, functions, logic, etc. when they are available. Always refer to documentation\MOCKS_BOOKING_README.md, documentation\api, and documentation\frontend to check if there are already existing items we can reuse.
-
 ### Framework Core Components:
 1. **PRD-Driven Development**: Comprehensive plans ensuring 7-10 confidence scores
 2. **Specialized Developer Agents**: Each writes specific code types (NOT runtime functions)
@@ -21,7 +11,6 @@ Prioritize reusing old components, endpoints, functions, logic, etc. when they a
 6. **Leveraging MCPs**: MANDATORY - Always use MCPs when applicable:
    - **Serena MCP**: For ALL code generation, refactoring, and IDE assistance
    - **Vercel MCP**: For ALL deployment, serverless config, and environment management
-   - **HubSpot MCP**: When available, for CRM operations and schema management
 
 ## 🚨 MANDATORY MCP USAGE GUIDELINES
 
@@ -957,39 +946,6 @@ async function hubspotApiCall(fn, retries = 3) {
 - [ ] Updated code examples to reflect current implementation
 - [ ] Added troubleshooting entries for new known issues
 
-## 🚀 Building ANY  Automation
-
-### The Framework Can Build ANYTHING
-This framework has already proven it can reduce development time by **85%** (from 6-8 weeks to 5 days). Use it to build:
-
-
-### Success Metrics from Real Implementation
-```yaml
-HubSpot_Automation_System:
-  Traditional_Approach: 6-8 weeks
-  Framework_Approach: 5 days
-  Time_Saved: 85%
-  Test_Coverage: 70%
-  Bugs_Reduced: 90%
-  Documentation: 100% complete
-```
-
-## 🎯 Critical Framework Rules
-
-### MANDATORY Workflow Steps
-1. **ALWAYS run `primer` first** - No exceptions, this loads your context
-2. **ALWAYS generate PRD before coding** - Ensures 7-10 confidence score
-3. **ALWAYS use execute-nodejs-hubspot-prp** - Let agents write the code
-4. **ALWAYS maintain checkpoints** - Update DEVELOPMENT_CHECKPOINT.md daily
-5. **ALWAYS achieve >70% test coverage** - Framework enforces this
-
-### Framework Best Practices
-- **Trust the Process**: The 5-phase workflow guarantees success
-- **Trust the Agents**: Each is expert in their domain
-- **Use HubSpot Properties**: Never create local databases
-- **Implement Idempotency**: Every operation must be retryable
-- **Log to Deal Timelines**: Complete audit trail with icons
-
 ### Development Rules
 - **MCP FIRST**: Always check if Serena or Vercel MCP can handle the task before manual coding
 - **FRAMEWORK FIRST**: Always use the framework workflow, don't code manually
@@ -1053,21 +1009,6 @@ When implementing a new feature:
 
 Remember: Agents write code, they don't run the application!
 
----
-
----
-
-## 🔥 THE BOTTOM LINE
-
-**This framework transforms 6-8 week projects into 5-day implementations.**
-
-When you start ANY new PrepDoctors automation:
-1. Run `primer` to load context
-2. Create your feature in `features/`
-3. Run `generate-prp`
-4. Run `execute--prp`
-5. Deploy with `vercel --prod`
-
 ## 📡 MCP Server Configuration & Usage
 
 ### MANDATORY MCP Installation
@@ -1085,10 +1026,6 @@ claude mcp add --transport http vercel https://mcp.vercel.com/
 ```
 **Usage**: ALWAYS for serverless config, deployment, environment variables
 
-**HubSpot MCP (When Available)**
-```bash
-# Installation command will be added when available
-```
 **Usage**: For all HubSpot CRM operations when available
 
 ### MCP Usage Priority
