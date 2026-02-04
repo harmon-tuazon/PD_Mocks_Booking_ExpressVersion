@@ -89,12 +89,11 @@ module.exports = async (req, res) => {
       allGroupIds = Array.from(groupIdSet);
     }
 
-    // Verify groups exist and get their UUIDs for groups_instructors
-    let groupUuidMap = {};
+    // Verify groups exist
     if (allGroupIds.length > 0) {
       const { data: groups, error: groupsError } = await supabaseAdmin
         .from('groups')
-        .select('id, group_id')
+        .select('group_id')
         .in('group_id', allGroupIds);
 
       if (groupsError) {
@@ -113,12 +112,6 @@ module.exports = async (req, res) => {
           }
         });
       }
-
-      // Build UUID map for groups_instructors
-      groupUuidMap = groups.reduce((acc, g) => {
-        acc[g.group_id] = g.id;
-        return acc;
-      }, {});
     }
 
     // Prepare new slots
@@ -175,24 +168,22 @@ module.exports = async (req, res) => {
 
     // Populate groups_instructors table for each unique instructor-group-date combination
     // This tracks instructor-group assignments with assigned_date matching the cloned slot's date
-    if (Object.keys(groupUuidMap).length > 0) {
-      // Collect unique (instructor_id, group_uuid, slot_date) combinations from newSlots
+    // Note: groups_instructors.group_id is now VARCHAR referencing groups(group_id)
+    if (allGroupIds.length > 0) {
+      // Collect unique (instructor_id, group_id, slot_date) combinations from newSlots
       const assignmentSet = new Map(); // Use Map to deduplicate
 
       newSlots.forEach(slot => {
         const groupIds = Array.isArray(slot.group_id) ? slot.group_id : [slot.group_id];
         groupIds.forEach(gid => {
-          const groupUuid = groupUuidMap[gid];
-          if (groupUuid) {
-            const key = `${slot.instructor_id}|${groupUuid}|${slot.slot_date}`;
-            if (!assignmentSet.has(key)) {
-              assignmentSet.set(key, {
-                group_id: groupUuid,
-                instructor_id: slot.instructor_id,
-                assigned_date: slot.slot_date,
-                status: 'active'
-              });
-            }
+          const key = `${slot.instructor_id}|${gid}|${slot.slot_date}`;
+          if (!assignmentSet.has(key)) {
+            assignmentSet.set(key, {
+              group_id: gid,
+              instructor_id: slot.instructor_id,
+              assigned_date: slot.slot_date,
+              status: 'active'
+            });
           }
         });
       });

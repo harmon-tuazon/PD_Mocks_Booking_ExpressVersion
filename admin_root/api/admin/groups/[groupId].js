@@ -133,7 +133,7 @@ async function handleGet(req, res, id) {
   }
 
   // Fetch instructors for this group
-  // Note: groups_instructors.group_id stores the UUID (group.id), not the string group_id
+  // Note: groups_instructors.group_id is VARCHAR referencing groups(group_id)
   const { data: groupInstructors, error: instructorsError } = await supabaseAdmin
     .from('groups_instructors')
     .select(`
@@ -144,7 +144,7 @@ async function handleGet(req, res, id) {
       created_at,
       updated_at
     `)
-    .eq('group_id', group.id)
+    .eq('group_id', group.group_id)
     .eq('status', 'active');
 
   let instructors = [];

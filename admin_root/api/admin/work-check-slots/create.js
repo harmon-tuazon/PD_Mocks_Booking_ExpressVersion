@@ -65,10 +65,10 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Verify all groups exist and get their UUIDs for groups_instructors
+    // Verify all groups exist
     const { data: groups, error: groupsError } = await supabaseAdmin
       .from('groups')
-      .select('id, group_id')
+      .select('group_id')
       .in('group_id', group_id);
 
     if (groupsError) {
@@ -88,12 +88,6 @@ module.exports = async (req, res) => {
         }
       });
     }
-
-    // Create a map of group_id string -> UUID for later use
-    const groupUuidMap = groups.reduce((acc, g) => {
-      acc[g.group_id] = g.id;
-      return acc;
-    }, {});
 
     // Determine is_active based on activation_mode
     const is_active = activation_mode === 'immediate';
@@ -137,7 +131,7 @@ module.exports = async (req, res) => {
 
     // Populate groups_instructors table for each group
     // This tracks instructor-group assignments with assigned_date matching slot_date
-    const groupUuids = group_id.map(gid => groupUuidMap[gid]);
+    // Note: groups_instructors.group_id is now VARCHAR referencing groups(group_id)
 
     // Check which assignments already exist for this instructor/date combination
     const { data: existingAssignments } = await supabaseAdmin
@@ -145,15 +139,15 @@ module.exports = async (req, res) => {
       .select('group_id')
       .eq('instructor_id', instructor_id)
       .eq('assigned_date', slot_date)
-      .in('group_id', groupUuids);
+      .in('group_id', group_id);
 
     const existingGroupIds = new Set(existingAssignments?.map(a => a.group_id) || []);
 
     // Only insert assignments that don't already exist
-    const newAssignments = groupUuids
-      .filter(uuid => !existingGroupIds.has(uuid))
-      .map(uuid => ({
-        group_id: uuid,
+    const newAssignments = group_id
+      .filter(gid => !existingGroupIds.has(gid))
+      .map(gid => ({
+        group_id: gid,
         instructor_id: instructor_id,
         assigned_date: slot_date,
         status: 'active'

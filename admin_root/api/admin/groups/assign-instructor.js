@@ -39,10 +39,10 @@ module.exports = async (req, res) => {
 
     const { groupId, instructorId } = value;
 
-    // Verify group exists (need UUID for groups_instructors table)
+    // Verify group exists
     const { data: group, error: groupError } = await supabaseAdmin
       .from('groups')
-      .select('id, group_id, group_name, status')
+      .select('group_id, group_name, status')
       .eq('group_id', groupId)
       .single();
 
@@ -52,9 +52,6 @@ module.exports = async (req, res) => {
         error: { code: 'GROUP_NOT_FOUND', message: `Group ${groupId} not found` }
       });
     }
-
-    // Use group UUID for foreign key references
-    const groupUuid = group.id;
 
     // Verify instructor exists by UUID
     console.log(`[Assign Instructor] Looking up instructor with ID: ${instructorId}`);
@@ -78,11 +75,11 @@ module.exports = async (req, res) => {
     // Use the UUID for assignments
     const instructorUuid = instructor.id;
 
-    // Check if already assigned (using UUIDs)
+    // Check if already assigned (using string group_id)
     const { data: existing } = await supabaseAdmin
       .from('groups_instructors')
       .select('id, status')
-      .eq('group_id', groupUuid)
+      .eq('group_id', group.group_id)
       .eq('instructor_id', instructorUuid)
       .single();
 
@@ -116,7 +113,7 @@ module.exports = async (req, res) => {
       const cache = getCache();
       await cache.deletePattern('admin:groups:*');
 
-      console.log(`[Instructor Reactivated] ${instructorUuid} -> Group ${groupId}`);
+      console.log(`[Instructor Reactivated] ${instructorUuid} -> Group ${group.group_id}`);
 
       return res.status(200).json({
         success: true,
@@ -135,7 +132,7 @@ module.exports = async (req, res) => {
     const { data: assignment, error: assignError } = await supabaseAdmin
       .from('groups_instructors')
       .insert({
-        group_id: groupUuid,
+        group_id: group.group_id,
         instructor_id: instructorUuid,
         status: 'active',
         assigned_date: new Date().toISOString().split('T')[0]  // DATE type: YYYY-MM-DD
@@ -151,7 +148,7 @@ module.exports = async (req, res) => {
     const cache = getCache();
     await cache.deletePattern('admin:groups:*');
 
-    console.log(`[Instructor Assigned] ${instructorUuid} -> Group ${groupId}`);
+    console.log(`[Instructor Assigned] ${instructorUuid} -> Group ${group.group_id}`);
 
     res.status(201).json({
       success: true,
