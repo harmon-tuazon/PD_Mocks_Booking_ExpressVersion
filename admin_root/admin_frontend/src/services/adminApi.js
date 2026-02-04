@@ -745,7 +745,7 @@ export const workCheckSlotsApi = {
    * @returns {Promise<Object>} Paginated slots
    */
   list: async (params = {}) => {
-    const response = await api.get('/admin/work-check-slots', { params });
+    const response = await api.get('/admin/work-check-slots/list', { params });
     return response.data;
   },
 
@@ -765,7 +765,7 @@ export const workCheckSlotsApi = {
    * @returns {Promise<Object>} Created slot
    */
   create: async (data) => {
-    const response = await api.post('/admin/work-check-slots', data);
+    const response = await api.post('/admin/work-check-slots/create', data);
     return response.data;
   },
 
