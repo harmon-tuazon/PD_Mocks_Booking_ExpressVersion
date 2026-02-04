@@ -39,10 +39,10 @@ module.exports = async (req, res) => {
 
     const { groupId, instructorId } = value;
 
-    // Verify group exists
+    // Verify group exists (need UUID for groups_instructors table)
     const { data: group, error: groupError } = await supabaseAdmin
       .from('groups')
-      .select('group_id, group_name, status')
+      .select('id, group_id, group_name, status')
       .eq('group_id', groupId)
       .single();
 
@@ -52,6 +52,9 @@ module.exports = async (req, res) => {
         error: { code: 'GROUP_NOT_FOUND', message: `Group ${groupId} not found` }
       });
     }
+
+    // Use group UUID for foreign key references
+    const groupUuid = group.id;
 
     // Verify instructor exists by UUID
     console.log(`[Assign Instructor] Looking up instructor with ID: ${instructorId}`);
@@ -75,11 +78,11 @@ module.exports = async (req, res) => {
     // Use the UUID for assignments
     const instructorUuid = instructor.id;
 
-    // Check if already assigned (using UUID)
+    // Check if already assigned (using UUIDs)
     const { data: existing } = await supabaseAdmin
       .from('groups_instructors')
       .select('id, status')
-      .eq('group_id', groupId)
+      .eq('group_id', groupUuid)
       .eq('instructor_id', instructorUuid)
       .single();
 
@@ -129,7 +132,7 @@ module.exports = async (req, res) => {
     const { data: assignment, error: assignError } = await supabaseAdmin
       .from('groups_instructors')
       .insert({
-        group_id: groupId,
+        group_id: groupUuid,
         instructor_id: instructorUuid,
         status: 'active'
       })
