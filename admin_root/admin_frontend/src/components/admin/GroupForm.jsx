@@ -38,6 +38,7 @@ const GroupForm = ({
   const [formData, setFormData] = useState({
     groupName: '',
     location: 'Mississauga',
+    cycle: '',
     timePeriod: 'AM',
     startDate: '',
     endDate: '',
@@ -54,6 +55,7 @@ const GroupForm = ({
         setFormData({
           groupName: mode === 'clone' ? `${initialData.group_name} - Copy` : initialData.group_name || '',
           location: initialData.location || 'Mississauga',
+          cycle: initialData.cycle || '',
           timePeriod: initialData.time_period || 'AM',
           startDate: initialData.start_date || '',
           endDate: initialData.end_date || '',
@@ -64,6 +66,7 @@ const GroupForm = ({
         setFormData({
           groupName: '',
           location: 'Mississauga',
+          cycle: '',
           timePeriod: 'AM',
           startDate: '',
           endDate: '',
@@ -138,6 +141,7 @@ const GroupForm = ({
     const submitData = {
       groupName: formData.groupName.trim(),
       location: formData.location,
+      cycle: formData.cycle?.trim() || null,
       timePeriod: formData.timePeriod,
       startDate: formData.startDate,
       endDate: formData.endDate || null,
@@ -272,26 +276,44 @@ const GroupForm = ({
                     )}
                   </div>
 
-                  {/* Location */}
-                  <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Location <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="location"
-                      id="location"
-                      value={formData.location}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                      className={errors.location ? inputErrorClass : inputNormalClass}
-                    >
-                      {LOCATION_OPTIONS.map((loc) => (
-                        <option key={loc} value={loc}>{loc}</option>
-                      ))}
-                    </select>
-                    {errors.location && (
-                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.location}</p>
-                    )}
+                  {/* Location and Cycle */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Location <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        name="location"
+                        id="location"
+                        value={formData.location}
+                        onChange={handleChange}
+                        disabled={isLoading}
+                        className={errors.location ? inputErrorClass : inputNormalClass}
+                      >
+                        {LOCATION_OPTIONS.map((loc) => (
+                          <option key={loc} value={loc}>{loc}</option>
+                        ))}
+                      </select>
+                      {errors.location && (
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.location}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="cycle" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Cycle
+                      </label>
+                      <input
+                        type="text"
+                        name="cycle"
+                        id="cycle"
+                        value={formData.cycle}
+                        onChange={handleChange}
+                        disabled={isLoading}
+                        className={inputNormalClass}
+                        placeholder="Enter cycle (optional)"
+                      />
+                    </div>
                   </div>
 
                   {/* Time Period, Status, and Max Capacity */}

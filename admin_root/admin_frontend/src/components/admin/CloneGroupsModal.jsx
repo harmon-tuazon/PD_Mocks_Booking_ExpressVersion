@@ -47,6 +47,7 @@ const CloneGroupsModal = ({
     timePeriod: '',
     location: '',
     status: '',
+    cycle: '',
     maxCapacity: '',
     includeStudents: false
   });
@@ -66,6 +67,7 @@ const CloneGroupsModal = ({
             timePeriod: overrides.timePeriod || group.time_period,
             location: overrides.location || group.location || 'Mississauga',
             status: overrides.status || group.status || 'active',
+            cycle: overrides.cycle || group.cycle || null,
             startDate: overrides.startDate,
             endDate: overrides.endDate || group.end_date || null,
             maxCapacity: overrides.maxCapacity ? parseInt(overrides.maxCapacity) : group.max_capacity,
@@ -142,6 +144,7 @@ const CloneGroupsModal = ({
         timePeriod: source.time_period || '',
         location: source.location || '',
         status: '',
+        cycle: '',
         maxCapacity: '',
         includeStudents: false
       });
@@ -154,6 +157,7 @@ const CloneGroupsModal = ({
         timePeriod: '',
         location: '',
         status: '',
+        cycle: '',
         maxCapacity: '',
         includeStudents: false
       });
@@ -246,6 +250,7 @@ const CloneGroupsModal = ({
       timePeriod: formData.timePeriod || null,
       location: formData.location || null,
       status: formData.status || null,
+      cycle: formData.cycle?.trim() || null,
       maxCapacity: formData.maxCapacity || null,
       includeStudents: formData.includeStudents
     };
@@ -472,6 +477,22 @@ const CloneGroupsModal = ({
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
                               ))}
                             </select>
+                          </div>
+
+                          {/* Cycle */}
+                          <div>
+                            <label htmlFor="cycle" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Cycle
+                            </label>
+                            <input
+                              type="text"
+                              id="cycle"
+                              value={formData.cycle}
+                              onChange={(e) => handleFieldChange('cycle', e.target.value)}
+                              placeholder="Keep original"
+                              disabled={cloneMutation.isPending}
+                              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 sm:text-sm"
+                            />
                           </div>
 
                           {/* Max Capacity */}

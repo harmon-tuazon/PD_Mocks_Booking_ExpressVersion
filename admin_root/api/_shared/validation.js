@@ -1335,6 +1335,13 @@ const schemas = {
       .default('active')
       .messages({
         'any.only': 'Status must be one of: active, inactive, completed'
+      }),
+    cycle: Joi.string()
+      .max(50)
+      .allow(null, '')
+      .optional()
+      .messages({
+        'string.max': 'Cycle cannot exceed 50 characters'
       })
   }).custom((value, helpers) => {
     // Validate end date is after start date
@@ -1395,6 +1402,13 @@ const schemas = {
       .optional()
       .messages({
         'any.only': 'Status must be one of: active, inactive, completed'
+      }),
+    cycle: Joi.string()
+      .max(50)
+      .allow(null, '')
+      .optional()
+      .messages({
+        'string.max': 'Cycle cannot exceed 50 characters'
       })
   }).min(1).messages({
     'object.min': 'At least one property must be provided for update'
@@ -1461,7 +1475,14 @@ const schemas = {
     startDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
     endDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow(null, ''),
     maxCapacity: Joi.number().integer().min(1).max(100),
-    includeStudents: Joi.boolean().default(true)
+    includeStudents: Joi.boolean().default(true),
+    cycle: Joi.string()
+      .max(50)
+      .allow(null, '')
+      .optional()
+      .messages({
+        'string.max': 'Cycle cannot exceed 50 characters'
+      })
   }),
 
   // ============================================================

@@ -215,7 +215,8 @@ function GroupDetail() {
       startDate: group?.start_date || '',
       endDate: group?.end_date || '',
       maxCapacity: group?.max_capacity || 20,
-      status: group?.status || 'active'
+      status: group?.status || 'active',
+      cycle: group?.cycle || ''
     });
     setIsEditing(true);
   };
@@ -456,6 +457,18 @@ function GroupDetail() {
                     className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 sm:text-sm"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Cycle
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.cycle}
+                    onChange={(e) => handleFieldChange('cycle', e.target.value)}
+                    placeholder="Enter cycle (optional)"
+                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 sm:text-sm"
+                  />
+                </div>
               </div>
             ) : (
               /* View Mode */
@@ -479,6 +492,7 @@ function GroupDetail() {
                     </dd>
                   </div>
                 </div>
+                <InfoCard label="Cycle" value={group?.cycle || '-'} />
                 <InfoCard
                   label="Start Date"
                   value={formatDate(group?.start_date)}
