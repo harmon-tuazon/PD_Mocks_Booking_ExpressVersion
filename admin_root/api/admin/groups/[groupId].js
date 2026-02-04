@@ -221,6 +221,7 @@ async function handlePut(req, res, id) {
   if (updates.endDate !== undefined) updateData.end_date = updates.endDate;
   if (updates.maxCapacity) updateData.max_capacity = updates.maxCapacity;
   if (updates.status) updateData.status = updates.status;
+  if (updates.cycle !== undefined) updateData.cycle = updates.cycle;
 
   // Try to update by group_id first, then by UUID
   let result;
