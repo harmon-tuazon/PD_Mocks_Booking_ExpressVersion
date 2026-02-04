@@ -79,6 +79,15 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
   // Data Management submenu items
   const dataManagementItems = [
     {
+      name: 'Users',
+      href: '/data-management/users',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      )
+    },
+    {
       name: 'Bulk Bookings',
       href: '/data-management/bulk-bookings',
       icon: (
@@ -106,6 +115,17 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      )
+    },
+    {
+      name: 'Instructors',
+      href: '/work-check/instructors',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path d="M12 14l9-5-9-5-9 5 9 5z" />
+          <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
         </svg>
       )
     }
@@ -252,95 +272,6 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                 );
               })}
 
-              {/* Data Management Menu with Submenu */}
-              <li
-                ref={dataManagementRef}
-                className="relative"
-                onMouseEnter={handleDataManagementMouseEnter}
-                onMouseLeave={handleDataManagementMouseLeave}
-              >
-                <button
-                  onClick={() => setDataManagementOpen(!dataManagementOpen)}
-                  className={`
-                    w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg
-                    transition-all duration-200 text-left
-                    ${dataManagementOpen || location.pathname.startsWith('/data-management')
-                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-dark-hover'
-                    }
-                    focus:outline-none focus:ring-2 focus:ring-primary-400 dark:focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800
-                  `}
-                >
-                  <span className={`
-                    mr-3 flex-shrink-0
-                    ${dataManagementOpen || location.pathname.startsWith('/data-management')
-                      ? 'text-primary-600 dark:text-primary-400'
-                      : 'text-gray-400 dark:text-gray-500'
-                    }
-                  `}>
-                    {/* Database/Data Management Icon */}
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-                    </svg>
-                  </span>
-                  <span className="flex-1">Data Management</span>
-
-                  {/* Chevron indicator */}
-                  <span className="ml-auto">
-                    <svg
-                      className={`w-4 h-4 transition-transform duration-200 ${dataManagementOpen ? 'rotate-90' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </span>
-                </button>
-
-                {/* Submenu - fixed position to overlay on main content area */}
-                {dataManagementOpen && (
-                  <div
-                    className="fixed left-64 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-xl z-[100]"
-                    style={{ marginTop: '-44px' }}
-                    onMouseEnter={handleDataManagementMouseEnter}
-                    onMouseLeave={handleDataManagementMouseLeave}
-                  >
-                    <div className="py-2">
-                      {dataManagementItems.map((subItem) => {
-                        const isSubActive = isActivePath(subItem.href);
-
-                        return (
-                          <button
-                            key={subItem.name}
-                            onClick={() => {
-                              handleNavigation(subItem.href);
-                              setDataManagementOpen(false);
-                            }}
-                            className={`
-                              w-full flex items-center px-4 py-2.5 text-sm font-medium
-                              transition-all duration-200 text-left
-                              ${isSubActive
-                                ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-dark-hover'
-                              }
-                            `}
-                          >
-                            <span className={`
-                              mr-3 flex-shrink-0
-                              ${isSubActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'}
-                            `}>
-                              {subItem.icon}
-                            </span>
-                            <span>{subItem.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </li>
-
               {/* Work Check Menu with Submenu */}
               <li
                 ref={workCheckRef}
@@ -405,6 +336,95 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                             onClick={() => {
                               handleNavigation(subItem.href);
                               setWorkCheckOpen(false);
+                            }}
+                            className={`
+                              w-full flex items-center px-4 py-2.5 text-sm font-medium
+                              transition-all duration-200 text-left
+                              ${isSubActive
+                                ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-dark-hover'
+                              }
+                            `}
+                          >
+                            <span className={`
+                              mr-3 flex-shrink-0
+                              ${isSubActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'}
+                            `}>
+                              {subItem.icon}
+                            </span>
+                            <span>{subItem.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </li>
+
+              {/* Data Management Menu with Submenu */}
+              <li
+                ref={dataManagementRef}
+                className="relative"
+                onMouseEnter={handleDataManagementMouseEnter}
+                onMouseLeave={handleDataManagementMouseLeave}
+              >
+                <button
+                  onClick={() => setDataManagementOpen(!dataManagementOpen)}
+                  className={`
+                    w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg
+                    transition-all duration-200 text-left
+                    ${dataManagementOpen || location.pathname.startsWith('/data-management')
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-dark-hover'
+                    }
+                    focus:outline-none focus:ring-2 focus:ring-primary-400 dark:focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800
+                  `}
+                >
+                  <span className={`
+                    mr-3 flex-shrink-0
+                    ${dataManagementOpen || location.pathname.startsWith('/data-management')
+                      ? 'text-primary-600 dark:text-primary-400'
+                      : 'text-gray-400 dark:text-gray-500'
+                    }
+                  `}>
+                    {/* Database/Data Management Icon */}
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                    </svg>
+                  </span>
+                  <span className="flex-1">Data Management</span>
+
+                  {/* Chevron indicator */}
+                  <span className="ml-auto">
+                    <svg
+                      className={`w-4 h-4 transition-transform duration-200 ${dataManagementOpen ? 'rotate-90' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                </button>
+
+                {/* Submenu - fixed position to overlay on main content area */}
+                {dataManagementOpen && (
+                  <div
+                    className="fixed left-64 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-xl z-[100]"
+                    style={{ marginTop: '-44px' }}
+                    onMouseEnter={handleDataManagementMouseEnter}
+                    onMouseLeave={handleDataManagementMouseLeave}
+                  >
+                    <div className="py-2">
+                      {dataManagementItems.map((subItem) => {
+                        const isSubActive = isActivePath(subItem.href);
+
+                        return (
+                          <button
+                            key={subItem.name}
+                            onClick={() => {
+                              handleNavigation(subItem.href);
+                              setDataManagementOpen(false);
                             }}
                             className={`
                               w-full flex items-center px-4 py-2.5 text-sm font-medium

@@ -12,6 +12,8 @@ import BulkBookings from './pages/BulkBookings'
 import BulkMocks from './pages/BulkMocks'
 import Groups from './pages/Groups'
 import GroupDetail from './pages/GroupDetail'
+import Instructors from './pages/Instructors'
+import Users from './pages/Users'
 import Login from './pages/Login'
 import PasswordReset from './pages/PasswordReset'
 import MainLayout from './components/layout/MainLayout'
@@ -98,13 +100,15 @@ function App() {
                 {/* Trainee Dashboard */}
                 <Route path="trainees" element={<TraineeDashboard />} />
 
-                {/* Data Management Routes */}
-                <Route path="data-management/bulk-bookings" element={<BulkBookings />} />
-                <Route path="data-management/bulk-mocks" element={<BulkMocks />} />
-
                 {/* Work Check Routes */}
                 <Route path="work-check/groups" element={<Groups />} />
                 <Route path="work-check/groups/:groupId" element={<GroupDetail />} />
+                <Route path="work-check/instructors" element={<Instructors />} />
+
+                {/* Data Management Routes */}
+                <Route path="data-management/users" element={<Users />} />
+                <Route path="data-management/bulk-bookings" element={<BulkBookings />} />
+                <Route path="data-management/bulk-mocks" element={<BulkMocks />} />
               </Route>
             </Routes>
           </AuthProvider>
