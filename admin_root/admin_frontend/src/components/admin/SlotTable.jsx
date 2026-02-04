@@ -114,6 +114,8 @@ const SkeletonRow = () => (
     <td className="px-6 py-4"><div className="h-4 w-12 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
     <td className="px-6 py-4"><div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
     <td className="px-6 py-4"><div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+    <td className="px-6 py-4"><div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+    <td className="px-6 py-4"><div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
     <td className="px-6 py-4"><div className="h-4 w-8 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
   </tr>
 );
@@ -228,10 +230,11 @@ const SlotTable = ({
               <TableHeader label="Date" column="slot_date" sortable currentSort={currentSort} onSort={onSort} />
               <TableHeader label="Time" column="slot_time" sortable currentSort={currentSort} onSort={onSort} />
               <TableHeader label="Instructor" column="instructor_name" sortable={false} currentSort={currentSort} onSort={onSort} />
-              <TableHeader label="Groups" column="groups" sortable={false} currentSort={currentSort} onSort={onSort} />
+              <TableHeader label="Groups" column="group_id" sortable currentSort={currentSort} onSort={onSort} />
               <TableHeader label="Location" column="location" sortable currentSort={currentSort} onSort={onSort} />
               <TableHeader label="Duration" column="duration" sortable={false} currentSort={currentSort} onSort={onSort} />
               <TableHeader label="Status" column="status" sortable={false} currentSort={currentSort} onSort={onSort} />
+              <TableHeader label="Created At" column="created_at" sortable currentSort={currentSort} onSort={onSort} />
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Actions
               </th>
@@ -244,7 +247,7 @@ const SlotTable = ({
             ) : data.length === 0 ? (
               // Empty state
               <tr>
-                <td colSpan={9} className="px-6 py-12 text-center">
+                <td colSpan={10} className="px-6 py-12 text-center">
                   <p className="text-gray-500 dark:text-gray-400">No work check slots found</p>
                 </td>
               </tr>
@@ -304,6 +307,9 @@ const SlotTable = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <StatusBadge isActive={slot.is_active} activationStatus={slot.activation_status} />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {slot.created_at ? formatDate(slot.created_at) : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                     <button

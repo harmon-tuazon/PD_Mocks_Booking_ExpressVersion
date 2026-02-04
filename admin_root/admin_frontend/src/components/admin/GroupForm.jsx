@@ -6,6 +6,7 @@
 import { Fragment, useState, useEffect, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, PencilIcon, DocumentDuplicateIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { DatePicker } from '@/components/ui/date-picker';
 
 const GroupForm = ({
   isOpen,
@@ -383,14 +384,14 @@ const GroupForm = ({
                       <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Start Date <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="date"
-                        name="startDate"
+                      <DatePicker
                         id="startDate"
+                        name="startDate"
                         value={formData.startDate}
-                        onChange={handleChange}
+                        onChange={(value) => handleChange({ target: { name: 'startDate', value, type: 'text' } })}
                         disabled={isLoading}
-                        className={errors.startDate ? inputErrorClass : inputNormalClass}
+                        placeholder="Select start date"
+                        className={`w-full ${errors.startDate ? 'border-red-500' : ''}`}
                       />
                       {errors.startDate && (
                         <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.startDate}</p>
@@ -401,15 +402,14 @@ const GroupForm = ({
                       <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         End Date
                       </label>
-                      <input
-                        type="date"
-                        name="endDate"
+                      <DatePicker
                         id="endDate"
+                        name="endDate"
                         value={formData.endDate}
-                        onChange={handleChange}
-                        min={formData.startDate || undefined}
+                        onChange={(value) => handleChange({ target: { name: 'endDate', value, type: 'text' } })}
                         disabled={isLoading}
-                        className={errors.endDate ? inputErrorClass : inputNormalClass}
+                        placeholder="Select end date"
+                        className={`w-full ${errors.endDate ? 'border-red-500' : ''}`}
                       />
                       {errors.endDate && (
                         <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.endDate}</p>

@@ -3,6 +3,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, DocumentDuplicateIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { DatePicker } from '@/components/ui/date-picker';
 import { groupsApi } from '../../services/adminApi';
 
 /**
@@ -387,13 +388,13 @@ const CloneGroupsModal = ({
                             <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                               New Start Date <span className="text-red-500">*</span>
                             </label>
-                            <input
-                              type="date"
+                            <DatePicker
                               id="startDate"
                               value={formData.startDate}
-                              onChange={(e) => handleFieldChange('startDate', e.target.value)}
+                              onChange={(value) => handleFieldChange('startDate', value)}
                               disabled={cloneMutation.isPending}
-                              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 sm:text-sm"
+                              placeholder="Select start date"
+                              className={`mt-1 w-full ${validationErrors.startDate ? 'border-red-500' : ''}`}
                             />
                             {validationErrors.startDate && (
                               <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
@@ -408,13 +409,13 @@ const CloneGroupsModal = ({
                             <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                               New End Date
                             </label>
-                            <input
-                              type="date"
+                            <DatePicker
                               id="endDate"
                               value={formData.endDate}
-                              onChange={(e) => handleFieldChange('endDate', e.target.value)}
+                              onChange={(value) => handleFieldChange('endDate', value)}
                               disabled={cloneMutation.isPending}
-                              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 sm:text-sm"
+                              placeholder="Select end date"
+                              className={`mt-1 w-full ${validationErrors.endDate ? 'border-red-500' : ''}`}
                             />
                             {validationErrors.endDate && (
                               <p className="mt-1 text-sm text-red-600 dark:text-red-400">

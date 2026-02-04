@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { DatePicker } from '@/components/ui/date-picker';
 import { instructorsApi, groupsApi } from '../../services/adminApi';
 
 const LOCATIONS = [
@@ -29,13 +30,6 @@ const ACTIVATION_OPTIONS = [
   { value: 'scheduled', label: 'Scheduled' }
 ];
 
-const SORT_OPTIONS = [
-  { value: 'slot_date', label: 'Date' },
-  { value: 'slot_time', label: 'Time' },
-  { value: 'location', label: 'Location' },
-  { value: 'created_at', label: 'Created At' }
-];
-
 const SlotFilters = ({
   instructorFilter,
   groupFilter,
@@ -44,11 +38,8 @@ const SlotFilters = ({
   dateTo,
   statusFilter,
   activationFilter,
-  sortBy,
-  sortOrder,
   onFilterChange,
-  onClearFilters,
-  onSortChange
+  onClearFilters
 }) => {
   const [instructors, setInstructors] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -175,12 +166,12 @@ const SlotFilters = ({
           <label htmlFor="date-from" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Date From
           </label>
-          <input
-            type="date"
+          <DatePicker
             id="date-from"
             value={dateFrom}
-            onChange={(e) => onFilterChange('dateFrom', e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+            onChange={(value) => onFilterChange('dateFrom', value)}
+            placeholder="Select start date"
+            className="w-full"
           />
         </div>
 
@@ -189,12 +180,12 @@ const SlotFilters = ({
           <label htmlFor="date-to" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Date To
           </label>
-          <input
-            type="date"
+          <DatePicker
             id="date-to"
             value={dateTo}
-            onChange={(e) => onFilterChange('dateTo', e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+            onChange={(value) => onFilterChange('dateTo', value)}
+            placeholder="Select end date"
+            className="w-full"
           />
         </div>
 
@@ -215,41 +206,6 @@ const SlotFilters = ({
               </option>
             ))}
           </select>
-        </div>
-
-        {/* Sort Controls */}
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <label htmlFor="sort-by" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Sort By
-            </label>
-            <select
-              id="sort-by"
-              value={sortBy}
-              onChange={(e) => onSortChange(e.target.value, sortOrder)}
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-            >
-              {SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="w-24">
-            <label htmlFor="sort-order" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Order
-            </label>
-            <select
-              id="sort-order"
-              value={sortOrder}
-              onChange={(e) => onSortChange(sortBy, e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-            >
-              <option value="asc">Asc</option>
-              <option value="desc">Desc</option>
-            </select>
-          </div>
         </div>
       </div>
 

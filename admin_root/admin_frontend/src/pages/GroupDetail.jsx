@@ -11,6 +11,7 @@ import { ArrowLeftIcon, PencilIcon, TrashIcon, UserPlusIcon, XMarkIcon, CheckIco
 import { Users, GraduationCap, Calendar, Clock, MapPin } from 'lucide-react';
 import { Dialog, Transition, Combobox } from '@headlessui/react';
 import toast from 'react-hot-toast';
+import { DatePicker } from '@/components/ui/date-picker';
 import { groupsApi, instructorsApi, traineeApi } from '../services/adminApi';
 
 /**
@@ -427,22 +428,22 @@ function GroupDetail() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Start Date
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={editForm.startDate}
-                    onChange={(e) => handleFieldChange('startDate', e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 sm:text-sm"
+                    onChange={(value) => handleFieldChange('startDate', value)}
+                    placeholder="Select start date"
+                    className="w-full"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     End Date
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={editForm.endDate || ''}
-                    onChange={(e) => handleFieldChange('endDate', e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 sm:text-sm"
+                    onChange={(value) => handleFieldChange('endDate', value)}
+                    placeholder="Select end date"
+                    className="w-full"
                   />
                 </div>
                 <div>

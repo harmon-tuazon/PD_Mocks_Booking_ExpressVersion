@@ -329,15 +329,8 @@ function WorkCheckSlots() {
             dateTo={dateTo}
             statusFilter={statusFilter}
             activationFilter={activationFilter}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
             onFilterChange={handleFilterChange}
             onClearFilters={handleClearFilters}
-            onSortChange={(newSortBy, newSortOrder) => {
-              setSortBy(newSortBy);
-              setSortOrder(newSortOrder);
-              setCurrentPage(1);
-            }}
           />
         ) : (
           <SlotSelectionToolbar

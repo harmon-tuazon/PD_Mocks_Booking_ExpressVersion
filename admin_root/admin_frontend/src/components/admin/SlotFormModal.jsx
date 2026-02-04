@@ -6,6 +6,8 @@
 import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { DatePicker } from '@/components/ui/date-picker';
+import { TimePicker } from '@/components/ui/time-picker';
 import { instructorsApi, groupsApi } from '../../services/adminApi';
 
 const LOCATIONS = [
@@ -305,14 +307,12 @@ const SlotFormModal = ({
                       <label htmlFor="slot_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Date <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="date"
+                      <DatePicker
                         id="slot_date"
                         value={formData.slot_date}
-                        onChange={(e) => handleChange('slot_date', e.target.value)}
-                        className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                          errors.slot_date ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                        }`}
+                        onChange={(value) => handleChange('slot_date', value)}
+                        placeholder="Select date"
+                        className={`mt-1 w-full ${errors.slot_date ? 'border-red-500' : ''}`}
                       />
                       {errors.slot_date && (
                         <p className="mt-1 text-sm text-red-500">{errors.slot_date}</p>
@@ -322,14 +322,12 @@ const SlotFormModal = ({
                       <label htmlFor="slot_time" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Time <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="time"
+                      <TimePicker
                         id="slot_time"
                         value={formData.slot_time}
-                        onChange={(e) => handleChange('slot_time', e.target.value)}
-                        className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                          errors.slot_time ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                        }`}
+                        onChange={(value) => handleChange('slot_time', value)}
+                        placeholder="Select time"
+                        className={`mt-1 w-full ${errors.slot_time ? 'border-red-500' : ''}`}
                       />
                       {errors.slot_time && (
                         <p className="mt-1 text-sm text-red-500">{errors.slot_time}</p>
