@@ -64,7 +64,7 @@ module.exports = async (req, res) => {
     // If group_id is being updated, verify all groups exist
     if (updates.group_id) {
       const { data: groups, error: groupsError } = await supabaseAdmin
-        .from('work_check_groups')
+        .from('groups')
         .select('group_id')
         .in('group_id', updates.group_id);
 

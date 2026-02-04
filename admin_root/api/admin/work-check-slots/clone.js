@@ -77,7 +77,7 @@ module.exports = async (req, res) => {
     // If target_groups provided, verify they exist
     if (target_groups && target_groups.length > 0) {
       const { data: groups, error: groupsError } = await supabaseAdmin
-        .from('work_check_groups')
+        .from('groups')
         .select('group_id')
         .in('group_id', target_groups);
 
