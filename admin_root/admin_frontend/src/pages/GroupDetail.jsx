@@ -214,7 +214,7 @@ function GroupDetail() {
   const students = group?.students || [];
   const instructors = group?.instructors || [];
   const availableInstructors = instructorsData?.data || [];
-  const availableStudents = studentsData?.data || [];
+  const availableStudents = studentsData?.data?.contacts || [];
 
   // Initialize edit form when entering edit mode
   const handleStartEdit = () => {
