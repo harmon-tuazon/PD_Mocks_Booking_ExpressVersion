@@ -65,10 +65,10 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Verify all groups exist
+    // Verify all groups exist and get their UUIDs for groups_instructors
     const { data: groups, error: groupsError } = await supabaseAdmin
       .from('groups')
-      .select('group_id')
+      .select('id, group_id')
       .in('group_id', group_id);
 
     if (groupsError) {
@@ -88,6 +88,12 @@ module.exports = async (req, res) => {
         }
       });
     }
+
+    // Create a map of group_id string -> UUID for later use
+    const groupUuidMap = groups.reduce((acc, g) => {
+      acc[g.group_id] = g.id;
+      return acc;
+    }, {});
 
     // Determine is_active based on activation_mode
     const is_active = activation_mode === 'immediate';
@@ -128,6 +134,45 @@ module.exports = async (req, res) => {
     }
 
     console.log(`[Create Work Check Slot] Created slot ${newSlot.id} for instructor ${instructor.instructor_name}`);
+
+    // Populate groups_instructors table for each group
+    // This tracks instructor-group assignments with assigned_date matching slot_date
+    const groupUuids = group_id.map(gid => groupUuidMap[gid]);
+
+    // Check which assignments already exist for this instructor/date combination
+    const { data: existingAssignments } = await supabaseAdmin
+      .from('groups_instructors')
+      .select('group_id')
+      .eq('instructor_id', instructor_id)
+      .eq('assigned_date', slot_date)
+      .in('group_id', groupUuids);
+
+    const existingGroupIds = new Set(existingAssignments?.map(a => a.group_id) || []);
+
+    // Only insert assignments that don't already exist
+    const newAssignments = groupUuids
+      .filter(uuid => !existingGroupIds.has(uuid))
+      .map(uuid => ({
+        group_id: uuid,
+        instructor_id: instructor_id,
+        assigned_date: slot_date,
+        status: 'active'
+      }));
+
+    if (newAssignments.length > 0) {
+      const { error: assignmentError } = await supabaseAdmin
+        .from('groups_instructors')
+        .insert(newAssignments);
+
+      if (assignmentError) {
+        // Log but don't fail - the slot was created successfully
+        console.warn(`[Create Work Check Slot] Warning: Could not create instructor assignments: ${assignmentError.message}`);
+      } else {
+        console.log(`[Create Work Check Slot] Created ${newAssignments.length} instructor-group assignments`);
+      }
+    } else {
+      console.log(`[Create Work Check Slot] All instructor-group assignments already exist for this date`);
+    }
 
     res.status(201).json({
       success: true,
