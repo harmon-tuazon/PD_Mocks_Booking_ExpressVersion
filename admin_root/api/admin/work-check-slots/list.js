@@ -9,6 +9,8 @@ const { validationMiddleware } = require('../../_shared/validation');
 const { supabaseAdmin } = require('../../_shared/supabase');
 
 module.exports = async (req, res) => {
+  console.log('[Work Check Slots API] Endpoint hit:', req.method, req.url);
+
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     return res.status(405).json({

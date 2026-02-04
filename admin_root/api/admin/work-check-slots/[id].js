@@ -8,6 +8,8 @@ const { validationMiddleware } = require('../../_shared/validation');
 const { supabaseAdmin } = require('../../_shared/supabase');
 
 module.exports = async (req, res) => {
+  console.log('[Work Check Slots [id] API] Endpoint hit:', req.method, req.url, 'id:', req.query.id);
+
   const { id } = req.query;
 
   if (!id) {
