@@ -13,6 +13,7 @@ import BulkMocks from './pages/BulkMocks'
 import Groups from './pages/Groups'
 import GroupDetail from './pages/GroupDetail'
 import Instructors from './pages/Instructors'
+import WorkCheckSlots from './pages/WorkCheckSlots'
 import Users from './pages/Users'
 import Login from './pages/Login'
 import PasswordReset from './pages/PasswordReset'
@@ -104,6 +105,7 @@ function App() {
                 <Route path="work-check/groups" element={<Groups />} />
                 <Route path="work-check/groups/:groupId" element={<GroupDetail />} />
                 <Route path="work-check/instructors" element={<Instructors />} />
+                <Route path="work-check/slots" element={<WorkCheckSlots />} />
 
                 {/* Data Management Routes */}
                 <Route path="data-management/users" element={<Users />} />

@@ -1697,7 +1697,194 @@ const schemas = {
         'array.max': 'Maximum 100 instructors can be deleted at once',
         'any.required': 'Instructor IDs are required'
       })
-  })
+  }),
+
+  // ============================================================
+  // WORK CHECK SLOTS VALIDATION SCHEMAS
+  // ============================================================
+
+  // Work Check Slot List Query
+  workCheckSlotList: Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(50),
+    instructor_id: Joi.string().uuid(),
+    group_id: Joi.string().max(100),
+    location: Joi.string().valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online'),
+    date_from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/),
+    date_to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/),
+    is_active: Joi.string().valid('true', 'false', 'all').default('all'),
+    activation_status: Joi.string().valid('immediate', 'scheduled', 'all').default('all'),
+    sort_by: Joi.string().valid('slot_date', 'slot_time', 'instructor_name', 'location', 'created_at').default('slot_date'),
+    sort_order: Joi.string().valid('asc', 'desc').default('asc')
+  }),
+
+  // Work Check Slot Creation
+  workCheckSlotCreation: Joi.object({
+    instructor_id: Joi.string()
+      .uuid()
+      .required()
+      .messages({
+        'string.guid': 'Invalid instructor ID format',
+        'any.required': 'Instructor is required'
+      }),
+    group_id: Joi.array()
+      .items(Joi.string().max(100))
+      .min(1)
+      .max(20)
+      .required()
+      .messages({
+        'array.min': 'At least one group is required',
+        'array.max': 'Maximum 20 groups per slot'
+      }),
+    slot_date: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Date must be in YYYY-MM-DD format'
+      }),
+    slot_time: Joi.string()
+      .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Time must be in HH:MM format'
+      }),
+    duration_minutes: Joi.number()
+      .integer()
+      .min(15)
+      .max(120)
+      .default(30),
+    total_slots: Joi.number()
+      .integer()
+      .min(1)
+      .max(10)
+      .default(1),
+    location: Joi.string()
+      .valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online')
+      .required()
+      .messages({
+        'any.required': 'Location is required'
+      }),
+    activation_mode: Joi.string()
+      .valid('immediate', 'scheduled')
+      .default('immediate'),
+    available_from: Joi.date()
+      .iso()
+      .min('now')
+      .when('activation_mode', {
+        is: 'scheduled',
+        then: Joi.required().messages({
+          'any.required': 'Scheduled activation date/time is required when using scheduled mode'
+        }),
+        otherwise: Joi.optional().allow(null)
+      })
+  }).required(),
+
+  // Work Check Slot Update
+  workCheckSlotUpdate: Joi.object({
+    group_id: Joi.array()
+      .items(Joi.string().max(100))
+      .min(1)
+      .max(20),
+    slot_date: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/),
+    slot_time: Joi.string()
+      .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/),
+    duration_minutes: Joi.number()
+      .integer()
+      .min(15)
+      .max(120),
+    total_slots: Joi.number()
+      .integer()
+      .min(1)
+      .max(10),
+    location: Joi.string()
+      .valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online'),
+    is_active: Joi.boolean(),
+    available_from: Joi.date()
+      .iso()
+      .allow(null)
+  }).min(1),
+
+  // Work Check Slot Bulk Toggle Status
+  workCheckSlotBulkToggle: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one slot ID is required',
+        'array.max': 'Maximum 100 slots can be toggled at once'
+      }),
+    action: Joi.string()
+      .valid('toggle', 'activate', 'deactivate')
+      .default('toggle')
+  }).required(),
+
+  // Work Check Slot Bulk Delete
+  workCheckSlotBulkDelete: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one slot ID is required',
+        'array.max': 'Maximum 100 slots can be deleted at once'
+      })
+  }).required(),
+
+  // Work Check Slot Clone
+  workCheckSlotClone: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(50)
+      .required()
+      .messages({
+        'array.min': 'At least one slot ID is required',
+        'array.max': 'Maximum 50 slots can be cloned at once'
+      }),
+    target_instructor_id: Joi.string().uuid().optional(),
+    target_groups: Joi.array()
+      .items(Joi.string().max(100))
+      .optional(),
+    date_offset_days: Joi.number()
+      .integer()
+      .min(-365)
+      .max(365)
+      .default(7),
+    copy_activation_settings: Joi.boolean().default(false)
+  }).required(),
+
+  // Work Check Slot Bulk Edit
+  workCheckSlotBulkEdit: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(100)
+      .required(),
+    updates: Joi.object({
+      location: Joi.string()
+        .valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online'),
+      duration_minutes: Joi.number()
+        .integer()
+        .min(15)
+        .max(120),
+      total_slots: Joi.number()
+        .integer()
+        .min(1)
+        .max(10),
+      is_active: Joi.boolean(),
+      group_id: Joi.array()
+        .items(Joi.string().max(100))
+        .min(1)
+        .max(20),
+      available_from: Joi.date()
+        .iso()
+        .allow(null)
+    }).min(1).required()
+  }).required()
 
 };
 

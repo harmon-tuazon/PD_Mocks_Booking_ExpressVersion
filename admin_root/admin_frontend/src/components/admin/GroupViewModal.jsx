@@ -212,29 +212,7 @@ const GroupViewModal = ({ isOpen, onClose, groupId }) => {
                         {/* Overview Tab */}
                         <Tab.Panel>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Left column - fields without icons */}
-                            <div className="space-y-6">
-                              <InfoCard label="Group Name" value={group?.group_name} />
-                              <div className="flex items-start space-x-3">
-                                <div>
-                                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Time Period</dt>
-                                  <dd className="mt-1">
-                                    <TimePeriodBadge period={group?.time_period} />
-                                  </dd>
-                                </div>
-                              </div>
-                              <InfoCard label="Cycle" value={group?.cycle} icon={RefreshCw} />
-                              <div className="flex items-start space-x-3">
-                                <div>
-                                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
-                                  <dd className="mt-1">
-                                    <StatusBadge status={group?.status} />
-                                  </dd>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Right column - fields with icons */}
+                            {/* Left column - fields with icons */}
                             <div className="space-y-6">
                               <InfoCard label="Location" value={group?.location} icon={MapPin} />
                               <InfoCard
@@ -252,6 +230,28 @@ const GroupViewModal = ({ isOpen, onClose, groupId }) => {
                                 value={`${group?.student_count || 0} / ${group?.max_capacity}`}
                                 icon={Users}
                               />
+                              <InfoCard label="Cycle" value={group?.cycle} icon={RefreshCw} />
+                            </div>
+
+                            {/* Right column - fields without icons (text and badges) */}
+                            <div className="space-y-6">
+                              <InfoCard label="Group Name" value={group?.group_name} />
+                              <div className="flex items-start space-x-3">
+                                <div>
+                                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Time Period</dt>
+                                  <dd className="mt-1">
+                                    <TimePeriodBadge period={group?.time_period} />
+                                  </dd>
+                                </div>
+                              </div>
+                              <div className="flex items-start space-x-3">
+                                <div>
+                                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
+                                  <dd className="mt-1">
+                                    <StatusBadge status={group?.status} />
+                                  </dd>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </Tab.Panel>

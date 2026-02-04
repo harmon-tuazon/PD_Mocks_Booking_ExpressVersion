@@ -734,6 +734,105 @@ export const instructorsApi = {
   }
 };
 
+/**
+ * Work Check Slots API endpoints
+ * For managing instructor time slots
+ */
+export const workCheckSlotsApi = {
+  /**
+   * List slots with pagination, filtering, and sorting
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Object>} Paginated slots
+   */
+  list: async (params = {}) => {
+    const response = await api.get('/admin/work-check-slots', { params });
+    return response.data;
+  },
+
+  /**
+   * Get a single slot by ID
+   * @param {string} id - Slot ID (UUID)
+   * @returns {Promise<Object>} Slot data
+   */
+  get: async (id) => {
+    const response = await api.get(`/admin/work-check-slots/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Create a new slot
+   * @param {Object} data - Slot data
+   * @returns {Promise<Object>} Created slot
+   */
+  create: async (data) => {
+    const response = await api.post('/admin/work-check-slots', data);
+    return response.data;
+  },
+
+  /**
+   * Update a slot
+   * @param {string} id - Slot ID
+   * @param {Object} data - Update data
+   * @returns {Promise<Object>} Updated slot
+   */
+  update: async (id, data) => {
+    const response = await api.put(`/admin/work-check-slots/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete a slot
+   * @param {string} id - Slot ID
+   * @returns {Promise<Object>} Delete result
+   */
+  delete: async (id) => {
+    const response = await api.delete(`/admin/work-check-slots/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Bulk toggle status for multiple slots
+   * @param {Array<string>} ids - Array of slot IDs
+   * @param {string} action - 'toggle', 'activate', or 'deactivate'
+   * @returns {Promise<Object>} Toggle result
+   */
+  bulkToggle: async (ids, action = 'toggle') => {
+    const response = await api.post('/admin/work-check-slots/bulk-toggle', { ids, action });
+    return response.data;
+  },
+
+  /**
+   * Bulk delete multiple slots
+   * @param {Array<string>} ids - Array of slot IDs
+   * @returns {Promise<Object>} Delete result with blocked details
+   */
+  bulkDelete: async (ids) => {
+    const response = await api.post('/admin/work-check-slots/bulk-delete', { ids });
+    return response.data;
+  },
+
+  /**
+   * Clone slots to different instructor/groups/dates
+   * @param {Object} data - Clone configuration
+   * @returns {Promise<Object>} Clone result
+   */
+  clone: async (data) => {
+    const response = await api.post('/admin/work-check-slots/clone', data);
+    return response.data;
+  },
+
+  /**
+   * Bulk edit multiple slots
+   * @param {Array<string>} ids - Array of slot IDs
+   * @param {Object} updates - Fields to update
+   * @returns {Promise<Object>} Edit result
+   */
+  bulkEdit: async (ids, updates) => {
+    const response = await api.post('/admin/work-check-slots/bulk-edit', { ids, updates });
+    return response.data;
+  }
+};
+
 // Export the axios instance as adminApi for direct use in hooks
 export const adminApi = api;
 

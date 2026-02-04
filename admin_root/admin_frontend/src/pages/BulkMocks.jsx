@@ -842,119 +842,63 @@ Mock Discussion,2026-03-17,6,Online,14:00,15:00,C,scheduled,2026-03-10T09:00:00Z
    * Render column reference section
    */
   const renderColumnReference = () => (
-    <div className="mt-8 space-y-6">
-      {/* Required Columns */}
-      <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
-            REQUIRED
-          </span>
-          <h3 className="font-medium text-gray-900 dark:text-gray-100">
-            Required Columns
-          </h3>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {REQUIRED_COLUMNS.map((col, idx) => (
-            <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-dark-bg rounded-lg">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono text-sm font-semibold text-primary-600 dark:text-primary-400">
-                    {col.name}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                  {col.description}
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-500">Example:</span>
-                  <code className="text-xs bg-gray-200 dark:bg-dark-hover px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-300">
-                    {col.example}
-                  </code>
-                </div>
-                {col.format && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-gray-500 dark:text-gray-500">Format:</span>
-                    <span className="text-xs text-gray-600 dark:text-gray-400">{col.format}</span>
-                  </div>
-                )}
-                {col.validValues && (
-                  <div className="mt-2">
-                    <span className="text-xs text-gray-500 dark:text-gray-500">Valid values: </span>
-                    <span className="text-xs text-gray-600 dark:text-gray-400">
-                      {col.validValues.join(', ')}
-                    </span>
-                  </div>
-                )}
-                {col.aliases && (
-                  <div className="mt-1">
-                    <span className="text-xs text-gray-500 dark:text-gray-500">Aliases: </span>
-                    <span className="text-xs text-gray-600 dark:text-gray-400">{col.aliases}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="mt-8 bg-gray-50 dark:bg-dark-bg rounded-lg p-6">
+      <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-4 text-lg">
+        Required Columns
+      </h3>
+      <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+        <li className="flex items-start gap-2">
+          <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">mock_type</span>
+          <span>Type of mock exam (e.g., "Situational Judgment", "SJ", "Clinical Skills", "CS")</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">exam_date</span>
+          <span>Date of the exam (YYYY-MM-DD format)</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">capacity</span>
+          <span>Maximum number of students (1-100)</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">location</span>
+          <span>Exam location (e.g., "Mississauga", "Calgary", "Online")</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">start_time</span>
+          <span>Exam start time (HH:MM 24-hour format)</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">end_time</span>
+          <span>Exam end time (HH:MM 24-hour format)</span>
+        </li>
+      </ul>
 
       {/* Optional Columns */}
-      <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-            OPTIONAL
-          </span>
-          <h3 className="font-medium text-gray-900 dark:text-gray-100">
-            Optional Columns
-          </h3>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {OPTIONAL_COLUMNS.map((col, idx) => (
-            <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-dark-bg rounded-lg">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono text-sm font-semibold text-primary-600 dark:text-primary-400">
-                    {col.name}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                  {col.description}
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-500">Example:</span>
-                  <code className="text-xs bg-gray-200 dark:bg-dark-hover px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-300">
-                    {col.example}
-                  </code>
-                </div>
-                {col.default && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-gray-500 dark:text-gray-500">Default:</span>
-                    <span className="text-xs text-green-600 dark:text-green-400">{col.default}</span>
-                  </div>
-                )}
-                {col.validValues && (
-                  <div className="mt-2">
-                    <span className="text-xs text-gray-500 dark:text-gray-500">Valid values: </span>
-                    <span className="text-xs text-gray-600 dark:text-gray-400">
-                      {col.validValues.join(', ')}
-                    </span>
-                  </div>
-                )}
-                {col.note && (
-                  <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 italic">
-                    Note: {col.note}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="mt-6 pt-6 border-t border-gray-200 dark:border-dark-border">
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          Optional Columns
+        </h4>
+        <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+          <li className="flex items-start gap-2">
+            <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">mock_set</span>
+            <span>Set identifier A-H (not for Mini-mock)</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">is_active</span>
+            <span>Exam status: "true", "false", or "scheduled" (default: true)</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">scheduled_activation_datetime</span>
+            <span>ISO datetime for scheduled activation (required if is_active is "scheduled")</span>
+          </li>
+        </ul>
       </div>
 
-      {/* Additional notes */}
-      <div className="bg-gray-50 dark:bg-dark-bg rounded-lg p-4">
+      {/* Tips */}
+      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-dark-border">
         <p className="text-xs text-gray-500 dark:text-gray-500">
-          <strong>Tips:</strong> Column headers are case-insensitive. Mock type and location accept flexible input (e.g., "SJ" for "Situational Judgment").
-          Times must be in 24-hour format. Scheduled exams require a future activation datetime in ISO format.
+          Column headers are case-insensitive. Mock type and location accept flexible input (e.g., "SJ" for "Situational Judgment").
+          Times must be in 24-hour format.
         </p>
       </div>
     </div>
