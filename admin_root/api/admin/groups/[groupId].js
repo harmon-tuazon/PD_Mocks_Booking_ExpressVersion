@@ -140,6 +140,7 @@ async function handleGet(req, res, id) {
       id,
       instructor_id,
       status,
+      assigned_date,
       created_at,
       updated_at
     `)
@@ -166,7 +167,7 @@ async function handleGet(req, res, id) {
       id: gi.instructor_id,
       instructor_id: gi.instructor_id,
       status: gi.status,
-      assigned_at: gi.created_at,
+      assigned_date: gi.assigned_date,
       instructor: instructorMap[gi.instructor_id] || null
     }));
   }

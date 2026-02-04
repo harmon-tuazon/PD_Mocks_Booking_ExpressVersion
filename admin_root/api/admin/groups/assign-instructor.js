@@ -97,10 +97,13 @@ module.exports = async (req, res) => {
         });
       }
 
-      // Reactivate if previously removed
+      // Reactivate if previously removed (keep original assigned_date)
       const { data: reactivated, error: reactivateError } = await supabaseAdmin
         .from('groups_instructors')
-        .update({ status: 'active', updated_at: new Date().toISOString() })
+        .update({
+          status: 'active',
+          updated_at: new Date().toISOString()
+        })
         .eq('id', existing.id)
         .select()
         .single();
@@ -134,7 +137,8 @@ module.exports = async (req, res) => {
       .insert({
         group_id: groupUuid,
         instructor_id: instructorUuid,
-        status: 'active'
+        status: 'active',
+        assigned_date: new Date().toISOString().split('T')[0]  // DATE type: YYYY-MM-DD
       })
       .select()
       .single();

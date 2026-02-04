@@ -275,10 +275,10 @@ const GroupViewModal = ({ isOpen, onClose, groupId }) => {
                                       Instructor
                                     </th>
                                     <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                      ID
+                                      Email
                                     </th>
                                     <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                      Email
+                                      Assigned Date
                                     </th>
                                   </tr>
                                 </thead>
@@ -300,13 +300,13 @@ const GroupViewModal = ({ isOpen, onClose, groupId }) => {
                                         </div>
                                       </td>
                                       <td className="px-4 py-3 whitespace-nowrap">
-                                        <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                                          {assignment.instructor_id}
+                                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                                          {assignment.instructor?.email || '-'}
                                         </div>
                                       </td>
                                       <td className="px-4 py-3 whitespace-nowrap">
                                         <div className="text-sm text-gray-500 dark:text-gray-400">
-                                          {assignment.instructor?.email || '-'}
+                                          {formatDate(assignment.assigned_date)}
                                         </div>
                                       </td>
                                     </tr>
