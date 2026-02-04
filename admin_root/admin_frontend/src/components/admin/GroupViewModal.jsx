@@ -8,7 +8,7 @@ import { Fragment, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, Transition, Tab } from '@headlessui/react';
 import { XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
-import { Users, GraduationCap, Calendar, MapPin, Clock } from 'lucide-react';
+import { Users, GraduationCap, Calendar, MapPin, Clock, RefreshCw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { groupsApi } from '../../services/adminApi';
 
@@ -223,6 +223,7 @@ const GroupViewModal = ({ isOpen, onClose, groupId }) => {
                                   </dd>
                                 </div>
                               </div>
+                              <InfoCard label="Cycle" value={group?.cycle} icon={RefreshCw} />
                               <div className="flex items-start space-x-3">
                                 <div>
                                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
