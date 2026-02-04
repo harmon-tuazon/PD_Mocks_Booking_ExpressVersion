@@ -182,7 +182,7 @@ const GroupsTable = ({
                   )}
                   <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => navigate(`/data-management/groups/${group.group_id}`)}
+                      onClick={() => navigate(`/work-check/groups/${group.group_id}`)}
                       className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:underline"
                     >
                       {group.group_name}

@@ -18,21 +18,37 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [dataManagementOpen, setDataManagementOpen] = useState(false);
+  const [workCheckOpen, setWorkCheckOpen] = useState(false);
   const dataManagementRef = useRef(null);
-  const closeTimeoutRef = useRef(null);
+  const workCheckRef = useRef(null);
+  const dataManagementTimeoutRef = useRef(null);
+  const workCheckTimeoutRef = useRef(null);
 
-  // Handle delayed close for submenu (prevents accidental closure)
-  const handleMouseLeave = () => {
-    closeTimeoutRef.current = setTimeout(() => {
+  // Handle delayed close for Data Management submenu
+  const handleDataManagementMouseLeave = () => {
+    dataManagementTimeoutRef.current = setTimeout(() => {
       setDataManagementOpen(false);
-    }, 200); // 200ms delay before closing
+    }, 200);
   };
 
-  // Cancel close timeout when mouse re-enters
-  const handleMouseEnter = () => {
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
+  const handleDataManagementMouseEnter = () => {
+    if (dataManagementTimeoutRef.current) {
+      clearTimeout(dataManagementTimeoutRef.current);
+      dataManagementTimeoutRef.current = null;
+    }
+  };
+
+  // Handle delayed close for Work Check submenu
+  const handleWorkCheckMouseLeave = () => {
+    workCheckTimeoutRef.current = setTimeout(() => {
+      setWorkCheckOpen(false);
+    }, 200);
+  };
+
+  const handleWorkCheckMouseEnter = () => {
+    if (workCheckTimeoutRef.current) {
+      clearTimeout(workCheckTimeoutRef.current);
+      workCheckTimeoutRef.current = null;
     }
   };
 
@@ -79,10 +95,14 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       )
-    },
+    }
+  ];
+
+  // Work Check submenu items
+  const workCheckItems = [
     {
-      name: 'Workcheck Group Management',
-      href: '/data-management/groups',
+      name: 'Group Management',
+      href: '/work-check/groups',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -236,8 +256,8 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
               <li
                 ref={dataManagementRef}
                 className="relative"
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
+                onMouseEnter={handleDataManagementMouseEnter}
+                onMouseLeave={handleDataManagementMouseLeave}
               >
                 <button
                   onClick={() => setDataManagementOpen(!dataManagementOpen)}
@@ -283,8 +303,8 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                   <div
                     className="fixed left-64 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-xl z-[100]"
                     style={{ marginTop: '-44px' }}
-                    onMouseEnter={handleMouseEnter}
-                    onMouseLeave={handleMouseLeave}
+                    onMouseEnter={handleDataManagementMouseEnter}
+                    onMouseLeave={handleDataManagementMouseLeave}
                   >
                     <div className="py-2">
                       {dataManagementItems.map((subItem) => {
@@ -296,6 +316,95 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                             onClick={() => {
                               handleNavigation(subItem.href);
                               setDataManagementOpen(false);
+                            }}
+                            className={`
+                              w-full flex items-center px-4 py-2.5 text-sm font-medium
+                              transition-all duration-200 text-left
+                              ${isSubActive
+                                ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-dark-hover'
+                              }
+                            `}
+                          >
+                            <span className={`
+                              mr-3 flex-shrink-0
+                              ${isSubActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'}
+                            `}>
+                              {subItem.icon}
+                            </span>
+                            <span>{subItem.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </li>
+
+              {/* Work Check Menu with Submenu */}
+              <li
+                ref={workCheckRef}
+                className="relative"
+                onMouseEnter={handleWorkCheckMouseEnter}
+                onMouseLeave={handleWorkCheckMouseLeave}
+              >
+                <button
+                  onClick={() => setWorkCheckOpen(!workCheckOpen)}
+                  className={`
+                    w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg
+                    transition-all duration-200 text-left
+                    ${workCheckOpen || location.pathname.startsWith('/work-check')
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-dark-hover'
+                    }
+                    focus:outline-none focus:ring-2 focus:ring-primary-400 dark:focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800
+                  `}
+                >
+                  <span className={`
+                    mr-3 flex-shrink-0
+                    ${workCheckOpen || location.pathname.startsWith('/work-check')
+                      ? 'text-primary-600 dark:text-primary-400'
+                      : 'text-gray-400 dark:text-gray-500'
+                    }
+                  `}>
+                    {/* Clipboard Check Icon for Work Check */}
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                  </span>
+                  <span className="flex-1">Work Check</span>
+
+                  {/* Chevron indicator */}
+                  <span className="ml-auto">
+                    <svg
+                      className={`w-4 h-4 transition-transform duration-200 ${workCheckOpen ? 'rotate-90' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                </button>
+
+                {/* Work Check Submenu */}
+                {workCheckOpen && (
+                  <div
+                    className="fixed left-64 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-xl z-[100]"
+                    style={{ marginTop: '-44px' }}
+                    onMouseEnter={handleWorkCheckMouseEnter}
+                    onMouseLeave={handleWorkCheckMouseLeave}
+                  >
+                    <div className="py-2">
+                      {workCheckItems.map((subItem) => {
+                        const isSubActive = isActivePath(subItem.href);
+
+                        return (
+                          <button
+                            key={subItem.name}
+                            onClick={() => {
+                              handleNavigation(subItem.href);
+                              setWorkCheckOpen(false);
                             }}
                             className={`
                               w-full flex items-center px-4 py-2.5 text-sm font-medium

@@ -101,8 +101,10 @@ function App() {
                 {/* Data Management Routes */}
                 <Route path="data-management/bulk-bookings" element={<BulkBookings />} />
                 <Route path="data-management/bulk-mocks" element={<BulkMocks />} />
-                <Route path="data-management/groups" element={<Groups />} />
-                <Route path="data-management/groups/:groupId" element={<GroupDetail />} />
+
+                {/* Work Check Routes */}
+                <Route path="work-check/groups" element={<Groups />} />
+                <Route path="work-check/groups/:groupId" element={<GroupDetail />} />
               </Route>
             </Routes>
           </AuthProvider>

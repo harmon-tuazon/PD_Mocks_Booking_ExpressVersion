@@ -112,7 +112,7 @@ function GroupDetail() {
     onSuccess: () => {
       toast.success('Group deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['groups'] });
-      navigate('/data-management/groups');
+      navigate('/work-check/groups');
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to delete group');
@@ -234,7 +234,7 @@ function GroupDetail() {
   };
 
   const handleBack = () => {
-    navigate('/data-management/groups');
+    navigate('/work-check/groups');
   };
 
   const handleDeleteConfirm = () => {

@@ -86,7 +86,7 @@ const GroupViewModal = ({ isOpen, onClose, groupId }) => {
 
   const handleGoToDetail = () => {
     onClose();
-    navigate(`/data-management/groups/${groupId}`);
+    navigate(`/work-check/groups/${groupId}`);
   };
 
   const tabs = [
