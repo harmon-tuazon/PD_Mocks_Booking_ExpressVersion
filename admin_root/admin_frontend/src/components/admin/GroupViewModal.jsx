@@ -289,13 +289,12 @@ const GroupViewModal = ({ isOpen, onClose, groupId }) => {
                                         <div className="flex items-center">
                                           <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
                                             <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                                              {assignment.instructor?.first_name?.charAt(0) || '?'}
-                                              {assignment.instructor?.last_name?.charAt(0) || ''}
+                                              {assignment.instructor?.instructor_name?.charAt(0) || '?'}
                                             </span>
                                           </div>
                                           <div className="ml-3">
                                             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                              {assignment.instructor?.first_name || 'Unknown'} {assignment.instructor?.last_name || ''}
+                                              {assignment.instructor?.instructor_name || 'Unknown'}
                                             </div>
                                           </div>
                                         </div>
