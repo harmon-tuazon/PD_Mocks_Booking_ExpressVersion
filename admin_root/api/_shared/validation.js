@@ -1587,6 +1587,26 @@ const schemas = {
       })
   }).min(1).messages({
     'object.min': 'At least one property must be provided for update'
+  }),
+
+  // Schema for bulk toggle instructor status
+  instructorBulkToggleStatus: Joi.object({
+    ids: Joi.array()
+      .items(
+        Joi.string()
+          .guid({ version: ['uuidv4'] })
+          .messages({
+            'string.guid': 'Each ID must be a valid UUID'
+          })
+      )
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one instructor ID is required',
+        'array.max': 'Maximum 100 instructors can be toggled at once',
+        'any.required': 'Instructor IDs are required'
+      })
   })
 
 };

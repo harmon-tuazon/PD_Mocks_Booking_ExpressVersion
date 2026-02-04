@@ -4,7 +4,7 @@
  */
 
 import { ChevronLeftIcon, ChevronRightIcon, UserIcon } from '@heroicons/react/24/outline';
-import { Pencil, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 
 const InstructorTable = ({
   data,
@@ -19,7 +19,11 @@ const InstructorTable = ({
   // Action handlers
   onEdit,
   onToggleStatus,
-  isTogglingStatus
+  isTogglingStatus,
+  // Selection props
+  isSelectionMode = false,
+  onToggleSelection,
+  isSelected
 }) => {
   // Calculate pagination display values
   const itemsPerPage = 50;
@@ -81,6 +85,36 @@ const InstructorTable = ({
     });
   };
 
+  // Handle row click for selection
+  const handleRowClick = (e, instructor) => {
+    // Don't toggle selection if clicking on Edit button or its children
+    const clickedElement = e.target;
+    const isButtonClick = clickedElement.closest('button');
+
+    if (isButtonClick) {
+      return; // Let the button handle its own click
+    }
+
+    if (isSelectionMode && onToggleSelection) {
+      onToggleSelection(instructor.id || instructor.instructor_id);
+    }
+  };
+
+  // Get row classes based on selection state
+  const getRowClasses = (instructor) => {
+    const instructorId = instructor.id || instructor.instructor_id;
+    const selected = isSelectionMode && isSelected?.(instructorId);
+
+    const baseClasses = 'transition-colors';
+    const hoverClasses = isSelectionMode ? 'cursor-pointer' : '';
+
+    if (selected) {
+      return `${baseClasses} ${hoverClasses} border-2 border-primary-600 dark:border-primary-400 bg-primary-50 dark:bg-primary-900/20`;
+    }
+
+    return `${baseClasses} ${hoverClasses} hover:bg-gray-50 dark:hover:bg-gray-800/50`;
+  };
+
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-dark-card shadow overflow-hidden sm:rounded-lg">
@@ -114,6 +148,11 @@ const InstructorTable = ({
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
+              {isSelectionMode && (
+                <th scope="col" className="w-12 px-3 py-3">
+                  {/* Checkbox column header - intentionally empty */}
+                </th>
+              )}
               <SortableHeader column="instructor_name">Name</SortableHeader>
               <SortableHeader column="email">Email</SortableHeader>
               <SortableHeader column="is_active">Status</SortableHeader>
@@ -124,82 +163,76 @@ const InstructorTable = ({
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
-            {data.map((instructor) => (
-              <tr
-                key={instructor.id || instructor.instructor_id}
-                className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-              >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
-                      <div className="h-10 w-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
-                          {instructor.instructor_name?.charAt(0)?.toUpperCase() || '?'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {instructor.instructor_name}
-                      </div>
-                      {instructor.instructor_id && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          ID: {instructor.instructor_id}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 dark:text-gray-100">
-                    {instructor.email || '-'}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {getStatusBadge(instructor.is_active)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {formatDate(instructor.created_at)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex items-center justify-end space-x-2">
-                    {/* Edit button */}
-                    <button
-                      onClick={() => onEdit?.(instructor)}
-                      className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
-                      title="Edit instructor"
-                    >
-                      <Pencil className="h-4 w-4 mr-1" />
-                      Edit
-                    </button>
+            {data.map((instructor) => {
+              const instructorId = instructor.id || instructor.instructor_id;
+              const selected = isSelectionMode && isSelected?.(instructorId);
 
-                    {/* Toggle status button */}
-                    <button
-                      onClick={() => onToggleStatus?.(instructor)}
-                      disabled={isTogglingStatus}
-                      className={`inline-flex items-center px-3 py-1.5 border shadow-sm text-xs font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                        instructor.is_active
-                          ? 'border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 focus:ring-amber-500'
-                          : 'border-green-300 dark:border-green-600 text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 focus:ring-green-500'
-                      }`}
-                      title={instructor.is_active ? 'Deactivate instructor' : 'Activate instructor'}
-                    >
-                      {instructor.is_active ? (
-                        <>
-                          <ToggleRight className="h-4 w-4 mr-1" />
-                          Deactivate
-                        </>
-                      ) : (
-                        <>
-                          <ToggleLeft className="h-4 w-4 mr-1" />
-                          Activate
-                        </>
+              return (
+                <tr
+                  key={instructorId}
+                  className={getRowClasses(instructor)}
+                  onClick={(e) => handleRowClick(e, instructor)}
+                >
+                  {isSelectionMode && (
+                    <td className="w-12 px-3 py-4">
+                      {selected && (
+                        <input
+                          type="checkbox"
+                          checked={true}
+                          readOnly
+                          className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
                       )}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                    </td>
+                  )}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                          <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
+                            {instructor.instructor_name?.charAt(0)?.toUpperCase() || '?'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {instructor.instructor_name}
+                        </div>
+                        {instructor.instructor_id && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            ID: {instructor.instructor_id}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-gray-100">
+                      {instructor.email || '-'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {getStatusBadge(instructor.is_active)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {formatDate(instructor.created_at)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex items-center justify-end">
+                      {/* Edit button */}
+                      <button
+                        onClick={() => onEdit?.(instructor)}
+                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                        title="Edit instructor"
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Edit
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

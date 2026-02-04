@@ -680,6 +680,16 @@ export const instructorsApi = {
   getDropdown: async () => {
     const response = await api.get('/admin/instructors/dropdown');
     return response.data;
+  },
+
+  /**
+   * Bulk toggle status for multiple instructors
+   * @param {Array<string>} ids - Array of instructor IDs to toggle
+   * @returns {Promise<Object>} Toggle result with updated instructors
+   */
+  bulkToggleStatus: async (ids) => {
+    const response = await api.post('/admin/instructors/bulk-toggle-status', { ids });
+    return response.data;
   }
 };
 

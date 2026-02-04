@@ -5,13 +5,16 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { GraduationCap, Plus, Users, UserCheck, UserX } from 'lucide-react';
+import { Plus, Users, UserCheck, UserX } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useInstructorsData, useInstructorMutations } from '../hooks/useInstructorsData';
 import { useDebounce } from '../hooks/useDebounce';
+import useInstructorBulkSelection from '../hooks/useInstructorBulkSelection';
 import InstructorTable from '../components/admin/InstructorTable';
 import InstructorFormModal from '../components/admin/InstructorFormModal';
 import InstructorFilters from '../components/admin/InstructorFilters';
+import InstructorSelectionToolbar from '../components/admin/InstructorSelectionToolbar';
+import InstructorToggleStatusModal from '../components/admin/InstructorToggleStatusModal';
 
 /**
  * Statistics card component for displaying instructor metrics
@@ -62,6 +65,7 @@ function Instructors() {
   // Modal state
   const [showModal, setShowModal] = useState(false);
   const [editingInstructor, setEditingInstructor] = useState(null);
+  const [isToggleModalOpen, setIsToggleModalOpen] = useState(false);
 
   // Filter state
   const [searchInput, setSearchInput] = useState('');
@@ -95,6 +99,12 @@ function Instructors() {
     createInstructor,
     updateInstructor
   } = useInstructorMutations();
+
+  // Instructors array for bulk selection
+  const instructors = instructorsData?.data || [];
+
+  // Initialize bulk selection hook
+  const bulkSelection = useInstructorBulkSelection(instructors, instructorsData?.pagination?.total_records || instructors.length);
 
   // Calculate statistics from data
   const stats = useMemo(() => {
@@ -179,24 +189,21 @@ function Instructors() {
     }
   }, [editingInstructor, updateInstructor, createInstructor, handleCloseModal]);
 
-  const handleToggleStatus = useCallback(async (instructor) => {
-    const newStatus = !instructor.is_active;
-    const action = newStatus ? 'activate' : 'deactivate';
-
+  const handleConfirmToggle = useCallback(async () => {
     try {
-      await updateInstructor.mutateAsync({
-        id: instructor.id || instructor.instructor_id,
-        data: { is_active: newStatus }
-      });
-      toast.success(`Instructor ${action}d successfully`);
+      const result = await bulkSelection.executeBulkToggle(bulkSelection.selectedIds);
+      if (result.success) {
+        toast.success(`Successfully toggled status for ${result.summary.updated} instructor(s)`);
+        bulkSelection.exitToView();
+        setIsToggleModalOpen(false);
+      }
     } catch (error) {
-      toast.error(`Failed to ${action} instructor`);
+      toast.error('Failed to toggle instructor status');
     }
-  }, [updateInstructor]);
+  }, [bulkSelection]);
 
   // Pagination info
   const pagination = instructorsData?.pagination || {};
-  const instructors = instructorsData?.data || [];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
@@ -250,16 +257,28 @@ function Instructors() {
           />
         </div>
 
-        {/* Filters */}
-        <InstructorFilters
-          search={searchInput}
-          onSearchChange={handleSearchChange}
-          status={statusFilter}
-          onStatusChange={handleStatusChange}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSortChange={handleSortChange}
-        />
+        {/* Filters or Selection Toolbar */}
+        {!bulkSelection.isSelectionMode ? (
+          <InstructorFilters
+            search={searchInput}
+            onSearchChange={handleSearchChange}
+            status={statusFilter}
+            onStatusChange={handleStatusChange}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortChange={handleSortChange}
+          />
+        ) : (
+          <InstructorSelectionToolbar
+            selectedCount={bulkSelection.selectedCount}
+            totalCount={bulkSelection.totalCount}
+            onClearAll={bulkSelection.clearAll}
+            onExitMode={bulkSelection.exitToView}
+            onToggleStatus={() => setIsToggleModalOpen(true)}
+            selectedInstructors={bulkSelection.selectedInstructors}
+            isSubmitting={bulkSelection.isSubmitting}
+          />
+        )}
 
         {/* Error state */}
         {instructorsError && (
@@ -281,8 +300,9 @@ function Instructors() {
           totalItems={pagination.total_records || 0}
           onPageChange={handlePageChange}
           onEdit={handleOpenEditModal}
-          onToggleStatus={handleToggleStatus}
-          isTogglingStatus={updateInstructor.isPending}
+          isSelectionMode={bulkSelection.isSelectionMode}
+          onToggleSelection={bulkSelection.toggleSelection}
+          isSelected={bulkSelection.isSelected}
         />
 
         {/* Create/Edit Modal */}
@@ -293,6 +313,15 @@ function Instructors() {
           isLoading={createInstructor.isPending || updateInstructor.isPending}
           initialData={editingInstructor}
           mode={editingInstructor ? 'edit' : 'create'}
+        />
+
+        {/* Toggle Status Confirmation Modal */}
+        <InstructorToggleStatusModal
+          isOpen={isToggleModalOpen}
+          onClose={() => setIsToggleModalOpen(false)}
+          onConfirm={handleConfirmToggle}
+          selectedInstructors={bulkSelection.selectedInstructors}
+          isSubmitting={bulkSelection.isSubmitting}
         />
       </div>
     </div>
