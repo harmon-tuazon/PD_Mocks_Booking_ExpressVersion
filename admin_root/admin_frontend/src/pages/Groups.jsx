@@ -14,6 +14,8 @@ import GroupForm from '../components/admin/GroupForm';
 import GroupsSelectionToolbar from '../components/admin/GroupsSelectionToolbar';
 import CloneGroupsModal from '../components/admin/CloneGroupsModal';
 import GroupViewModal from '../components/admin/GroupViewModal';
+import GroupToggleStatusModal from '../components/admin/GroupToggleStatusModal';
+import DeleteGroupsModal from '../components/admin/DeleteGroupsModal';
 import useGroupsBulkSelection from '../hooks/useGroupsBulkSelection';
 
 /**
@@ -68,6 +70,8 @@ function Groups() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCloneModal, setShowCloneModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showToggleModal, setShowToggleModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [viewGroupId, setViewGroupId] = useState(null);
 
   // Filter and pagination state (sent to API)
@@ -108,6 +112,7 @@ function Groups() {
     exitToView,
     setSubmittingState,
     invalidateQueries,
+    executeBulkToggle,
     isSelected
   } = useGroupsBulkSelection(
     groupsData?.data || [],
@@ -222,6 +227,42 @@ function Groups() {
     setViewGroupId(null);
   };
 
+  // Toggle status handlers
+  const handleOpenToggleModal = () => {
+    setShowToggleModal(true);
+  };
+
+  const handleCloseToggleModal = () => {
+    setShowToggleModal(false);
+  };
+
+  const handleConfirmToggle = async () => {
+    try {
+      const result = await executeBulkToggle(selectedIds);
+      if (result.success) {
+        toast.success(`Successfully toggled status for ${result.summary.updated} group(s)`);
+        exitToView();
+        setShowToggleModal(false);
+      }
+    } catch (error) {
+      toast.error('Failed to toggle group status');
+    }
+  };
+
+  // Delete modal handlers
+  const handleOpenDeleteModal = () => {
+    setShowDeleteModal(true);
+  };
+
+  const handleCloseDeleteModal = () => {
+    setShowDeleteModal(false);
+  };
+
+  const handleDeleteSuccess = () => {
+    exitToView();
+    setShowDeleteModal(false);
+  };
+
   // Statistics
   const stats = statsData?.data || {};
 
@@ -294,6 +335,8 @@ function Groups() {
               onClearAll={clearAll}
               onExitMode={exitToView}
               onClone={handleOpenCloneModal}
+              onToggleStatus={handleOpenToggleModal}
+              onDelete={handleOpenDeleteModal}
               selectedGroups={selectedGroups}
               isSubmitting={isSubmitting}
             />
@@ -385,6 +428,23 @@ function Groups() {
           isOpen={showViewModal}
           onClose={handleCloseViewModal}
           groupId={viewGroupId}
+        />
+
+        {/* Toggle Status Modal */}
+        <GroupToggleStatusModal
+          isOpen={showToggleModal}
+          onClose={handleCloseToggleModal}
+          onConfirm={handleConfirmToggle}
+          selectedGroups={selectedGroups}
+          isSubmitting={isSubmitting}
+        />
+
+        {/* Delete Groups Modal */}
+        <DeleteGroupsModal
+          isOpen={showDeleteModal}
+          onClose={handleCloseDeleteModal}
+          selectedGroups={selectedGroups}
+          onSuccess={handleDeleteSuccess}
         />
       </div>
     </div>

@@ -1607,6 +1607,96 @@ const schemas = {
         'array.max': 'Maximum 100 instructors can be toggled at once',
         'any.required': 'Instructor IDs are required'
       })
+  }),
+
+  // Schema for bulk toggle group status
+  groupBulkToggleStatus: Joi.object({
+    ids: Joi.array()
+      .items(
+        Joi.string()
+          .pattern(/^[A-Za-z0-9]+$/)
+          .messages({
+            'string.pattern.base': 'Each group ID must be alphanumeric'
+          })
+      )
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one group ID is required',
+        'array.max': 'Maximum 100 groups can be toggled at once',
+        'any.required': 'Group IDs are required'
+      })
+  }),
+
+  // Schema for cloning an instructor
+  instructorClone: Joi.object({
+    instructorName: Joi.string()
+      .min(2)
+      .max(100)
+      .trim()
+      .optional()
+      .messages({
+        'string.min': 'Instructor name must be at least 2 characters',
+        'string.max': 'Instructor name cannot exceed 100 characters'
+      }),
+    emailSuffix: Joi.string()
+      .min(1)
+      .max(50)
+      .pattern(/^[a-zA-Z0-9_.-]+$/)
+      .required()
+      .messages({
+        'string.min': 'Email suffix must be at least 1 character',
+        'string.max': 'Email suffix cannot exceed 50 characters',
+        'string.pattern.base': 'Email suffix can only contain letters, numbers, dots, dashes, and underscores',
+        'any.required': 'Email suffix is required'
+      }),
+    isActive: Joi.boolean()
+      .default(true)
+      .optional()
+      .messages({
+        'boolean.base': 'isActive must be a boolean value'
+      })
+  }),
+
+  // Schema for bulk delete groups
+  groupBulkDelete: Joi.object({
+    ids: Joi.array()
+      .items(
+        Joi.string()
+          .pattern(/^[A-Za-z0-9]+$/)
+          .messages({
+            'string.pattern.base': 'Each group ID must be alphanumeric'
+          })
+      )
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one group ID is required',
+        'array.max': 'Maximum 100 groups can be deleted at once',
+        'any.required': 'Group IDs are required'
+      })
+  }),
+
+  // Schema for bulk delete instructors
+  instructorBulkDelete: Joi.object({
+    ids: Joi.array()
+      .items(
+        Joi.string()
+          .uuid()
+          .messages({
+            'string.guid': 'Each instructor ID must be a valid UUID'
+          })
+      )
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one instructor ID is required',
+        'array.max': 'Maximum 100 instructors can be deleted at once',
+        'any.required': 'Instructor IDs are required'
+      })
   })
 
 };

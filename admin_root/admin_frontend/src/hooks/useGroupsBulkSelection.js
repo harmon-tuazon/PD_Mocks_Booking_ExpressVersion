@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { groupsApi } from '../services/adminApi';
 
 /**
  * Custom hook for managing bulk selection of groups
@@ -131,6 +132,44 @@ const useGroupsBulkSelection = (groups = [], overrideTotalCount = null) => {
     ]);
   }, [queryClient]);
 
+  /**
+   * Execute bulk toggle status operation via API
+   * Toggles the status of selected groups (active <-> inactive)
+   * @param {Array<string>} ids - Array of group IDs to toggle
+   * @returns {Promise<Object>} Operation result
+   */
+  const executeBulkToggle = useCallback(async (ids) => {
+    setIsSubmitting(true);
+    setOperationResult(null);
+
+    try {
+      const response = await groupsApi.bulkToggleStatus(ids);
+
+      const result = response.data || response;
+      setOperationResult(result);
+
+      // Invalidate group-related queries to force refetch with fresh data
+      await invalidateQueries();
+
+      return result;
+    } catch (error) {
+      console.error('Bulk toggle failed:', error);
+      const errorResult = {
+        success: false,
+        summary: {
+          total: ids.length,
+          updated: 0,
+          failed: ids.length
+        },
+        error: error.response?.data?.error || { message: 'Failed to toggle group status' }
+      };
+      setOperationResult(errorResult);
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [invalidateQueries]);
+
   return {
     // State
     isSelectionMode,
@@ -150,6 +189,7 @@ const useGroupsBulkSelection = (groups = [], overrideTotalCount = null) => {
     exitToView,
     setSubmittingState,
     invalidateQueries,
+    executeBulkToggle,
 
     // Helpers
     isSelected

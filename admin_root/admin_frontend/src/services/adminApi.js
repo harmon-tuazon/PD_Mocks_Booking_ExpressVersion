@@ -627,6 +627,26 @@ export const groupsApi = {
   removeInstructor: async (groupId, instructorId) => {
     const response = await api.delete(`/admin/groups/${groupId}/instructors/${instructorId}`);
     return response.data;
+  },
+
+  /**
+   * Bulk toggle status for multiple groups
+   * @param {Array<string>} ids - Array of group IDs (group_id, not UUID)
+   * @returns {Promise<Object>} Result with summary and details
+   */
+  bulkToggleStatus: async (ids) => {
+    const response = await api.post('/admin/groups/bulk-toggle-status', { ids });
+    return response.data;
+  },
+
+  /**
+   * Bulk delete multiple groups
+   * @param {Array<string>} ids - Array of group IDs (group_id, not UUID)
+   * @returns {Promise<Object>} Result with deleted and blocked counts
+   */
+  bulkDelete: async (ids) => {
+    const response = await api.post('/admin/groups/bulk-delete', { ids });
+    return response.data;
   }
 };
 
@@ -689,6 +709,27 @@ export const instructorsApi = {
    */
   bulkToggleStatus: async (ids) => {
     const response = await api.post('/admin/instructors/bulk-toggle-status', { ids });
+    return response.data;
+  },
+
+  /**
+   * Clone an instructor with a new email suffix
+   * @param {string} id - Source instructor ID
+   * @param {Object} data - Clone data (instructorName, emailSuffix, isActive)
+   * @returns {Promise<Object>} Cloned instructor data
+   */
+  clone: async (id, data) => {
+    const response = await api.post(`/admin/instructors/${id}/clone`, data);
+    return response.data;
+  },
+
+  /**
+   * Bulk delete multiple instructors
+   * @param {Array<string>} ids - Array of instructor IDs (UUIDs)
+   * @returns {Promise<Object>} Result with deleted and blocked counts
+   */
+  bulkDelete: async (ids) => {
+    const response = await api.post('/admin/instructors/bulk-delete', { ids });
     return response.data;
   }
 };

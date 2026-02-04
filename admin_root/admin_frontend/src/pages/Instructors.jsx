@@ -15,6 +15,8 @@ import InstructorFormModal from '../components/admin/InstructorFormModal';
 import InstructorFilters from '../components/admin/InstructorFilters';
 import InstructorSelectionToolbar from '../components/admin/InstructorSelectionToolbar';
 import InstructorToggleStatusModal from '../components/admin/InstructorToggleStatusModal';
+import CloneInstructorsModal from '../components/admin/CloneInstructorsModal';
+import DeleteInstructorsModal from '../components/admin/DeleteInstructorsModal';
 
 /**
  * Statistics card component for displaying instructor metrics
@@ -66,6 +68,8 @@ function Instructors() {
   const [showModal, setShowModal] = useState(false);
   const [editingInstructor, setEditingInstructor] = useState(null);
   const [isToggleModalOpen, setIsToggleModalOpen] = useState(false);
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Filter state
   const [searchInput, setSearchInput] = useState('');
@@ -202,6 +206,34 @@ function Instructors() {
     }
   }, [bulkSelection]);
 
+  // Clone handlers
+  const handleOpenCloneModal = useCallback(() => {
+    setIsCloneModalOpen(true);
+  }, []);
+
+  const handleCloseCloneModal = useCallback(() => {
+    setIsCloneModalOpen(false);
+  }, []);
+
+  const handleCloneSuccess = useCallback(() => {
+    bulkSelection.exitToView();
+    setIsCloneModalOpen(false);
+  }, [bulkSelection]);
+
+  // Delete handlers
+  const handleOpenDeleteModal = useCallback(() => {
+    setIsDeleteModalOpen(true);
+  }, []);
+
+  const handleCloseDeleteModal = useCallback(() => {
+    setIsDeleteModalOpen(false);
+  }, []);
+
+  const handleDeleteSuccess = useCallback(() => {
+    bulkSelection.exitToView();
+    setIsDeleteModalOpen(false);
+  }, [bulkSelection]);
+
   // Pagination info
   const pagination = instructorsData?.pagination || {};
 
@@ -275,6 +307,8 @@ function Instructors() {
             onClearAll={bulkSelection.clearAll}
             onExitMode={bulkSelection.exitToView}
             onToggleStatus={() => setIsToggleModalOpen(true)}
+            onClone={handleOpenCloneModal}
+            onDelete={handleOpenDeleteModal}
             selectedInstructors={bulkSelection.selectedInstructors}
             isSubmitting={bulkSelection.isSubmitting}
           />
@@ -322,6 +356,22 @@ function Instructors() {
           onConfirm={handleConfirmToggle}
           selectedInstructors={bulkSelection.selectedInstructors}
           isSubmitting={bulkSelection.isSubmitting}
+        />
+
+        {/* Clone Instructors Modal */}
+        <CloneInstructorsModal
+          isOpen={isCloneModalOpen}
+          onClose={handleCloseCloneModal}
+          selectedInstructors={bulkSelection.selectedInstructors}
+          onSuccess={handleCloneSuccess}
+        />
+
+        {/* Delete Instructors Modal */}
+        <DeleteInstructorsModal
+          isOpen={isDeleteModalOpen}
+          onClose={handleCloseDeleteModal}
+          selectedInstructors={bulkSelection.selectedInstructors}
+          onSuccess={handleDeleteSuccess}
         />
       </div>
     </div>
