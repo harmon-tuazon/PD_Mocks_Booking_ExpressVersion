@@ -4,6 +4,13 @@
  */
 
 import { Search } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const InstructorFilters = ({
   search,
@@ -26,8 +33,8 @@ const InstructorFilters = ({
 
   const currentSortValue = `${sortBy}:${sortOrder}`;
 
-  const handleSortChange = (e) => {
-    const [newSortBy, newSortOrder] = e.target.value.split(':');
+  const handleSortChange = (value) => {
+    const [newSortBy, newSortOrder] = value.split(':');
     onSortChange?.(newSortBy, newSortOrder);
   };
 
@@ -51,31 +58,39 @@ const InstructorFilters = ({
         {/* Status Filter */}
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Status:</span>
-          <select
+          <Select
             value={status}
-            onChange={(e) => onStatusChange?.(e.target.value)}
-            className="block w-auto pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            onValueChange={(value) => onStatusChange?.(value)}
           >
-            <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Sort Dropdown */}
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Sort:</span>
-          <select
+          <Select
             value={currentSortValue}
-            onChange={handleSortChange}
-            className="block w-auto pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            onValueChange={handleSortChange}
           >
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Name (A-Z)" />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>

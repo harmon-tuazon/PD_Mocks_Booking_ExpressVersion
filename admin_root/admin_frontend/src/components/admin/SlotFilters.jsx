@@ -4,12 +4,19 @@
  */
 
 import { useState, useEffect } from 'react';
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import { DatePicker } from '@/components/ui/date-picker';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { instructorsApi, groupsApi } from '../../services/adminApi';
 
 const LOCATIONS = [
-  { value: '', label: 'All Locations' },
+  { value: 'all', label: 'All Locations' },
   { value: 'Mississauga', label: 'Mississauga' },
   { value: 'Vancouver', label: 'Vancouver' },
   { value: 'Calgary', label: 'Calgary' },
@@ -83,91 +90,102 @@ const SlotFilters = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Instructor Filter */}
         <div>
-          <label htmlFor="instructor-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Instructor
           </label>
-          <select
-            id="instructor-filter"
-            value={instructorFilter}
-            onChange={(e) => onFilterChange('instructor', e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+          <Select
+            value={instructorFilter || 'all'}
+            onValueChange={(value) => onFilterChange('instructor', value === 'all' ? '' : value)}
             disabled={loadingInstructors}
           >
-            <option value="">All Instructors</option>
-            {instructors.map((instructor) => (
-              <option key={instructor.id} value={instructor.id}>
-                {instructor.instructor_name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={loadingInstructors ? 'Loading...' : 'All Instructors'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Instructors</SelectItem>
+              {instructors.map((instructor) => (
+                <SelectItem key={instructor.id} value={instructor.id}>
+                  {instructor.instructor_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Group Filter */}
         <div>
-          <label htmlFor="group-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Group
           </label>
-          <select
-            id="group-filter"
-            value={groupFilter}
-            onChange={(e) => onFilterChange('group', e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+          <Select
+            value={groupFilter || 'all'}
+            onValueChange={(value) => onFilterChange('group', value === 'all' ? '' : value)}
             disabled={loadingGroups}
           >
-            <option value="">All Groups</option>
-            {groups.map((group) => (
-              <option key={group.group_id} value={group.group_id}>
-                {group.group_name || group.group_id}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={loadingGroups ? 'Loading...' : 'All Groups'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Groups</SelectItem>
+              {groups.map((group) => (
+                <SelectItem key={group.group_id} value={group.group_id}>
+                  {group.group_name || group.group_id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Location Filter */}
         <div>
-          <label htmlFor="location-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Location
           </label>
-          <select
-            id="location-filter"
-            value={locationFilter}
-            onChange={(e) => onFilterChange('location', e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+          <Select
+            value={locationFilter || 'all'}
+            onValueChange={(value) => onFilterChange('location', value === 'all' ? '' : value)}
           >
-            {LOCATIONS.map((loc) => (
-              <option key={loc.value} value={loc.value}>
-                {loc.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Locations" />
+            </SelectTrigger>
+            <SelectContent>
+              {LOCATIONS.map((loc) => (
+                <SelectItem key={loc.value} value={loc.value}>
+                  {loc.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Status Filter */}
         <div>
-          <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Status
           </label>
-          <select
-            id="status-filter"
-            value={statusFilter}
-            onChange={(e) => onFilterChange('status', e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+          <Select
+            value={statusFilter || 'all'}
+            onValueChange={(value) => onFilterChange('status', value)}
           >
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Date From */}
         <div>
-          <label htmlFor="date-from" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Date From
           </label>
           <DatePicker
-            id="date-from"
             value={dateFrom}
             onChange={(value) => onFilterChange('dateFrom', value)}
             placeholder="Select start date"
@@ -177,11 +195,10 @@ const SlotFilters = ({
 
         {/* Date To */}
         <div>
-          <label htmlFor="date-to" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Date To
           </label>
           <DatePicker
-            id="date-to"
             value={dateTo}
             onChange={(value) => onFilterChange('dateTo', value)}
             placeholder="Select end date"
@@ -191,21 +208,24 @@ const SlotFilters = ({
 
         {/* Activation Status */}
         <div>
-          <label htmlFor="activation-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Activation
           </label>
-          <select
-            id="activation-filter"
-            value={activationFilter}
-            onChange={(e) => onFilterChange('activation', e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+          <Select
+            value={activationFilter || 'all'}
+            onValueChange={(value) => onFilterChange('activation', value)}
           >
-            {ACTIVATION_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Activation" />
+            </SelectTrigger>
+            <SelectContent>
+              {ACTIVATION_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

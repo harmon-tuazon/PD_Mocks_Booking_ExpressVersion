@@ -7,6 +7,13 @@ import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { instructorsApi, groupsApi } from '../../services/adminApi';
 import { useWorkCheckSlotMutations } from '../../hooks/useWorkCheckSlotMutations';
 
@@ -210,20 +217,23 @@ const CloneSlotsModal = ({
                     <label htmlFor="target-instructor" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Target Instructor (optional)
                     </label>
-                    <select
-                      id="target-instructor"
-                      value={targetInstructor}
-                      onChange={(e) => setTargetInstructor(e.target.value)}
+                    <Select
+                      value={targetInstructor || 'keep-original'}
+                      onValueChange={(value) => setTargetInstructor(value === 'keep-original' ? '' : value)}
                       disabled={loadingDropdowns}
-                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                     >
-                      <option value="">Keep original instructor</option>
-                      {instructors.map((instructor) => (
-                        <option key={instructor.id} value={instructor.id}>
-                          {instructor.instructor_name}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={loadingDropdowns ? 'Loading...' : 'Keep original instructor'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="keep-original">Keep original instructor</SelectItem>
+                        {instructors.map((instructor) => (
+                          <SelectItem key={instructor.id} value={instructor.id}>
+                            {instructor.instructor_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Target groups (optional) */}

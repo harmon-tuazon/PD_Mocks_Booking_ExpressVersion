@@ -7,6 +7,13 @@ import { Fragment, useState, useEffect, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, PencilIcon, DocumentDuplicateIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { DatePicker } from '@/components/ui/date-picker';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const GroupForm = ({
   isOpen,
@@ -283,18 +290,20 @@ const GroupForm = ({
                       <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Location <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        name="location"
-                        id="location"
+                      <Select
                         value={formData.location}
-                        onChange={handleChange}
+                        onValueChange={(value) => handleChange({ target: { name: 'location', value, type: 'text' } })}
                         disabled={isLoading}
-                        className={errors.location ? inputErrorClass : inputNormalClass}
                       >
-                        {LOCATION_OPTIONS.map((loc) => (
-                          <option key={loc} value={loc}>{loc}</option>
-                        ))}
-                      </select>
+                        <SelectTrigger className={`w-full ${errors.location ? 'border-red-500' : ''}`}>
+                          <SelectValue placeholder="Select location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LOCATION_OPTIONS.map((loc) => (
+                            <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       {errors.location && (
                         <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.location}</p>
                       )}
@@ -323,17 +332,19 @@ const GroupForm = ({
                       <label htmlFor="timePeriod" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Time Period <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        name="timePeriod"
-                        id="timePeriod"
+                      <Select
                         value={formData.timePeriod}
-                        onChange={handleChange}
+                        onValueChange={(value) => handleChange({ target: { name: 'timePeriod', value, type: 'text' } })}
                         disabled={isLoading}
-                        className={errors.timePeriod ? inputErrorClass : inputNormalClass}
                       >
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
+                        <SelectTrigger className={`w-full ${errors.timePeriod ? 'border-red-500' : ''}`}>
+                          <SelectValue placeholder="Select time period" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="AM">AM</SelectItem>
+                          <SelectItem value="PM">PM</SelectItem>
+                        </SelectContent>
+                      </Select>
                       {errors.timePeriod && (
                         <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.timePeriod}</p>
                       )}
@@ -343,18 +354,20 @@ const GroupForm = ({
                       <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Status <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        name="status"
-                        id="status"
+                      <Select
                         value={formData.status}
-                        onChange={handleChange}
+                        onValueChange={(value) => handleChange({ target: { name: 'status', value, type: 'text' } })}
                         disabled={isLoading}
-                        className={inputNormalClass}
                       >
-                        {STATUS_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div>

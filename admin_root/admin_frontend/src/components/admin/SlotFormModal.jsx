@@ -8,6 +8,13 @@ import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { DatePicker } from '@/components/ui/date-picker';
 import { TimePicker } from '@/components/ui/time-picker';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { instructorsApi, groupsApi } from '../../services/adminApi';
 
 const LOCATIONS = [
@@ -242,22 +249,22 @@ const SlotFormModal = ({
                     <label htmlFor="instructor" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Instructor <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      id="instructor"
-                      value={formData.instructor_id}
-                      onChange={(e) => handleChange('instructor_id', e.target.value)}
+                    <Select
+                      value={formData.instructor_id || undefined}
+                      onValueChange={(value) => handleChange('instructor_id', value)}
                       disabled={loadingDropdowns || mode === 'edit'}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                        errors.instructor_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      } ${mode === 'edit' ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <option value="">Select an instructor</option>
-                      {instructors.map((instructor) => (
-                        <option key={instructor.id} value={instructor.id}>
-                          {instructor.instructor_name}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className={`mt-1 w-full ${errors.instructor_id ? 'border-red-500' : ''} ${mode === 'edit' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        <SelectValue placeholder={loadingDropdowns ? 'Loading...' : 'Select an instructor'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {instructors.map((instructor) => (
+                          <SelectItem key={instructor.id} value={instructor.id}>
+                            {instructor.instructor_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {errors.instructor_id && (
                       <p className="mt-1 text-sm text-red-500">{errors.instructor_id}</p>
                     )}
@@ -341,18 +348,21 @@ const SlotFormModal = ({
                       <label htmlFor="duration" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Duration
                       </label>
-                      <select
-                        id="duration"
-                        value={formData.duration_minutes}
-                        onChange={(e) => handleChange('duration_minutes', parseInt(e.target.value, 10))}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                      <Select
+                        value={String(formData.duration_minutes)}
+                        onValueChange={(value) => handleChange('duration_minutes', parseInt(value, 10))}
                       >
-                        {DURATION_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="mt-1 w-full">
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DURATION_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={String(opt.value)}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <label htmlFor="total_slots" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -375,20 +385,21 @@ const SlotFormModal = ({
                     <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Location <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      id="location"
+                    <Select
                       value={formData.location}
-                      onChange={(e) => handleChange('location', e.target.value)}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                        errors.location ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
+                      onValueChange={(value) => handleChange('location', value)}
                     >
-                      {LOCATIONS.map((loc) => (
-                        <option key={loc.value} value={loc.value}>
-                          {loc.label}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className={`mt-1 w-full ${errors.location ? 'border-red-500' : ''}`}>
+                        <SelectValue placeholder="Select location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LOCATIONS.map((loc) => (
+                          <SelectItem key={loc.value} value={loc.value}>
+                            {loc.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {errors.location && (
                       <p className="mt-1 text-sm text-red-500">{errors.location}</p>
                     )}

@@ -4,6 +4,13 @@ import { XMarkIcon, DocumentDuplicateIcon, ExclamationCircleIcon } from '@heroic
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { DatePicker } from '@/components/ui/date-picker';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { groupsApi } from '../../services/adminApi';
 
 /**
@@ -429,17 +436,20 @@ const CloneGroupsModal = ({
                             <label htmlFor="timePeriod" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                               Time Period
                             </label>
-                            <select
-                              id="timePeriod"
-                              value={formData.timePeriod}
-                              onChange={(e) => handleFieldChange('timePeriod', e.target.value)}
+                            <Select
+                              value={formData.timePeriod || 'keep-original'}
+                              onValueChange={(value) => handleFieldChange('timePeriod', value === 'keep-original' ? '' : value)}
                               disabled={cloneMutation.isPending}
-                              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 sm:text-sm"
                             >
-                              <option value="">Keep original</option>
-                              <option value="AM">AM</option>
-                              <option value="PM">PM</option>
-                            </select>
+                              <SelectTrigger className="mt-1 w-full">
+                                <SelectValue placeholder="Keep original" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="keep-original">Keep original</SelectItem>
+                                <SelectItem value="AM">AM</SelectItem>
+                                <SelectItem value="PM">PM</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
 
                           {/* Location */}
@@ -447,18 +457,21 @@ const CloneGroupsModal = ({
                             <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                               Location
                             </label>
-                            <select
-                              id="location"
-                              value={formData.location}
-                              onChange={(e) => handleFieldChange('location', e.target.value)}
+                            <Select
+                              value={formData.location || 'keep-original'}
+                              onValueChange={(value) => handleFieldChange('location', value === 'keep-original' ? '' : value)}
                               disabled={cloneMutation.isPending}
-                              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 sm:text-sm"
                             >
-                              <option value="">Keep original</option>
-                              {LOCATION_OPTIONS.map((loc) => (
-                                <option key={loc} value={loc}>{loc}</option>
-                              ))}
-                            </select>
+                              <SelectTrigger className="mt-1 w-full">
+                                <SelectValue placeholder="Keep original" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="keep-original">Keep original</SelectItem>
+                                {LOCATION_OPTIONS.map((loc) => (
+                                  <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
 
                           {/* Status */}
@@ -466,18 +479,21 @@ const CloneGroupsModal = ({
                             <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                               Status
                             </label>
-                            <select
-                              id="status"
-                              value={formData.status}
-                              onChange={(e) => handleFieldChange('status', e.target.value)}
+                            <Select
+                              value={formData.status || 'keep-original'}
+                              onValueChange={(value) => handleFieldChange('status', value === 'keep-original' ? '' : value)}
                               disabled={cloneMutation.isPending}
-                              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 sm:text-sm"
                             >
-                              <option value="">Keep original</option>
-                              {STATUS_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                              ))}
-                            </select>
+                              <SelectTrigger className="mt-1 w-full">
+                                <SelectValue placeholder="Keep original" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="keep-original">Keep original</SelectItem>
+                                {STATUS_OPTIONS.map((opt) => (
+                                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
 
                           {/* Cycle */}
