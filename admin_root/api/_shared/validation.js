@@ -1435,10 +1435,10 @@ const schemas = {
       .messages({
         'any.required': 'Group ID is required'
       }),
-    studentId: Joi.string()
+    contactId: Joi.string()
       .required()
       .messages({
-        'any.required': 'Student ID is required'
+        'any.required': 'Contact ID is required'
       })
   }),
 

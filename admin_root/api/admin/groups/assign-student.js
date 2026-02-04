@@ -23,12 +23,12 @@ module.exports = async (req, res) => {
       });
     });
 
-    const { groupId, studentId } = req.validatedData;
+    const { groupId, contactId } = req.validatedData;
 
-    // Verify group exists
+    // Verify group exists (need UUID for groups_students table)
     const { data: group, error: groupError } = await supabaseAdmin
       .from('groups')
-      .select('group_id, group_name, max_capacity, status')
+      .select('id, group_id, group_name, max_capacity, status')
       .eq('group_id', groupId)
       .single();
 
@@ -39,25 +39,31 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Verify student exists in hubspot_contact_credits
+    // Use group UUID for foreign key references
+    const groupUuid = group.id;
+
+    // Verify student exists in hubspot_contact_credits (by HubSpot ID)
     const { data: contact, error: contactError } = await supabaseAdmin
       .from('hubspot_contact_credits')
-      .select('id, student_id, email, firstname, lastname')
-      .eq('student_id', studentId)
+      .select('id, hubspot_id, student_id, email, firstname, lastname')
+      .eq('hubspot_id', contactId)
       .single();
 
     if (!contact) {
       return res.status(404).json({
         success: false,
-        error: { code: 'STUDENT_NOT_FOUND', message: `Student ${studentId} not found` }
+        error: { code: 'STUDENT_NOT_FOUND', message: `Student with contact ID ${contactId} not found` }
       });
     }
 
-    // Check if already assigned
+    // Use student_id for the groups_students table
+    const studentId = contact.student_id;
+
+    // Check if already assigned (using group UUID)
     const { data: existing } = await supabaseAdmin
       .from('groups_students')
       .select('id, status')
-      .eq('group_id', groupId)
+      .eq('group_id', groupUuid)
       .eq('student_id', studentId)
       .single();
 
@@ -110,7 +116,7 @@ module.exports = async (req, res) => {
     const { count: currentCount } = await supabaseAdmin
       .from('groups_students')
       .select('*', { count: 'exact', head: true })
-      .eq('group_id', groupId)
+      .eq('group_id', groupUuid)
       .eq('status', 'active');
 
     if (currentCount >= group.max_capacity) {
@@ -124,7 +130,7 @@ module.exports = async (req, res) => {
     const { data: assignment, error: assignError } = await supabaseAdmin
       .from('groups_students')
       .insert({
-        group_id: groupId,
+        group_id: groupUuid,
         student_id: studentId,
         status: 'active'
       })
