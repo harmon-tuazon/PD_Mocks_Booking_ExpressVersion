@@ -416,16 +416,16 @@ Mock Discussion,2026-03-17,6,Online,14:00,15:00,C,scheduled,2026-03-10T09:00:00Z
         disabled={importState === 'processing' || importState === 'previewing'}
       />
 
-      <div className="mx-auto w-12 h-12 bg-gray-200 dark:bg-dark-hover rounded-full flex items-center justify-center mb-4">
+      <div className="mx-auto w-12 h-12 bg-gray-100 dark:bg-dark-hover rounded-full flex items-center justify-center mb-4">
         <svg className="w-6 h-6 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
       </div>
 
-      <p className="text-gray-700 dark:text-gray-300 mb-2">
+      <p className="text-gray-600 dark:text-gray-300 mb-2">
         Drag and drop your CSV file here
       </p>
-      <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+      <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
         or
       </p>
 
@@ -437,7 +437,7 @@ Mock Discussion,2026-03-17,6,Online,14:00,15:00,C,scheduled,2026-03-10T09:00:00Z
         Browse Files
       </button>
 
-      <p className="text-gray-600 dark:text-gray-400 text-xs mt-4">
+      <p className="text-gray-500 dark:text-gray-400 text-xs mt-4">
         Accepted format: .csv (max {MAX_ROWS} rows)
       </p>
     </div>
@@ -961,19 +961,20 @@ Mock Discussion,2026-03-17,6,Online,14:00,15:00,C,scheduled,2026-03-10T09:00:00Z
   );
 
   return (
-    <div className="p-8">
-      {/* Page Header */}
-      <div className="mb-8 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Bulk Mocks Import
-        </h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Create multiple mock exams by uploading a CSV file. Rows are validated before creation.
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
+      <div className="container-app py-8">
+        {/* Page Header */}
+        <div className="mb-8">
+          <h1 className="font-headline text-3xl font-bold text-navy-900 dark:text-gray-100">
+            Bulk Mocks Import
+          </h1>
+          <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">
+            Create multiple mock exams by uploading a CSV file. Rows are validated before creation.
+          </p>
+        </div>
 
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto">
+        {/* Main Content */}
+        <div className="max-w-4xl">
         {/* Limit Warning Banner */}
         {importState !== 'success' && !validationResult && (
           <div className="mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-center gap-3">
@@ -1016,6 +1017,7 @@ Mock Discussion,2026-03-17,6,Online,14:00,15:00,C,scheduled,2026-03-10T09:00:00Z
 
         {/* Column Reference */}
         {importState !== 'success' && !validationResult && renderColumnReference()}
+        </div>
       </div>
     </div>
   );

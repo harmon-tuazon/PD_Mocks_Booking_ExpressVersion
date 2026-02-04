@@ -355,15 +355,15 @@ PREP003,987654321,clinical skills`;
       />
 
       <div className="mx-auto w-12 h-12 bg-gray-100 dark:bg-dark-hover rounded-full flex items-center justify-center mb-4">
-        <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
       </div>
 
-      <p className="text-gray-600 dark:text-gray-400 mb-2">
+      <p className="text-gray-600 dark:text-gray-300 mb-2">
         Drag and drop your CSV file here
       </p>
-      <p className="text-gray-500 dark:text-gray-500 text-sm mb-4">
+      <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
         or
       </p>
 
@@ -375,7 +375,7 @@ PREP003,987654321,clinical skills`;
         Browse Files
       </button>
 
-      <p className="text-gray-400 dark:text-gray-500 text-xs mt-4">
+      <p className="text-gray-500 dark:text-gray-400 text-xs mt-4">
         Accepted format: .csv (max {MAX_ROWS} rows)
       </p>
     </div>
@@ -765,19 +765,20 @@ PREP003,987654321,clinical skills`;
   };
 
   return (
-    <div className="p-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
+      <div className="container-app py-8">
       {/* Page Header */}
-      <div className="mb-8 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+      <div className="mb-8">
+        <h1 className="font-headline text-3xl font-bold text-navy-900 dark:text-gray-100">
           Bulk Bookings Import
         </h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">
           Create multiple bookings by uploading a CSV file. Rows are validated before creation.
         </p>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl">
         {/* Limit Warning Banner */}
         {importState !== 'success' && !validationResult && (
           <div className="mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-center gap-3">
@@ -821,7 +822,7 @@ PREP003,987654321,clinical skills`;
         {/* Instructions */}
         {importState !== 'success' && !validationResult && (
           <div className="mt-8 bg-gray-50 dark:bg-dark-bg rounded-lg p-6">
-            <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-4">
+            <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-4 text-lg">
               Required Columns
             </h3>
             <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
@@ -862,6 +863,7 @@ PREP003,987654321,clinical skills`;
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
