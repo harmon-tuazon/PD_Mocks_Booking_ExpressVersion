@@ -7,11 +7,14 @@
 import { useState, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftIcon, PencilIcon, TrashIcon, UserPlusIcon, XMarkIcon, CheckIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PencilIcon, TrashIcon, UserPlusIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { Users, GraduationCap, Calendar, Clock, MapPin } from 'lucide-react';
 import { Dialog, Transition } from '@headlessui/react';
 import toast from 'react-hot-toast';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { groupsApi, instructorsApi, traineeApi } from '../services/adminApi';
 
 /**
@@ -834,22 +837,23 @@ function GroupDetail() {
                     >
                       <div className="flex gap-2">
                         <div className="relative flex-1">
-                          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                          <input
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input
                             type="text"
                             value={instructorSearch}
                             onChange={(e) => setInstructorSearch(e.target.value)}
                             placeholder="Search by name or email..."
-                            className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 sm:text-sm"
+                            className="pl-9"
                           />
                         </div>
-                        <button
+                        <Button
                           type="submit"
-                          disabled={!instructorSearch.trim() || !!instructorsLoading}
-                          className="inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          variant="outline"
+                          size="sm"
+                          disabled={instructorSearch.trim().length < 1}
                         >
                           {instructorsLoading ? 'Searching...' : 'Search'}
-                        </button>
+                        </Button>
                       </div>
                     </form>
 
@@ -1004,22 +1008,23 @@ function GroupDetail() {
                     >
                       <div className="flex gap-2">
                         <div className="relative flex-1">
-                          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                          <input
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input
                             type="text"
                             value={studentSearch}
                             onChange={(e) => setStudentSearch(e.target.value)}
                             placeholder="Search by name, email, or student ID..."
-                            className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 sm:text-sm"
+                            className="pl-9"
                           />
                         </div>
-                        <button
+                        <Button
                           type="submit"
-                          disabled={studentSearch.trim().length < 2 || !!studentsLoading}
-                          className="inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          variant="outline"
+                          size="sm"
+                          disabled={studentSearch.trim().length < 2}
                         >
                           {studentsLoading ? 'Searching...' : 'Search'}
-                        </button>
+                        </Button>
                       </div>
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                         Type at least 2 characters to search
