@@ -74,29 +74,51 @@ module.exports = async (req, res) => {
       }
     }
 
-    // If target_groups provided, verify they exist
+    // Collect all unique group IDs (from target_groups or source slots)
+    let allGroupIds = [];
     if (target_groups && target_groups.length > 0) {
+      allGroupIds = target_groups;
+    } else {
+      // Collect all unique group IDs from source slots
+      const groupIdSet = new Set();
+      sourceSlots.forEach(slot => {
+        if (Array.isArray(slot.group_id)) {
+          slot.group_id.forEach(gid => groupIdSet.add(gid));
+        }
+      });
+      allGroupIds = Array.from(groupIdSet);
+    }
+
+    // Verify groups exist and get their UUIDs for groups_instructors
+    let groupUuidMap = {};
+    if (allGroupIds.length > 0) {
       const { data: groups, error: groupsError } = await supabaseAdmin
         .from('groups')
-        .select('group_id')
-        .in('group_id', target_groups);
+        .select('id, group_id')
+        .in('group_id', allGroupIds);
 
       if (groupsError) {
-        throw new Error('Failed to verify target groups');
+        throw new Error('Failed to verify groups');
       }
 
       const foundGroupIds = new Set(groups?.map(g => g.group_id) || []);
-      const missingGroups = target_groups.filter(gid => !foundGroupIds.has(gid));
+      const missingGroups = allGroupIds.filter(gid => !foundGroupIds.has(gid));
 
       if (missingGroups.length > 0) {
         return res.status(400).json({
           success: false,
           error: {
             code: 'INVALID_GROUPS',
-            message: `Target groups not found: ${missingGroups.join(', ')}`
+            message: `Groups not found: ${missingGroups.join(', ')}`
           }
         });
       }
+
+      // Build UUID map for groups_instructors
+      groupUuidMap = groups.reduce((acc, g) => {
+        acc[g.group_id] = g.id;
+        return acc;
+      }, {});
     }
 
     // Prepare new slots
@@ -149,6 +171,69 @@ module.exports = async (req, res) => {
       }
       console.error('[Supabase ERROR] Failed to create cloned slots:', insertError.message);
       throw new Error(`Failed to create cloned slots: ${insertError.message}`);
+    }
+
+    // Populate groups_instructors table for each unique instructor-group-date combination
+    // This tracks instructor-group assignments with assigned_date matching the cloned slot's date
+    if (Object.keys(groupUuidMap).length > 0) {
+      // Collect unique (instructor_id, group_uuid, slot_date) combinations from newSlots
+      const assignmentSet = new Map(); // Use Map to deduplicate
+
+      newSlots.forEach(slot => {
+        const groupIds = Array.isArray(slot.group_id) ? slot.group_id : [slot.group_id];
+        groupIds.forEach(gid => {
+          const groupUuid = groupUuidMap[gid];
+          if (groupUuid) {
+            const key = `${slot.instructor_id}|${groupUuid}|${slot.slot_date}`;
+            if (!assignmentSet.has(key)) {
+              assignmentSet.set(key, {
+                group_id: groupUuid,
+                instructor_id: slot.instructor_id,
+                assigned_date: slot.slot_date,
+                status: 'active'
+              });
+            }
+          }
+        });
+      });
+
+      const potentialAssignments = Array.from(assignmentSet.values());
+
+      if (potentialAssignments.length > 0) {
+        // Check which assignments already exist
+        const { data: existingAssignments } = await supabaseAdmin
+          .from('groups_instructors')
+          .select('group_id, instructor_id, assigned_date')
+          .in('group_id', potentialAssignments.map(a => a.group_id))
+          .in('instructor_id', [...new Set(potentialAssignments.map(a => a.instructor_id))])
+          .in('assigned_date', [...new Set(potentialAssignments.map(a => a.assigned_date))]);
+
+        // Create set of existing keys for quick lookup
+        const existingKeys = new Set(
+          (existingAssignments || []).map(a => `${a.instructor_id}|${a.group_id}|${a.assigned_date}`)
+        );
+
+        // Filter to only new assignments
+        const newAssignments = potentialAssignments.filter(a => {
+          const key = `${a.instructor_id}|${a.group_id}|${a.assigned_date}`;
+          return !existingKeys.has(key);
+        });
+
+        if (newAssignments.length > 0) {
+          const { error: assignmentError } = await supabaseAdmin
+            .from('groups_instructors')
+            .insert(newAssignments);
+
+          if (assignmentError) {
+            // Log but don't fail - the slots were created successfully
+            console.warn(`[Clone Slots] Warning: Could not create instructor assignments: ${assignmentError.message}`);
+          } else {
+            console.log(`[Clone Slots] Created ${newAssignments.length} instructor-group assignments`);
+          }
+        } else {
+          console.log(`[Clone Slots] All instructor-group assignments already exist for the target dates`);
+        }
+      }
     }
 
     const summary = {
