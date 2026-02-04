@@ -56,26 +56,43 @@ module.exports = async (req, res) => {
     // Verify instructor exists - try by id (UUID) first, then by instructor_id
     let instructor = null;
 
+    console.log(`[Assign Instructor] Looking up instructor with ID: ${instructorId}`);
+
     // Try by UUID (id column) first
-    const { data: instructorById } = await supabaseAdmin
+    const { data: instructorById, error: uuidError } = await supabaseAdmin
       .from('instructors')
       .select('id, instructor_id, instructor_name, email')
       .eq('id', instructorId)
       .single();
 
+    if (uuidError) {
+      console.log(`[Assign Instructor] UUID lookup error:`, uuidError.message);
+    }
+
     if (instructorById) {
+      console.log(`[Assign Instructor] Found by UUID:`, instructorById.instructor_name);
       instructor = instructorById;
     } else {
       // Fallback to instructor_id column
-      const { data: instructorByLegacyId } = await supabaseAdmin
+      const { data: instructorByLegacyId, error: legacyError } = await supabaseAdmin
         .from('instructors')
         .select('id, instructor_id, instructor_name, email')
         .eq('instructor_id', instructorId)
         .single();
+
+      if (legacyError) {
+        console.log(`[Assign Instructor] Legacy ID lookup error:`, legacyError.message);
+      }
+
+      if (instructorByLegacyId) {
+        console.log(`[Assign Instructor] Found by legacy ID:`, instructorByLegacyId.instructor_name);
+      }
+
       instructor = instructorByLegacyId;
     }
 
     if (!instructor) {
+      console.log(`[Assign Instructor] Instructor not found with ID: ${instructorId}`);
       return res.status(404).json({
         success: false,
         error: { code: 'INSTRUCTOR_NOT_FOUND', message: `Instructor ${instructorId} not found` }
