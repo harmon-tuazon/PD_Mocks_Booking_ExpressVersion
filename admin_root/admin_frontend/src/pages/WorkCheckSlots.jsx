@@ -85,7 +85,7 @@ function WorkCheckSlots() {
   // Debounce search
   const debouncedSearch = useDebounce(searchInput, 300);
 
-  // Build query params
+  // Build query params (sorting handled on frontend)
   const queryParams = useMemo(() => ({
     page: currentPage,
     limit: 50,
@@ -95,10 +95,8 @@ function WorkCheckSlots() {
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
     is_active: statusFilter !== 'all' ? statusFilter : undefined,
-    activation_status: activationFilter !== 'all' ? activationFilter : undefined,
-    sort_by: sortBy,
-    sort_order: sortOrder
-  }), [currentPage, instructorFilter, groupFilter, locationFilter, dateFrom, dateTo, statusFilter, activationFilter, sortBy, sortOrder]);
+    activation_status: activationFilter !== 'all' ? activationFilter : undefined
+  }), [currentPage, instructorFilter, groupFilter, locationFilter, dateFrom, dateTo, statusFilter, activationFilter]);
 
   // Fetch slots
   const {
@@ -110,8 +108,52 @@ function WorkCheckSlots() {
   // Mutations
   const { createSlot, updateSlot } = useWorkCheckSlotMutations();
 
-  // Slots array for bulk selection
-  const slots = slotsData?.data || [];
+  // Frontend sorting logic
+  const sortedSlots = useMemo(() => {
+    const data = slotsData?.data || [];
+    if (!data.length) return data;
+
+    return [...data].sort((a, b) => {
+      let aVal, bVal;
+
+      switch (sortBy) {
+        case 'slot_date':
+          aVal = a.slot_date || '';
+          bVal = b.slot_date || '';
+          break;
+        case 'slot_time':
+          aVal = a.slot_time || '';
+          bVal = b.slot_time || '';
+          break;
+        case 'instructor_name':
+          aVal = (a.instructor_name || '').toLowerCase();
+          bVal = (b.instructor_name || '').toLowerCase();
+          break;
+        case 'group_id':
+          aVal = a.group_id?.length || 0;
+          bVal = b.group_id?.length || 0;
+          break;
+        case 'location':
+          aVal = (a.location || '').toLowerCase();
+          bVal = (b.location || '').toLowerCase();
+          break;
+        case 'created_at':
+          aVal = a.created_at || '';
+          bVal = b.created_at || '';
+          break;
+        default:
+          aVal = a[sortBy] || '';
+          bVal = b[sortBy] || '';
+      }
+
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [slotsData?.data, sortBy, sortOrder]);
+
+  // Slots array for bulk selection (use sorted data)
+  const slots = sortedSlots;
 
   // Initialize bulk selection hook
   const bulkSelection = useSlotBulkSelection(slots, slotsData?.pagination?.total_records || slots.length);
@@ -142,7 +184,7 @@ function WorkCheckSlots() {
       setSortBy(column);
       setSortOrder('asc');
     }
-    setCurrentPage(1);
+    // No page reset needed for frontend sorting
   }, [sortBy]);
 
   const handleFilterChange = useCallback((filterName, value) => {

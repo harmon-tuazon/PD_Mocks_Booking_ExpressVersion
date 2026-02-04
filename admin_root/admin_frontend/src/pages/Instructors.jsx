@@ -81,15 +81,13 @@ function Instructors() {
   // Debounce search input
   const debouncedSearch = useDebounce(searchInput, 300);
 
-  // Build query params
+  // Build query params (sorting handled on frontend)
   const queryParams = useMemo(() => ({
     page: currentPage,
     limit: 50,
     search: debouncedSearch || undefined,
-    filter_status: statusFilter !== 'all' ? statusFilter : undefined,
-    sort_by: sortBy,
-    sort_order: sortOrder
-  }), [currentPage, debouncedSearch, statusFilter, sortBy, sortOrder]);
+    filter_status: statusFilter !== 'all' ? statusFilter : undefined
+  }), [currentPage, debouncedSearch, statusFilter]);
 
   // Fetch instructors
   const {
@@ -104,8 +102,44 @@ function Instructors() {
     updateInstructor
   } = useInstructorMutations();
 
-  // Instructors array for bulk selection
-  const instructors = instructorsData?.data || [];
+  // Frontend sorting logic
+  const sortedInstructors = useMemo(() => {
+    const data = instructorsData?.data || [];
+    if (!data.length) return data;
+
+    return [...data].sort((a, b) => {
+      let aVal, bVal;
+
+      switch (sortBy) {
+        case 'instructor_name':
+          aVal = (a.instructor_name || '').toLowerCase();
+          bVal = (b.instructor_name || '').toLowerCase();
+          break;
+        case 'email':
+          aVal = (a.email || '').toLowerCase();
+          bVal = (b.email || '').toLowerCase();
+          break;
+        case 'created_at':
+          aVal = a.created_at || '';
+          bVal = b.created_at || '';
+          break;
+        case 'is_active':
+          aVal = a.is_active ? 1 : 0;
+          bVal = b.is_active ? 1 : 0;
+          break;
+        default:
+          aVal = a[sortBy] || '';
+          bVal = b[sortBy] || '';
+      }
+
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [instructorsData?.data, sortBy, sortOrder]);
+
+  // Instructors array for bulk selection (use sorted data)
+  const instructors = sortedInstructors;
 
   // Initialize bulk selection hook
   const bulkSelection = useInstructorBulkSelection(instructors, instructorsData?.pagination?.total_records || instructors.length);
@@ -136,13 +170,13 @@ function Instructors() {
       setSortBy(column);
       setSortOrder('asc');
     }
-    setCurrentPage(1);
+    // No page reset needed for frontend sorting
   }, [sortBy]);
 
   const handleSortChange = useCallback((newSortBy, newSortOrder) => {
     setSortBy(newSortBy);
     setSortOrder(newSortOrder);
-    setCurrentPage(1);
+    // No page reset needed for frontend sorting
   }, []);
 
   const handleSearchChange = useCallback((value) => {
