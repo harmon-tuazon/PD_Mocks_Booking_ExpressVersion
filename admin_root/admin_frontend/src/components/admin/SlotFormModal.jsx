@@ -7,7 +7,7 @@ import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { DatePicker } from '@/components/ui/date-picker';
-import { TimePicker } from '@/components/ui/time-picker';
+import { TimePickerSelect } from '@/components/ui/time-picker';
 import {
   Select,
   SelectContent,
@@ -329,7 +329,7 @@ const SlotFormModal = ({
                       <label htmlFor="slot_time" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Time <span className="text-red-500">*</span>
                       </label>
-                      <TimePicker
+                      <TimePickerSelect
                         id="slot_time"
                         value={formData.slot_time}
                         onChange={(value) => handleChange('slot_time', value)}
