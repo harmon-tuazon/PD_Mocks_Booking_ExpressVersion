@@ -53,12 +53,27 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Verify instructor exists
-    const { data: instructor, error: instructorError } = await supabaseAdmin
+    // Verify instructor exists - try by id (UUID) first, then by instructor_id
+    let instructor = null;
+
+    // Try by UUID (id column) first
+    const { data: instructorById } = await supabaseAdmin
       .from('instructors')
-      .select('instructor_id, first_name, last_name, email')
-      .eq('instructor_id', instructorId)
+      .select('id, instructor_id, instructor_name, email')
+      .eq('id', instructorId)
       .single();
+
+    if (instructorById) {
+      instructor = instructorById;
+    } else {
+      // Fallback to instructor_id column
+      const { data: instructorByLegacyId } = await supabaseAdmin
+        .from('instructors')
+        .select('id, instructor_id, instructor_name, email')
+        .eq('instructor_id', instructorId)
+        .single();
+      instructor = instructorByLegacyId;
+    }
 
     if (!instructor) {
       return res.status(404).json({
@@ -67,12 +82,15 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Check if already assigned
+    // Use the UUID for assignments
+    const instructorUuid = instructor.id;
+
+    // Check if already assigned (using UUID)
     const { data: existing } = await supabaseAdmin
       .from('groups_instructors')
       .select('id, status')
       .eq('group_id', groupId)
-      .eq('instructor_id', instructorId)
+      .eq('instructor_id', instructorUuid)
       .single();
 
     if (existing) {
@@ -81,7 +99,7 @@ module.exports = async (req, res) => {
           success: false,
           error: {
             code: 'ALREADY_ASSIGNED',
-            message: `Instructor ${instructor.first_name} ${instructor.last_name} is already assigned to this group`
+            message: `Instructor ${instructor.instructor_name} is already assigned to this group`
           }
         });
       }
@@ -102,14 +120,14 @@ module.exports = async (req, res) => {
       const cache = getCache();
       await cache.deletePattern('admin:groups:*');
 
-      console.log(`[Instructor Reactivated] ${instructorId} -> Group ${groupId}`);
+      console.log(`[Instructor Reactivated] ${instructorUuid} -> Group ${groupId}`);
 
       return res.status(200).json({
         success: true,
-        message: `Instructor ${instructor.first_name} ${instructor.last_name} reassigned to group`,
+        message: `Instructor ${instructor.instructor_name} reassigned to group`,
         data: {
           assignment_id: reactivated.id,
-          instructor_id: instructorId,
+          instructor_id: instructorUuid,
           group_id: groupId,
           instructor: instructor,
           reactivated: true
@@ -122,7 +140,7 @@ module.exports = async (req, res) => {
       .from('groups_instructors')
       .insert({
         group_id: groupId,
-        instructor_id: instructorId,
+        instructor_id: instructorUuid,
         status: 'active'
       })
       .select()
@@ -136,14 +154,14 @@ module.exports = async (req, res) => {
     const cache = getCache();
     await cache.deletePattern('admin:groups:*');
 
-    console.log(`[Instructor Assigned] ${instructorId} -> Group ${groupId}`);
+    console.log(`[Instructor Assigned] ${instructorUuid} -> Group ${groupId}`);
 
     res.status(201).json({
       success: true,
-      message: `Instructor ${instructor.first_name} ${instructor.last_name} assigned to group`,
+      message: `Instructor ${instructor.instructor_name} assigned to group`,
       data: {
         assignment_id: assignment.id,
-        instructor_id: instructorId,
+        instructor_id: instructorUuid,
         group_id: groupId,
         instructor: instructor
       }

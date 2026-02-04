@@ -3,7 +3,8 @@
  * Table for displaying work check slots with selection, sorting, and pagination
  */
 
-import { ChevronUpIcon, ChevronDownIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { Pencil } from 'lucide-react';
 
 /**
  * Format date for display
@@ -114,7 +115,6 @@ const TableHeader = ({ label, column, sortable, currentSort, onSort }) => {
  */
 const SkeletonRow = () => (
   <tr className="animate-pulse">
-    <td className="px-6 py-4"><div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
     <td className="px-6 py-4"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
     <td className="px-6 py-4"><div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
     <td className="px-6 py-4"><div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
@@ -230,10 +230,12 @@ const SlotTable = ({
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
-              {/* Selection checkbox column */}
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">
-                <span className="sr-only">Select</span>
-              </th>
+              {/* Selection checkbox column - only visible in selection mode */}
+              {isSelectionMode && (
+                <th className="w-12 px-3 py-3">
+                  {/* Checkbox column header - intentionally empty */}
+                </th>
+              )}
               <TableHeader label="Date" column="slot_date" sortable currentSort={currentSort} onSort={onSort} />
               <TableHeader label="Time" column="slot_time" sortable currentSort={currentSort} onSort={onSort} />
               <TableHeader label="Instructor" column="instructor_name" sortable={false} currentSort={currentSort} onSort={onSort} />
@@ -254,29 +256,35 @@ const SlotTable = ({
             ) : data.length === 0 ? (
               // Empty state
               <tr>
-                <td colSpan={10} className="px-6 py-12 text-center">
+                <td colSpan={isSelectionMode ? 10 : 9} className="px-6 py-12 text-center">
                   <p className="text-gray-500 dark:text-gray-400">No work check slots found</p>
                 </td>
               </tr>
             ) : (
               // Data rows
-              data.map((slot) => (
+              data.map((slot) => {
+                const selected = isSelectionMode && isSelected?.(slot.id);
+                return (
                 <tr
                   key={slot.id}
                   className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
-                    isSelected?.(slot.id) ? 'bg-primary-50 dark:bg-primary-900/20' : ''
+                    selected ? 'bg-primary-50 dark:bg-primary-900/20 border-2 border-primary-600 dark:border-primary-400' : ''
                   }`}
                   onClick={() => onToggleSelection?.(slot.id)}
                 >
-                  {/* Selection checkbox */}
-                  <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={isSelected?.(slot.id) || false}
-                      onChange={() => onToggleSelection?.(slot.id)}
-                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded"
-                    />
-                  </td>
+                  {/* Selection checkbox - only visible in selection mode */}
+                  {isSelectionMode && (
+                    <td className="w-12 px-3 py-4">
+                      {selected && (
+                        <input
+                          type="checkbox"
+                          checked={true}
+                          readOnly
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded"
+                        />
+                      )}
+                    </td>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {formatDate(slot.slot_date)}
                   </td>
@@ -321,14 +329,16 @@ const SlotTable = ({
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => onEdit?.(slot)}
-                      className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300"
+                      className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                      title="Edit slot"
                     >
-                      <PencilIcon className="h-5 w-5" />
-                      <span className="sr-only">Edit</span>
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Edit
                     </button>
                   </td>
                 </tr>
-              ))
+              );
+              })
             )}
           </tbody>
         </table>

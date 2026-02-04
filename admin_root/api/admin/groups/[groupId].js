@@ -146,21 +146,22 @@ async function handleGet(req, res, id) {
 
   let instructors = [];
   if (groupInstructors && groupInstructors.length > 0) {
-    // Fetch instructor details from instructors table
+    // Fetch instructor details from instructors table (using UUID)
     const instructorIds = groupInstructors.map(gi => gi.instructor_id);
     const { data: instructorDetails } = await supabaseAdmin
       .from('instructors')
-      .select('instructor_id, first_name, last_name, email')
-      .in('instructor_id', instructorIds);
+      .select('id, instructor_name, email')
+      .in('id', instructorIds);
 
     // Merge instructor data with assignments
     const instructorMap = (instructorDetails || []).reduce((acc, i) => {
-      acc[i.instructor_id] = i;
+      acc[i.id] = i;
       return acc;
     }, {});
 
     instructors = groupInstructors.map(gi => ({
       assignment_id: gi.id,
+      id: gi.instructor_id,
       instructor_id: gi.instructor_id,
       status: gi.status,
       assigned_at: gi.created_at,

@@ -4,12 +4,12 @@
  * Supports inline editing of group details
  */
 
-import { useState, useMemo, Fragment } from 'react';
+import { useState, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon, PencilIcon, TrashIcon, UserPlusIcon, XMarkIcon, CheckIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { Users, GraduationCap, Calendar, Clock, MapPin } from 'lucide-react';
-import { Dialog, Transition, Combobox } from '@headlessui/react';
+import { Dialog, Transition } from '@headlessui/react';
 import toast from 'react-hot-toast';
 import { DatePicker } from '@/components/ui/date-picker';
 import { groupsApi, instructorsApi, traineeApi } from '../services/adminApi';
@@ -136,18 +136,21 @@ function GroupDetail() {
   // Add instructor state
   const [showAddInstructorModal, setShowAddInstructorModal] = useState(false);
   const [instructorSearch, setInstructorSearch] = useState('');
+  const [submittedInstructorSearch, setSubmittedInstructorSearch] = useState('');
   const [selectedInstructor, setSelectedInstructor] = useState(null);
 
   // Add student state
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
+  const [submittedStudentSearch, setSubmittedStudentSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  // Fetch available instructors for dropdown
-  const { data: instructorsData } = useQuery({
-    queryKey: ['instructors-list', instructorSearch],
-    queryFn: () => instructorsApi.list({ search: instructorSearch, limit: 20 }),
-    enabled: showAddInstructorModal
+  // Fetch available instructors for dropdown (only when search is submitted)
+  const { data: instructorsData, isLoading: instructorsLoading } = useQuery({
+    queryKey: ['instructors-list', submittedInstructorSearch],
+    queryFn: () => instructorsApi.list({ search: submittedInstructorSearch, limit: 20 }),
+    enabled: showAddInstructorModal && submittedInstructorSearch.length > 0,
+    staleTime: 30000
   });
 
   // Add instructor mutation
@@ -159,6 +162,7 @@ function GroupDetail() {
       setShowAddInstructorModal(false);
       setSelectedInstructor(null);
       setInstructorSearch('');
+      setSubmittedInstructorSearch('');
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to add instructor');
@@ -178,11 +182,12 @@ function GroupDetail() {
     }
   });
 
-  // Fetch available students for dropdown
-  const { data: studentsData } = useQuery({
-    queryKey: ['students-search', studentSearch],
-    queryFn: () => traineeApi.search(studentSearch),
-    enabled: showAddStudentModal && studentSearch.length >= 2
+  // Fetch available students for dropdown (only when search is submitted)
+  const { data: studentsData, isLoading: studentsLoading } = useQuery({
+    queryKey: ['students-search', submittedStudentSearch],
+    queryFn: () => traineeApi.search(submittedStudentSearch),
+    enabled: showAddStudentModal && submittedStudentSearch.length >= 2,
+    staleTime: 30000
   });
 
   // Add student mutation
@@ -195,6 +200,7 @@ function GroupDetail() {
       setShowAddStudentModal(false);
       setSelectedStudent(null);
       setStudentSearch('');
+      setSubmittedStudentSearch('');
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to add student');
@@ -570,13 +576,12 @@ function GroupDetail() {
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
                             <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                              {assignment.instructor?.first_name?.charAt(0) || '?'}
-                              {assignment.instructor?.last_name?.charAt(0) || ''}
+                              {assignment.instructor?.instructor_name?.charAt(0) || '?'}
                             </span>
                           </div>
                           <div className="ml-3">
                             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {assignment.instructor?.first_name || 'Unknown'} {assignment.instructor?.last_name || ''}
+                              {assignment.instructor?.instructor_name || 'Unknown'}
                             </div>
                           </div>
                         </div>
@@ -597,7 +602,7 @@ function GroupDetail() {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
                           onClick={() => {
-                            if (window.confirm(`Remove ${assignment.instructor?.first_name} ${assignment.instructor?.last_name} from this group?`)) {
+                            if (window.confirm(`Remove ${assignment.instructor?.instructor_name || 'this instructor'} from this group?`)) {
                               removeInstructorMutation.mutate(assignment.instructor_id);
                             }
                           }}
@@ -773,6 +778,7 @@ function GroupDetail() {
               setShowAddInstructorModal(false);
               setSelectedInstructor(null);
               setInstructorSearch('');
+              setSubmittedInstructorSearch('');
             }}
           >
             <Transition.Child
@@ -815,81 +821,90 @@ function GroupDetail() {
                       </div>
                     </div>
 
-                    <div className="mt-5">
-                      <Combobox value={selectedInstructor} onChange={setSelectedInstructor}>
-                        <div className="relative">
-                          <div className="relative w-full cursor-default overflow-hidden rounded-lg bg-white dark:bg-gray-700 text-left border border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500">
-                            <Combobox.Input
-                              className="w-full border-none py-3 pl-10 pr-3 text-sm leading-5 text-gray-900 dark:text-gray-100 bg-transparent focus:ring-0"
-                              placeholder="Search instructors..."
-                              displayValue={(instructor) =>
-                                instructor ? `${instructor.first_name} ${instructor.last_name}` : ''
-                              }
-                              onChange={(event) => setInstructorSearch(event.target.value)}
-                            />
-                            <div className="absolute inset-y-0 left-0 flex items-center pl-3">
-                              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                            </div>
-                          </div>
-                          <Transition
-                            as={Fragment}
-                            leave="transition ease-in duration-100"
-                            leaveFrom="opacity-100"
-                            leaveTo="opacity-0"
-                          >
-                            <Combobox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-gray-700 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
-                              {availableInstructors.length === 0 ? (
-                                <div className="relative cursor-default select-none py-2 px-4 text-gray-700 dark:text-gray-300">
-                                  {instructorSearch ? 'No instructors found.' : 'Start typing to search...'}
-                                </div>
-                              ) : (
-                                availableInstructors.map((instructor) => {
-                                  // Check if already assigned
-                                  const isAssigned = instructors.some(i => i.instructor_id === instructor.instructor_id);
-                                  return (
-                                    <Combobox.Option
-                                      key={instructor.instructor_id}
-                                      className={({ active }) =>
-                                        `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                                          isAssigned
-                                            ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                                            : active
-                                              ? 'bg-primary-600 text-white'
-                                              : 'text-gray-900 dark:text-gray-100'
-                                        }`
-                                      }
-                                      value={instructor}
-                                      disabled={isAssigned}
-                                    >
-                                      {({ selected, active }) => (
-                                        <>
-                                          <div className="flex items-center">
-                                            <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
-                                              {instructor.first_name} {instructor.last_name}
-                                            </span>
-                                            {isAssigned && (
-                                              <span className="ml-2 text-xs">(Already assigned)</span>
-                                            )}
-                                          </div>
-                                          <span className={`block truncate text-xs ${active ? 'text-primary-200' : 'text-gray-500 dark:text-gray-400'}`}>
-                                            {instructor.email}
-                                          </span>
-                                          {selected && (
-                                            <span className={`absolute inset-y-0 left-0 flex items-center pl-3 ${active ? 'text-white' : 'text-primary-600'}`}>
-                                              <CheckIcon className="h-5 w-5" aria-hidden="true" />
-                                            </span>
-                                          )}
-                                        </>
-                                      )}
-                                    </Combobox.Option>
-                                  );
-                                })
-                              )}
-                            </Combobox.Options>
-                          </Transition>
+                    {/* Search Form with Button */}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (instructorSearch.trim().length >= 1) {
+                          setSubmittedInstructorSearch(instructorSearch.trim());
+                          setSelectedInstructor(null);
+                        }
+                      }}
+                      className="mt-5"
+                    >
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <input
+                            type="text"
+                            value={instructorSearch}
+                            onChange={(e) => setInstructorSearch(e.target.value)}
+                            placeholder="Search by name or email..."
+                            className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 sm:text-sm"
+                          />
                         </div>
-                      </Combobox>
-                    </div>
+                        <button
+                          type="submit"
+                          disabled={instructorSearch.trim().length < 1 || instructorsLoading}
+                          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {instructorsLoading ? 'Searching...' : 'Search'}
+                        </button>
+                      </div>
+                    </form>
+
+                    {/* Search Results */}
+                    {submittedInstructorSearch && (
+                      <div className="mt-4">
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                          {instructorsLoading ? (
+                            'Searching...'
+                          ) : availableInstructors.length === 0 ? (
+                            'No instructors found.'
+                          ) : (
+                            `Found ${availableInstructors.length} instructor(s)`
+                          )}
+                        </div>
+                        {!instructorsLoading && availableInstructors.length > 0 && (
+                          <div className="max-h-60 overflow-auto rounded-md border border-gray-200 dark:border-gray-600">
+                            {availableInstructors.map((instructor) => {
+                              const isAssigned = instructors.some(i => (i.id || i.instructor_id) === instructor.id);
+                              const isSelected = selectedInstructor?.id === instructor.id;
+                              return (
+                                <div
+                                  key={instructor.id}
+                                  onClick={() => !isAssigned && setSelectedInstructor(instructor)}
+                                  className={`p-3 cursor-pointer border-b border-gray-200 dark:border-gray-600 last:border-b-0 ${
+                                    isAssigned
+                                      ? 'bg-gray-100 dark:bg-gray-700/50 cursor-not-allowed opacity-60'
+                                      : isSelected
+                                        ? 'bg-primary-50 dark:bg-primary-900/30 border-l-4 border-l-primary-500'
+                                        : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                        {instructor.instructor_name}
+                                        {isAssigned && (
+                                          <span className="ml-2 text-xs text-gray-500">(Already assigned)</span>
+                                        )}
+                                      </div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        {instructor.email}
+                                      </div>
+                                    </div>
+                                    {isSelected && !isAssigned && (
+                                      <CheckIcon className="h-5 w-5 text-primary-600" />
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
                       <button
@@ -897,7 +912,7 @@ function GroupDetail() {
                         disabled={!selectedInstructor || addInstructorMutation.isPending}
                         onClick={() => {
                           if (selectedInstructor) {
-                            addInstructorMutation.mutate(selectedInstructor.instructor_id);
+                            addInstructorMutation.mutate(selectedInstructor.id);
                           }
                         }}
                         className="inline-flex w-full justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 sm:col-start-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -910,6 +925,7 @@ function GroupDetail() {
                           setShowAddInstructorModal(false);
                           setSelectedInstructor(null);
                           setInstructorSearch('');
+                          setSubmittedInstructorSearch('');
                         }}
                         className="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:col-start-1 sm:mt-0"
                       >
@@ -932,6 +948,7 @@ function GroupDetail() {
               setShowAddStudentModal(false);
               setSelectedStudent(null);
               setStudentSearch('');
+              setSubmittedStudentSearch('');
             }}
           >
             <Transition.Child
@@ -974,81 +991,93 @@ function GroupDetail() {
                       </div>
                     </div>
 
-                    <div className="mt-5">
-                      <Combobox value={selectedStudent} onChange={setSelectedStudent}>
-                        <div className="relative">
-                          <div className="relative w-full cursor-default overflow-hidden rounded-lg bg-white dark:bg-gray-700 text-left border border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500">
-                            <Combobox.Input
-                              className="w-full border-none py-3 pl-10 pr-3 text-sm leading-5 text-gray-900 dark:text-gray-100 bg-transparent focus:ring-0"
-                              placeholder="Search students..."
-                              displayValue={(student) =>
-                                student ? `${student.firstname} ${student.lastname}` : ''
-                              }
-                              onChange={(event) => setStudentSearch(event.target.value)}
-                            />
-                            <div className="absolute inset-y-0 left-0 flex items-center pl-3">
-                              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                            </div>
-                          </div>
-                          <Transition
-                            as={Fragment}
-                            leave="transition ease-in duration-100"
-                            leaveFrom="opacity-100"
-                            leaveTo="opacity-0"
-                          >
-                            <Combobox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-gray-700 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
-                              {availableStudents.length === 0 ? (
-                                <div className="relative cursor-default select-none py-2 px-4 text-gray-700 dark:text-gray-300">
-                                  {studentSearch.length < 2 ? 'Type at least 2 characters to search...' : 'No students found.'}
-                                </div>
-                              ) : (
-                                availableStudents.map((student) => {
-                                  // Check if already assigned
-                                  const isAssigned = students.some(s => s.student_id === student.student_id || s.student_id === student.hubspot_id);
-                                  return (
-                                    <Combobox.Option
-                                      key={student.hubspot_id || student.id}
-                                      className={({ active }) =>
-                                        `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                                          isAssigned
-                                            ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                                            : active
-                                              ? 'bg-primary-600 text-white'
-                                              : 'text-gray-900 dark:text-gray-100'
-                                        }`
-                                      }
-                                      value={student}
-                                      disabled={isAssigned}
-                                    >
-                                      {({ selected, active }) => (
-                                        <>
-                                          <div className="flex items-center">
-                                            <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
-                                              {student.firstname} {student.lastname}
-                                            </span>
-                                            {isAssigned && (
-                                              <span className="ml-2 text-xs">(Already assigned)</span>
-                                            )}
-                                          </div>
-                                          <span className={`block truncate text-xs ${active ? 'text-primary-200' : 'text-gray-500 dark:text-gray-400'}`}>
-                                            {student.email} {student.student_id && `• ${student.student_id}`}
-                                          </span>
-                                          {selected && (
-                                            <span className={`absolute inset-y-0 left-0 flex items-center pl-3 ${active ? 'text-white' : 'text-primary-600'}`}>
-                                              <CheckIcon className="h-5 w-5" aria-hidden="true" />
-                                            </span>
-                                          )}
-                                        </>
-                                      )}
-                                    </Combobox.Option>
-                                  );
-                                })
-                              )}
-                            </Combobox.Options>
-                          </Transition>
+                    {/* Search Form with Button */}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (studentSearch.trim().length >= 2) {
+                          setSubmittedStudentSearch(studentSearch.trim());
+                          setSelectedStudent(null);
+                        }
+                      }}
+                      className="mt-5"
+                    >
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <input
+                            type="text"
+                            value={studentSearch}
+                            onChange={(e) => setStudentSearch(e.target.value)}
+                            placeholder="Search by name, email, or student ID..."
+                            className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 sm:text-sm"
+                          />
                         </div>
-                      </Combobox>
-                    </div>
+                        <button
+                          type="submit"
+                          disabled={studentSearch.trim().length < 2 || studentsLoading}
+                          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {studentsLoading ? 'Searching...' : 'Search'}
+                        </button>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Type at least 2 characters to search
+                      </p>
+                    </form>
+
+                    {/* Search Results */}
+                    {submittedStudentSearch && (
+                      <div className="mt-4">
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                          {studentsLoading ? (
+                            'Searching...'
+                          ) : availableStudents.length === 0 ? (
+                            'No students found.'
+                          ) : (
+                            `Found ${availableStudents.length} student(s)`
+                          )}
+                        </div>
+                        {!studentsLoading && availableStudents.length > 0 && (
+                          <div className="max-h-60 overflow-auto rounded-md border border-gray-200 dark:border-gray-600">
+                            {availableStudents.map((student) => {
+                              const isAssigned = students.some(s => s.student_id === student.student_id || s.student_id === student.hubspot_id);
+                              const isSelected = selectedStudent?.hubspot_id === student.hubspot_id || selectedStudent?.id === student.id;
+                              return (
+                                <div
+                                  key={student.hubspot_id || student.id}
+                                  onClick={() => !isAssigned && setSelectedStudent(student)}
+                                  className={`p-3 cursor-pointer border-b border-gray-200 dark:border-gray-600 last:border-b-0 ${
+                                    isAssigned
+                                      ? 'bg-gray-100 dark:bg-gray-700/50 cursor-not-allowed opacity-60'
+                                      : isSelected
+                                        ? 'bg-primary-50 dark:bg-primary-900/30 border-l-4 border-l-primary-500'
+                                        : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                        {student.firstname} {student.lastname}
+                                        {isAssigned && (
+                                          <span className="ml-2 text-xs text-gray-500">(Already assigned)</span>
+                                        )}
+                                      </div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        {student.email} {student.student_id && `• ${student.student_id}`}
+                                      </div>
+                                    </div>
+                                    {isSelected && !isAssigned && (
+                                      <CheckIcon className="h-5 w-5 text-primary-600" />
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
                       <button
@@ -1069,6 +1098,7 @@ function GroupDetail() {
                           setShowAddStudentModal(false);
                           setSelectedStudent(null);
                           setStudentSearch('');
+                          setSubmittedStudentSearch('');
                         }}
                         className="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:col-start-1 sm:mt-0"
                       >
