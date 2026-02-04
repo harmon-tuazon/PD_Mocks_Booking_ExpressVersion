@@ -95,7 +95,8 @@ const InstructorTable = ({
       return; // Let the button handle its own click
     }
 
-    if (isSelectionMode && onToggleSelection) {
+    // Always allow selection toggle - hook handles auto-enter of selection mode
+    if (onToggleSelection) {
       onToggleSelection(instructor.id || instructor.instructor_id);
     }
   };
@@ -103,10 +104,11 @@ const InstructorTable = ({
   // Get row classes based on selection state
   const getRowClasses = (instructor) => {
     const instructorId = instructor.id || instructor.instructor_id;
-    const selected = isSelectionMode && isSelected?.(instructorId);
+    const selected = isSelected?.(instructorId);
 
     const baseClasses = 'transition-colors';
-    const hoverClasses = isSelectionMode ? 'cursor-pointer' : '';
+    // Always show cursor-pointer when selection is available
+    const hoverClasses = onToggleSelection ? 'cursor-pointer' : '';
 
     if (selected) {
       return `${baseClasses} ${hoverClasses} border-2 border-primary-600 dark:border-primary-400 bg-primary-50 dark:bg-primary-900/20`;
