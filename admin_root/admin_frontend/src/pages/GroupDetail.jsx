@@ -845,8 +845,8 @@ function GroupDetail() {
                         </div>
                         <button
                           type="submit"
-                          disabled={instructorSearch.trim().length < 1 || instructorsLoading}
-                          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!instructorSearch.trim() || !!instructorsLoading}
+                          className="inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {instructorsLoading ? 'Searching...' : 'Search'}
                         </button>
@@ -1015,8 +1015,8 @@ function GroupDetail() {
                         </div>
                         <button
                           type="submit"
-                          disabled={studentSearch.trim().length < 2 || studentsLoading}
-                          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={studentSearch.trim().length < 2 || !!studentsLoading}
+                          className="inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {studentsLoading ? 'Searching...' : 'Search'}
                         </button>
