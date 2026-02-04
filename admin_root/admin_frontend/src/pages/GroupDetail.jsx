@@ -852,7 +852,7 @@ function GroupDetail() {
                           size="sm"
                           disabled={instructorSearch.trim().length < 1}
                         >
-                          {instructorsLoading ? 'Searching...' : 'Search'}
+                          Search
                         </Button>
                       </div>
                     </form>
@@ -1023,7 +1023,7 @@ function GroupDetail() {
                           size="sm"
                           disabled={studentSearch.trim().length < 2}
                         >
-                          {studentsLoading ? 'Searching...' : 'Search'}
+                          Search
                         </Button>
                       </div>
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
