@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
 
     const { groupId, contactId } = req.validatedData;
 
-    // Verify group exists (need UUID for groups_students table)
+    // Verify group exists
     const { data: group, error: groupError } = await supabaseAdmin
       .from('groups')
       .select('id, group_id, group_name, max_capacity, status')
@@ -38,9 +38,6 @@ module.exports = async (req, res) => {
         error: { code: 'GROUP_NOT_FOUND', message: `Group ${groupId} not found` }
       });
     }
-
-    // Use group UUID for foreign key references
-    const groupUuid = group.id;
 
     // Verify student exists in hubspot_contact_credits (by HubSpot ID)
     const { data: contact, error: contactError } = await supabaseAdmin
@@ -56,14 +53,15 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Use student_id for the groups_students table
+    // Use student_id for the groups_students table (FK references hubspot_contact_credits.student_id)
     const studentId = contact.student_id;
 
-    // Check if already assigned (using group UUID)
+    // Check if already assigned
+    // Note: groups_students.group_id is VARCHAR referencing groups(group_id), not UUID
     const { data: existing } = await supabaseAdmin
       .from('groups_students')
       .select('id, status')
-      .eq('group_id', groupUuid)
+      .eq('group_id', group.group_id)
       .eq('student_id', studentId)
       .single();
 
@@ -116,7 +114,7 @@ module.exports = async (req, res) => {
     const { count: currentCount } = await supabaseAdmin
       .from('groups_students')
       .select('*', { count: 'exact', head: true })
-      .eq('group_id', groupUuid)
+      .eq('group_id', group.group_id)
       .eq('status', 'active');
 
     if (currentCount >= group.max_capacity) {
@@ -127,10 +125,11 @@ module.exports = async (req, res) => {
     }
 
     // Create assignment
+    // Note: group_id is VARCHAR referencing groups(group_id), student_id references hubspot_contact_credits(student_id)
     const { data: assignment, error: assignError } = await supabaseAdmin
       .from('groups_students')
       .insert({
-        group_id: groupUuid,
+        group_id: group.group_id,
         student_id: studentId,
         status: 'active'
       })

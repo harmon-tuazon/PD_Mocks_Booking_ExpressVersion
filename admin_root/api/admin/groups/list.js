@@ -88,19 +88,19 @@ module.exports = async (req, res) => {
     }
 
     // Get student counts for each group
-    // Note: groups_students.group_id stores the UUID (group.id), not the string group_id
-    const groupUuids = groups.map(g => g.id);
+    // Note: groups_students.group_id is VARCHAR referencing groups(group_id), not UUID
+    const groupIds = groups.map(g => g.group_id);
 
     let studentCounts = {};
-    if (groupUuids.length > 0) {
+    if (groupIds.length > 0) {
       const { data: countData, error: countError } = await supabaseAdmin
         .from('groups_students')
         .select('group_id')
-        .in('group_id', groupUuids)
+        .in('group_id', groupIds)
         .eq('status', 'active');
 
       if (!countError && countData) {
-        // Count students per group (keyed by UUID)
+        // Count students per group (keyed by string group_id)
         studentCounts = countData.reduce((acc, item) => {
           acc[item.group_id] = (acc[item.group_id] || 0) + 1;
           return acc;
@@ -120,7 +120,7 @@ module.exports = async (req, res) => {
       end_date: group.end_date,
       max_capacity: group.max_capacity,
       status: group.status,
-      student_count: studentCounts[group.id] || 0,  // Use UUID as key
+      student_count: studentCounts[group.group_id] || 0,
       created_at: group.created_at,
       updated_at: group.updated_at
     }));
