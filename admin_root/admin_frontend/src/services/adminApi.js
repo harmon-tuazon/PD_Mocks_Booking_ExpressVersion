@@ -631,16 +631,54 @@ export const groupsApi = {
 };
 
 /**
- * Instructors API endpoints
+ * Instructor API endpoints
  */
 export const instructorsApi = {
   /**
-   * List all instructors with optional search
-   * @param {Object} params - Query parameters (search, page, limit)
-   * @returns {Promise<Object>} Paginated instructors
+   * List instructors with pagination and filtering
    */
   list: async (params = {}) => {
     const response = await api.get('/admin/instructors/list', { params });
+    return response.data;
+  },
+
+  /**
+   * Get single instructor by ID
+   */
+  getById: async (id) => {
+    const response = await api.get(`/admin/instructors/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Create a new instructor
+   */
+  create: async (data) => {
+    const response = await api.post('/admin/instructors/create', data);
+    return response.data;
+  },
+
+  /**
+   * Update an instructor
+   */
+  update: async (id, data) => {
+    const response = await api.put(`/admin/instructors/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete (deactivate) an instructor
+   */
+  delete: async (id) => {
+    const response = await api.delete(`/admin/instructors/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Get instructors for dropdown (active only, minimal fields)
+   */
+  getDropdown: async () => {
+    const response = await api.get('/admin/instructors/dropdown');
     return response.data;
   }
 };

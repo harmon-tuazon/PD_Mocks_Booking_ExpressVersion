@@ -1462,6 +1462,110 @@ const schemas = {
     endDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow(null, ''),
     maxCapacity: Joi.number().integer().min(1).max(100),
     includeStudents: Joi.boolean().default(true)
+  }),
+
+  // ============================================================
+  // INSTRUCTOR MANAGEMENT SCHEMAS
+  // ============================================================
+
+  // Schema for instructor list query
+  instructorList: Joi.object({
+    page: Joi.number()
+      .integer()
+      .min(1)
+      .optional()
+      .default(1)
+      .messages({
+        'number.base': 'Page must be a number',
+        'number.integer': 'Page must be an integer',
+        'number.min': 'Page must be at least 1'
+      }),
+    limit: Joi.number()
+      .integer()
+      .min(1)
+      .max(100)
+      .optional()
+      .default(20)
+      .messages({
+        'number.base': 'Limit must be a number',
+        'number.integer': 'Limit must be an integer',
+        'number.min': 'Limit must be at least 1',
+        'number.max': 'Limit cannot exceed 100'
+      }),
+    search: Joi.string()
+      .max(100)
+      .optional()
+      .allow('')
+      .messages({
+        'string.max': 'Search query cannot exceed 100 characters'
+      }),
+    is_active: Joi.string()
+      .valid('true', 'false', 'all')
+      .optional()
+      .default('all')
+      .messages({
+        'any.only': 'is_active must be one of: true, false, all'
+      }),
+    sort_by: Joi.string()
+      .valid('instructor_name', 'email', 'created_at', 'updated_at')
+      .optional()
+      .default('instructor_name')
+      .messages({
+        'any.only': 'sort_by must be one of: instructor_name, email, created_at, updated_at'
+      }),
+    sort_order: Joi.string()
+      .valid('asc', 'desc')
+      .optional()
+      .default('asc')
+      .messages({
+        'any.only': 'sort_order must be either asc or desc'
+      })
+  }),
+
+  // Schema for instructor creation
+  instructorCreate: Joi.object({
+    instructor_name: Joi.string()
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'string.empty': 'Instructor name is required',
+        'string.min': 'Instructor name must be at least 1 character',
+        'string.max': 'Instructor name cannot exceed 100 characters',
+        'any.required': 'Instructor name is required'
+      }),
+    email: Joi.string()
+      .email()
+      .required()
+      .messages({
+        'string.email': 'Please enter a valid email address',
+        'any.required': 'Email is required'
+      })
+  }),
+
+  // Schema for instructor update
+  instructorUpdate: Joi.object({
+    instructor_name: Joi.string()
+      .min(1)
+      .max(100)
+      .optional()
+      .messages({
+        'string.min': 'Instructor name must be at least 1 character',
+        'string.max': 'Instructor name cannot exceed 100 characters'
+      }),
+    email: Joi.string()
+      .email()
+      .optional()
+      .messages({
+        'string.email': 'Please enter a valid email address'
+      }),
+    is_active: Joi.boolean()
+      .optional()
+      .messages({
+        'boolean.base': 'is_active must be a boolean value'
+      })
+  }).min(1).messages({
+    'object.min': 'At least one property must be provided for update'
   })
 
 };
