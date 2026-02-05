@@ -181,6 +181,7 @@ async function handleGet(req, res, id) {
       location: group.location,
       time_period: group.time_period,
       cycle: group.cycle,
+      phase: group.phase,
       start_date: group.start_date,
       end_date: group.end_date,
       max_capacity: group.max_capacity,
@@ -222,6 +223,7 @@ async function handlePut(req, res, id) {
   if (updates.maxCapacity) updateData.max_capacity = updates.maxCapacity;
   if (updates.status) updateData.status = updates.status;
   if (updates.cycle !== undefined) updateData.cycle = updates.cycle;
+  if (updates.phase) updateData.phase = updates.phase;
 
   // Try to update by group_id first, then by UUID
   let result;

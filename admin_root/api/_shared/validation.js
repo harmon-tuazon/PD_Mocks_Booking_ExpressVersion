@@ -1342,6 +1342,12 @@ const schemas = {
       .optional()
       .messages({
         'string.max': 'Cycle cannot exceed 50 characters'
+      }),
+    phase: Joi.string()
+      .valid('Learning', 'Practical', 'Pre-Exam')
+      .default('Learning')
+      .messages({
+        'any.only': 'Phase must be one of: Learning, Practical, Pre-Exam'
       })
   }).custom((value, helpers) => {
     // Validate end date is after start date
@@ -1409,6 +1415,12 @@ const schemas = {
       .optional()
       .messages({
         'string.max': 'Cycle cannot exceed 50 characters'
+      }),
+    phase: Joi.string()
+      .valid('Learning', 'Practical', 'Pre-Exam')
+      .optional()
+      .messages({
+        'any.only': 'Phase must be one of: Learning, Practical, Pre-Exam'
       })
   }).min(1).messages({
     'object.min': 'At least one property must be provided for update'

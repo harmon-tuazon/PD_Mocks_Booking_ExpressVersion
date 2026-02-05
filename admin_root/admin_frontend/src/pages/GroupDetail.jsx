@@ -64,6 +64,30 @@ const TimePeriodBadge = ({ period }) => (
   </span>
 );
 
+/**
+ * Phase badge
+ */
+const PhaseBadge = ({ phase }) => {
+  const phaseStyles = {
+    'Learning': 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+    'Practical': 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300',
+    'Pre-Exam': 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'
+  };
+
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${phaseStyles[phase] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'}`}>
+      {phase || '-'}
+    </span>
+  );
+};
+
+// Phase options
+const PHASE_OPTIONS = [
+  { value: 'Learning', label: 'Learning' },
+  { value: 'Practical', label: 'Practical' },
+  { value: 'Pre-Exam', label: 'Pre-Exam' }
+];
+
 // Location options
 const LOCATION_OPTIONS = [
   'Mississauga',
@@ -226,7 +250,8 @@ function GroupDetail() {
       endDate: group?.end_date || '',
       maxCapacity: group?.max_capacity || 20,
       status: group?.status || 'active',
-      cycle: group?.cycle || ''
+      cycle: group?.cycle || '',
+      phase: group?.phase || 'Learning'
     });
     setIsEditing(true);
   };
@@ -491,6 +516,20 @@ function GroupDetail() {
                     className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 sm:text-sm"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Phase
+                  </label>
+                  <select
+                    value={editForm.phase}
+                    onChange={(e) => handleFieldChange('phase', e.target.value)}
+                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 sm:text-sm"
+                  >
+                    {PHASE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             ) : (
               /* View Mode */
@@ -515,6 +554,14 @@ function GroupDetail() {
                   </div>
                 </div>
                 <InfoCard label="Cycle" value={group?.cycle || '-'} />
+                <div className="flex items-start space-x-3">
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Phase</dt>
+                    <dd className="mt-1">
+                      <PhaseBadge phase={group?.phase} />
+                    </dd>
+                  </div>
+                </div>
                 <InfoCard
                   label="Start Date"
                   value={formatDate(group?.start_date)}

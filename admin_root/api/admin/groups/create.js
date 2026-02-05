@@ -49,7 +49,8 @@ module.exports = async (req, res) => {
       timePeriod,
       startDate,
       endDate,
-      maxCapacity
+      maxCapacity,
+      phase
     } = req.validatedData;
 
     // Generate group ID
@@ -93,6 +94,7 @@ module.exports = async (req, res) => {
         group_name: groupName,
         location: location || 'Mississauga',
         time_period: timePeriod,
+        phase: phase || 'Learning',
         start_date: startDate,
         end_date: endDate || null,
         max_capacity: maxCapacity || 20,
@@ -132,6 +134,7 @@ module.exports = async (req, res) => {
         group_id: newGroup.group_id,
         group_name: newGroup.group_name,
         time_period: newGroup.time_period,
+        phase: newGroup.phase,
         start_date: newGroup.start_date,
         end_date: newGroup.end_date,
         max_capacity: newGroup.max_capacity,

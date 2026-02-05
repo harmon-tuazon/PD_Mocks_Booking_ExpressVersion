@@ -59,6 +59,23 @@ const TimePeriodBadge = ({ period }) => (
   </span>
 );
 
+/**
+ * Phase badge
+ */
+const PhaseBadge = ({ phase }) => {
+  const phaseStyles = {
+    'Learning': 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+    'Practical': 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300',
+    'Pre-Exam': 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'
+  };
+
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${phaseStyles[phase] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'}`}>
+      {phase || '-'}
+    </span>
+  );
+};
+
 const GroupViewModal = ({ isOpen, onClose, groupId }) => {
   const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState(0);
@@ -261,6 +278,14 @@ const GroupViewModal = ({ isOpen, onClose, groupId }) => {
                                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
                                   <dd className="mt-1">
                                     <StatusBadge status={group?.status} />
+                                  </dd>
+                                </div>
+                              </div>
+                              <div className="flex items-start space-x-3">
+                                <div>
+                                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Phase</dt>
+                                  <dd className="mt-1">
+                                    <PhaseBadge phase={group?.phase} />
                                   </dd>
                                 </div>
                               </div>

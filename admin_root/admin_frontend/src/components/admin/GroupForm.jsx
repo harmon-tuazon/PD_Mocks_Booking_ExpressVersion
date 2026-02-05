@@ -42,11 +42,19 @@ const GroupForm = ({
     { value: 'completed', label: 'Completed' }
   ];
 
+  // Phase options
+  const PHASE_OPTIONS = [
+    { value: 'Learning', label: 'Learning' },
+    { value: 'Practical', label: 'Practical' },
+    { value: 'Pre-Exam', label: 'Pre-Exam' }
+  ];
+
   // Form state
   const [formData, setFormData] = useState({
     groupName: '',
     location: 'Mississauga',
     cycle: '',
+    phase: 'Learning',
     timePeriod: 'AM',
     startDate: '',
     endDate: '',
@@ -64,6 +72,7 @@ const GroupForm = ({
           groupName: mode === 'clone' ? `${initialData.group_name} - Copy` : initialData.group_name || '',
           location: initialData.location || 'Mississauga',
           cycle: initialData.cycle || '',
+          phase: initialData.phase || 'Learning',
           timePeriod: initialData.time_period || 'AM',
           startDate: initialData.start_date || '',
           endDate: initialData.end_date || '',
@@ -75,6 +84,7 @@ const GroupForm = ({
           groupName: '',
           location: 'Mississauga',
           cycle: '',
+          phase: 'Learning',
           timePeriod: 'AM',
           startDate: '',
           endDate: '',
@@ -150,6 +160,7 @@ const GroupForm = ({
       groupName: formData.groupName.trim(),
       location: formData.location,
       cycle: formData.cycle?.trim() || null,
+      phase: formData.phase,
       timePeriod: formData.timePeriod,
       startDate: formData.startDate,
       endDate: formData.endDate || null,
@@ -284,8 +295,8 @@ const GroupForm = ({
                     )}
                   </div>
 
-                  {/* Location and Cycle */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Location, Cycle, and Phase */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Location <span className="text-red-500">*</span>
@@ -323,6 +334,26 @@ const GroupForm = ({
                         className={inputNormalClass}
                         placeholder="Enter cycle (optional)"
                       />
+                    </div>
+
+                    <div>
+                      <label htmlFor="phase" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Phase
+                      </label>
+                      <Select
+                        value={formData.phase}
+                        onValueChange={(value) => handleChange({ target: { name: 'phase', value, type: 'text' } })}
+                        disabled={isLoading}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select phase" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PHASE_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
