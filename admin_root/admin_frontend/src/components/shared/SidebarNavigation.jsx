@@ -130,7 +130,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
       )
     },
     {
-      name: 'Slots',
+      name: 'Slots Management',
       href: '/work-check/slots',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
