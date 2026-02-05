@@ -833,6 +833,97 @@ export const workCheckSlotsApi = {
   }
 };
 
+/**
+ * Work Check Bookings API endpoints
+ * For managing work check booking records
+ */
+export const workCheckBookingsApi = {
+  /**
+   * List booking aggregates grouped by date/time/location
+   * @param {Object} params - Query parameters (page, limit, location, date_from, date_to, status, type, instructor_id)
+   * @returns {Promise<Object>} Paginated aggregates with preloaded bookings
+   */
+  getAggregates: async (params = {}) => {
+    const response = await api.get('/admin/work-check-bookings/aggregates', { params });
+    return response.data;
+  },
+
+  /**
+   * List bookings (flat view) with pagination, filtering, and sorting
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Object>} Paginated bookings
+   */
+  list: async (params = {}) => {
+    const response = await api.get('/admin/work-check-bookings/list', { params });
+    return response.data;
+  },
+
+  /**
+   * Get a single booking by ID
+   * @param {string} id - Booking ID (UUID)
+   * @returns {Promise<Object>} Booking data
+   */
+  get: async (id) => {
+    const response = await api.get(`/admin/work-check-bookings/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Update a booking
+   * @param {string} id - Booking ID
+   * @param {Object} data - Update data (status, type)
+   * @returns {Promise<Object>} Updated booking
+   */
+  update: async (id, data) => {
+    const response = await api.put(`/admin/work-check-bookings/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete a booking
+   * @param {string} id - Booking ID
+   * @returns {Promise<Object>} Delete result
+   */
+  delete: async (id) => {
+    const response = await api.delete(`/admin/work-check-bookings/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Bulk toggle status for multiple bookings
+   * @param {Array<string>} ids - Array of booking IDs
+   * @param {string} targetStatus - 'pending', 'confirmed', 'rejected', 'cancelled'
+   * @returns {Promise<Object>} Toggle result
+   */
+  bulkToggle: async (ids, targetStatus) => {
+    const response = await api.post('/admin/work-check-bookings/bulk-toggle', {
+      ids,
+      target_status: targetStatus
+    });
+    return response.data;
+  },
+
+  /**
+   * Bulk delete multiple bookings
+   * @param {Array<string>} ids - Array of booking IDs
+   * @returns {Promise<Object>} Delete result
+   */
+  bulkDelete: async (ids) => {
+    const response = await api.post('/admin/work-check-bookings/bulk-delete', { ids });
+    return response.data;
+  },
+
+  /**
+   * Clone bookings to new target slots
+   * @param {Object} data - Clone configuration { ids, target_slot_ids, preserve_status, preserve_type }
+   * @returns {Promise<Object>} Clone result
+   */
+  clone: async (data) => {
+    const response = await api.post('/admin/work-check-bookings/clone', data);
+    return response.data;
+  }
+};
+
 // Export the axios instance as adminApi for direct use in hooks
 export const adminApi = api;
 

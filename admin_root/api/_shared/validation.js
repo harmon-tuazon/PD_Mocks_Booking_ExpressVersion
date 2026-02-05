@@ -1896,7 +1896,131 @@ const schemas = {
         .iso()
         .allow(null)
     }).min(1).required()
-  }).required()
+  }).required(),
+
+  // ============================================================
+  // WORK CHECK BOOKINGS VALIDATION SCHEMAS
+  // ============================================================
+
+  // Work Check Booking Aggregates Query
+  workCheckBookingAggregates: Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(50).default(20),
+    location: Joi.string().valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online'),
+    date_from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({
+      'string.pattern.base': 'date_from must be in YYYY-MM-DD format'
+    }),
+    date_to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({
+      'string.pattern.base': 'date_to must be in YYYY-MM-DD format'
+    }),
+    status: Joi.string().valid('pending', 'confirmed', 'rejected', 'cancelled').messages({
+      'any.only': 'Status must be one of: pending, confirmed, rejected, cancelled'
+    }),
+    type: Joi.string().valid('Demo', 'Work Check', 'Supervised Session').messages({
+      'any.only': 'Type must be one of: Demo, Work Check, Supervised Session'
+    }),
+    instructor_id: Joi.string().uuid().messages({
+      'string.guid': 'Invalid instructor ID format'
+    }),
+    sort_by: Joi.string().valid('slot_date', 'slot_time', 'location', 'total_bookings').default('slot_date'),
+    sort_order: Joi.string().valid('asc', 'desc').default('desc')
+  }),
+
+  // Work Check Booking List Query (flat view)
+  workCheckBookingList: Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(50),
+    student_id: Joi.string().max(100),
+    instructor_id: Joi.string().uuid(),
+    slot_id: Joi.string().uuid(),
+    group_id: Joi.string().max(100),
+    location: Joi.string().valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online'),
+    status: Joi.string().valid('pending', 'confirmed', 'rejected', 'cancelled', 'all').default('all'),
+    type: Joi.string().valid('Demo', 'Work Check', 'Supervised Session', 'all').default('all'),
+    date_from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({
+      'string.pattern.base': 'date_from must be in YYYY-MM-DD format'
+    }),
+    date_to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({
+      'string.pattern.base': 'date_to must be in YYYY-MM-DD format'
+    }),
+    sort_by: Joi.string().valid('created_at', 'slot_date', 'student_id', 'status', 'type').default('created_at'),
+    sort_order: Joi.string().valid('asc', 'desc').default('desc')
+  }),
+
+  // Work Check Booking Update
+  workCheckBookingUpdate: Joi.object({
+    status: Joi.string()
+      .valid('pending', 'confirmed', 'rejected', 'cancelled')
+      .messages({
+        'any.only': 'Status must be one of: pending, confirmed, rejected, cancelled'
+      }),
+    type: Joi.string()
+      .valid('Demo', 'Work Check', 'Supervised Session')
+      .messages({
+        'any.only': 'Type must be one of: Demo, Work Check, Supervised Session'
+      })
+  }).min(1).messages({
+    'object.min': 'At least one property must be provided for update'
+  }),
+
+  // Work Check Booking Bulk Toggle Status
+  workCheckBookingBulkToggle: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one booking ID is required',
+        'array.max': 'Maximum 100 bookings can be toggled at once',
+        'any.required': 'Booking IDs are required'
+      }),
+    target_status: Joi.string()
+      .valid('pending', 'confirmed', 'rejected', 'cancelled')
+      .required()
+      .messages({
+        'any.only': 'Target status must be one of: pending, confirmed, rejected, cancelled',
+        'any.required': 'Target status is required'
+      })
+  }),
+
+  // Work Check Booking Bulk Delete
+  workCheckBookingBulkDelete: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one booking ID is required',
+        'array.max': 'Maximum 100 bookings can be deleted at once',
+        'any.required': 'Booking IDs are required'
+      })
+  }),
+
+  // Work Check Booking Clone
+  workCheckBookingClone: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(50)
+      .required()
+      .messages({
+        'array.min': 'At least one booking ID is required',
+        'array.max': 'Maximum 50 bookings can be cloned at once',
+        'any.required': 'Booking IDs are required'
+      }),
+    target_slot_ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .required()
+      .messages({
+        'array.min': 'At least one target slot ID is required',
+        'any.required': 'Target slot IDs are required'
+      }),
+    preserve_status: Joi.boolean().default(false),
+    preserve_type: Joi.boolean().default(true)
+  })
 
 };
 
