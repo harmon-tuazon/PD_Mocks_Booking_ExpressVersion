@@ -138,8 +138,13 @@ const CloneWorkCheckBookingsModal = ({
           {/* Target slots selection */}
           <div className="mb-4">
             <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Target Slots ({selectedSlotIds.length} selected)
+              Target Slots <span className="text-red-500">*</span> ({selectedSlotIds.length} selected)
             </h4>
+            {selectedSlotIds.length === 0 && !loadingSlots && slots.length > 0 && (
+              <p className="text-sm text-red-500 mb-2">
+                Please select at least one target slot to clone bookings to
+              </p>
+            )}
             {loadingSlots ? (
               <div className="flex items-center justify-center p-4">
                 <svg className="animate-spin h-5 w-5 text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -196,7 +201,7 @@ const CloneWorkCheckBookingsModal = ({
                 className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               />
               <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">
-                Preserve original status (otherwise defaults to "pending")
+                Preserve original status (otherwise based on slot's auto-approve setting)
               </span>
             </label>
             <label className="flex items-center">
