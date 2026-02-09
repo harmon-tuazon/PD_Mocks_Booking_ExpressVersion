@@ -41,7 +41,7 @@ const formatDate = (dateStr) => {
   });
 };
 
-const const WorkCheckBookingFormModal = ({
+const WorkCheckBookingFormModal = ({
   isOpen,
   onClose,
   booking = null, // null for create mode, object for edit mode
