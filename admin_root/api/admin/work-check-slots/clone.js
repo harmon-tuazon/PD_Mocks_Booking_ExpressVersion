@@ -35,7 +35,8 @@ module.exports = async (req, res) => {
       target_instructor_id,
       target_groups,
       date_offset_days,
-      copy_activation_settings
+      copy_activation_settings,
+      copy_auto_approve
     } = req.validatedData;
 
     console.log(`[Clone Slots] Cloning ${ids.length} slots with offset ${date_offset_days} days`);
@@ -132,6 +133,9 @@ module.exports = async (req, res) => {
         available_from = null;
       }
 
+      // Determine auto_approve setting
+      const auto_approve = copy_auto_approve !== false ? slot.auto_approve : true;
+
       return {
         instructor_id: target_instructor_id || slot.instructor_id,
         group_id: target_groups && target_groups.length > 0 ? target_groups : slot.group_id,
@@ -141,7 +145,8 @@ module.exports = async (req, res) => {
         total_slots: slot.total_slots,
         location: slot.location,
         is_active,
-        available_from
+        available_from,
+        auto_approve
       };
     });
 

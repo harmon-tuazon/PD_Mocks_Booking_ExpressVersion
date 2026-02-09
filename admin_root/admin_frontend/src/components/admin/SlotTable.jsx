@@ -122,6 +122,7 @@ const SkeletonRow = () => (
     <td className="px-6 py-4"><div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
     <td className="px-6 py-4"><div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
     <td className="px-6 py-4"><div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+    <td className="px-6 py-4"><div className="h-4 w-12 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
     <td className="px-6 py-4"><div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
     <td className="px-6 py-4"><div className="h-4 w-8 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
   </tr>
@@ -243,6 +244,7 @@ const SlotTable = ({
               <TableHeader label="Location" column="location" sortable currentSort={currentSort} onSort={onSort} />
               <TableHeader label="Duration" column="duration" sortable={false} currentSort={currentSort} onSort={onSort} />
               <TableHeader label="Status" column="status" sortable={false} currentSort={currentSort} onSort={onSort} />
+              <TableHeader label="Auto-Approve" column="auto_approve" sortable={false} currentSort={currentSort} onSort={onSort} />
               <TableHeader label="Created At" column="created_at" sortable currentSort={currentSort} onSort={onSort} />
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Actions
@@ -256,7 +258,7 @@ const SlotTable = ({
             ) : data.length === 0 ? (
               // Empty state
               <tr>
-                <td colSpan={isSelectionMode ? 10 : 9} className="px-6 py-12 text-center">
+                <td colSpan={isSelectionMode ? 11 : 10} className="px-6 py-12 text-center">
                   <p className="text-gray-500 dark:text-gray-400">No work check slots found</p>
                 </td>
               </tr>
@@ -322,6 +324,17 @@ const SlotTable = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <StatusBadge isActive={slot.is_active} activationStatus={slot.activation_status} />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {slot.auto_approve !== false ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                        Yes
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                        No
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {slot.created_at ? formatDate(slot.created_at) : '-'}

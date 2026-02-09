@@ -1788,6 +1788,11 @@ const schemas = {
           'any.required': 'Scheduled activation date/time is required when using scheduled mode'
         }),
         otherwise: Joi.optional().allow(null)
+      }),
+    auto_approve: Joi.boolean()
+      .default(true)
+      .messages({
+        'boolean.base': 'Auto approve must be a boolean value'
       })
   }).required(),
 
@@ -1814,7 +1819,8 @@ const schemas = {
     is_active: Joi.boolean(),
     available_from: Joi.date()
       .iso()
-      .allow(null)
+      .allow(null),
+    auto_approve: Joi.boolean()
   }).min(1),
 
   // Work Check Slot Bulk Toggle Status
@@ -1866,7 +1872,8 @@ const schemas = {
       .min(-365)
       .max(365)
       .default(7),
-    copy_activation_settings: Joi.boolean().default(false)
+    copy_activation_settings: Joi.boolean().default(false),
+    copy_auto_approve: Joi.boolean().default(true)
   }).required(),
 
   // Work Check Slot Bulk Edit
@@ -1894,7 +1901,8 @@ const schemas = {
         .max(20),
       available_from: Joi.date()
         .iso()
-        .allow(null)
+        .allow(null),
+      auto_approve: Joi.boolean()
     }).min(1).required()
   }).required(),
 

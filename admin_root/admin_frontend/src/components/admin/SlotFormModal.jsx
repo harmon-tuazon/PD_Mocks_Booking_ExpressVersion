@@ -53,7 +53,8 @@ const SlotFormModal = ({
     total_slots: 1,
     location: 'Mississauga',
     activation_mode: 'immediate',
-    available_from: ''
+    available_from: '',
+    auto_approve: true
   });
   const [errors, setErrors] = useState({});
 
@@ -97,7 +98,8 @@ const SlotFormModal = ({
           total_slots: initialData.total_slots || 1,
           location: initialData.location || 'Mississauga',
           activation_mode: initialData.available_from ? 'scheduled' : 'immediate',
-          available_from: initialData.available_from ? new Date(initialData.available_from).toISOString().slice(0, 16) : ''
+          available_from: initialData.available_from ? new Date(initialData.available_from).toISOString().slice(0, 16) : '',
+          auto_approve: initialData.auto_approve !== undefined ? initialData.auto_approve : true
         });
       } else {
         setFormData({
@@ -109,7 +111,8 @@ const SlotFormModal = ({
           total_slots: 1,
           location: 'Mississauga',
           activation_mode: 'immediate',
-          available_from: ''
+          available_from: '',
+          auto_approve: true
         });
       }
       setErrors({});
@@ -196,7 +199,8 @@ const SlotFormModal = ({
       total_slots: formData.total_slots,
       location: formData.location,
       activation_mode: formData.activation_mode,
-      available_from: formData.activation_mode === 'scheduled' ? formData.available_from : null
+      available_from: formData.activation_mode === 'scheduled' ? formData.available_from : null,
+      auto_approve: formData.auto_approve
     };
 
     onSubmit(submitData);
@@ -458,6 +462,38 @@ const SlotFormModal = ({
                       </p>
                     </div>
                   )}
+
+                  {/* Auto Approve Toggle */}
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Auto-Approve Bookings
+                        </label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          When enabled, bookings for this slot are automatically confirmed
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleChange('auto_approve', !formData.auto_approve)}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                          formData.auto_approve ? 'bg-primary-600' : 'bg-gray-200 dark:bg-gray-600'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            formData.auto_approve ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    {!formData.auto_approve && (
+                      <p className="mt-2 text-xs text-yellow-600 dark:text-yellow-400">
+                        ⚠️ Bookings will require manual approval by an instructor or admin
+                      </p>
+                    )}
+                  </div>
 
                   {/* Submit Buttons */}
                   <div className="mt-6 flex justify-end gap-3">

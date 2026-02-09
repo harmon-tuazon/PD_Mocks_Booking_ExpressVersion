@@ -114,6 +114,7 @@ async function handleGet(req, res, id) {
       is_active: slot.is_active,
       available_from: slot.available_from,
       activation_status: activationStatus,
+      auto_approve: slot.auto_approve,
       created_at: slot.created_at,
       updated_at: slot.updated_at
     }

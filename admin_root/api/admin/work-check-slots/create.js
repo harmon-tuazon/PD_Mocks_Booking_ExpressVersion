@@ -41,7 +41,8 @@ module.exports = async (req, res) => {
       total_slots,
       location,
       activation_mode,
-      available_from
+      available_from,
+      auto_approve
     } = req.validatedData;
 
     console.log('[Create Work Check Slot] Creating slot:', {
@@ -102,7 +103,8 @@ module.exports = async (req, res) => {
       total_slots: total_slots || 1,
       location,
       is_active,
-      available_from: activation_mode === 'scheduled' ? available_from : null
+      available_from: activation_mode === 'scheduled' ? available_from : null,
+      auto_approve: auto_approve !== undefined ? auto_approve : true
     };
 
     // Insert slot

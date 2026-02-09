@@ -41,6 +41,7 @@ const CloneSlotsModal = ({
   const [targetGroups, setTargetGroups] = useState([]);
   const [dateOffset, setDateOffset] = useState(7);
   const [copyActivation, setCopyActivation] = useState(false);
+  const [copyAutoApprove, setCopyAutoApprove] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Dropdown data
@@ -79,6 +80,7 @@ const CloneSlotsModal = ({
       setTargetGroups([]);
       setDateOffset(7);
       setCopyActivation(false);
+      setCopyAutoApprove(true);
     }
   }, [isOpen]);
 
@@ -102,7 +104,8 @@ const CloneSlotsModal = ({
       const cloneData = {
         ids: selectedSlots.map(slot => slot.id),
         date_offset_days: dateOffset,
-        copy_activation_settings: copyActivation
+        copy_activation_settings: copyActivation,
+        copy_auto_approve: copyAutoApprove
       };
 
       // Only include target instructor if specified
@@ -285,6 +288,24 @@ const CloneSlotsModal = ({
                     </label>
                     <p className="ml-6 text-xs text-gray-500">
                       If unchecked, cloned slots will be inactive (draft state)
+                    </p>
+                  </div>
+
+                  {/* Copy auto-approve settings */}
+                  <div>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={copyAutoApprove}
+                        onChange={(e) => setCopyAutoApprove(e.target.checked)}
+                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                      />
+                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                        Copy auto-approve settings
+                      </span>
+                    </label>
+                    <p className="ml-6 text-xs text-gray-500">
+                      If unchecked, cloned slots will have auto-approve enabled by default
                     </p>
                   </div>
                 </div>
