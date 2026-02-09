@@ -60,10 +60,10 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Verify target slots exist
+    // Verify target slots exist and get their auto_approve settings
     const { data: targetSlots, error: slotError } = await supabaseAdmin
       .from('work_check_slots')
-      .select('id')
+      .select('id, auto_approve')
       .in('id', target_slot_ids);
 
     if (slotError) {
@@ -78,7 +78,9 @@ module.exports = async (req, res) => {
       });
     }
 
+    // Create maps for slot validation and auto_approve lookup
     const validSlotIds = new Set(targetSlots.map(s => s.id));
+    const slotAutoApproveMap = new Map(targetSlots.map(s => [s.id, s.auto_approve !== false]));
 
     // Check for existing bookings to prevent duplicates
     const studentIds = [...new Set(sourceBookings.map(b => b.student_id))];
@@ -120,14 +122,20 @@ module.exports = async (req, res) => {
           continue;
         }
 
+        // Determine status based on preserve_status flag and slot's auto_approve setting
+        const shouldAutoApprove = slotAutoApproveMap.get(targetSlotId);
+        const bookingStatus = preserve_status
+          ? sourceBooking.status
+          : (shouldAutoApprove ? 'confirmed' : 'pending');
+        const confirmedAt = bookingStatus === 'confirmed' ? new Date().toISOString() : null;
+
         clonedBookings.push({
           slot_id: targetSlotId,
           student_id: sourceBooking.student_id,
-          status: preserve_status ? sourceBooking.status : 'pending',
+          status: bookingStatus,
           type: preserve_type ? sourceBooking.type : 'Work Check',
           created_at: new Date().toISOString(),
-          // Don't copy timestamps - these are fresh bookings
-          confirmed_at: null,
+          confirmed_at: confirmedAt,
           cancelled_at: null
         });
 
