@@ -1955,6 +1955,30 @@ const schemas = {
     sort_order: Joi.string().valid('asc', 'desc').default('desc')
   }),
 
+  // Work Check Booking Creation
+  workCheckBookingCreation: Joi.object({
+    slot_id: Joi.string()
+      .uuid()
+      .required()
+      .messages({
+        'string.guid': 'Slot ID must be a valid UUID',
+        'any.required': 'Slot ID is required'
+      }),
+    student_id: Joi.string()
+      .uuid()
+      .required()
+      .messages({
+        'string.guid': 'Student ID must be a valid UUID',
+        'any.required': 'Student ID is required'
+      }),
+    type: Joi.string()
+      .valid('Demo', 'Work Check', 'Supervised Session')
+      .default('Work Check')
+      .messages({
+        'any.only': 'Type must be one of: Demo, Work Check, Supervised Session'
+      })
+  }),
+
   // Work Check Booking Update
   workCheckBookingUpdate: Joi.object({
     status: Joi.string()

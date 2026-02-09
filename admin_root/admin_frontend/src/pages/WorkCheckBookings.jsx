@@ -5,7 +5,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { Calendar, CheckCircle, Clock, XCircle, Ban } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, XCircle, Ban, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useWorkCheckBookingAggregates } from '../hooks/useWorkCheckBookingsData';
 import { useWorkCheckBookingMutations } from '../hooks/useWorkCheckBookingMutations';
@@ -64,8 +64,8 @@ const StatCard = ({ name, value, icon: Icon, bgColor, textColor, isLoading }) =>
 
 function WorkCheckBookings() {
   // Modal state
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingBooking, setEditingBooking] = useState(null);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [editingBooking, setEditingBooking] = useState(null); // null = create mode, object = edit mode
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
 
@@ -105,7 +105,7 @@ function WorkCheckBookings() {
   } = useWorkCheckBookingAggregates(queryParams);
 
   // Mutations
-  const { updateBooking } = useWorkCheckBookingMutations();
+  const { createBooking, updateBooking } = useWorkCheckBookingMutations();
 
   // Initialize bulk selection hook with aggregates
   const aggregates = aggregatesData?.data || [];
@@ -191,25 +191,36 @@ function WorkCheckBookings() {
     setCurrentPage(page);
   }, []);
 
-  // Edit handlers
-  const handleOpenEditModal = useCallback((booking) => {
-    setEditingBooking(booking);
-    setShowEditModal(true);
+  // Create/Edit handlers
+  const handleOpenCreateModal = useCallback(() => {
+    setEditingBooking(null);
+    setShowFormModal(true);
   }, []);
 
-  const handleCloseEditModal = useCallback(() => {
-    setShowEditModal(false);
+  const handleOpenEditModal = useCallback((booking) => {
+    setEditingBooking(booking);
+    setShowFormModal(true);
+  }, []);
+
+  const handleCloseFormModal = useCallback(() => {
+    setShowFormModal(false);
     setEditingBooking(null);
   }, []);
 
   const handleFormSubmit = useCallback(async (bookingId, data) => {
     try {
-      await updateBooking.mutateAsync({ id: bookingId, data });
-      handleCloseEditModal();
+      if (bookingId) {
+        // Edit mode
+        await updateBooking.mutateAsync({ id: bookingId, data });
+      } else {
+        // Create mode
+        await createBooking.mutateAsync(data);
+      }
+      handleCloseFormModal();
     } catch (error) {
       console.error('Form submission error:', error);
     }
-  }, [updateBooking, handleCloseEditModal]);
+  }, [createBooking, updateBooking, handleCloseFormModal]);
 
   // Bulk status change handler
   const handleChangeStatus = useCallback(async (targetStatus) => {
@@ -277,13 +288,22 @@ function WorkCheckBookings() {
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
       <div className="container-app py-8">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="font-headline text-3xl font-bold text-navy-900 dark:text-gray-100">
-            Work Check Bookings
-          </h1>
-          <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">
-            Manage student bookings for work check sessions
-          </p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="font-headline text-3xl font-bold text-navy-900 dark:text-gray-100">
+              Work Check Bookings
+            </h1>
+            <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">
+              Manage student bookings for work check sessions
+            </p>
+          </div>
+          <button
+            onClick={handleOpenCreateModal}
+            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Create Booking
+          </button>
         </div>
 
         {/* Statistics Cards */}
@@ -405,13 +425,13 @@ function WorkCheckBookings() {
           </div>
         )}
 
-        {/* Edit Modal */}
+        {/* Create/Edit Modal */}
         <WorkCheckBookingFormModal
-          isOpen={showEditModal}
-          onClose={handleCloseEditModal}
+          isOpen={showFormModal}
+          onClose={handleCloseFormModal}
           booking={editingBooking}
           onSubmit={handleFormSubmit}
-          isSubmitting={updateBooking.isPending}
+          isSubmitting={createBooking.isPending || updateBooking.isPending}
         />
 
         {/* Delete Modal */}

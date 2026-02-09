@@ -19,6 +19,20 @@ export function useWorkCheckBookingMutations() {
     queryClient.invalidateQueries(['work-check-booking-aggregates']);
   };
 
+  // Create booking mutation
+  const createBooking = useMutation({
+    mutationFn: (data) => workCheckBookingsApi.create(data),
+    onSuccess: (data) => {
+      const message = data.message || 'Booking created successfully';
+      toast.success(message);
+      invalidateBookings();
+    },
+    onError: (error) => {
+      const message = error.response?.data?.error?.message || error.message || 'Failed to create booking';
+      toast.error(message);
+    }
+  });
+
   // Update booking mutation
   const updateBooking = useMutation({
     mutationFn: ({ id, data }) => workCheckBookingsApi.update(id, data),
@@ -89,6 +103,7 @@ export function useWorkCheckBookingMutations() {
   });
 
   return {
+    createBooking,
     updateBooking,
     deleteBooking,
     bulkToggle,

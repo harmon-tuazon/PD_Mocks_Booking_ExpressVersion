@@ -834,6 +834,22 @@ export const workCheckSlotsApi = {
 };
 
 /**
+ * Students API endpoints
+ * For searching and listing students (contacts)
+ */
+export const studentsApi = {
+  /**
+   * Search for students by name, email, or student_id
+   * @param {Object} params - Query parameters (q, limit, group_id)
+   * @returns {Promise<Object>} Array of matching students
+   */
+  search: async (params = {}) => {
+    const response = await api.get('/admin/students/search', { params });
+    return response.data;
+  }
+};
+
+/**
  * Work Check Bookings API endpoints
  * For managing work check booking records
  */
@@ -910,6 +926,16 @@ export const workCheckBookingsApi = {
    */
   bulkDelete: async (ids) => {
     const response = await api.post('/admin/work-check-bookings/bulk-delete', { ids });
+    return response.data;
+  },
+
+  /**
+   * Create a single booking
+   * @param {Object} data - Booking data { slot_id, student_id, type }
+   * @returns {Promise<Object>} Created booking
+   */
+  create: async (data) => {
+    const response = await api.post('/admin/work-check-bookings/create', data);
     return response.data;
   },
 
