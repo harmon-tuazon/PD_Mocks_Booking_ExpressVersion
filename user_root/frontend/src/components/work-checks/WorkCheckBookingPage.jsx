@@ -21,9 +21,7 @@ const WorkCheckBookingPage = () => {
     existingBookingDates,
     availableSlots,
     selectedSlot,
-    selectedGroupFilter,
     bookingResult,
-    setSelectedGroupFilter,
     selectSlot,
     clearSelectedSlot,
     submitBooking,
@@ -38,12 +36,11 @@ const WorkCheckBookingPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
 
-  // Filter slots by selected group
+  // All available slots (no group filtering - all slots for user's groups are shown)
   const filteredSlots = useMemo(() => {
     if (!availableSlots || !Array.isArray(availableSlots)) return [];
-    if (selectedGroupFilter === 'all') return availableSlots;
-    return availableSlots.filter(slot => slot.group_id === selectedGroupFilter);
-  }, [availableSlots, selectedGroupFilter]);
+    return availableSlots;
+  }, [availableSlots]);
 
   // Group slots by date for calendar view
   const slotsByDate = useMemo(() => {
@@ -369,48 +366,26 @@ const WorkCheckBookingPage = () => {
           </div>
         )}
 
-        {/* Filter and View Toggle */}
+        {/* View Toggle and Controls */}
         <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-6 gap-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Group filter */}
-            <div className="w-full sm:w-48">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Filter by Group
-              </label>
-              <select
-                value={selectedGroupFilter}
-                onChange={(e) => setSelectedGroupFilter(e.target.value)}
-                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-dark-card dark:text-gray-100 text-sm focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="all">All Groups</option>
-                {groups.map(group => (
-                  <option key={group.group_id} value={group.group_id}>
-                    {group.group_name || group.group_id}
-                  </option>
-                ))}
-              </select>
-            </div>
-
+          <div className="flex items-end">
             {/* Refresh button */}
-            <div className="flex items-end">
-              <button
-                onClick={refreshSlots}
-                disabled={loading}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg border border-gray-300 dark:border-gray-600 transition-colors"
-              >
-                <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Refresh
-              </button>
-            </div>
+            <button
+              onClick={refreshSlots}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg border border-gray-300 dark:border-gray-600 transition-colors"
+            >
+              <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </button>
           </div>
 
           <div className="flex flex-col items-end gap-2">
             {/* Slot Count */}
             <p className="text-sm font-body text-gray-600 dark:text-gray-400">
               Found {filteredSlots.length} slot{filteredSlots.length !== 1 ? 's' : ''}
-              {selectedGroupFilter !== 'all' && ` for ${selectedGroupFilter}`}
             </p>
             {/* View toggle */}
             <div className="flex items-center space-x-2">
@@ -526,9 +501,7 @@ const WorkCheckBookingPage = () => {
             </div>
             <p className="text-body font-body text-gray-700 dark:text-gray-300 mb-2">No available work check slots</p>
             <p className="text-small font-body text-gray-600 dark:text-gray-400">
-              {selectedGroupFilter !== 'all'
-                ? 'Try selecting "All Groups" to see more slots.'
-                : 'There are no work check slots available for your groups at this time.'}
+              There are no work check slots available for your groups at this time.
             </p>
           </div>
         ) : viewMode === 'list' ? (
