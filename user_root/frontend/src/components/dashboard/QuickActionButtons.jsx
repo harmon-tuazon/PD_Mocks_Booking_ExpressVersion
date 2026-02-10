@@ -2,6 +2,7 @@
  * QuickActionButtons.jsx
  * Card-based action buttons for quick booking access
  * Styled to match ExamTypeSelector cards with PrepDoctors fonts
+ * Icons: SJ, CS, Mini-mock, Discussion, Work Check
  */
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
