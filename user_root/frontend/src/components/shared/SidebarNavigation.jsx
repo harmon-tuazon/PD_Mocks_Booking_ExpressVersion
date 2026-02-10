@@ -477,6 +477,36 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                   </div>
                 )}
               </li>
+
+              {/* My Progress */}
+              <li>
+                <button
+                  onClick={() => handleNavigation('/my-progress')}
+                  className={`
+                    w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg
+                    transition-all duration-200 text-left
+                    ${isActivePath('/my-progress')
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-dark-hover'
+                    }
+                    focus:outline-none focus:ring-2 focus:ring-primary-400 dark:focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800
+                  `}
+                >
+                  <span className={`mr-3 flex-shrink-0 ${isActivePath('/my-progress') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </span>
+                  <span className="flex-1">My Progress</span>
+                  {isActivePath('/my-progress') && (
+                    <span className="ml-auto">
+                      <svg className="w-4 h-4 text-primary-600 dark:text-primary-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                  )}
+                </button>
+              </li>
             </ul>
           </nav>
 

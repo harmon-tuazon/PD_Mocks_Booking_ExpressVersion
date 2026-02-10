@@ -9,6 +9,7 @@ import BookingForm from './components/BookingForm';
 import BookingConfirmation from './components/BookingConfirmation';
 import MyBookings from './components/MyBookings';
 import MockDiscussions from './pages/MockDiscussions';
+import MyProgress from './pages/MyProgress';
 import ErrorBoundary from './components/ErrorBoundary';
 import MainLayout from './components/layout/MainLayout';
 import { ResponsiveLogo } from './components/shared/Logo';
@@ -72,6 +73,13 @@ function App() {
             <Route path="/my-bookings" element={
               <ProtectedRoute>
                 <MyBookings />
+              </ProtectedRoute>
+            } />
+
+            {/* My Progress page - requires authentication */}
+            <Route path="/my-progress" element={
+              <ProtectedRoute>
+                <MyProgress />
               </ProtectedRoute>
             } />
 
