@@ -91,7 +91,7 @@ module.exports = async (req, res) => {
 
       // User's active groups
       supabaseAdmin
-        .from('group_students')
+        .from('groups_students')
         .select(`
           group_id, status,
           groups ( group_id, group_name, status )

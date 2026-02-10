@@ -112,6 +112,7 @@ const MyWorkChecks = () => {
 
   // Sort bookings
   const sortedBookings = useMemo(() => {
+    if (!bookings || !Array.isArray(bookings)) return [];
     if (!sortField) return bookings;
 
     return [...bookings].sort((a, b) => {
