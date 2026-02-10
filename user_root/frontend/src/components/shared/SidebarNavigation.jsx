@@ -76,7 +76,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
   // Mocks submenu items
   const mocksItems = [
     {
-      name: 'NDECC Exams',
+      name: 'Book Mocks',
       href: '/book/exam-types',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
