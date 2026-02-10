@@ -85,7 +85,7 @@ const MyWorkChecks = () => {
       });
 
       if (response.success) {
-        setBookings(response.data.bookings);
+        setBookings(response.data.bookings || []);
         setStats(response.data.stats);
         setPagination(response.data.pagination);
         setCurrentPage(page);
@@ -322,7 +322,7 @@ const MyWorkChecks = () => {
   };
 
   // Loading state
-  if (loading && bookings.length === 0) {
+  if (loading && (!bookings || bookings.length === 0)) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex items-center justify-center">
         <div className="text-center">
