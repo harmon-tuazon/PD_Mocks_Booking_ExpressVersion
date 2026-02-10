@@ -36,9 +36,9 @@ module.exports = async (req, res) => {
       });
     }
 
-    const { student_id, email, slot_id } = value;
+    const { student_id, email, slot_id, work_check_type } = value;
 
-    console.log(`📝 [WORK-CHECK] Creating booking: ${student_id} -> ${slot_id}`);
+    console.log(`📝 [WORK-CHECK] Creating booking: ${student_id} -> ${slot_id} (${work_check_type})`);
 
     // 1. Validate contact
     const { data: contact, error: contactError } = await supabaseAdmin
@@ -188,6 +188,7 @@ module.exports = async (req, res) => {
     const bookingData = {
       slot_id: slot.id,
       student_id: contact.id,
+      work_check_type: work_check_type,
       status: autoApprove ? 'confirmed' : 'pending',
       ...(autoApprove && { confirmed_at: new Date().toISOString() })
     };
@@ -236,6 +237,7 @@ module.exports = async (req, res) => {
       data: {
         booking_id: booking.id,
         status: booking.status,
+        work_check_type: work_check_type,
         auto_approved: autoApprove,
         slot: {
           slot_date: slot.slot_date,

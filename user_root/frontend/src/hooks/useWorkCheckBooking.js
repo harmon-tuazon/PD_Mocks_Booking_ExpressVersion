@@ -115,9 +115,9 @@ export function useWorkCheckBooking() {
     setError(null);
   }, []);
 
-  // Submit booking
-  const submitBooking = useCallback(async () => {
-    if (!userData || !selectedSlot) return;
+  // Submit booking with work check type
+  const submitBooking = useCallback(async (workCheckType) => {
+    if (!userData || !selectedSlot || !workCheckType) return;
 
     setLoading(true);
     setStep('confirming');
@@ -127,7 +127,8 @@ export function useWorkCheckBooking() {
       const response = await apiService.workChecks.create(
         userData.studentId,
         userData.email,
-        selectedSlot.slot_id
+        selectedSlot.slot_id,
+        workCheckType
       );
 
       if (response.success) {

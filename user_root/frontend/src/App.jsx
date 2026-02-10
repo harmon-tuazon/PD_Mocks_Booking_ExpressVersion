@@ -11,6 +11,8 @@ import MyBookings from './components/MyBookings';
 import MockDiscussions from './pages/MockDiscussions';
 import MyProgress from './pages/MyProgress';
 import WorkCheckBookingPage from './components/work-checks/WorkCheckBookingPage';
+import WorkCheckConfirmPage from './components/work-checks/WorkCheckConfirmPage';
+import WorkCheckSuccessPage from './components/work-checks/WorkCheckSuccessPage';
 import MyWorkChecks from './pages/MyWorkChecks';
 import ErrorBoundary from './components/ErrorBoundary';
 import MainLayout from './components/layout/MainLayout';
@@ -89,6 +91,16 @@ function App() {
             <Route path="/book/work-check" element={
               <ProtectedRoute>
                 <WorkCheckBookingPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/book/work-check/confirm" element={
+              <ProtectedRoute>
+                <WorkCheckConfirmPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/book/work-check/success" element={
+              <ProtectedRoute>
+                <WorkCheckSuccessPage />
               </ProtectedRoute>
             } />
             <Route path="/my-work-checks" element={

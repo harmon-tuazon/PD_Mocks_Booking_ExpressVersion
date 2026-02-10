@@ -332,12 +332,17 @@ const apiService = {
 
     /**
      * Create work check reservation
+     * @param {string} studentId - Student ID
+     * @param {string} email - Student email
+     * @param {string} slotId - Slot UUID
+     * @param {string} workCheckType - Type: 'Demo', 'Work Check', or 'Supervised Session'
      */
-    create: async (studentId, email, slotId) => {
+    create: async (studentId, email, slotId, workCheckType) => {
       return api.post('/work-checks/create', {
         student_id: studentId,
         email,
-        slot_id: slotId
+        slot_id: slotId,
+        work_check_type: workCheckType
       });
     },
 

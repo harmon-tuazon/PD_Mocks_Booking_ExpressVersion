@@ -293,6 +293,13 @@ const schemas = {
       .messages({
         'string.guid': 'Invalid slot ID format',
         'any.required': 'Slot ID is required'
+      }),
+    work_check_type: Joi.string()
+      .valid('Demo', 'Work Check', 'Supervised Session')
+      .required()
+      .messages({
+        'any.only': 'Work check type must be Demo, Work Check, or Supervised Session',
+        'any.required': 'Work check type is required'
       })
   }),
 
