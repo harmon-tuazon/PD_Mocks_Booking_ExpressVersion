@@ -123,7 +123,7 @@ const ActivitiesTable = ({ activities = [] }) => {
       {/* Header */}
       <div className="px-4 py-3 border-b dark:border-dark-border">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+          <h3 className="font-subheading text-sm font-semibold text-primary-900 dark:text-gray-100">
             This Week
           </h3>
           <button

@@ -17,7 +17,6 @@ const QuickActionButtons = ({ tokens = {}, groupCount = 0 }) => {
       description: 'Test your situational decision-making skills.',
       icon: '/assets/SJ-icon.svg',
       href: '/book/exams?type=Situational%20Judgment',
-      tokenKey: 'sj_credits',
       duration: '2 hours 30 mins'
     },
     {
@@ -27,7 +26,6 @@ const QuickActionButtons = ({ tokens = {}, groupCount = 0 }) => {
       description: 'Demonstrate your practical clinical abilities.',
       icon: '/assets/CS-icon.svg',
       href: '/book/exams?type=Clinical%20Skills',
-      tokenKey: 'cs_credits',
       duration: '8 hours 30 mins'
     },
     {
@@ -37,7 +35,6 @@ const QuickActionButtons = ({ tokens = {}, groupCount = 0 }) => {
       description: 'Quick practice to prepare for full exams.',
       icon: '/assets/minimock-icon.svg',
       href: '/book/exams?type=Mini-mock',
-      tokenKey: 'sjmini_credits',
       duration: '1 hour 30 mins'
     },
     {
@@ -47,7 +44,6 @@ const QuickActionButtons = ({ tokens = {}, groupCount = 0 }) => {
       description: 'Interactive discussion session with feedback.',
       icon: '/assets/discussion-icon.svg',
       href: '/book/discussions',
-      tokenKey: 'mock_discussion_token',
       duration: '1 hour'
     },
     {
@@ -65,14 +61,13 @@ const QuickActionButtons = ({ tokens = {}, groupCount = 0 }) => {
     if (action.showGroupCount) {
       return `${groupCount} group${groupCount !== 1 ? 's' : ''}`;
     }
-    const value = tokens[action.tokenKey] || 0;
-    return `${value} token${value !== 1 ? 's' : ''}`;
+    return null;
   };
 
   return (
     <div className="mb-6">
-      {/* Section header */}
-      <div className="text-center mb-4 md:mb-6">
+      {/* Section header - left aligned */}
+      <div className="mb-4 md:mb-6">
         <h2 className="font-headline text-lg md:text-xl font-bold text-primary-900 dark:text-gray-100 mb-1">
           Quick Actions
         </h2>
@@ -108,11 +103,6 @@ const QuickActionButtons = ({ tokens = {}, groupCount = 0 }) => {
                 {action.fullLabel}
               </h3>
 
-              {/* Description - hidden on mobile */}
-              <p className="hidden md:block font-body text-xs text-primary-700 dark:text-gray-400 mb-2 leading-relaxed">
-                {action.description}
-              </p>
-
               {/* Duration or Group count */}
               <div className="font-body text-[10px] md:text-xs text-primary-600 dark:text-gray-500 mb-2">
                 {action.duration ? (
@@ -126,19 +116,6 @@ const QuickActionButtons = ({ tokens = {}, groupCount = 0 }) => {
                   <span>{getTokenValue(action)}</span>
                 )}
               </div>
-
-              {/* Token badge for exam types */}
-              {action.tokenKey && (
-                <div className="mb-2">
-                  <span className={`inline-flex px-1.5 py-0.5 text-[10px] md:text-xs font-medium rounded-full ${
-                    (tokens[action.tokenKey] || 0) > 0
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                      : 'bg-gray-100 dark:bg-dark-hover text-gray-600 dark:text-gray-400'
-                  }`}>
-                    {tokens[action.tokenKey] || 0} tokens
-                  </span>
-                </div>
-              )}
 
               {/* Button */}
               <button className="btn-primary w-full text-[10px] md:text-xs py-1.5 md:py-2 dark:bg-primary-600 dark:hover:bg-primary-700">
