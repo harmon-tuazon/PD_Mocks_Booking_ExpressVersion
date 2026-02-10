@@ -145,9 +145,9 @@ const QuickActionButtons = () => {
               </h3>
 
               {/* Button */}
-              <button className="btn-primary w-full text-[10px] md:text-xs py-1.5 md:py-2 dark:bg-primary-600 dark:hover:bg-primary-700">
+              <button className="btn-primary w-full text-[9px] md:text-[10px] py-1 md:py-1.5 dark:bg-primary-600 dark:hover:bg-primary-700">
                 Book Now
-                <svg className="w-3 h-3 md:w-3.5 md:h-3.5 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-2.5 h-2.5 md:w-3 md:h-3 ml-0.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>

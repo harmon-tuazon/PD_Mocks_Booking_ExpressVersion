@@ -68,12 +68,12 @@ const ExamTypeSelector = () => {
   return (
     <div className="bg-gray-50 dark:bg-dark-bg min-h-full">
       <div className="container-brand py-4 md:py-8 lg:py-12">
-        {/* Header - Compact on mobile */}
-        <div className="text-center mb-6 md:mb-12 animate-fade-in">
-          <h1 className="font-headline text-2xl md:text-h1 font-bold text-primary-900 dark:text-gray-100 mb-2 md:mb-6">
+        {/* Header - Left aligned */}
+        <div className="mb-6 md:mb-12 animate-fade-in">
+          <h1 className="font-headline text-xl md:text-2xl font-bold text-primary-900 dark:text-gray-100 mb-1 md:mb-2">
             Book Your Mock Exam
           </h1>
-          <p className="font-body text-sm md:text-lg text-primary-700 dark:text-gray-300 content-width-md">
+          <p className="font-body text-xs md:text-sm text-primary-700 dark:text-gray-300">
             Choose the type of mock exam you'd like to book.
           </p>
         </div>
