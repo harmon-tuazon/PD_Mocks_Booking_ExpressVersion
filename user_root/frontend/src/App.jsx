@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginForm from './components/LoginForm';
 import ProtectedRoute from './components/ProtectedRoute';
+import Dashboard from './components/dashboard/Dashboard';
 import ExamTypeSelector from './components/ExamTypeSelector';
 import ExamSessionsList from './components/ExamSessionsList';
 import BookingForm from './components/BookingForm';
@@ -25,6 +26,13 @@ function App() {
 
             {/* Login page - no authentication required */}
             <Route path="/login" element={<LoginForm />} />
+
+            {/* Dashboard - new home page after login */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
 
             {/* Protected booking flow - requires authentication */}
             <Route path="/book/exam-types" element={
@@ -67,6 +75,18 @@ function App() {
               </ProtectedRoute>
             } />
 
+            {/* Work Check routes - placeholder pages until full implementation */}
+            <Route path="/book/work-check" element={
+              <ProtectedRoute>
+                <WorkCheckPlaceholder />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-work-checks" element={
+              <ProtectedRoute>
+                <MyWorkChecksPlaceholder />
+              </ProtectedRoute>
+            } />
+
             {/* Error pages - no authentication required */}
             <Route path="/book/error/insufficient-credits" element={<InsufficientCreditsError />} />
             <Route path="/book/error/exam-full" element={<ExamFullError />} />
@@ -81,6 +101,50 @@ function App() {
     </Router>
   );
 }
+
+// Placeholder for Work Check booking page (until full implementation from Work Check PRD)
+const WorkCheckPlaceholder = () => (
+  <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex items-center justify-center">
+    <div className="card max-w-md text-center dark:bg-dark-card dark:border-dark-border p-8">
+      <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
+        <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        </svg>
+      </div>
+      <h1 className="font-headline text-h3 font-semibold text-gray-900 dark:text-gray-100 mb-2">
+        Work Check Booking
+      </h1>
+      <p className="font-body text-base text-gray-600 dark:text-gray-400 mb-4">
+        Work check booking functionality is coming soon. Check back later for updates.
+      </p>
+      <a href="/dashboard" className="btn-primary inline-block">
+        Back to Dashboard
+      </a>
+    </div>
+  </div>
+);
+
+// Placeholder for My Work Checks page (until full implementation from Work Check PRD)
+const MyWorkChecksPlaceholder = () => (
+  <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex items-center justify-center">
+    <div className="card max-w-md text-center dark:bg-dark-card dark:border-dark-border p-8">
+      <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
+        <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        </svg>
+      </div>
+      <h1 className="font-headline text-h3 font-semibold text-gray-900 dark:text-gray-100 mb-2">
+        My Work Checks
+      </h1>
+      <p className="font-body text-base text-gray-600 dark:text-gray-400 mb-4">
+        Your work check bookings will be displayed here. This feature is coming soon.
+      </p>
+      <a href="/dashboard" className="btn-primary inline-block">
+        Back to Dashboard
+      </a>
+    </div>
+  </div>
+);
 
 const InsufficientCreditsError = () => (
   <div className="min-h-screen bg-gradient-to-br from-coral-50 via-white to-coral-50 dark:from-dark-bg dark:via-dark-card dark:to-dark-bg flex items-center justify-center">

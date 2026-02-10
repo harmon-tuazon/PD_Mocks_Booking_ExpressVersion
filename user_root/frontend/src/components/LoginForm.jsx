@@ -45,8 +45,8 @@ const LoginForm = () => {
           email: email.toLowerCase()
         }));
 
-        // Redirect to exam type selection
-        navigate('/book/exam-types');
+        // Redirect to dashboard (new home page)
+        navigate('/dashboard');
       }
     } catch (err) {
       console.error('Login error:', err);

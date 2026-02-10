@@ -254,6 +254,24 @@ const apiService = {
     },
   },
 
+  // Dashboard
+  dashboard: {
+    /**
+     * Get unified dashboard data
+     * @param {string} studentId - The student ID
+     * @param {string} email - The student's email address
+     * @returns {Promise} - Dashboard data including activities, tokens, and groups
+     */
+    get: async (studentId, email) => {
+      return api.get('/dashboard', {
+        params: {
+          student_id: studentId,
+          email: email
+        }
+      });
+    },
+  },
+
   // User profile
   user: {
     /**
