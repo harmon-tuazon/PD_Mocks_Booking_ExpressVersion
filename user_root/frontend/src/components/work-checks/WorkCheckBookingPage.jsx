@@ -319,11 +319,6 @@ const WorkCheckBookingPage = () => {
               : 'Select an available work check slot to book'
             }
           </p>
-          {userData && (
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 font-body">
-              Welcome, {userData.firstName} {userData.lastName} ({userData.studentCode})
-            </p>
-          )}
         </div>
 
         {/* Groups display */}

@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
 
     const { student_id, email, group_id, from_date, to_date } = value;
 
-    console.log(`🔍 [WORK-CHECK] Fetching available slots for: ${student_id}`);
+    console.log(`🔍 [WORK-CHECK] Fetching available slots for: ${student_id}, today: ${new Date().toISOString().split('T')[0]}`);
 
     // 1. Validate contact
     const { data: contact, error: contactError } = await supabaseAdmin
@@ -125,6 +125,12 @@ module.exports = async (req, res) => {
     if (slotsError) {
       console.error('❌ [WORK-CHECK] Error fetching slots:', slotsError);
       throw slotsError;
+    }
+
+    console.log(`🔍 [WORK-CHECK] User groups: ${JSON.stringify(userGroups)}`);
+    console.log(`🔍 [WORK-CHECK] All active future slots found: ${allSlots?.length || 0}`);
+    if (allSlots?.length > 0) {
+      console.log(`🔍 [WORK-CHECK] Sample slot group_ids: ${JSON.stringify(allSlots.slice(0, 3).map(s => ({ id: s.id, group_id: s.group_id, date: s.slot_date, is_active: s.is_active })))}`);
     }
 
     // 5. Filter slots by group membership (group_id is an array)
