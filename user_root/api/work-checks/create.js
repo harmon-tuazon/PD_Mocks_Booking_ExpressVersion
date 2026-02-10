@@ -188,7 +188,7 @@ module.exports = async (req, res) => {
     const bookingData = {
       slot_id: slot.id,
       student_id: contact.id,
-      work_check_type: work_check_type,
+      type: work_check_type,  // Column is named 'type' in work_check_bookings table
       status: autoApprove ? 'confirmed' : 'pending',
       ...(autoApprove && { confirmed_at: new Date().toISOString() })
     };
