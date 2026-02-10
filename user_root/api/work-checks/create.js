@@ -85,12 +85,13 @@ module.exports = async (req, res) => {
     }
 
     // 4. Verify trainee is in one of the slot's groups (group_id is array)
+    // Note: groups_students.student_id references hubspot_contact_credits.student_id (string), not id (UUID)
     const slotGroups = Array.isArray(slot.group_id) ? slot.group_id : [slot.group_id];
 
     const { data: groupMembership } = await supabaseAdmin
       .from('groups_students')
       .select('id, group_id')
-      .eq('student_id', contact.id)
+      .eq('student_id', contact.student_id)
       .in('group_id', slotGroups)
       .eq('status', 'active')
       .limit(1)

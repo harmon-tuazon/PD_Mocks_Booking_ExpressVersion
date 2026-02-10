@@ -58,6 +58,7 @@ module.exports = async (req, res) => {
     }
 
     // 2. Get trainee's active groups (using groups_students table)
+    // Note: groups_students.student_id references hubspot_contact_credits.student_id (string), not id (UUID)
     const { data: groupMemberships, error: groupError } = await supabaseAdmin
       .from('groups_students')
       .select(`
@@ -72,7 +73,7 @@ module.exports = async (req, res) => {
           status
         )
       `)
-      .eq('student_id', contact.id)
+      .eq('student_id', contact.student_id)
       .eq('status', 'active');
 
     if (groupError) {
