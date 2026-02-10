@@ -68,6 +68,19 @@ const QuickActionButtons = () => {
 
   const quickActions = [
     {
+      id: 'workcheck',
+      fullLabel: 'Work Check',
+      icon: null, // Using inline SVG
+      IconComponent: WorkCheckIcon,
+      href: '/book/work-check'
+    },
+    {
+      id: 'mini',
+      fullLabel: 'Mini-mock',
+      icon: '/assets/minimock-icon.svg',
+      href: '/book/exams?type=Mini-mock'
+    },
+    {
       id: 'sj',
       fullLabel: 'Situational Judgment',
       icon: '/assets/SJ-icon.svg',
@@ -80,24 +93,11 @@ const QuickActionButtons = () => {
       href: '/book/exams?type=Clinical%20Skills'
     },
     {
-      id: 'mini',
-      fullLabel: 'Mini-mock',
-      icon: '/assets/minimock-icon.svg',
-      href: '/book/exams?type=Mini-mock'
-    },
-    {
       id: 'discussion',
       fullLabel: 'Mock Discussion',
       icon: null, // Using inline SVG
       IconComponent: DiscussionIcon,
       href: '/book/discussions'
-    },
-    {
-      id: 'workcheck',
-      fullLabel: 'Work Check',
-      icon: null, // Using inline SVG
-      IconComponent: WorkCheckIcon,
-      href: '/book/work-check'
     }
   ];
 
