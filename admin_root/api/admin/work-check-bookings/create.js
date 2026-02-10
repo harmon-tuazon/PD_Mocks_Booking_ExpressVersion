@@ -40,10 +40,10 @@ module.exports = async (req, res) => {
 
     console.log(`[Work Check Booking Create] Creating booking for student ${student_id} in slot ${slot_id}`);
 
-    // Fetch the slot to check auto_approve setting
+    // Fetch the slot to check auto_approve setting and capacity
     const { data: slot, error: slotError } = await supabaseAdmin
       .from('work_check_slots')
-      .select('id, auto_approve, slot_date, slot_time, location, is_active')
+      .select('id, auto_approve, slot_date, slot_time, location, is_active, group_id, total_slots')
       .eq('id', slot_id)
       .single();
 
@@ -63,6 +63,18 @@ module.exports = async (req, res) => {
       });
     }
 
+    // Check slot date is not in the past
+    const slotDate = new Date(slot.slot_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (slotDate < today) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'SLOT_EXPIRED', message: 'Cannot create booking for a past date' }
+      });
+    }
+
     // Verify student exists
     const { data: student, error: studentError } = await supabaseAdmin
       .from('hubspot_contact_credits')
@@ -75,6 +87,54 @@ module.exports = async (req, res) => {
       return res.status(404).json({
         success: false,
         error: { code: 'STUDENT_NOT_FOUND', message: 'The selected student does not exist' }
+      });
+    }
+
+    // Verify student is in one of the slot's groups
+    const slotGroups = Array.isArray(slot.group_id) ? slot.group_id : [slot.group_id];
+
+    const { data: groupMembership, error: groupError } = await supabaseAdmin
+      .from('groups_students')
+      .select('id, group_id')
+      .eq('student_id', student.student_id)  // Use student_id string, not UUID
+      .in('group_id', slotGroups)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle();
+
+    if (groupError) {
+      console.error('[Supabase ERROR] Failed to check group membership:', groupError.message);
+    }
+
+    if (!groupMembership) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'NOT_IN_GROUP',
+          message: 'Student is not enrolled in any group assigned to this slot'
+        }
+      });
+    }
+
+    // Check slot capacity
+    const { count: bookedCount, error: countError } = await supabaseAdmin
+      .from('work_check_bookings')
+      .select('*', { count: 'exact', head: true })
+      .eq('slot_id', slot_id)
+      .in('status', ['pending', 'confirmed']);
+
+    if (countError) {
+      console.error('[Supabase ERROR] Failed to count bookings:', countError.message);
+      throw new Error('Failed to check slot capacity');
+    }
+
+    if (bookedCount >= slot.total_slots) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'SLOT_FULL',
+          message: `Slot is at capacity (${bookedCount}/${slot.total_slots} booked)`
+        }
       });
     }
 
