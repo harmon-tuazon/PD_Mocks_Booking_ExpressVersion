@@ -336,59 +336,18 @@ const MyWorkChecks = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
-      <div className="max-w-6xl mx-auto px-4 py-4 md:py-8">
+    <div className="bg-gray-50 dark:bg-dark-bg min-h-full">
+      <div className="container mx-auto px-4 py-6 sm:py-8">
         {/* Header */}
-        <div className="mb-6">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-4"
-          >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Dashboard
-          </button>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-headline font-bold text-gray-900 dark:text-gray-100">
+              <h1 className="font-headline text-2xl sm:text-3xl lg:text-4xl font-bold text-primary-900 dark:text-gray-100 mb-2">
                 My Work Checks
               </h1>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 font-body">
+              <p className="font-body text-base sm:text-lg text-primary-700 dark:text-gray-300">
                 View and manage your work check bookings
               </p>
-            </div>
-
-            {/* View Mode Toggle */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setViewMode('list')}
-                className={`
-                  inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors
-                  ${viewMode === 'list'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-white dark:bg-dark-card text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-dark-hover'}
-                `}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-                <span className="hidden sm:inline">List</span>
-              </button>
-              <button
-                onClick={() => setViewMode('calendar')}
-                className={`
-                  inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors
-                  ${viewMode === 'calendar'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-white dark:bg-dark-card text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-dark-hover'}
-                `}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span className="hidden sm:inline">Calendar</span>
-              </button>
             </div>
           </div>
         </div>
@@ -419,59 +378,111 @@ const MyWorkChecks = () => {
           </div>
         )}
 
-        {/* Filter tabs and Sort (List view only) */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: 'all', label: 'All' },
-              { key: 'upcoming', label: 'Upcoming' },
-              { key: 'pending', label: 'Pending' },
-              { key: 'completed', label: 'Completed' },
-              { key: 'cancelled', label: 'Cancelled' }
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setFilter(tab.key)}
-                className={`
-                  px-4 py-2 text-sm font-medium rounded-lg transition-colors
-                  ${filter === tab.key
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-white dark:bg-dark-card text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-dark-hover'}
-                `}
-              >
-                {tab.label}
-                {stats && tab.key !== 'all' && (
-                  <span className="ml-1 text-xs opacity-75">
-                    ({stats[tab.key] || 0})
+        {/* Controls Section */}
+        <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border p-4 mb-6">
+          <div className="flex flex-col space-y-4">
+            {/* View Toggle and Filters */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* View Toggle */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                    viewMode === 'list'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-hover'
+                  }`}
+                >
+                  <span className="flex items-center">
+                    <svg className="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <span className="hidden sm:inline">List View</span>
+                    <span className="sm:hidden">List</span>
                   </span>
-                )}
-              </button>
-            ))}
-          </div>
+                </button>
+                <button
+                  onClick={() => setViewMode('calendar')}
+                  className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                    viewMode === 'calendar'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-hover'
+                  }`}
+                >
+                  <span className="flex items-center">
+                    <svg className="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="hidden sm:inline">Calendar View</span>
+                    <span className="sm:hidden">Calendar</span>
+                  </span>
+                </button>
+              </div>
 
-          {/* Mobile sort dropdown (list view only) */}
-          {viewMode === 'list' && (
-            <div className="md:hidden">
-              <select
-                value={sortField || ''}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleSort(e.target.value);
-                  } else {
-                    setSortField(null);
-                  }
-                }}
-                className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-card border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300"
-              >
-                <option value="">Sort by...</option>
-                <option value="date">Date</option>
-                <option value="time">Time</option>
-                <option value="instructor">Instructor</option>
-                <option value="group">Group</option>
-                <option value="status">Status</option>
-              </select>
+              {/* Filters */}
+              <div className="flex items-center space-x-2 flex-1 overflow-x-auto">
+                {[
+                  { key: 'all', label: 'All' },
+                  { key: 'upcoming', label: 'Upcoming' },
+                  { key: 'pending', label: 'Pending' },
+                  { key: 'completed', label: 'Completed' },
+                  { key: 'cancelled', label: 'Cancelled' }
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setFilter(tab.key)}
+                    className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 whitespace-nowrap ${
+                      filter === tab.key
+                        ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-300 dark:border-primary-600'
+                        : 'bg-white dark:bg-dark-hover text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-hover'
+                    }`}
+                  >
+                    {tab.label}
+                    {stats && tab.key !== 'all' && (
+                      <span className="ml-1 text-xs opacity-75">
+                        ({stats[tab.key] || 0})
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
+
+            {/* Mobile Sorting Dropdown - Only show in list view */}
+            {viewMode === 'list' && (
+              <div className="md:hidden">
+                <label htmlFor="sort-mobile" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Sort by
+                </label>
+                <select
+                  id="sort-mobile"
+                  value={sortField ? `${sortField}_${sortDirection}` : ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (!value) {
+                      setSortField(null);
+                      setSortDirection('asc');
+                    } else {
+                      const [field, direction] = value.split('_');
+                      setSortField(field);
+                      setSortDirection(direction || 'asc');
+                    }
+                  }}
+                  className="block w-full px-3 py-2 text-sm border border-gray-300 dark:border-dark-border dark:bg-dark-hover dark:text-gray-100 rounded-md focus:ring-primary-500 dark:focus:ring-primary-400 focus:border-primary-500 dark:focus:border-primary-400"
+                >
+                  <option value="">Default Order</option>
+                  <option value="date_asc">Date (Oldest First)</option>
+                  <option value="date_desc">Date (Newest First)</option>
+                  <option value="time_asc">Time (Early First)</option>
+                  <option value="time_desc">Time (Late First)</option>
+                  <option value="instructor_asc">Instructor (A-Z)</option>
+                  <option value="instructor_desc">Instructor (Z-A)</option>
+                  <option value="status_asc">Status (A-Z)</option>
+                  <option value="status_desc">Status (Z-A)</option>
+                </select>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Error display */}
@@ -536,14 +547,14 @@ const MyWorkChecks = () => {
             ) : (
               <>
                 {/* Desktop Table View */}
-                <div className="hidden md:block bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="hidden md:block bg-white dark:bg-dark-card border dark:border-dark-border rounded-lg overflow-hidden shadow-sm">
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                      <thead className="bg-gray-50 dark:bg-dark-hover">
+                      <thead className="bg-navy-50 dark:bg-dark-bg border-b border-gray-200 dark:border-dark-border">
                         <tr>
                           <th
                             scope="col"
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                            className="px-4 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-dark-card transition-colors"
                             onClick={() => handleSort('date')}
                           >
                             <div className="flex items-center gap-1">
@@ -553,7 +564,7 @@ const MyWorkChecks = () => {
                           </th>
                           <th
                             scope="col"
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                            className="px-4 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-dark-card transition-colors"
                             onClick={() => handleSort('time')}
                           >
                             <div className="flex items-center gap-1">
@@ -563,7 +574,7 @@ const MyWorkChecks = () => {
                           </th>
                           <th
                             scope="col"
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                            className="px-4 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-dark-card transition-colors"
                             onClick={() => handleSort('instructor')}
                           >
                             <div className="flex items-center gap-1">
@@ -573,7 +584,7 @@ const MyWorkChecks = () => {
                           </th>
                           <th
                             scope="col"
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                            className="px-4 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-dark-card transition-colors"
                             onClick={() => handleSort('group')}
                           >
                             <div className="flex items-center gap-1">
@@ -583,7 +594,7 @@ const MyWorkChecks = () => {
                           </th>
                           <th
                             scope="col"
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                            className="px-4 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-dark-card transition-colors"
                             onClick={() => handleSort('location')}
                           >
                             <div className="flex items-center gap-1">
@@ -593,7 +604,7 @@ const MyWorkChecks = () => {
                           </th>
                           <th
                             scope="col"
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                            className="px-4 py-3 text-left text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider cursor-pointer hover:bg-navy-100 dark:hover:bg-dark-card transition-colors"
                             onClick={() => handleSort('status')}
                           >
                             <div className="flex items-center gap-1">
@@ -601,7 +612,7 @@ const MyWorkChecks = () => {
                               {getSortIcon('status')}
                             </div>
                           </th>
-                          <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-navy-900 dark:text-gray-100 uppercase tracking-wider">
                             Actions
                           </th>
                         </tr>
@@ -642,19 +653,19 @@ const MyWorkChecks = () => {
                             <td className="px-4 py-4 whitespace-nowrap">
                               {getStatusBadge(booking.status)}
                             </td>
-                            <td className="px-4 py-4 whitespace-nowrap text-right">
+                            <td className="px-4 py-4 whitespace-nowrap text-center text-sm font-medium">
                               {canCancel(booking) && (
-                                <div className="flex items-center justify-end gap-2">
+                                <div className="flex gap-2 justify-center">
                                   <button
                                     onClick={() => handleReschedule(booking)}
                                     disabled={isCancelling && bookingToCancel?.id === booking.id}
-                                    className="px-3 py-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors disabled:opacity-50"
+                                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 px-3 py-1 rounded-md transition-colors disabled:opacity-50"
                                   >
                                     Reschedule
                                   </button>
                                   <button
                                     onClick={() => handleCancelClick(booking)}
-                                    className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                    className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 px-3 py-1 rounded-md transition-colors"
                                   >
                                     Cancel
                                   </button>
