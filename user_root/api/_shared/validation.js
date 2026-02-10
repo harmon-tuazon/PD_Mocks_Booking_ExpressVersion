@@ -217,6 +217,142 @@ const schemas = {
       })
   }),
 
+  // =====================================================
+  // WORK CHECK BOOKING SCHEMAS
+  // Uses session credentials pattern (student_id + email)
+  // =====================================================
+
+  // Schema for fetching user's work check groups
+  workCheckGroups: Joi.object({
+    student_id: Joi.string()
+      .uppercase()
+      .pattern(/^[A-Z0-9]+$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Student ID must contain only letters and numbers',
+        'any.required': 'Student ID is required'
+      }),
+    email: Joi.string()
+      .email()
+      .required()
+      .messages({
+        'string.email': 'Please enter a valid email address',
+        'any.required': 'Email is required'
+      })
+  }),
+
+  // Schema for fetching available work check slots
+  workCheckAvailable: Joi.object({
+    student_id: Joi.string()
+      .uppercase()
+      .pattern(/^[A-Z0-9]+$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Student ID must contain only letters and numbers',
+        'any.required': 'Student ID is required'
+      }),
+    email: Joi.string()
+      .email()
+      .required()
+      .messages({
+        'string.email': 'Please enter a valid email address',
+        'any.required': 'Email is required'
+      }),
+    group_id: Joi.string()
+      .max(50)
+      .optional(),
+    from_date: Joi.date()
+      .iso()
+      .optional(),
+    to_date: Joi.date()
+      .iso()
+      .min(Joi.ref('from_date'))
+      .optional()
+  }),
+
+  // Schema for creating work check booking
+  workCheckCreate: Joi.object({
+    student_id: Joi.string()
+      .uppercase()
+      .pattern(/^[A-Z0-9]+$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Student ID must contain only letters and numbers',
+        'any.required': 'Student ID is required'
+      }),
+    email: Joi.string()
+      .email()
+      .required()
+      .messages({
+        'string.email': 'Please enter a valid email address',
+        'any.required': 'Email is required'
+      }),
+    slot_id: Joi.string()
+      .uuid()
+      .required()
+      .messages({
+        'string.guid': 'Invalid slot ID format',
+        'any.required': 'Slot ID is required'
+      })
+  }),
+
+  // Schema for listing user's work check bookings
+  workCheckList: Joi.object({
+    student_id: Joi.string()
+      .uppercase()
+      .pattern(/^[A-Z0-9]+$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Student ID must contain only letters and numbers',
+        'any.required': 'Student ID is required'
+      }),
+    email: Joi.string()
+      .email()
+      .required()
+      .messages({
+        'string.email': 'Please enter a valid email address',
+        'any.required': 'Email is required'
+      }),
+    filter: Joi.string()
+      .valid('upcoming', 'pending', 'completed', 'cancelled', 'all')
+      .optional()
+      .default('all'),
+    page: Joi.number()
+      .integer()
+      .min(1)
+      .optional()
+      .default(1),
+    limit: Joi.number()
+      .integer()
+      .min(1)
+      .max(100)
+      .optional()
+      .default(20)
+  }),
+
+  // Schema for cancelling work check booking
+  workCheckCancel: Joi.object({
+    student_id: Joi.string()
+      .uppercase()
+      .pattern(/^[A-Z0-9]+$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Student ID must contain only letters and numbers',
+        'any.required': 'Student ID is required'
+      }),
+    email: Joi.string()
+      .email()
+      .required()
+      .messages({
+        'string.email': 'Please enter a valid email address',
+        'any.required': 'Email is required'
+      }),
+    reason: Joi.string()
+      .max(500)
+      .optional()
+      .allow('')
+  }),
+
   // Schema for updating NDECC exam date
   updateNdeccDate: Joi.object({
     student_id: Joi.string()

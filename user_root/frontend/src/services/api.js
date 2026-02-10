@@ -301,6 +301,70 @@ const apiService = {
       });
     },
   },
+
+  // Work Check Booking API
+  // Uses session data (studentId, email) from existing user login
+  workChecks: {
+    /**
+     * Get user's active groups (uses session credentials)
+     * Called on page load to populate group filter
+     */
+    getGroups: async (studentId, email) => {
+      return api.get('/work-checks/groups', {
+        params: { student_id: studentId, email }
+      });
+    },
+
+    /**
+     * Get available work check slots for user's groups
+     */
+    getAvailable: async (studentId, email, options = {}) => {
+      return api.get('/work-checks/available', {
+        params: {
+          student_id: studentId,
+          email,
+          ...(options.group_id && { group_id: options.group_id }),
+          ...(options.from_date && { from_date: options.from_date }),
+          ...(options.to_date && { to_date: options.to_date })
+        }
+      });
+    },
+
+    /**
+     * Create work check reservation
+     */
+    create: async (studentId, email, slotId) => {
+      return api.post('/work-checks/create', {
+        student_id: studentId,
+        email,
+        slot_id: slotId
+      });
+    },
+
+    /**
+     * List user's work check bookings
+     */
+    list: async (studentId, email, options = {}) => {
+      return api.get('/work-checks/list', {
+        params: {
+          student_id: studentId,
+          email,
+          ...(options.filter && { filter: options.filter }),
+          ...(options.page && { page: options.page }),
+          ...(options.limit && { limit: options.limit })
+        }
+      });
+    },
+
+    /**
+     * Cancel a reservation
+     */
+    cancel: async (bookingId, studentId, email, reason = '') => {
+      return api.delete(`/work-checks/${bookingId}`, {
+        data: { student_id: studentId, email, reason }
+      });
+    }
+  },
 };
 
 // Helper functions
