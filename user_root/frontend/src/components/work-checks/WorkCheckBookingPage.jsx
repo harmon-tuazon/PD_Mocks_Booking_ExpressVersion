@@ -20,10 +20,7 @@ const WorkCheckBookingPage = () => {
     groups,
     existingBookingDates,
     availableSlots,
-    selectedSlot,
     bookingResult,
-    selectSlot,
-    clearSelectedSlot,
     submitBooking,
     refreshSlots,
     reset,
@@ -151,8 +148,11 @@ const WorkCheckBookingPage = () => {
       alert('You already have a work check scheduled for this date.');
       return;
     }
-    selectSlot(slot);
-  };
+    // Navigate directly to confirm page
+    navigate('/book/work-check/confirm', {
+      state: { slot, userData }
+    });
+  };;
 
   const getDayClasses = (date) => {
     if (!date) return 'invisible';
@@ -425,54 +425,6 @@ const WorkCheckBookingPage = () => {
           </div>
         </div>
 
-        {/* Selected slot indicator */}
-        {selectedSlot && (
-          <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-green-800 dark:text-green-200">
-                    Selected Slot
-                  </h3>
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    {formatDateLong(selectedSlot.slot_date)} at {formatTimeRange(selectedSlot)}
-                  </p>
-                  <p className="text-sm text-green-600 dark:text-green-400">
-                    {selectedSlot.instructor_name} &bull; {selectedSlot.group_name || selectedSlot.group_id}
-                    {selectedSlot.location && ` &bull; ${selectedSlot.location}`}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={clearSelectedSlot}
-                className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="mt-4">
-              <button
-                onClick={() => navigate('/book/work-check/confirm', {
-                  state: { slot: selectedSlot, userData }
-                })}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl"
-              >
-                Continue to Booking
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Slots content */}
         {filteredSlots.length === 0 ? (
           <div className="text-center py-12">
@@ -560,14 +512,11 @@ const WorkCheckBookingPage = () => {
                   <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
                     {sortedSlots.map((slot) => {
                       const hasConflict = existingBookingDates.includes(slot.slot_date);
-                      const isSelected = selectedSlot?.slot_id === slot.slot_id;
                       return (
                         <tr
                           key={slot.slot_id}
                           className={`${
-                            isSelected
-                              ? 'bg-green-50 dark:bg-green-900/20'
-                              : hasConflict
+                            hasConflict
                               ? 'bg-amber-50 dark:bg-amber-900/10'
                               : slot.available_slots > 0
                               ? 'hover:bg-gray-50 dark:hover:bg-dark-hover'
@@ -630,14 +579,12 @@ const WorkCheckBookingPage = () => {
                               onClick={() => handleSlotSelect(slot)}
                               disabled={slot.available_slots === 0 || hasConflict}
                               className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                                isSelected
-                                  ? 'bg-green-600 text-white'
-                                  : slot.available_slots > 0 && !hasConflict
+                                slot.available_slots > 0 && !hasConflict
                                   ? 'bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600'
                                   : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                               }`}
                             >
-                              {isSelected ? 'Selected' : slot.available_slots === 0 ? 'Full' : hasConflict ? 'Conflict' : 'Select'}
+                              {slot.available_slots === 0 ? 'Full' : hasConflict ? 'Conflict' : 'Select'}
                             </button>
                           </td>
                         </tr>
@@ -652,14 +599,11 @@ const WorkCheckBookingPage = () => {
             <div className="md:hidden grid gap-4">
               {sortedSlots.map((slot) => {
                 const hasConflict = existingBookingDates.includes(slot.slot_date);
-                const isSelected = selectedSlot?.slot_id === slot.slot_id;
                 return (
                   <div
                     key={slot.slot_id}
                     className={`card-brand dark:bg-dark-card dark:border-dark-border ${
-                      isSelected
-                        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20'
-                        : hasConflict
+                      hasConflict
                         ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/10'
                         : slot.available_slots > 0
                         ? 'hover:shadow-lg hover:border-primary-300 dark:hover:border-dark-border'
@@ -725,14 +669,12 @@ const WorkCheckBookingPage = () => {
                         onClick={() => handleSlotSelect(slot)}
                         disabled={slot.available_slots === 0 || hasConflict}
                         className={`w-full py-2 px-4 text-sm font-medium rounded-lg transition-all ${
-                          isSelected
-                            ? 'bg-green-600 text-white'
-                            : slot.available_slots > 0 && !hasConflict
+                          slot.available_slots > 0 && !hasConflict
                             ? 'bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600'
                             : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                         }`}
                       >
-                        {isSelected ? 'Selected' : slot.available_slots === 0 ? 'Slot Full' : hasConflict ? 'Date Conflict' : 'Select Slot'}
+                        {slot.available_slots === 0 ? 'Slot Full' : hasConflict ? 'Date Conflict' : 'Select Slot'}
                       </button>
                     </div>
                   </div>
@@ -830,10 +772,6 @@ const WorkCheckBookingPage = () => {
                       <div className="w-4 h-4 bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-300 dark:border-amber-700 rounded"></div>
                       <span className="text-gray-700 dark:text-gray-300">Has conflict</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-primary-600 rounded"></div>
-                      <span className="text-gray-700 dark:text-gray-300">Selected</span>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -855,15 +793,12 @@ const WorkCheckBookingPage = () => {
                         .sort((a, b) => a.slot_time.localeCompare(b.slot_time))
                         .map((slot) => {
                           const hasConflict = existingBookingDates.includes(slot.slot_date);
-                          const isSelected = selectedSlot?.slot_id === slot.slot_id;
                           return (
                             <div
                               key={slot.slot_id}
                               onClick={() => !hasConflict && handleSlotSelect(slot)}
                               className={`p-3 border-2 rounded-lg transition-all duration-200 ${
-                                isSelected
-                                  ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20'
-                                  : hasConflict
+                                hasConflict
                                   ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/10 cursor-not-allowed'
                                   : 'border-cool-grey dark:border-dark-border hover:shadow-md cursor-pointer hover:border-primary-300 dark:hover:border-primary-600 bg-white dark:bg-dark-card'
                               }`}

@@ -803,7 +803,7 @@ const MyBookings = () => {
                 My Bookings
               </h1>
               <p className="font-body text-base sm:text-lg text-primary-700 dark:text-gray-300">
-                Welcome back, {userSession?.studentName || 'Student'}
+                View and manage your bookings
               </p>
             </div>
           </div>

@@ -58,7 +58,8 @@ const MyWorkChecks = () => {
 
     setUserData({
       studentId: session.studentId,
-      email: session.email
+      email: session.email,
+      studentName: session.studentName || 'Student'
     });
 
     fetchBookings(session.studentId, session.email, filter, 1);
@@ -352,32 +353,6 @@ const MyWorkChecks = () => {
           </div>
         </div>
 
-        {/* Stats cards */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-            <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.total || 0}</p>
-            </div>
-            <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Upcoming</p>
-              <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">{stats.upcoming || 0}</p>
-            </div>
-            <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Pending</p>
-              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.pending || 0}</p>
-            </div>
-            <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Completed</p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.completed || 0}</p>
-            </div>
-            <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700 col-span-2 md:col-span-1">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Cancelled</p>
-              <p className="text-2xl font-bold text-gray-500 dark:text-gray-400">{stats.cancelled || 0}</p>
-            </div>
-          </div>
-        )}
-
         {/* Controls Section */}
         <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border p-4 mb-6">
           <div className="flex flex-col space-y-4">
@@ -477,6 +452,10 @@ const MyWorkChecks = () => {
                   <option value="time_desc">Time (Late First)</option>
                   <option value="instructor_asc">Instructor (A-Z)</option>
                   <option value="instructor_desc">Instructor (Z-A)</option>
+                  <option value="group_asc">Group (A-Z)</option>
+                  <option value="group_desc">Group (Z-A)</option>
+                  <option value="location_asc">Location (A-Z)</option>
+                  <option value="location_desc">Location (Z-A)</option>
                   <option value="status_asc">Status (A-Z)</option>
                   <option value="status_desc">Status (Z-A)</option>
                 </select>
@@ -518,30 +497,30 @@ const MyWorkChecks = () => {
           /* List View */
           <>
             {sortedBookings.length === 0 ? (
-              <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm p-8 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-dark-hover rounded-full mb-4">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              <div className="text-center py-12">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
                   No {filter === 'all' ? '' : filter} work checks
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   {filter === 'upcoming' || filter === 'all'
                     ? "You don't have any upcoming work checks scheduled."
                     : `No ${filter} work checks found.`}
                 </p>
                 {(filter === 'upcoming' || filter === 'all') && (
-                  <button
-                    onClick={() => navigate('/book/work-check')}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Book a Work Check
-                  </button>
+                  <div className="mt-6">
+                    <button
+                      onClick={() => navigate('/book/work-check')}
+                      className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                    >
+                      <svg className="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Book a Work Check
+                    </button>
+                  </div>
                 )}
               </div>
             ) : (
@@ -787,19 +766,6 @@ const MyWorkChecks = () => {
             )}
           </>
         )}
-
-        {/* Book another CTA */}
-        <div className="mt-8 text-center">
-          <button
-            onClick={() => navigate('/book/work-check')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Book a Work Check
-          </button>
-        </div>
       </div>
 
       {/* Cancel Modal */}
