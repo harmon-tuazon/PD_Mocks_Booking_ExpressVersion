@@ -122,7 +122,7 @@ const QuickActionButtons = () => {
             style={{ animationDelay: `${index * 50}ms` }}
             onClick={() => navigate(action.href)}
           >
-            <div className="text-center">
+            <div className="text-center h-full flex flex-col">
               {/* Icon */}
               <div className="w-8 h-8 md:w-10 md:h-10 mx-auto mb-2 md:mb-3 flex items-center justify-center">
                 {action.IconComponent ? (
@@ -140,12 +140,12 @@ const QuickActionButtons = () => {
               </div>
 
               {/* Title */}
-              <h3 className="font-subheading text-sm md:text-base font-semibold text-primary-900 dark:text-gray-100 mb-2">
+              <h3 className="font-subheading text-xs md:text-base font-semibold text-primary-900 dark:text-gray-100 mb-2 flex-grow">
                 {action.fullLabel}
               </h3>
 
               {/* Button */}
-              <button className="btn-primary w-full text-[9px] md:text-[10px] py-1 md:py-1.5 dark:bg-primary-600 dark:hover:bg-primary-700">
+              <button className="btn-primary px-3 md:px-4 text-[9px] md:text-[10px] py-1 md:py-1.5 dark:bg-primary-600 dark:hover:bg-primary-700 mt-auto">
                 Book Now
                 <svg className="w-2.5 h-2.5 md:w-3 md:h-3 ml-0.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

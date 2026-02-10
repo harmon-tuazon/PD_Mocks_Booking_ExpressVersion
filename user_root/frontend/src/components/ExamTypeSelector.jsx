@@ -70,7 +70,7 @@ const ExamTypeSelector = () => {
       <div className="container-brand py-4 md:py-8 lg:py-12">
         {/* Header - Left aligned */}
         <div className="mb-6 md:mb-12 animate-fade-in">
-          <h1 className="font-headline text-xl md:text-2xl font-bold text-primary-900 dark:text-gray-100 mb-1 md:mb-2">
+          <h1 className="font-headline text-2xl md:text-3xl font-bold text-primary-900 dark:text-gray-100 mb-1 md:mb-2">
             Book Your Mock Exam
           </h1>
           <p className="font-body text-xs md:text-sm text-primary-700 dark:text-gray-300">
