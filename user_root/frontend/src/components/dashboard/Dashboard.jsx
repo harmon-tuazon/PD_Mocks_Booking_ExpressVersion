@@ -40,10 +40,10 @@ const Dashboard = () => {
       <div className="max-w-6xl mx-auto px-4 py-4 md:py-8">
         {/* Compact Header - Mobile first */}
         <div className="mb-4 md:mb-6">
-          <h1 className="text-xl md:text-2xl font-headline font-bold text-gray-900 dark:text-gray-100">
+          <h1 className="font-headline text-xl md:text-2xl font-bold text-primary-900 dark:text-gray-100">
             Welcome back, {data.user.firstname}!
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 font-body">
+          <p className="font-body text-sm text-primary-700 dark:text-gray-400 mt-1">
             Here's what's happening this week.
           </p>
         </div>
