@@ -6,63 +6,41 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const QuickActionButtons = ({ tokens = {}, groupCount = 0 }) => {
+const QuickActionButtons = () => {
   const navigate = useNavigate();
 
   const quickActions = [
     {
       id: 'sj',
-      label: 'SJ',
       fullLabel: 'Situational Judgment',
-      description: 'Test your situational decision-making skills.',
       icon: '/assets/SJ-icon.svg',
-      href: '/book/exams?type=Situational%20Judgment',
-      duration: '2 hours 30 mins'
+      href: '/book/exams?type=Situational%20Judgment'
     },
     {
       id: 'cs',
-      label: 'CS',
       fullLabel: 'Clinical Skills',
-      description: 'Demonstrate your practical clinical abilities.',
       icon: '/assets/CS-icon.svg',
-      href: '/book/exams?type=Clinical%20Skills',
-      duration: '8 hours 30 mins'
+      href: '/book/exams?type=Clinical%20Skills'
     },
     {
       id: 'mini',
-      label: 'Mini',
       fullLabel: 'Mini-mock',
-      description: 'Quick practice to prepare for full exams.',
       icon: '/assets/minimock-icon.svg',
-      href: '/book/exams?type=Mini-mock',
-      duration: '1 hour 30 mins'
+      href: '/book/exams?type=Mini-mock'
     },
     {
       id: 'discussion',
-      label: 'Discussion',
       fullLabel: 'Mock Discussion',
-      description: 'Interactive discussion session with feedback.',
       icon: '/assets/discussion-icon.svg',
-      href: '/book/discussions',
-      duration: '1 hour'
+      href: '/book/discussions'
     },
     {
       id: 'workcheck',
-      label: 'Work Check',
       fullLabel: 'Work Check',
-      description: 'Schedule a work check session.',
       icon: '/assets/workcheck-icon.svg',
-      href: '/book/work-check',
-      showGroupCount: true
+      href: '/book/work-check'
     }
   ];
-
-  const getTokenValue = (action) => {
-    if (action.showGroupCount) {
-      return `${groupCount} group${groupCount !== 1 ? 's' : ''}`;
-    }
-    return null;
-  };
 
   return (
     <div className="mb-6">
@@ -99,23 +77,9 @@ const QuickActionButtons = ({ tokens = {}, groupCount = 0 }) => {
               </div>
 
               {/* Title */}
-              <h3 className="font-subheading text-sm md:text-base font-semibold text-primary-900 dark:text-gray-100 mb-1">
+              <h3 className="font-subheading text-sm md:text-base font-semibold text-primary-900 dark:text-gray-100 mb-2">
                 {action.fullLabel}
               </h3>
-
-              {/* Duration or Group count */}
-              <div className="font-body text-[10px] md:text-xs text-primary-600 dark:text-gray-500 mb-2">
-                {action.duration ? (
-                  <div className="flex items-center justify-center">
-                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                    </svg>
-                    <span>{action.duration}</span>
-                  </div>
-                ) : (
-                  <span>{getTokenValue(action)}</span>
-                )}
-              </div>
 
               {/* Button */}
               <button className="btn-primary w-full text-[10px] md:text-xs py-1.5 md:py-2 dark:bg-primary-600 dark:hover:bg-primary-700">
