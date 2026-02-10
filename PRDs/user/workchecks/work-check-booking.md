@@ -253,7 +253,7 @@ VALUES
 
 
 
-Can you update the PRDs to be aligned with this auth permissions. Look into: PRDs\admin\work-check\group-management.md, PRDs\admin\work-check\instructor-management.md, PRDs\admin\work-check\group-management.mdentication Pattern
+Can you update the PRDs to be aligned with this auth permissions. Look into: PRDs\admin\work-check\group-management.md, PRDs\admin\work-check\instructor-management.md, PRDs\admin\work-check\group-management.mdpushentication Pattern
 
 **IMPORTANT**: All work check endpoints use the **existing user_root session authentication** pattern.
 Users authenticate once via `/api/user/login` (Student ID + Email) and subsequent requests use the cached session.
