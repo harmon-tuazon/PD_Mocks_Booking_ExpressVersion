@@ -113,12 +113,12 @@ const QuickActionButtons = () => {
         </p>
       </div>
 
-      {/* Cards Grid - responsive layout */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+      {/* Cards - horizontal scroll on mobile, grid on desktop */}
+      <div className="flex overflow-x-auto gap-3 pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 md:grid md:grid-cols-3 lg:grid-cols-5 md:gap-4 scrollbar-hide">
         {quickActions.map((action, index) => (
           <div
             key={action.id}
-            className="card-hover dark:bg-dark-card dark:border-dark-border dark:hover:border-dark-border animate-slide-up p-3 md:p-4 cursor-pointer"
+            className="card-hover dark:bg-dark-card dark:border-dark-border dark:hover:border-dark-border animate-slide-up p-3 md:p-4 cursor-pointer flex-shrink-0 w-32 md:w-auto"
             style={{ animationDelay: `${index * 50}ms` }}
             onClick={() => navigate(action.href)}
           >
