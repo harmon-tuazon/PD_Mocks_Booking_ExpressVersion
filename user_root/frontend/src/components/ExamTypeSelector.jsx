@@ -149,7 +149,7 @@ const ExamTypeSelector = () => {
               {credits && (
                 <div className="bg-white dark:bg-dark-card border dark:border-dark-border rounded-lg overflow-hidden shadow-sm">
                   <div className="px-3 py-2 border-b dark:border-dark-border">
-                    <h3 className="font-subheading text-sm font-medium text-primary-900 dark:text-gray-100">Available Tokens</h3>
+                    <h3 className="font-subheading text-sm font-semibold text-primary-900 dark:text-gray-100">Available Tokens</h3>
                     <p className="font-body text-xs text-primary-600 dark:text-gray-400 mt-0.5">Your current token balance</p>
                   </div>
 
