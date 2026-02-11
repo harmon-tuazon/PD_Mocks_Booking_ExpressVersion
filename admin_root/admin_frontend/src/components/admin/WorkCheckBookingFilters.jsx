@@ -1,10 +1,10 @@
 /**
  * WorkCheckBookingFilters Component
  * Filter controls for work check bookings list
+ * Compact horizontal layout matching Mocks Dashboard FilterBar
  */
 
 import { useState, useEffect } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
   Select,
@@ -68,22 +68,48 @@ const WorkCheckBookingFilters = ({
     fetchInstructors();
   }, []);
 
-  const hasActiveFilters = instructorFilter || locationFilter || dateFrom || dateTo ||
-    (statusFilter && statusFilter !== 'all') || (typeFilter && typeFilter !== 'all');
+  // Count active filters for badge
+  const activeFilterCount = [
+    locationFilter,
+    instructorFilter,
+    dateFrom,
+    dateTo,
+    statusFilter && statusFilter !== 'all' ? statusFilter : null,
+    typeFilter && typeFilter !== 'all' ? typeFilter : null
+  ].filter(Boolean).length;
 
   return (
-    <div className="bg-white dark:bg-dark-card shadow dark:shadow-gray-900/50 rounded-lg p-4 mb-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+    <div className="bg-white dark:bg-dark-card shadow-lg rounded-lg p-4 mb-6">
+      {/* Compact horizontal layout - filters in a row with Reset at end */}
+      <div className="flex items-center gap-3 flex-wrap lg:flex-nowrap">
+
+        {/* Date From */}
+        <div className="min-w-[140px]">
+          <DatePicker
+            value={dateFrom}
+            onChange={(value) => onFilterChange('dateFrom', value)}
+            placeholder="From Date"
+            className="w-full"
+          />
+        </div>
+
+        {/* Date To */}
+        <div className="min-w-[140px]">
+          <DatePicker
+            value={dateTo}
+            onChange={(value) => onFilterChange('dateTo', value)}
+            placeholder="To Date"
+            className="w-full"
+          />
+        </div>
+
         {/* Location Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Location
-          </label>
+        <div className="min-w-[140px]">
           <Select
             value={locationFilter || 'all'}
             onValueChange={(value) => onFilterChange('location', value === 'all' ? '' : value)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger title="Location">
               <SelectValue placeholder="All Locations" />
             </SelectTrigger>
             <SelectContent>
@@ -97,16 +123,13 @@ const WorkCheckBookingFilters = ({
         </div>
 
         {/* Instructor Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Instructor
-          </label>
+        <div className="min-w-[160px]">
           <Select
             value={instructorFilter || 'all'}
             onValueChange={(value) => onFilterChange('instructor', value === 'all' ? '' : value)}
             disabled={loadingInstructors}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger title="Instructor">
               <SelectValue placeholder={loadingInstructors ? 'Loading...' : 'All Instructors'} />
             </SelectTrigger>
             <SelectContent>
@@ -121,15 +144,12 @@ const WorkCheckBookingFilters = ({
         </div>
 
         {/* Status Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Status
-          </label>
+        <div className="min-w-[120px]">
           <Select
             value={statusFilter || 'all'}
             onValueChange={(value) => onFilterChange('status', value)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger title="Status">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
@@ -143,15 +163,12 @@ const WorkCheckBookingFilters = ({
         </div>
 
         {/* Type Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Type
-          </label>
+        <div className="min-w-[140px]">
           <Select
             value={typeFilter || 'all'}
             onValueChange={(value) => onFilterChange('type', value)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger title="Type">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
@@ -164,45 +181,24 @@ const WorkCheckBookingFilters = ({
           </Select>
         </div>
 
-        {/* Date From */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Date From
-          </label>
-          <DatePicker
-            value={dateFrom}
-            onChange={(value) => onFilterChange('dateFrom', value)}
-            placeholder="Select start date"
-            className="w-full"
-          />
-        </div>
-
-        {/* Date To */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Date To
-          </label>
-          <DatePicker
-            value={dateTo}
-            onChange={(value) => onFilterChange('dateTo', value)}
-            placeholder="Select end date"
-            className="w-full"
-          />
-        </div>
+        {/* Reset Button with Badge */}
+        <button
+          onClick={onClearFilters}
+          className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300
+                   bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200
+                   dark:hover:bg-gray-700 rounded-lg flex items-center
+                   transition-colors duration-200"
+          title="Reset all filters"
+        >
+          Reset
+          {activeFilterCount > 0 && (
+            <span className="ml-1.5 px-1.5 py-0.5 bg-blue-500 text-white text-xs
+                           rounded-full min-w-[20px] text-center">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
       </div>
-
-      {/* Clear Filters Button */}
-      {hasActiveFilters && (
-        <div className="mt-4 flex justify-end">
-          <button
-            onClick={onClearFilters}
-            className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-          >
-            <XMarkIcon className="h-4 w-4 mr-1" />
-            Clear Filters
-          </button>
-        </div>
-      )}
     </div>
   );
 };

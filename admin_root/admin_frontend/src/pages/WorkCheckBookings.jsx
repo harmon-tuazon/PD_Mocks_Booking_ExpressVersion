@@ -23,7 +23,7 @@ import CloneWorkCheckBookingsModal from '../components/admin/CloneWorkCheckBooki
 const StatCard = ({ name, value, icon: Icon, bgColor, textColor, isLoading }) => {
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-dark-card overflow-hidden shadow dark:shadow-gray-900/50 rounded-lg animate-pulse">
+      <div className="bg-white dark:bg-dark-card overflow-hidden shadow-lg dark:shadow-gray-900/50 rounded-lg animate-pulse">
         <div className="p-5">
           <div className="flex items-center">
             <div className="flex-shrink-0 bg-gray-200 dark:bg-gray-700 rounded-md p-3 w-12 h-12"></div>
@@ -38,7 +38,7 @@ const StatCard = ({ name, value, icon: Icon, bgColor, textColor, isLoading }) =>
   }
 
   return (
-    <div className="bg-white dark:bg-dark-card overflow-hidden shadow dark:shadow-gray-900/50 rounded-lg">
+    <div className="bg-white dark:bg-dark-card overflow-hidden shadow-lg dark:shadow-gray-900/50 rounded-lg">
       <div className="p-5">
         <div className="flex items-center">
           <div className={`flex-shrink-0 ${bgColor} dark:bg-opacity-20 rounded-md p-3`}>
@@ -50,7 +50,7 @@ const StatCard = ({ name, value, icon: Icon, bgColor, textColor, isLoading }) =>
                 {name}
               </dt>
               <dd>
-                <div className={`text-2xl font-semibold ${textColor} dark:text-gray-100`}>
+                <div className={`text-2xl font-semibold ${textColor}`}>
                   {value}
                 </div>
               </dd>
@@ -299,9 +299,9 @@ function WorkCheckBookings() {
           </div>
           <button
             onClick={handleOpenCreateModal}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
           >
-            <Plus className="h-5 w-5 mr-2" />
+            <Plus className="-ml-1 mr-2 h-5 w-5" />
             Create Booking
           </button>
         </div>
