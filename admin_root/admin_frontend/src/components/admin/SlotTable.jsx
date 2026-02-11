@@ -223,8 +223,13 @@ const SlotTable = ({
   onEdit,
   isSelectionMode = false,
   onToggleSelection,
-  isSelected
+  isSelected,
+  selectedCount = 0,
+  onSelectAll
 }) => {
+  // Check if all items on current page are selected
+  const allSelected = data.length > 0 && data.every(slot => isSelected?.(slot.id));
+  const someSelected = selectedCount > 0;
   return (
     <div className="bg-white dark:bg-dark-card shadow dark:shadow-gray-900/50 overflow-hidden sm:rounded-lg">
       <div className="overflow-x-auto">
@@ -233,8 +238,16 @@ const SlotTable = ({
             <tr>
               {/* Selection checkbox column - only visible in selection mode */}
               {isSelectionMode && (
-                <th className="w-12 px-3 py-3">
-                  {/* Checkbox column header - intentionally empty */}
+                <th className="w-12 px-3 py-3 text-center">
+                  {someSelected && (
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={() => onSelectAll?.(!allSelected)}
+                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      title={allSelected ? "Deselect all" : "Select all"}
+                    />
+                  )}
                 </th>
               )}
               <TableHeader label="Date" column="slot_date" sortable currentSort={currentSort} onSort={onSort} />

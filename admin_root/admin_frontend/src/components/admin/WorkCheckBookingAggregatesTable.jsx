@@ -341,17 +341,19 @@ const AggregateRowWithBookings = ({
               <td colSpan="6" className="px-6 py-3">
                 <div className="grid grid-cols-12 gap-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">
                   <div className="col-span-1 flex items-center justify-center">
-                    <input
-                      type="checkbox"
-                      checked={visibleAllSelected}
-                      ref={(el) => el && (el.indeterminate = visibleSomeSelected && !visibleAllSelected)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        const visibleIds = visibleBookings.map(b => b.id);
-                        onSelectAllInAggregate(visibleIds, !visibleAllSelected);
-                      }}
-                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                    />
+                    {visibleSomeSelected && (
+                      <input
+                        type="checkbox"
+                        checked={visibleAllSelected}
+                        ref={(el) => el && (el.indeterminate = visibleSomeSelected && !visibleAllSelected)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          const visibleIds = visibleBookings.map(b => b.id);
+                          onSelectAllInAggregate(visibleIds, !visibleAllSelected);
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                    )}
                   </div>
                   <div className="col-span-2">Name</div>
                   <div className="col-span-2">Student ID</div>

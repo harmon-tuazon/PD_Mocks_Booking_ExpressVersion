@@ -411,6 +411,8 @@ function WorkCheckSlots() {
           isSelectionMode={bulkSelection.isSelectionMode}
           onToggleSelection={bulkSelection.toggleSelection}
           isSelected={bulkSelection.isSelected}
+          selectedCount={bulkSelection.selectedCount}
+          onSelectAll={(selectAll) => selectAll ? bulkSelection.selectAll() : bulkSelection.clearAll()}
         />
 
         {/* Create/Edit Modal */}
