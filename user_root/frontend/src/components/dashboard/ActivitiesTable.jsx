@@ -4,10 +4,8 @@
  * Mobile-first design with date grouping and status badges
  */
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 
 const ActivitiesTable = ({ activities = [] }) => {
-  const navigate = useNavigate();
 
   // Helper function to check if a date is today
   const isToday = (dateString) => {
@@ -40,7 +38,7 @@ const ActivitiesTable = ({ activities = [] }) => {
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${dayNames[date.getDay()]} - ${monthNames[date.getMonth()]} ${date.getDate()}`;
+    return `${dayNames[date.getDay()]} - ${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
   };
 
   // Helper function to format time
@@ -122,17 +120,9 @@ const ActivitiesTable = ({ activities = [] }) => {
     <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b dark:border-dark-border">
-        <div className="flex items-center justify-between">
-          <h3 className="font-subheading text-sm font-semibold text-primary-900 dark:text-gray-100">
-            Upcoming
-          </h3>
-          <button
-            onClick={() => navigate('/my-bookings')}
-            className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:underline transition-colors"
-          >
-            View All →
-          </button>
-        </div>
+        <h3 className="font-subheading text-sm font-semibold text-primary-900 dark:text-gray-100">
+          Upcoming Activities
+        </h3>
       </div>
 
       {/* Content */}
