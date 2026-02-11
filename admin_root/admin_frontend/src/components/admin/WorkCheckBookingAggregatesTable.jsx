@@ -175,7 +175,7 @@ const WorkCheckBookingAggregatesTable = ({
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
-            <th scope="col" className="w-8 px-2 py-4"></th>
+            <th scope="col" className="w-10 px-4 py-4"></th>
             <th scope="col" className="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Date
             </th>
@@ -263,7 +263,7 @@ const AggregateRowWithBookings = ({
         className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
         onClick={onToggleExpand}
       >
-        <td className="px-2 py-4">
+        <td className="px-4 py-4">
           {isExpanded ? (
             <ChevronDownIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           ) : (
@@ -337,7 +337,7 @@ const AggregateRowWithBookings = ({
           <>
             {/* Header row for nested bookings */}
             <tr className="bg-gray-100 dark:bg-gray-800/50">
-              <td className="px-2 py-3"></td>
+              <td className="px-4 py-3"></td>
               <td colSpan="6" className="px-6 py-3">
                 <div className="grid grid-cols-12 gap-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">
                   <div className="col-span-1 flex items-center justify-center">
@@ -376,7 +376,7 @@ const AggregateRowWithBookings = ({
                   }`}
                   onClick={() => onToggleSelection(booking.id)}
                 >
-                  <td className="px-2 py-3"></td>
+                  <td className="px-4 py-3"></td>
                   <td colSpan="6" className="px-6 py-3">
                     <div className="grid grid-cols-12 gap-3 items-center text-sm text-center">
                       <div className="col-span-1 flex justify-center">
