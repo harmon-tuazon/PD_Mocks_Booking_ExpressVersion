@@ -45,7 +45,19 @@ const ActivitiesTable = ({ activities = [] }) => {
   const formatTime = (timeString) => {
     if (!timeString) return '';
     try {
+      // Check if it's a time-only string (e.g., "06:00" or "06:00:00")
+      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(timeString)) {
+        const [hours, minutes] = timeString.split(':').map(Number);
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
+      }
+
+      // Otherwise, try parsing as a full date string
       const date = new Date(timeString);
+      if (isNaN(date.getTime())) {
+        return timeString; // Return original if invalid
+      }
       return date.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
