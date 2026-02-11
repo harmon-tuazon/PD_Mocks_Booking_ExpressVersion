@@ -139,11 +139,12 @@ module.exports = async (req, res) => {
     }
 
     // Check for existing booking (prevent duplicates)
+    // Note: work_check_bookings.student_id is the string ID, not UUID
     const { data: existingBooking, error: existingError } = await supabaseAdmin
       .from('work_check_bookings')
       .select('id')
       .eq('slot_id', slot_id)
-      .eq('student_id', student_id)
+      .eq('student_id', student.student_id)
       .maybeSingle();
 
     if (existingError) {
@@ -168,9 +169,10 @@ module.exports = async (req, res) => {
     console.log(`[Work Check Booking Create] Slot auto_approve: ${slot.auto_approve}, setting status: ${bookingStatus}`);
 
     // Create the booking
+    // Note: work_check_bookings.student_id references hubspot_contact_credits.student_id (string), not id (UUID)
     const bookingData = {
       slot_id,
-      student_id,
+      student_id: student.student_id,
       status: bookingStatus,
       type,
       created_at: new Date().toISOString(),

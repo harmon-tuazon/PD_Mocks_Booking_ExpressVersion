@@ -136,7 +136,7 @@ module.exports = async (req, res) => {
     // 7. MULTI-TIER DUPLICATE CHECK (one booking per date per student)
     // TIER 1: Redis cache check (fast path)
     if (redis) {
-      const cacheKey = `wc_booking:${contact.id}:${slot.slot_date}`;
+      const cacheKey = `wc_booking:${contact.student_id}:${slot.slot_date}`;
       const cachedBooking = await redis.get(cacheKey);
 
       if (cachedBooking) {
@@ -159,7 +159,7 @@ module.exports = async (req, res) => {
         id,
         work_check_slots!inner (slot_date)
       `)
-      .eq('student_id', contact.id)
+      .eq('student_id', contact.student_id)
       .eq('work_check_slots.slot_date', slot.slot_date)
       .in('status', ['pending', 'confirmed'])
       .maybeSingle();
@@ -167,7 +167,7 @@ module.exports = async (req, res) => {
     if (existingBooking) {
       // Cache for fast path next time
       if (redis) {
-        const cacheKey = `wc_booking:${contact.id}:${slot.slot_date}`;
+        const cacheKey = `wc_booking:${contact.student_id}:${slot.slot_date}`;
         await redis.setex(cacheKey, 86400, existingBooking.id); // 24-hour TTL
         await redis.releaseLock(slot_id, lockToken);
       }
@@ -187,7 +187,7 @@ module.exports = async (req, res) => {
     // 9. Create booking
     const bookingData = {
       slot_id: slot.id,
-      student_id: contact.id,
+      student_id: contact.student_id,
       type: work_check_type,  // Column is named 'type' in work_check_bookings table
       status: autoApprove ? 'confirmed' : 'pending',
       ...(autoApprove && { confirmed_at: new Date().toISOString() })
@@ -207,7 +207,7 @@ module.exports = async (req, res) => {
 
     // 10. Cache the new booking in Redis for fast duplicate prevention
     if (redis) {
-      const bookingCacheKey = `wc_booking:${contact.id}:${slot.slot_date}`;
+      const bookingCacheKey = `wc_booking:${contact.student_id}:${slot.slot_date}`;
       await redis.setex(bookingCacheKey, 86400, booking.id); // 24-hour TTL
       console.log(`📦 [WORK-CHECK] Cached booking in Redis: ${bookingCacheKey}`);
     }
