@@ -270,36 +270,36 @@ const AggregateRowWithBookings = ({
             <ChevronRightIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           )}
         </td>
-        <td className="px-6 py-4">
-          <div className="flex items-center gap-2">
+        <td className="px-6 py-4 text-center">
+          <div className="flex items-center justify-center gap-2">
             <CalendarIcon />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {formatDate(aggregate.slot_date)}
             </span>
           </div>
         </td>
-        <td className="px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+        <td className="px-6 py-4 text-center text-sm font-medium text-gray-700 dark:text-gray-300">
           {formatTime(aggregate.slot_time)}
         </td>
-        <td className="px-6 py-4">
-          <div className="flex items-center gap-2">
+        <td className="px-6 py-4 text-center">
+          <div className="flex items-center justify-center gap-2">
             <LocationIcon />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {aggregate.location || '-'}
             </span>
           </div>
         </td>
-        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+        <td className="px-6 py-4 text-center text-sm text-gray-600 dark:text-gray-300">
           <span className="group relative cursor-help">
             {aggregate.instructor_names?.length || 0} instructor{(aggregate.instructor_names?.length || 0) !== 1 ? 's' : ''}
             {aggregate.instructor_names?.length > 0 && (
-              <span className="hidden group-hover:block absolute left-0 top-full mt-1 z-10 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-md py-1 px-2 whitespace-nowrap">
+              <span className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 top-full mt-1 z-10 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-md py-1 px-2 whitespace-nowrap">
                 {aggregate.instructor_names.join(', ')}
               </span>
             )}
           </span>
         </td>
-        <td className="px-6 py-4">
+        <td className="px-6 py-4 text-center">
           <span className="inline-flex items-center justify-center min-w-[90px] px-2.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
             {aggregate.total_bookings} booking{aggregate.total_bookings !== 1 ? 's' : ''}
           </span>
@@ -309,11 +309,11 @@ const AggregateRowWithBookings = ({
             </span>
           )}
         </td>
-        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+        <td className="px-6 py-4 text-center text-sm text-gray-600 dark:text-gray-300">
           <span className="group relative cursor-help">
             {aggregate.groups?.length || 0} group{(aggregate.groups?.length || 0) !== 1 ? 's' : ''}
             {aggregate.groups?.length > 0 && (
-              <span className="hidden group-hover:block absolute left-0 top-full mt-1 z-10 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-md py-1 px-2 whitespace-nowrap max-w-xs">
+              <span className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 top-full mt-1 z-10 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-md py-1 px-2 whitespace-nowrap max-w-xs">
                 {aggregate.groups.slice(0, 5).join(', ')}{aggregate.groups.length > 5 ? '...' : ''}
               </span>
             )}
