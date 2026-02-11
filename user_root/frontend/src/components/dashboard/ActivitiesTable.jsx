@@ -1,6 +1,6 @@
 /**
  * ActivitiesTable.jsx
- * Compact table/list view of this week's activities
+ * Compact table/list view of upcoming activities (from today, max 15 items)
  * Mobile-first design with date grouping and status badges
  */
 import React from 'react';
@@ -124,7 +124,7 @@ const ActivitiesTable = ({ activities = [] }) => {
       <div className="px-4 py-3 border-b dark:border-dark-border">
         <div className="flex items-center justify-between">
           <h3 className="font-subheading text-sm font-semibold text-primary-900 dark:text-gray-100">
-            This Week
+            Upcoming
           </h3>
           <button
             onClick={() => navigate('/my-bookings')}
@@ -214,7 +214,7 @@ const EmptyState = () => (
       </svg>
     </div>
     <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-      No activities this week
+      No upcoming activities
     </p>
     <p className="text-xs text-gray-500 dark:text-gray-400">
       Book a mock exam or work check to get started

@@ -58,7 +58,7 @@ const Dashboard = () => {
         <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-6">
           {/* Activities Table (First on mobile) */}
           <ActivitiesTable
-            activities={data.activities?.this_week || []}
+            activities={data.activities?.upcoming || []}
           />
 
           {/* Tokens Table (Second on mobile) */}

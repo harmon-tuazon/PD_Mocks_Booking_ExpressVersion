@@ -45,35 +45,26 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 2. Calculate week range (Monday to Sunday)
+    // 2. Calculate date range (today onwards, max 15 items)
     const now = new Date();
-    const dayOfWeek = now.getDay();
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-    monday.setHours(0, 0, 0, 0);
-
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-
-    const weekStart = monday.toISOString().split('T')[0];
-    const weekEnd = sunday.toISOString().split('T')[0];
     const today = now.toISOString().split('T')[0];
+    const maxUpcomingItems = 15;
 
-    console.log(`[Dashboard] Week range: ${weekStart} to ${weekEnd}`);
+    console.log(`[Dashboard] Fetching upcoming activities from: ${today}`);
 
-    // 3. Fetch this week's activities in parallel
+    // 3. Fetch upcoming activities in parallel (from today onwards)
     const [mockBookingsResult, workCheckBookingsResult, groupsResult] = await Promise.all([
-      // Mock exam bookings for this week
+      // Upcoming mock exam bookings
       supabaseAdmin
         .from('hubspot_bookings')
         .select('id, exam_date, start_time, end_time, mock_type, attending_location, is_active')
         .eq('student_id', contact.student_id)
-        .gte('exam_date', weekStart)
-        .lte('exam_date', weekEnd)
-        .in('is_active', ['Active', 'Completed']),
+        .gte('exam_date', today)
+        .in('is_active', ['Active', 'Completed'])
+        .order('exam_date', { ascending: true })
+        .limit(maxUpcomingItems),
 
-      // Work check bookings for this week
+      // Upcoming work check bookings
       supabaseAdmin
         .from('work_check_bookings')
         .select(`
@@ -85,9 +76,10 @@ module.exports = async (req, res) => {
           )
         `)
         .eq('student_id', contact.student_id)
-        .gte('work_check_slots.slot_date', weekStart)
-        .lte('work_check_slots.slot_date', weekEnd)
-        .in('status', ['pending', 'confirmed']),
+        .gte('work_check_slots.slot_date', today)
+        .in('status', ['pending', 'confirmed'])
+        .order('work_check_slots(slot_date)', { ascending: true })
+        .limit(maxUpcomingItems),
 
       // User's active groups
       supabaseAdmin
@@ -139,14 +131,15 @@ module.exports = async (req, res) => {
       };
     });
 
-    // 6. Merge and sort activities by date/time
+    // 6. Merge, sort by date/time, and limit to max items
     const allActivities = [...mockActivities, ...workCheckActivities]
       .filter(a => a.date) // Filter out activities without dates
       .sort((a, b) => {
         const dateCompare = a.date.localeCompare(b.date);
         if (dateCompare !== 0) return dateCompare;
         return (a.start_time || '').localeCompare(b.start_time || '');
-      });
+      })
+      .slice(0, maxUpcomingItems); // Cap at max items
 
     // 7. Transform groups
     const groups = (groupsResult.data || [])
@@ -171,9 +164,9 @@ module.exports = async (req, res) => {
           email: contact.email
         },
         activities: {
-          this_week: allActivities,
+          upcoming: allActivities,
           has_today: allActivities.some(a => a.date === today),
-          total_this_week: allActivities.length
+          total_upcoming: allActivities.length
         },
         tokens: {
           sj_credits: contact.sj_credits || 0,
