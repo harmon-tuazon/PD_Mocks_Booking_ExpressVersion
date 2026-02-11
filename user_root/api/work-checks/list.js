@@ -192,7 +192,26 @@ module.exports = async (req, res) => {
       return a.slot_time.localeCompare(b.slot_time);
     });
 
-    console.log(`✅ [WORK-CHECK] Found ${formattedBookings.length} bookings for ${student_id}`);
+    // Calculate stats
+    const stats = {
+      upcoming: categorized.upcoming.length,
+      pending: categorized.pending.length,
+      completed: categorized.completed.length,
+      cancelled: categorized.cancelled.length,
+      total: formattedBookings.length
+    };
+
+    // Determine which bookings to return based on filter
+    let bookingsToReturn;
+    if (filter === 'all') {
+      bookingsToReturn = formattedBookings;
+    } else if (categorized[filter]) {
+      bookingsToReturn = categorized[filter];
+    } else {
+      bookingsToReturn = formattedBookings;
+    }
+
+    console.log(`✅ [WORK-CHECK] Found ${bookingsToReturn.length} bookings for ${student_id} (filter: ${filter})`);
 
     return res.status(200).json({
       success: true,
@@ -202,7 +221,10 @@ module.exports = async (req, res) => {
         total_records: count || 0,
         records_per_page: limit
       },
-      data: filter === 'all' ? categorized : formattedBookings
+      data: {
+        bookings: bookingsToReturn,
+        stats
+      }
     });
 
   } catch (error) {
