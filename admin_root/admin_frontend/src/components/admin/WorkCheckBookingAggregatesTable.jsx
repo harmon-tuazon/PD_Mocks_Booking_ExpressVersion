@@ -1,6 +1,7 @@
 /**
  * WorkCheckBookingAggregatesTable Component
  * Display aggregated bookings with expandable rows
+ * Styled to match Mocks Dashboard table
  */
 
 import { useState } from 'react';
@@ -8,15 +9,42 @@ import { ChevronDownIcon, ChevronRightIcon, PencilIcon } from '@heroicons/react/
 import WorkCheckBookingStatusBadge from './WorkCheckBookingStatusBadge';
 
 /**
- * Format date for display
+ * Location pin icon component (matches Mocks Dashboard)
+ */
+const LocationIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+       fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+       className="flex-shrink-0 text-primary-600 dark:text-primary-400">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+    <circle cx="12" cy="10" r="3"></circle>
+  </svg>
+);
+
+/**
+ * Calendar icon component (matches Mocks Dashboard)
+ */
+const CalendarIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+       fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+       className="flex-shrink-0 text-primary-600 dark:text-primary-400">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+    <line x1="16" y1="2" x2="16" y2="6"></line>
+    <line x1="8" y1="2" x2="8" y2="6"></line>
+    <line x1="3" y1="10" x2="21" y2="10"></line>
+  </svg>
+);
+
+/**
+ * Format date for display (with full weekday)
  */
 const formatDate = (dateString) => {
   if (!dateString) return '-';
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric'
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
   });
 };
 
@@ -70,23 +98,23 @@ const WorkCheckBookingAggregatesTable = ({
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
-            <th scope="col" className="w-10 px-4 py-3"></th>
-            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th scope="col" className="w-12 px-6 py-4"></th>
+            <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Date
             </th>
-            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Time
             </th>
-            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Location
             </th>
-            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Instructors
             </th>
-            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Bookings
             </th>
-            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Groups
             </th>
           </tr>
@@ -148,23 +176,33 @@ const AggregateRowWithBookings = ({
         className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
         onClick={onToggleExpand}
       >
-        <td className="px-4 py-3">
+        <td className="px-6 py-4">
           {isExpanded ? (
-            <ChevronDownIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            <ChevronDownIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           ) : (
-            <ChevronRightIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            <ChevronRightIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           )}
         </td>
-        <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-          {formatDate(aggregate.slot_date)}
+        <td className="px-6 py-4">
+          <div className="flex items-center gap-2">
+            <CalendarIcon />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {formatDate(aggregate.slot_date)}
+            </span>
+          </div>
         </td>
-        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+        <td className="px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">
           {formatTime(aggregate.slot_time)}
         </td>
-        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-          {aggregate.location}
+        <td className="px-6 py-4">
+          <div className="flex items-center gap-2">
+            <LocationIcon />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {aggregate.location || '-'}
+            </span>
+          </div>
         </td>
-        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
           <span className="group relative cursor-help">
             {aggregate.instructor_names?.length || 0} instructor{(aggregate.instructor_names?.length || 0) !== 1 ? 's' : ''}
             {aggregate.instructor_names?.length > 0 && (
@@ -174,17 +212,17 @@ const AggregateRowWithBookings = ({
             )}
           </span>
         </td>
-        <td className="px-4 py-3 text-sm">
-          <span className="font-medium text-gray-900 dark:text-gray-100">
+        <td className="px-6 py-4">
+          <span className="inline-flex items-center justify-center min-w-[90px] px-2.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
             {aggregate.total_bookings} booking{aggregate.total_bookings !== 1 ? 's' : ''}
           </span>
           {aggregate.pending_count > 0 && (
-            <span className="ml-2 text-yellow-600 dark:text-yellow-400">
-              ({aggregate.pending_count} pending)
+            <span className="ml-2 inline-flex items-center px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 rounded-full text-xs font-medium">
+              {aggregate.pending_count} pending
             </span>
           )}
         </td>
-        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
           <span className="group relative cursor-help">
             {aggregate.groups?.length || 0} group{(aggregate.groups?.length || 0) !== 1 ? 's' : ''}
             {aggregate.groups?.length > 0 && (
@@ -196,93 +234,108 @@ const AggregateRowWithBookings = ({
         </td>
       </tr>
 
-      {/* Expanded Bookings */}
-      {isExpanded && bookings.length > 0 && (
-        <>
-          {/* Header row for nested bookings */}
-          <tr className="bg-gray-100 dark:bg-gray-800/50">
-            <td className="px-4 py-2"></td>
-            <td colSpan="6" className="px-4 py-2">
-              <div className="flex items-center space-x-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                <div className="w-8">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    ref={(el) => el && (el.indeterminate = someSelected && !allSelected)}
-                    onChange={handleSelectAll}
-                    className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                  />
-                </div>
-                <div className="flex-1">Student</div>
-                <div className="w-32">Instructor</div>
-                <div className="w-24">Status</div>
-                <div className="w-24">Type</div>
-                <div className="w-20">Actions</div>
-              </div>
-            </td>
-          </tr>
+      {/* Expanded Bookings - Only show pending, confirmed, completed */}
+      {isExpanded && bookings.length > 0 && (() => {
+        // Filter to only show pending, confirmed, and completed bookings
+        const visibleBookings = bookings.filter(b =>
+          ['pending', 'confirmed', 'completed'].includes(b.status?.toLowerCase())
+        );
 
-          {/* Individual booking rows */}
-          {bookings.map((booking) => (
-            <tr
-              key={booking.id}
-              className="bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-700/50"
-            >
-              <td className="px-4 py-2"></td>
-              <td colSpan="6" className="px-4 py-2">
-                <div className="flex items-center space-x-4 text-sm">
-                  <div className="w-8">
+        if (visibleBookings.length === 0) return null;
+
+        const visibleAllSelected = visibleBookings.every(b => selectedIds.has(b.id));
+        const visibleSomeSelected = visibleBookings.some(b => selectedIds.has(b.id));
+
+        return (
+          <>
+            {/* Header row for nested bookings */}
+            <tr className="bg-gray-100 dark:bg-gray-800/50">
+              <td className="px-6 py-3"></td>
+              <td colSpan="6" className="px-6 py-3">
+                <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <div className="col-span-1 flex items-center">
                     <input
                       type="checkbox"
-                      checked={selectedIds.has(booking.id)}
-                      onChange={() => onToggleSelection(booking.id)}
-                      onClick={(e) => e.stopPropagation()}
+                      checked={visibleAllSelected}
+                      ref={(el) => el && (el.indeterminate = visibleSomeSelected && !visibleAllSelected)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        const visibleIds = visibleBookings.map(b => b.id);
+                        onSelectAllInAggregate(visibleIds, !visibleAllSelected);
+                      }}
                       className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     />
                   </div>
-                  <div className="flex-1">
-                    <span className="font-medium text-gray-900 dark:text-gray-100">
-                      {booking.student_name || 'Unknown'}
-                    </span>
-                    <span className="ml-2 text-gray-500 dark:text-gray-400">
-                      ({booking.student_id})
-                    </span>
-                  </div>
-                  <div className="w-32 text-gray-600 dark:text-gray-300 truncate">
-                    {booking.instructor_name || '-'}
-                  </div>
-                  <div className="w-24">
-                    <WorkCheckBookingStatusBadge status={booking.status} />
-                  </div>
-                  <div className="w-24">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                      booking.type === 'Work Check'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                        : booking.type === 'Demo'
-                        ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
-                        : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                    }`}>
-                      {booking.type || 'Work Check'}
-                    </span>
-                  </div>
-                  <div className="w-20">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditBooking(booking);
-                      }}
-                      className="inline-flex items-center p-1.5 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
-                      title="Edit booking"
-                    >
-                      <PencilIcon className="h-4 w-4" />
-                    </button>
-                  </div>
+                  <div className="col-span-3">Name</div>
+                  <div className="col-span-2">Student ID</div>
+                  <div className="col-span-2">Instructor</div>
+                  <div className="col-span-1">Status</div>
+                  <div className="col-span-2">Type</div>
+                  <div className="col-span-1">Actions</div>
                 </div>
               </td>
             </tr>
-          ))}
-        </>
-      )}
+
+            {/* Individual booking rows */}
+            {visibleBookings.map((booking) => (
+              <tr
+                key={booking.id}
+                className="bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
+              >
+                <td className="px-6 py-3"></td>
+                <td colSpan="6" className="px-6 py-3">
+                  <div className="grid grid-cols-12 gap-4 items-center text-sm">
+                    <div className="col-span-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(booking.id)}
+                        onChange={() => onToggleSelection(booking.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                    </div>
+                    <div className="col-span-3 font-medium text-gray-900 dark:text-gray-100 truncate">
+                      {booking.student_name || 'Unknown'}
+                    </div>
+                    <div className="col-span-2 text-gray-600 dark:text-gray-400">
+                      {booking.student_id || '-'}
+                    </div>
+                    <div className="col-span-2 text-gray-600 dark:text-gray-300 truncate">
+                      {booking.instructor_name || '-'}
+                    </div>
+                    <div className="col-span-1">
+                      <WorkCheckBookingStatusBadge status={booking.status} />
+                    </div>
+                    <div className="col-span-2">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        booking.type === 'Work Check'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                          : booking.type === 'Demo'
+                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+                          : 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300'
+                      }`}>
+                        {booking.type || 'Work Check'}
+                      </span>
+                    </div>
+                    <div className="col-span-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditBooking(booking);
+                        }}
+                        className="inline-flex items-center p-1.5 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
+                        title="Edit booking"
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </>
+        );
+      })()}
     </>
   );
 };
