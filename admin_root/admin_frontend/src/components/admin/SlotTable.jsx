@@ -91,7 +91,7 @@ const SortIndicator = ({ column, currentSort }) => {
 const TableHeader = ({ label, column, sortable, currentSort, onSort }) => {
   if (!sortable) {
     return (
-      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
         {label}
       </th>
     );
@@ -99,10 +99,10 @@ const TableHeader = ({ label, column, sortable, currentSort, onSort }) => {
 
   return (
     <th
-      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer group"
+      className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer group"
       onClick={() => onSort(column)}
     >
-      <div className="flex items-center">
+      <div className="flex items-center justify-center">
         {label}
         <SortIndicator column={column} currentSort={currentSort} />
       </div>
@@ -245,10 +245,10 @@ const SlotTable = ({
               <TableHeader label="Duration" column="duration" sortable={false} currentSort={currentSort} onSort={onSort} />
               <TableHeader label="Status" column="status" sortable={false} currentSort={currentSort} onSort={onSort} />
               <TableHeader label="Auto-Approve" column="auto_approve" sortable={false} currentSort={currentSort} onSort={onSort} />
-              <TableHeader label="Created At" column="created_at" sortable currentSort={currentSort} onSort={onSort} />
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Actions
               </th>
+              <TableHeader label="Created At" column="created_at" sortable currentSort={currentSort} onSort={onSort} />
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
@@ -336,10 +336,7 @@ const SlotTable = ({
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {slot.created_at ? formatDate(slot.created_at) : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => onEdit?.(slot)}
                       className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
@@ -348,6 +345,9 @@ const SlotTable = ({
                       <Pencil className="h-4 w-4 mr-1" />
                       Edit
                     </button>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {slot.created_at ? formatDate(slot.created_at) : '-'}
                   </td>
                 </tr>
               );

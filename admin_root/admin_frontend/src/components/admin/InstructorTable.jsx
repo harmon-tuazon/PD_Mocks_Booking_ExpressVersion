@@ -53,10 +53,10 @@ const InstructorTable = ({
   const SortableHeader = ({ column, children }) => (
     <th
       scope="col"
-      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+      className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
       onClick={() => onSort?.(column)}
     >
-      <div className="flex items-center">
+      <div className="flex items-center justify-center">
         {children}
         {getSortIcon(column)}
       </div>
@@ -159,7 +159,7 @@ const InstructorTable = ({
               <SortableHeader column="email">Email</SortableHeader>
               <SortableHeader column="is_active">Status</SortableHeader>
               <SortableHeader column="created_at">Created</SortableHeader>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Actions
               </th>
             </tr>

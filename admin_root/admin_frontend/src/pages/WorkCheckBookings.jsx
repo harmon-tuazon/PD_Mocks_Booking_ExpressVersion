@@ -394,36 +394,11 @@ function WorkCheckBookings() {
           onSelectAllInAggregate={handleSelectAllInAggregate}
           onEditBooking={handleOpenEditModal}
           isLoading={aggregatesLoading}
+          currentPage={currentPage}
+          totalPages={pagination.total_pages || 1}
+          totalItems={pagination.preloaded_bookings || 0}
+          onPageChange={handlePageChange}
         />
-
-        {/* Pagination */}
-        {!aggregatesLoading && pagination.total_pages > 1 && (
-          <div className="mt-6 flex items-center justify-between">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Showing page {pagination.current_page} of {pagination.total_pages}
-              ({pagination.total_aggregates} aggregates, {pagination.preloaded_bookings} bookings)
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage <= 1}
-                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
-              >
-                Previous
-              </button>
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                {currentPage} / {pagination.total_pages}
-              </span>
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= pagination.total_pages}
-                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Create/Edit Modal */}
         <WorkCheckBookingFormModal

@@ -4,9 +4,88 @@
  * Styled to match Mocks Dashboard table
  */
 
-import { useState } from 'react';
-import { ChevronDownIcon, ChevronRightIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronRightIcon, PencilIcon, ChevronLeftIcon } from '@heroicons/react/24/outline';
 import WorkCheckBookingStatusBadge from './WorkCheckBookingStatusBadge';
+
+/**
+ * Pagination component (matches SlotTable)
+ */
+const Pagination = ({ currentPage, totalPages, totalItems, onPageChange }) => {
+  const pages = [];
+  const maxVisiblePages = 5;
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    pages.push(i);
+  }
+
+  return (
+    <div className="bg-white dark:bg-dark-card px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
+      <div className="flex-1 flex justify-between sm:hidden">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-dark-card hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Previous
+        </button>
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-dark-card hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Next
+        </button>
+      </div>
+      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            Page <span className="font-medium">{currentPage}</span> of{' '}
+            <span className="font-medium">{totalPages}</span> ({totalItems} total)
+          </p>
+        </div>
+        <div>
+          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+            <button
+              onClick={() => onPageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-card text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="sr-only">Previous</span>
+              <ChevronLeftIcon className="h-5 w-5" />
+            </button>
+            {pages.map(page => (
+              <button
+                key={page}
+                onClick={() => onPageChange(page)}
+                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                  page === currentPage
+                    ? 'z-10 bg-primary-50 dark:bg-primary-900/30 border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'bg-white dark:bg-dark-card border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              onClick={() => onPageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-card text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="sr-only">Next</span>
+              <ChevronRightIcon className="h-5 w-5" />
+            </button>
+          </nav>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 /**
  * Location pin icon component (exact match from Mocks Dashboard AggregateRow.jsx)
@@ -63,7 +142,11 @@ const WorkCheckBookingAggregatesTable = ({
   onToggleSelection,
   onSelectAllInAggregate,
   onEditBooking,
-  isLoading
+  isLoading,
+  currentPage = 1,
+  totalPages = 1,
+  totalItems = 0,
+  onPageChange
 }) => {
   if (isLoading) {
     return (
@@ -93,22 +176,22 @@ const WorkCheckBookingAggregatesTable = ({
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
             <th scope="col" className="w-12 px-6 py-4"></th>
-            <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Date
             </th>
-            <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Time
             </th>
-            <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Location
             </th>
-            <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Instructors
             </th>
-            <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Bookings
             </th>
-            <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Groups
             </th>
           </tr>
@@ -138,6 +221,16 @@ const WorkCheckBookingAggregatesTable = ({
           })}
         </tbody>
       </table>
+
+      {/* Pagination */}
+      {!isLoading && totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          onPageChange={onPageChange}
+        />
+      )}
     </div>
   );
 };
@@ -246,8 +339,8 @@ const AggregateRowWithBookings = ({
             <tr className="bg-gray-100 dark:bg-gray-800/50">
               <td className="px-6 py-3"></td>
               <td colSpan="6" className="px-6 py-3">
-                <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  <div className="col-span-1 flex items-center">
+                <div className="grid grid-cols-12 gap-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">
+                  <div className="col-span-1 flex items-center justify-center">
                     <input
                       type="checkbox"
                       checked={visibleAllSelected}
@@ -260,73 +353,82 @@ const AggregateRowWithBookings = ({
                       className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     />
                   </div>
-                  <div className="col-span-3">Name</div>
+                  <div className="col-span-2">Name</div>
                   <div className="col-span-2">Student ID</div>
                   <div className="col-span-2">Instructor</div>
-                  <div className="col-span-1">Status</div>
-                  <div className="col-span-2">Type</div>
-                  <div className="col-span-1">Actions</div>
+                  <div className="col-span-2">Status</div>
+                  <div className="col-span-1">Type</div>
+                  <div className="col-span-2">Actions</div>
                 </div>
               </td>
             </tr>
 
             {/* Individual booking rows */}
-            {visibleBookings.map((booking) => (
-              <tr
-                key={booking.id}
-                className="bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
-              >
-                <td className="px-6 py-3"></td>
-                <td colSpan="6" className="px-6 py-3">
-                  <div className="grid grid-cols-12 gap-4 items-center text-sm">
-                    <div className="col-span-1">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(booking.id)}
-                        onChange={() => onToggleSelection(booking.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                      />
+            {visibleBookings.map((booking) => {
+              const isSelected = selectedIds.has(booking.id);
+              return (
+                <tr
+                  key={booking.id}
+                  className={`bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer ${
+                    isSelected ? 'bg-primary-50 dark:bg-primary-900/20' : ''
+                  }`}
+                  onClick={() => onToggleSelection(booking.id)}
+                >
+                  <td className="px-6 py-3"></td>
+                  <td colSpan="6" className="px-6 py-3">
+                    <div className="grid grid-cols-12 gap-3 items-center text-sm text-center">
+                      <div className="col-span-1 flex justify-center">
+                        {isSelected && (
+                          <input
+                            type="checkbox"
+                            checked={true}
+                            readOnly
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                        )}
+                      </div>
+                      <div className="col-span-2 font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {booking.student_name || 'Unknown'}
+                      </div>
+                      <div className="col-span-2 text-gray-600 dark:text-gray-400">
+                        {booking.student_id || '-'}
+                      </div>
+                      <div className="col-span-2 text-gray-600 dark:text-gray-300 truncate">
+                        {booking.instructor_name || '-'}
+                      </div>
+                      <div className="col-span-2 flex justify-center">
+                        <WorkCheckBookingStatusBadge status={booking.status} />
+                      </div>
+                      <div className="col-span-1 flex justify-center">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          booking.type === 'Work Check'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                            : booking.type === 'Demo'
+                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+                            : 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300'
+                        }`}>
+                          {booking.type || 'Work Check'}
+                        </span>
+                      </div>
+                      <div className="col-span-2 flex justify-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditBooking(booking);
+                          }}
+                          className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                          title="Edit booking"
+                        >
+                          <PencilIcon className="h-4 w-4 mr-1" />
+                          Edit
+                        </button>
+                      </div>
                     </div>
-                    <div className="col-span-3 font-medium text-gray-900 dark:text-gray-100 truncate">
-                      {booking.student_name || 'Unknown'}
-                    </div>
-                    <div className="col-span-2 text-gray-600 dark:text-gray-400">
-                      {booking.student_id || '-'}
-                    </div>
-                    <div className="col-span-2 text-gray-600 dark:text-gray-300 truncate">
-                      {booking.instructor_name || '-'}
-                    </div>
-                    <div className="col-span-1">
-                      <WorkCheckBookingStatusBadge status={booking.status} />
-                    </div>
-                    <div className="col-span-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        booking.type === 'Work Check'
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                          : booking.type === 'Demo'
-                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
-                          : 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300'
-                      }`}>
-                        {booking.type || 'Work Check'}
-                      </span>
-                    </div>
-                    <div className="col-span-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditBooking(booking);
-                        }}
-                        className="inline-flex items-center p-1.5 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
-                        title="Edit booking"
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              );
+            })}
           </>
         );
       })()}
