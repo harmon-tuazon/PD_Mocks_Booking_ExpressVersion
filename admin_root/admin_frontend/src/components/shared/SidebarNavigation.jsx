@@ -88,7 +88,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
       )
     },
     {
-      name: 'Bulk Bookings',
+      name: 'Import Bookings',
       href: '/data-management/bulk-bookings',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,7 +97,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
       )
     },
     {
-      name: 'Bulk Mocks',
+      name: 'Import Mocks',
       href: '/data-management/bulk-mocks',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,7 +110,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
   // Work Check submenu items
   const workCheckItems = [
     {
-      name: 'Group Management',
+      name: 'Groups',
       href: '/work-check/groups',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,7 +130,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
       )
     },
     {
-      name: 'Slots Management',
+      name: 'Slots',
       href: '/work-check/slots',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,7 +139,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
       )
     },
     {
-      name: 'Bookings Management',
+      name: 'Bookings',
       href: '/work-check/bookings',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
