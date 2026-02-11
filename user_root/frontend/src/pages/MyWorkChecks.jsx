@@ -94,7 +94,11 @@ const MyWorkChecks = () => {
       }
     } catch (err) {
       console.error('Error fetching work checks:', err);
-      setError(err.message || 'Failed to load your work checks');
+      // Handle error message that could be string or object {code, message}
+      const errorMsg = typeof err.message === 'object'
+        ? err.message?.message || 'Failed to load work checks'
+        : err.message || 'Failed to load your work checks';
+      setError(errorMsg);
       setBookings([]);
     } finally {
       setLoading(false);
@@ -189,7 +193,11 @@ const MyWorkChecks = () => {
       }
     } catch (err) {
       console.error('Error cancelling work check:', err);
-      setCancelError(err.message || 'Failed to cancel. Please try again.');
+      // Handle error message that could be string or object {code, message}
+      const errorMsg = typeof err.message === 'object'
+        ? err.message?.message || 'Failed to cancel'
+        : err.message || 'Failed to cancel. Please try again.';
+      setCancelError(errorMsg);
     } finally {
       setIsCancelling(false);
     }
@@ -225,7 +233,11 @@ const MyWorkChecks = () => {
       }
     } catch (err) {
       console.error('Error rescheduling work check:', err);
-      setError(err.message || 'Failed to reschedule. Please try again.');
+      // Handle error message that could be string or object {code, message}
+      const errorMsg = typeof err.message === 'object'
+        ? err.message?.message || 'Failed to reschedule'
+        : err.message || 'Failed to reschedule. Please try again.';
+      setError(errorMsg);
     } finally {
       setIsCancelling(false);
       setBookingToCancel(null);

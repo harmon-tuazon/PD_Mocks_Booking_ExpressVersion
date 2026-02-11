@@ -143,7 +143,8 @@ module.exports = async (req, res) => {
       const primaryGroup = slotGroups[0];
 
       return {
-        booking_id: booking.id,
+        id: booking.id,           // UUID for API operations
+        booking_id: booking.id,   // Alias for backwards compatibility
         slot_id: booking.slot_id,
         status: booking.status,
         slot_date: slot.slot_date,
