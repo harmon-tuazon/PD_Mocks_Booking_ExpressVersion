@@ -250,18 +250,18 @@ const WorkCheckCalendarView = ({ bookings, onCancelBooking, onRescheduleBooking,
 
           {/* Legend */}
           <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
+            <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-teal-100 border-2 border-teal-200 rounded"></div>
-                <span className="text-gray-700 dark:text-gray-300 font-body">Has Bookings</span>
+                <span className="text-gray-700 dark:text-gray-300 font-body">Dates With Bookings</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-primary-600 rounded"></div>
-                <span className="text-gray-700 dark:text-gray-300 font-body">Selected</span>
+                <span className="text-gray-700 dark:text-gray-300 font-body">Current Dates</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-primary-50 dark:bg-primary-900/30 border-2 border-primary-200 dark:border-primary-700 rounded"></div>
-                <span className="text-gray-700 dark:text-gray-300 font-body">Today</span>
+                <div className="w-4 h-4 bg-gray-100 dark:bg-gray-700 rounded"></div>
+                <span className="text-gray-700 dark:text-gray-300 font-body">No Bookings</span>
               </div>
             </div>
           </div>
@@ -349,9 +349,9 @@ const WorkCheckCalendarView = ({ bookings, onCancelBooking, onRescheduleBooking,
             <div className="p-6 flex items-center justify-center h-full min-h-[300px]">
               <div className="text-center text-gray-600 dark:text-gray-400">
                 <CalendarIcon />
-                <p className="text-lg font-subheading font-medium mb-2 text-gray-700 dark:text-gray-300">Select a date</p>
+                <p className="text-lg font-subheading font-medium mb-2 text-primary-600 dark:text-primary-400">Select a date</p>
                 <p className="text-sm font-body">
-                  Choose a date with work checks to view details
+                  Choose a date with bookings to view details
                 </p>
               </div>
             </div>
