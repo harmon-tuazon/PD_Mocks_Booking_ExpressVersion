@@ -53,7 +53,8 @@ const SlotFormModal = ({
     total_slots: 1,
     location: 'Mississauga',
     activation_mode: 'immediate',
-    available_from: '',
+    activation_date: '',
+    activation_time: '',
     auto_approve: true
   });
   const [errors, setErrors] = useState({});
@@ -89,6 +90,14 @@ const SlotFormModal = ({
   useEffect(() => {
     if (isOpen) {
       if (initialData && mode === 'edit') {
+        // Parse available_from into separate date and time
+        let activationDate = '';
+        let activationTime = '';
+        if (initialData.available_from) {
+          const availableFromDate = new Date(initialData.available_from);
+          activationDate = availableFromDate.toISOString().split('T')[0];
+          activationTime = availableFromDate.toTimeString().slice(0, 5);
+        }
         setFormData({
           instructor_id: initialData.instructor_id || '',
           group_id: initialData.group_id || [],
@@ -98,7 +107,8 @@ const SlotFormModal = ({
           total_slots: initialData.total_slots || 1,
           location: initialData.location || 'Mississauga',
           activation_mode: initialData.available_from ? 'scheduled' : 'immediate',
-          available_from: initialData.available_from ? new Date(initialData.available_from).toISOString().slice(0, 16) : '',
+          activation_date: activationDate,
+          activation_time: activationTime,
           auto_approve: initialData.auto_approve !== undefined ? initialData.auto_approve : true
         });
       } else {
@@ -111,7 +121,8 @@ const SlotFormModal = ({
           total_slots: 1,
           location: 'Mississauga',
           activation_mode: 'immediate',
-          available_from: '',
+          activation_date: '',
+          activation_time: '',
           auto_approve: true
         });
       }
@@ -174,8 +185,13 @@ const SlotFormModal = ({
       newErrors.location = 'Location is required';
     }
 
-    if (formData.activation_mode === 'scheduled' && !formData.available_from) {
-      newErrors.available_from = 'Scheduled activation time is required';
+    if (formData.activation_mode === 'scheduled') {
+      if (!formData.activation_date) {
+        newErrors.activation_date = 'Activation date is required';
+      }
+      if (!formData.activation_time) {
+        newErrors.activation_time = 'Activation time is required';
+      }
     }
 
     setErrors(newErrors);
@@ -199,7 +215,9 @@ const SlotFormModal = ({
       total_slots: formData.total_slots,
       location: formData.location,
       activation_mode: formData.activation_mode,
-      available_from: formData.activation_mode === 'scheduled' ? formData.available_from : null,
+      available_from: formData.activation_mode === 'scheduled' && formData.activation_date && formData.activation_time
+        ? `${formData.activation_date}T${formData.activation_time}`
+        : null,
       auto_approve: formData.auto_approve
     };
 
@@ -438,27 +456,41 @@ const SlotFormModal = ({
                     </div>
                   </div>
 
-                  {/* Scheduled Activation DateTime */}
+                  {/* Scheduled Activation Date & Time */}
                   {formData.activation_mode === 'scheduled' && (
-                    <div>
-                      <label htmlFor="available_from" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Activation Date & Time <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="datetime-local"
-                        id="available_from"
-                        value={formData.available_from}
-                        onChange={(e) => handleChange('available_from', e.target.value)}
-                        min={new Date().toISOString().slice(0, 16)}
-                        className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                          errors.available_from ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                        }`}
-                      />
-                      {errors.available_from && (
-                        <p className="mt-1 text-sm text-red-500">{errors.available_from}</p>
-                      )}
-                      <p className="mt-1 text-xs text-gray-500">
-                        Slot will become visible to users at this time
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="activation_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Activation Date <span className="text-red-500">*</span>
+                        </label>
+                        <DatePicker
+                          id="activation_date"
+                          value={formData.activation_date}
+                          onChange={(value) => handleChange('activation_date', value)}
+                          placeholder="Select date"
+                          className={`mt-1 w-full ${errors.activation_date ? 'border-red-500' : ''}`}
+                        />
+                        {errors.activation_date && (
+                          <p className="mt-1 text-sm text-red-500">{errors.activation_date}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label htmlFor="activation_time" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Activation Time <span className="text-red-500">*</span>
+                        </label>
+                        <TimePickerSelect
+                          id="activation_time"
+                          value={formData.activation_time}
+                          onChange={(value) => handleChange('activation_time', value)}
+                          placeholder="Select time"
+                          className={`mt-1 w-full ${errors.activation_time ? 'border-red-500' : ''}`}
+                        />
+                        {errors.activation_time && (
+                          <p className="mt-1 text-sm text-red-500">{errors.activation_time}</p>
+                        )}
+                      </div>
+                      <p className="col-span-2 text-xs text-gray-500">
+                        Slot will become visible to users at this date and time
                       </p>
                     </div>
                   )}

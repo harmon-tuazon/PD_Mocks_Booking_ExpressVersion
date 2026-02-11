@@ -303,11 +303,6 @@ const AggregateRowWithBookings = ({
           <span className="inline-flex items-center justify-center min-w-[90px] px-2.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
             {aggregate.total_bookings} booking{aggregate.total_bookings !== 1 ? 's' : ''}
           </span>
-          {aggregate.pending_count > 0 && (
-            <span className="ml-2 inline-flex items-center px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 rounded-full text-xs font-medium">
-              {aggregate.pending_count} pending
-            </span>
-          )}
         </td>
         <td className="px-6 py-4 text-center text-sm text-gray-600 dark:text-gray-300">
           <span className="group relative cursor-help">
@@ -355,11 +350,11 @@ const AggregateRowWithBookings = ({
                       />
                     )}
                   </div>
-                  <div className="col-span-2">Name</div>
+                  <div className="col-span-1">Name</div>
                   <div className="col-span-2">Student ID</div>
                   <div className="col-span-2">Instructor</div>
                   <div className="col-span-2">Status</div>
-                  <div className="col-span-1">Type</div>
+                  <div className="col-span-2">Type</div>
                   <div className="col-span-2">Actions</div>
                 </div>
               </td>
@@ -390,7 +385,7 @@ const AggregateRowWithBookings = ({
                           />
                         )}
                       </div>
-                      <div className="col-span-2 font-medium text-gray-900 dark:text-gray-100 truncate">
+                      <div className="col-span-1 font-medium text-gray-900 dark:text-gray-100 truncate">
                         {booking.student_name || 'Unknown'}
                       </div>
                       <div className="col-span-2 text-gray-600 dark:text-gray-400">
@@ -402,8 +397,8 @@ const AggregateRowWithBookings = ({
                       <div className="col-span-2 flex justify-center">
                         <WorkCheckBookingStatusBadge status={booking.status} />
                       </div>
-                      <div className="col-span-1 flex justify-center">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      <div className="col-span-2 flex justify-center">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
                           booking.type === 'Work Check'
                             ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
                             : booking.type === 'Demo'
