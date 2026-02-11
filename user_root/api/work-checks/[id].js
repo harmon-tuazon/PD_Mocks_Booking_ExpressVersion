@@ -85,7 +85,7 @@ module.exports = async (req, res) => {
     }
 
     // 3. Verify the booking belongs to the user
-    if (booking.student_id !== contact.id) {
+    if (booking.student_id !== contact.student_id) {
       return res.status(403).json({
         success: false,
         error: { code: 'NOT_AUTHORIZED', message: 'You are not authorized to cancel this booking' }
@@ -137,7 +137,7 @@ module.exports = async (req, res) => {
 
     // 7. Clear the Redis cache for this date
     if (redis && booking.work_check_slots?.slot_date) {
-      const cacheKey = `wc_booking:${contact.id}:${booking.work_check_slots.slot_date}`;
+      const cacheKey = `wc_booking:${contact.student_id}:${booking.work_check_slots.slot_date}`;
       await redis.del(cacheKey);
       console.log(`🗑️ [WORK-CHECK] Cleared Redis cache: ${cacheKey}`);
     }

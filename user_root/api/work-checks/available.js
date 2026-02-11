@@ -77,7 +77,7 @@ module.exports = async (req, res) => {
         id,
         work_check_slots!inner (slot_date)
       `)
-      .eq('student_id', contact.id)
+      .eq('student_id', contact.student_id)  // Use string student_id, not UUID
       .in('status', ['pending', 'confirmed']);
 
     const existingBookingDates = (existingBookings || [])

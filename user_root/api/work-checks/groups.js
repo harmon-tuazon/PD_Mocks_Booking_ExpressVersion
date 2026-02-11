@@ -111,7 +111,7 @@ module.exports = async (req, res) => {
         id,
         work_check_slots!inner (slot_date)
       `)
-      .eq('student_id', contact.id)
+      .eq('student_id', contact.student_id)  // Use string student_id, not UUID
       .in('status', ['pending', 'confirmed']);
 
     const existingBookingDates = (existingBookings || [])
@@ -121,7 +121,7 @@ module.exports = async (req, res) => {
     // 4. Cache existing booking dates in Redis for fast duplicate check
     if (redis && existingBookingDates.length > 0) {
       for (const date of existingBookingDates) {
-        const cacheKey = `wc_booking:${contact.id}:${date}`;
+        const cacheKey = `wc_booking:${contact.student_id}:${date}`;
         await redis.setex(cacheKey, 86400, 'exists'); // 24-hour TTL
       }
     }
@@ -131,8 +131,8 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: {
-        student_id: contact.id,           // UUID for Supabase operations
-        student_code: contact.student_id, // Human-readable student ID (e.g., PREP001)
+        student_id: contact.student_id,   // String student ID (e.g., 1599999) - used for work_check_bookings
+        uuid: contact.id,                 // UUID for hubspot_contact_credits primary key
         firstname: contact.firstname,
         lastname: contact.lastname,
         groups: activeGroups,

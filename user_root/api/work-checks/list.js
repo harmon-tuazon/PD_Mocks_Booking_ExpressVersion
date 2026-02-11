@@ -67,7 +67,7 @@ module.exports = async (req, res) => {
           )
         )
       `, { count: 'exact' })
-      .eq('student_id', contact.id);
+      .eq('student_id', contact.student_id);  // Use string student_id, not UUID
 
     // 3. Apply filter
     const today = new Date().toISOString().split('T')[0];
