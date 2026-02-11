@@ -152,82 +152,16 @@ module.exports = async (req, res) => {
       }
     }
 
-    // TIER 2: Check for existing booking on the same SLOT (not just date)
+    // TIER 2: Check for existing ACTIVE booking on the same SLOT (pending/confirmed only)
     const { data: existingSlotBooking } = await supabaseAdmin
       .from('work_check_bookings')
       .select('id, status')
       .eq('student_id', contact.student_id)
       .eq('slot_id', slot_id)
+      .in('status', ['pending', 'confirmed'])
       .maybeSingle();
 
     if (existingSlotBooking) {
-      // If existing booking is cancelled or rejected, we can reuse it by updating status
-      if (existingSlotBooking.status === 'cancelled' || existingSlotBooking.status === 'rejected') {
-        console.log(`🔄 [WORK-CHECK] Reactivating cancelled booking ${existingSlotBooking.id} for ${student_id}`);
-
-        const autoApprove = slot.auto_approve === true;
-        const { data: reactivatedBooking, error: updateError } = await supabaseAdmin
-          .from('work_check_bookings')
-          .update({
-            status: autoApprove ? 'confirmed' : 'pending',
-            type: work_check_type,
-            cancelled_at: null,
-            confirmed_at: autoApprove ? new Date().toISOString() : null
-          })
-          .eq('id', existingSlotBooking.id)
-          .select()
-          .single();
-
-        if (updateError) {
-          if (redis && lockToken) await redis.releaseLock(slot_id, lockToken);
-          console.error('❌ [WORK-CHECK] Reactivation error:', updateError);
-          throw updateError;
-        }
-
-        // Release lock and cache
-        if (redis && lockToken) {
-          await redis.releaseLock(slot_id, lockToken);
-          const bookingCacheKey = `wc_booking:${contact.student_id}:${slot.slot_date}`;
-          await redis.setex(bookingCacheKey, 86400, reactivatedBooking.id);
-        }
-
-        // Get group info for response
-        const { data: groupInfo } = await supabaseAdmin
-          .from('groups')
-          .select('group_name')
-          .in('group_id', Array.isArray(slot.group_id) ? slot.group_id : [slot.group_id])
-          .limit(1)
-          .maybeSingle();
-
-        const [hours, minutes] = slot.slot_time.split(':').map(Number);
-        const endDate = new Date();
-        endDate.setHours(hours, minutes + slot.duration_minutes, 0, 0);
-        const endTimeStr = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
-
-        console.log(`✅ [WORK-CHECK] Booking reactivated: ${reactivatedBooking.id} (${reactivatedBooking.status})`);
-
-        return res.status(201).json({
-          success: true,
-          data: {
-            booking_id: reactivatedBooking.id,
-            status: reactivatedBooking.status,
-            work_check_type: work_check_type,
-            auto_approved: autoApprove,
-            slot: {
-              slot_date: slot.slot_date,
-              slot_time: slot.slot_time,
-              end_time: endTimeStr,
-              instructor_name: slot.instructors?.instructor_name || 'TBD',
-              group_name: groupInfo?.group_name || 'Group',
-              location: slot.location
-            },
-            message: autoApprove
-              ? 'Your work check has been booked successfully!'
-              : 'Your booking request has been submitted. You will be notified when it is confirmed.'
-          }
-        });
-      }
-
       // Existing active booking - block with friendly message
       if (redis && lockToken) await redis.releaseLock(slot_id, lockToken);
       console.log(`⚠️ [WORK-CHECK] Duplicate blocked: ${student_id} already has active booking for slot ${slot_id}`);
