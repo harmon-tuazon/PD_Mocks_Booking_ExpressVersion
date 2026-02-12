@@ -388,6 +388,7 @@ const InstructorDashboard = () => {
                   <tr>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Time</th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Duration</th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Groups</th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student</th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
@@ -438,11 +439,15 @@ const InstructorDashboard = () => {
                                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                   {formatTime(session.time)}
                                 </span>
-                                {session.duration_minutes && (
-                                  <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">
-                                    ({session.duration_minutes}m)
-                                  </span>
-                                )}
+                              </td>
+                            )}
+
+                            {/* Duration cell: spans all booking rows for this session */}
+                            {bookingIdx === 0 && (
+                              <td className="px-6 py-4" rowSpan={totalBookingRows}>
+                                <span className="text-sm text-gray-500 dark:text-gray-400">
+                                  {session.duration_minutes ? `${session.duration_minutes} min` : '-'}
+                                </span>
                               </td>
                             )}
 
