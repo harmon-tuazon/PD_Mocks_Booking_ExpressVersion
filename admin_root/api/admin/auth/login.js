@@ -3,7 +3,7 @@
  * POST /api/admin/auth/login
  */
 
-const { supabasePublic } = require('../../_shared/supabase');
+const { supabasePublic, verifyToken } = require('../../_shared/supabase');
 const Joi = require('joi');
 
 // Login request validation schema
@@ -114,6 +114,9 @@ module.exports = async (req, res) => {
       ]);
     }
 
+    // Extract user_role and permissions from JWT claims
+    const { user: userWithClaims } = await verifyToken(session.access_token);
+
     // CRITICAL: Always return refresh_token for session persistence
     // Supabase requires both access_token AND refresh_token to store session in localStorage
     // The rememberMe feature controls the cookie duration, not the refresh_token availability
@@ -122,7 +125,9 @@ module.exports = async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        user_metadata: user.user_metadata || {}
+        user_metadata: user.user_metadata || {},
+        user_role: userWithClaims?.user_role || 'viewer',
+        permissions: userWithClaims?.permissions || []
       },
       session: {
         access_token: session.access_token,

@@ -369,14 +369,16 @@ const InstructorFormModal = ({
                       {resetPasswordError && (
                         <p className="text-sm text-red-600 dark:text-red-400">{resetPasswordError}</p>
                       )}
-                      <button
-                        type="button"
-                        onClick={handleResetPassword}
-                        disabled={isResettingPassword || !resetPassword}
-                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isResettingPassword ? 'Resetting...' : 'Reset Password'}
-                      </button>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleResetPassword}
+                          disabled={isResettingPassword || !resetPassword}
+                          className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isResettingPassword ? 'Resetting...' : 'Reset Password'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

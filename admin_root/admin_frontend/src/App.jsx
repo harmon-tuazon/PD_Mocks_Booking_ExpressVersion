@@ -5,10 +5,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute'
 import ProtectedInstructorRoute from './components/admin/ProtectedInstructorRoute'
-import InstructorLayout from './components/layout/InstructorLayout'
 import InstructorDashboard from './pages/instructor/InstructorDashboard'
-import InstructorGroups from './pages/instructor/InstructorGroups'
-import InstructorSchedule from './pages/instructor/InstructorSchedule'
 import MockExams from './pages/MockExams'
 import MockExamsDashboard from './pages/MockExamsDashboard'
 import MockExamDetail from './pages/MockExamDetail'
@@ -89,13 +86,11 @@ function App() {
                 path="/instructor"
                 element={
                   <ProtectedInstructorRoute>
-                    <InstructorLayout />
+                    <MainLayout />
                   </ProtectedInstructorRoute>
                 }
               >
                 <Route index element={<InstructorDashboard />} />
-                <Route path="groups" element={<InstructorGroups />} />
-                <Route path="schedule" element={<InstructorSchedule />} />
               </Route>
 
               {/* Admin Routes */}

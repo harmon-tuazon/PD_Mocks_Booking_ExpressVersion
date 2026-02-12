@@ -52,6 +52,24 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
     }
   };
 
+  const isInstructor = user?.user_role === 'instructor';
+  const homeRoute = isInstructor ? '/instructor' : '/mock-exams';
+  const roleBadge = isInstructor ? 'Instructor' : 'Administrator';
+
+  // Navigation items for instructor (single dashboard)
+  const instructorNavigationItems = [
+    {
+      name: 'Dashboard',
+      href: '/instructor',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      ),
+      requiresAuth: true
+    }
+  ];
+
   // Navigation items for admin
   const navigationItems = [
     {
@@ -175,8 +193,9 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
     return null;
   }
 
-  // Filter nav items based on auth requirements
-  const visibleNavItems = navigationItems.filter(item =>
+  // Filter nav items based on role and auth requirements
+  const baseItems = isInstructor ? instructorNavigationItems : navigationItems;
+  const visibleNavItems = baseItems.filter(item =>
     !item.requiresAuth || user
   );
 
@@ -205,7 +224,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
               <ResponsiveLogo
                 size="medium"
                 className="transition-opacity duration-300 hover:opacity-80"
-                onClick={() => handleNavigation('/mock-exams')}
+                onClick={() => handleNavigation(homeRoute)}
               />
             </div>
 
@@ -242,7 +261,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                   <span className="text-xs font-medium text-primary-700 dark:text-primary-300">
-                    Administrator
+                    {roleBadge}
                   </span>
                 </div>
               </div>
@@ -290,8 +309,8 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                 );
               })}
 
-              {/* Work Check Menu with Submenu */}
-              <li
+              {/* Work Check Menu with Submenu (admin only) */}
+              {!isInstructor && <li
                 ref={workCheckRef}
                 className="relative"
                 onMouseEnter={handleWorkCheckMouseEnter}
@@ -377,10 +396,10 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                     </div>
                   </div>
                 )}
-              </li>
+              </li>}
 
-              {/* Data Management Menu with Submenu */}
-              <li
+              {/* Data Management Menu with Submenu (admin only) */}
+              {!isInstructor && <li
                 ref={dataManagementRef}
                 className="relative"
                 onMouseEnter={handleDataManagementMouseEnter}
@@ -466,7 +485,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                     </div>
                   </div>
                 )}
-              </li>
+              </li>}
             </ul>
           </nav>
 

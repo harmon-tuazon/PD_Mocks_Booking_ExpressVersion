@@ -3,7 +3,7 @@
  * Displays instructors in a sortable, paginated table with actions
  */
 
-import { ChevronLeftIcon, ChevronRightIcon, UserIcon, KeyIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, UserIcon } from '@heroicons/react/24/outline';
 import { Pencil } from 'lucide-react';
 
 const InstructorTable = ({
@@ -214,15 +214,7 @@ const InstructorTable = ({
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      {getStatusBadge(instructor.is_active)}
-                      {instructor.auth_user_id && (
-                        <span className="inline-flex items-center text-xs text-green-600 dark:text-green-400" title="Has portal access">
-                          <KeyIcon className="h-3 w-3 mr-0.5" />
-                          Portal
-                        </span>
-                      )}
-                    </div>
+                    {getStatusBadge(instructor.is_active)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">
                     {formatDate(instructor.created_at)}
