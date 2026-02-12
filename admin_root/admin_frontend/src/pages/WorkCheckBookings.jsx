@@ -24,14 +24,10 @@ const StatCard = ({ name, value, icon: Icon, bgColor, textColor, isLoading }) =>
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-dark-card overflow-hidden shadow-lg dark:shadow-gray-900/50 rounded-lg animate-pulse">
-        <div className="p-5">
-          <div className="flex items-center">
-            <div className="flex-shrink-0 bg-gray-200 dark:bg-gray-700 rounded-md p-3 w-12 h-12"></div>
-            <div className="ml-5 w-0 flex-1">
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
-              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
-            </div>
-          </div>
+        <div className="px-3 py-3 text-center">
+          <div className="bg-gray-200 dark:bg-gray-700 rounded-md p-2 w-9 h-9 mx-auto mb-1"></div>
+          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16 mx-auto mb-1"></div>
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-8 mx-auto"></div>
         </div>
       </div>
     );
@@ -39,24 +35,16 @@ const StatCard = ({ name, value, icon: Icon, bgColor, textColor, isLoading }) =>
 
   return (
     <div className="bg-white dark:bg-dark-card overflow-hidden shadow-lg dark:shadow-gray-900/50 rounded-lg">
-      <div className="p-5">
-        <div className="flex items-center">
-          <div className={`flex-shrink-0 ${bgColor} dark:bg-opacity-20 rounded-md p-3`}>
-            <Icon className={`h-6 w-6 ${textColor}`} />
-          </div>
-          <div className="ml-5 w-0 flex-1">
-            <dl>
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                {name}
-              </dt>
-              <dd>
-                <div className={`text-2xl font-semibold ${textColor}`}>
-                  {value}
-                </div>
-              </dd>
-            </dl>
-          </div>
+      <div className="px-3 py-3 text-center">
+        <div className={`${bgColor} dark:bg-opacity-20 rounded-md p-2 w-fit mx-auto mb-1`}>
+          <Icon className={`h-5 w-5 ${textColor}`} />
         </div>
+        <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">
+          {name}
+        </dt>
+        <dd className={`text-xl font-semibold ${textColor}`}>
+          {value}
+        </dd>
       </div>
     </div>
   );
@@ -311,9 +299,9 @@ function WorkCheckBookings() {
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-7 mb-6">
+        <div className="grid grid-cols-4 gap-3 sm:grid-cols-7 mb-6">
           <StatCard
-            name="Total Bookings"
+            name="Total"
             value={stats.total ?? '--'}
             icon={Calendar}
             bgColor="bg-primary-50"

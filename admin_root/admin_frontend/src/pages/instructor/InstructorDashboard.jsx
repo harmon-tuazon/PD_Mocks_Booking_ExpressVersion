@@ -315,58 +315,6 @@ const InstructorDashboard = () => {
         </div>
       )}
 
-      {/* ─── My Groups Section ──────────────────────────────── */}
-      <div>
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="font-headline text-xl font-bold text-navy-900 dark:text-gray-100">My Groups</h2>
-          <div className="flex items-center gap-1.5">
-            {['active', 'completed', 'all'].map((status) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
-                  statusFilter === status
-                    ? 'bg-primary-600 dark:bg-primary-500 text-white shadow-sm'
-                    : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
-              >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {groupsLoading ? (
-          <div className="bg-white dark:bg-dark-card overflow-hidden shadow dark:shadow-gray-900/50 rounded-lg">
-            <div className="animate-pulse p-6">
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-            </div>
-          </div>
-        ) : groupsError ? (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-700 dark:text-red-300">
-            Failed to load groups. Please try again.
-          </div>
-        ) : groups.length === 0 ? (
-          <div className="bg-white dark:bg-dark-card overflow-hidden shadow dark:shadow-gray-900/50 rounded-lg">
-            <div className="text-center py-12">
-              <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No {statusFilter !== 'all' ? statusFilter : ''} groups found</h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Try adjusting your filter above.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {groups.map((group) => (
-              <GroupCard key={group.group_id} group={group} />
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* ─── Schedule Section ─────────────────────────────────── */}
       <div>
         <div className="mb-6 flex items-center justify-between">
@@ -432,57 +380,80 @@ const InstructorDashboard = () => {
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Time</th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Groups</th>
-                    <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Students</th>
+                    <th scope="col" className="px-3 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">Mark</th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student</th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
                   {schedule.map((day) =>
-                    day.sessions.map((session, sessionIdx) => (
-                      <tr key={`${day.date}-${sessionIdx}`} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                        {sessionIdx === 0 ? (
-                          <td className="px-6 py-4" rowSpan={day.sessions.length}>
-                            <div className="flex items-center gap-2">
-                              <CalendarDaysIcon className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
-                                  weekday: 'short',
-                                  month: 'short',
-                                  day: 'numeric'
-                                })}
-                              </span>
-                            </div>
-                          </td>
-                        ) : null}
-                        <td className="px-6 py-4">
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {session.time || '-'}
-                          </span>
-                          {session.duration_minutes && (
-                            <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">
-                              ({session.duration_minutes}m)
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-2">
-                            {session.groups.map((group) => (
-                              <span
-                                key={group.group_id}
-                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 whitespace-nowrap"
-                              >
-                                {group.group_name || group.group_id}
-                                <span className="ml-1.5 text-blue-600 dark:text-blue-300">
-                                  {group.student_count}s
+                    day.sessions.map((session, sessionIdx) => {
+                      const bookings = session.bookings && session.bookings.length > 0
+                        ? session.bookings
+                        : [null]; // at least one row per session
+                      const totalBookingRows = bookings.length;
+
+                      return bookings.map((booking, bookingIdx) => (
+                        <tr key={`${day.date}-${sessionIdx}-${bookingIdx}`} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                          {/* Date cell: spans all booking rows for the first session of each day */}
+                          {sessionIdx === 0 && bookingIdx === 0 ? (
+                            <td className="px-6 py-4" rowSpan={day.sessions.reduce((sum, s) => sum + Math.max((s.bookings?.length || 0), 1), 0)}>
+                              <div className="flex items-center gap-2">
+                                <CalendarDaysIcon className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
                                 </span>
+                              </div>
+                            </td>
+                          ) : sessionIdx > 0 && bookingIdx === 0 ? null : null}
+
+                          {/* Time cell: spans all booking rows for this session */}
+                          {bookingIdx === 0 && (
+                            <td className="px-6 py-4" rowSpan={totalBookingRows}>
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {session.time || '-'}
                               </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {session.bookings && session.bookings.length > 0 ? (
-                            <div className="space-y-2">
-                              {session.bookings.map((booking) => (
-                                <div key={booking.id} className="flex items-center gap-3">
+                              {session.duration_minutes && (
+                                <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">
+                                  ({session.duration_minutes}m)
+                                </span>
+                              )}
+                            </td>
+                          )}
+
+                          {/* Groups cell: spans all booking rows for this session */}
+                          {bookingIdx === 0 && (
+                            <td className="px-6 py-4" rowSpan={totalBookingRows}>
+                              <div className="flex flex-wrap gap-2">
+                                {session.groups.map((group) => (
+                                  <span
+                                    key={group.group_id}
+                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 whitespace-nowrap"
+                                  >
+                                    {group.group_name || group.group_id}
+                                    <span className="ml-1.5 text-blue-600 dark:text-blue-300">
+                                      {group.student_count}s
+                                    </span>
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                          )}
+
+                          {/* Mark (checkbox) column */}
+                          <td className="px-3 py-4 text-center">
+                            {booking ? (
+                              <div className="flex items-center justify-center">
+                                {markingBookingId === booking.id ? (
+                                  <svg className="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                ) : (
                                   <input
                                     type="checkbox"
                                     checked={booking.status === 'marked'}
@@ -490,33 +461,39 @@ const InstructorDashboard = () => {
                                     onChange={() => handleToggleMark(booking)}
                                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                                   />
-                                  {markingBookingId === booking.id && (
-                                    <svg className="animate-spin h-3 w-3 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                  )}
-                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
-                                    {booking.student_name}
-                                  </span>
-                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
-                                    booking.status === 'marked'
-                                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                                      : booking.status === 'confirmed'
-                                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                                  }`}>
-                                    {booking.status}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-sm text-gray-400 dark:text-gray-500">No bookings</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                                )}
+                              </div>
+                            ) : null}
+                          </td>
+
+                          {/* Student name column */}
+                          <td className="px-6 py-4">
+                            {booking ? (
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {booking.student_name}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-gray-400 dark:text-gray-500">No bookings</span>
+                            )}
+                          </td>
+
+                          {/* Status column */}
+                          <td className="px-6 py-4">
+                            {booking && (
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                                booking.status === 'marked'
+                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                  : booking.status === 'confirmed'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                                  : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                              }`}>
+                                {booking.status}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ));
+                    })
                   )}
                 </tbody>
               </table>
@@ -604,6 +581,56 @@ const InstructorDashboard = () => {
             )}
           </div>
         )}
+      </div>
+
+      {/* ─── My Groups Section ──────────────────────────────── */}
+      <div className="bg-white dark:bg-dark-card overflow-hidden shadow dark:shadow-gray-900/50 rounded-lg">
+        <div className="px-6 py-5 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+          <h2 className="font-headline text-xl font-bold text-navy-900 dark:text-gray-100">My Groups</h2>
+          <div className="flex items-center gap-1.5">
+            {['active', 'completed', 'all'].map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+                  statusFilter === status
+                    ? 'bg-primary-600 dark:bg-primary-500 text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-6">
+          {groupsLoading ? (
+            <div className="animate-pulse">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+            </div>
+          ) : groupsError ? (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-700 dark:text-red-300">
+              Failed to load groups. Please try again.
+            </div>
+          ) : groups.length === 0 ? (
+            <div className="text-center py-8">
+              <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No {statusFilter !== 'all' ? statusFilter : ''} groups found</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Try adjusting your filter above.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {groups.map((group) => (
+                <GroupCard key={group.group_id} group={group} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
     </div>
