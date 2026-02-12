@@ -48,10 +48,12 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Return user information (all authenticated users have access)
+    // Return user information with RBAC claims (all authenticated users have access)
     res.status(200).json({
       id: user.id,
       email: user.email,
+      user_role: user.user_role || 'viewer',
+      permissions: user.permissions || [],
       user_metadata: user.user_metadata || {},
       created_at: user.created_at,
       last_sign_in: user.last_sign_in_at

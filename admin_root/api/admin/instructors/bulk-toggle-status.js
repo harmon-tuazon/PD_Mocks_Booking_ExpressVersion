@@ -79,7 +79,7 @@ module.exports = async (req, res) => {
     console.log(`[BULK-TOGGLE-INSTRUCTORS] Fetching instructor details from Supabase...`);
     const { data: instructors, error: fetchError } = await supabaseAdmin
       .from('instructors')
-      .select('id, instructor_name, email, is_active')
+      .select('id, instructor_name, email, is_active, auth_user_id')
       .in('id', ids);
 
     if (fetchError) {
@@ -143,6 +143,7 @@ module.exports = async (req, res) => {
       updates.push({
         id,
         instructor_name: instructor.instructor_name,
+        auth_user_id: instructor.auth_user_id,
         previousState: currentState,
         newState: newState
       });
@@ -179,6 +180,18 @@ module.exports = async (req, res) => {
             });
             summary.failed++;
           } else {
+            // Sync auth user ban/unban if instructor has portal access
+            if (update.auth_user_id) {
+              const { error: authSyncError } = await supabaseAdmin.auth.admin.updateUserById(
+                update.auth_user_id,
+                { ban_duration: update.newState ? 'none' : '876000h' }
+              );
+
+              if (authSyncError) {
+                console.error(`[Auth Sync WARNING] Failed to sync auth user for instructor ${update.id}:`, authSyncError.message);
+              }
+            }
+
             results.successful.push({
               id: update.id,
               previousState: update.previousState,

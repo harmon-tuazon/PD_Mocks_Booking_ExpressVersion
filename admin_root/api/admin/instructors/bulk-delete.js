@@ -72,6 +72,35 @@ module.exports = async (req, res) => {
       });
     }
 
+    // Fetch auth_user_ids for instructors that will be deleted (for auth cleanup)
+    const { data: instructorsToDelete } = await supabaseAdmin
+      .from('instructors')
+      .select('id, auth_user_id')
+      .in('id', deletableIds);
+
+    // Clean up auth users and user_roles before deleting instructor rows
+    const authUserIds = (instructorsToDelete || [])
+      .filter(i => i.auth_user_id)
+      .map(i => i.auth_user_id);
+
+    if (authUserIds.length > 0) {
+      console.log(`[Bulk Delete Instructors] Cleaning up ${authUserIds.length} auth user(s)`);
+
+      for (const authUserId of authUserIds) {
+        // Remove role assignment first
+        await supabaseAdmin
+          .from('user_roles')
+          .delete()
+          .eq('user_id', authUserId);
+
+        // Delete auth user
+        const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+        if (authDeleteError) {
+          console.error(`[Auth WARNING] Failed to delete auth user ${authUserId}:`, authDeleteError.message);
+        }
+      }
+    }
+
     // Delete the instructors that don't have active group assignments
     const { data: deletedInstructors, error: deleteError } = await supabaseAdmin
       .from('instructors')

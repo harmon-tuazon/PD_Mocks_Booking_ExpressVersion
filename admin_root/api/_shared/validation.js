@@ -1573,6 +1573,83 @@ const schemas = {
       .messages({
         'string.email': 'Please enter a valid email address',
         'any.required': 'Email is required'
+      }),
+    password: Joi.string()
+      .min(8)
+      .max(72)
+      .required()
+      .messages({
+        'string.empty': 'Password is required',
+        'string.min': 'Password must be at least 8 characters',
+        'string.max': 'Password cannot exceed 72 characters',
+        'any.required': 'Password is required'
+      })
+  }),
+
+  // Schema for instructor password reset
+  instructorResetPassword: Joi.object({
+    new_password: Joi.string()
+      .min(8)
+      .max(72)
+      .required()
+      .messages({
+        'string.empty': 'New password is required',
+        'string.min': 'Password must be at least 8 characters',
+        'string.max': 'Password cannot exceed 72 characters',
+        'any.required': 'New password is required'
+      })
+  }),
+
+  // Schema for provisioning portal access for existing instructors
+  instructorProvisionAccess: Joi.object({
+    password: Joi.string()
+      .min(8)
+      .max(72)
+      .required()
+      .messages({
+        'string.empty': 'Password is required',
+        'string.min': 'Password must be at least 8 characters',
+        'string.max': 'Password cannot exceed 72 characters',
+        'any.required': 'Password is required'
+      })
+  }),
+
+  // Schema for instructor portal - list groups
+  instructorGroupsList: Joi.object({
+    status: Joi.string()
+      .valid('active', 'completed', 'all')
+      .optional()
+      .default('active')
+      .messages({
+        'any.only': 'Status must be one of: active, completed, all'
+      })
+  }),
+
+  // Schema for instructor portal - upcoming schedule
+  instructorSchedule: Joi.object({
+    days: Joi.number()
+      .integer()
+      .min(1)
+      .max(90)
+      .optional()
+      .default(30)
+      .messages({
+        'number.base': 'Days must be a number',
+        'number.integer': 'Days must be an integer',
+        'number.min': 'Days must be at least 1',
+        'number.max': 'Days cannot exceed 90'
+      }),
+    limit: Joi.number()
+      .integer()
+      .min(1)
+      .max(100)
+      .optional()
+      .default(20)
+      .messages({
+        'number.base': 'Limit must be a number',
+        'number.integer': 'Limit must be an integer',
+        'number.min': 'Limit must be at least 1',
+        'number.max': 'Limit cannot exceed 100'
       })
   }),
 

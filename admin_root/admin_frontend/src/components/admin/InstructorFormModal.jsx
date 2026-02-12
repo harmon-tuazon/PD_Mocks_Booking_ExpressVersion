@@ -5,7 +5,9 @@
 
 import { Fragment, useState, useEffect, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { XMarkIcon, PlusIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PlusIcon, PencilIcon, EyeIcon, EyeSlashIcon, KeyIcon } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
+import { instructorsApi } from '../../services/adminApi';
 
 const InstructorFormModal = ({
   isOpen,
@@ -20,10 +22,18 @@ const InstructorFormModal = ({
   // Form state
   const [formData, setFormData] = useState({
     instructor_name: '',
-    email: ''
+    email: '',
+    password: ''
   });
 
   const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Reset password state (edit mode only)
+  const [resetPassword, setResetPassword] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetPasswordError, setResetPasswordError] = useState('');
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   // Reset form when modal opens or initialData changes
   useEffect(() => {
@@ -31,15 +41,21 @@ const InstructorFormModal = ({
       if (initialData) {
         setFormData({
           instructor_name: initialData.instructor_name || '',
-          email: initialData.email || ''
+          email: initialData.email || '',
+          password: '' // Never pre-fill password in edit mode
         });
       } else {
         setFormData({
           instructor_name: '',
-          email: ''
+          email: '',
+          password: ''
         });
       }
       setErrors({});
+      setShowPassword(false);
+      setResetPassword('');
+      setShowResetPassword(false);
+      setResetPasswordError('');
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen, initialData]);
@@ -58,6 +74,15 @@ const InstructorFormModal = ({
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
+    }
+
+    // Only validate password in create mode
+    if (mode === 'create') {
+      if (!formData.password) {
+        newErrors.password = 'Password is required';
+      } else if (formData.password.length < 8) {
+        newErrors.password = 'Password must be at least 8 characters';
+      }
     }
 
     return newErrors;
@@ -91,7 +116,42 @@ const InstructorFormModal = ({
       email: formData.email.trim().toLowerCase()
     };
 
+    // Only include password in create mode
+    if (mode === 'create') {
+      submitData.password = formData.password;
+    }
+
     onSubmit(submitData);
+  };
+
+  // Handle reset password submission
+  const handleResetPassword = async () => {
+    setResetPasswordError('');
+
+    if (!resetPassword) {
+      setResetPasswordError('Password is required');
+      return;
+    }
+    if (resetPassword.length < 8) {
+      setResetPasswordError('Password must be at least 8 characters');
+      return;
+    }
+
+    const instructorId = initialData?.id || initialData?.instructor_id;
+    if (!instructorId) return;
+
+    setIsResettingPassword(true);
+    try {
+      const result = await instructorsApi.resetPassword(instructorId, resetPassword);
+      toast.success(result.message || 'Password reset successfully');
+      setResetPassword('');
+      setShowResetPassword(false);
+    } catch (error) {
+      const message = error.response?.data?.error?.message || error.response?.data?.error || 'Failed to reset password';
+      toast.error(message);
+    } finally {
+      setIsResettingPassword(false);
+    }
   };
 
   const getTitle = () => {
@@ -216,6 +276,40 @@ const InstructorFormModal = ({
                     )}
                   </div>
 
+                  {/* Password (create mode only) */}
+                  {mode === 'create' && (
+                    <div>
+                      <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Password <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          name="password"
+                          id="password"
+                          value={formData.password}
+                          onChange={handleChange}
+                          disabled={isLoading}
+                          className={errors.password ? inputErrorClass : inputNormalClass}
+                          placeholder="Minimum 8 characters"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        >
+                          {showPassword ? <EyeSlashIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {errors.password && (
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password}</p>
+                      )}
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Share this password with the instructor for portal login.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Actions */}
                   <div className="mt-6 sm:mt-5 sm:flex sm:flex-row-reverse sm:gap-3">
                     <button
@@ -241,6 +335,51 @@ const InstructorFormModal = ({
                     </button>
                   </div>
                 </form>
+
+                {/* Reset Password Section (edit mode only, with auth account) */}
+                {mode === 'edit' && initialData?.auth_user_id && (
+                  <div className="mt-6 pt-5 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-2 mb-3">
+                      <KeyIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Reset Portal Password
+                      </h4>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <input
+                          type={showResetPassword ? 'text' : 'password'}
+                          value={resetPassword}
+                          onChange={(e) => {
+                            setResetPassword(e.target.value);
+                            if (resetPasswordError) setResetPasswordError('');
+                          }}
+                          disabled={isResettingPassword}
+                          className={resetPasswordError ? inputErrorClass : inputNormalClass}
+                          placeholder="New password (min 8 characters)"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowResetPassword(!showResetPassword)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        >
+                          {showResetPassword ? <EyeSlashIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {resetPasswordError && (
+                        <p className="text-sm text-red-600 dark:text-red-400">{resetPasswordError}</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleResetPassword}
+                        disabled={isResettingPassword || !resetPassword}
+                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isResettingPassword ? 'Resetting...' : 'Reset Password'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </Dialog.Panel>
             </Transition.Child>
           </div>

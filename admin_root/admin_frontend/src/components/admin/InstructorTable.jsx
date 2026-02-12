@@ -3,7 +3,7 @@
  * Displays instructors in a sortable, paginated table with actions
  */
 
-import { ChevronLeftIcon, ChevronRightIcon, UserIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, UserIcon, KeyIcon } from '@heroicons/react/24/outline';
 import { Pencil } from 'lucide-react';
 
 const InstructorTable = ({
@@ -50,13 +50,13 @@ const InstructorTable = ({
     );
   };
 
-  const SortableHeader = ({ column, children }) => (
+  const SortableHeader = ({ column, children, align = 'center' }) => (
     <th
       scope="col"
-      className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+      className={`px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${align === 'left' ? 'text-left' : 'text-center'}`}
       onClick={() => onSort?.(column)}
     >
-      <div className="flex items-center justify-center">
+      <div className={`flex items-center ${align === 'left' ? 'justify-start' : 'justify-center'}`}>
         {children}
         {getSortIcon(column)}
       </div>
@@ -155,8 +155,8 @@ const InstructorTable = ({
                   {/* Checkbox column header - intentionally empty */}
                 </th>
               )}
-              <SortableHeader column="instructor_name">Name</SortableHeader>
-              <SortableHeader column="email">Email</SortableHeader>
+              <SortableHeader column="instructor_name" align="left">Name</SortableHeader>
+              <SortableHeader column="email" align="left">Email</SortableHeader>
               <SortableHeader column="is_active">Status</SortableHeader>
               <SortableHeader column="created_at">Created</SortableHeader>
               <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -213,14 +213,22 @@ const InstructorTable = ({
                       {instructor.email || '-'}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {getStatusBadge(instructor.is_active)}
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      {getStatusBadge(instructor.is_active)}
+                      {instructor.auth_user_id && (
+                        <span className="inline-flex items-center text-xs text-green-600 dark:text-green-400" title="Has portal access">
+                          <KeyIcon className="h-3 w-3 mr-0.5" />
+                          Portal
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">
                     {formatDate(instructor.created_at)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end">
+                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                    <div className="flex items-center justify-center">
                       {/* Edit button */}
                       <button
                         onClick={() => onEdit?.(instructor)}

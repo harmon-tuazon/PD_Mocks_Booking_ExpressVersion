@@ -731,6 +731,19 @@ export const instructorsApi = {
   bulkDelete: async (ids) => {
     const response = await api.post('/admin/instructors/bulk-delete', { ids });
     return response.data;
+  },
+
+  /**
+   * Reset an instructor's password
+   * @param {string} id - Instructor UUID
+   * @param {string} newPassword - New password (min 8 chars)
+   * @returns {Promise<Object>} Result with success message
+   */
+  resetPassword: async (id, newPassword) => {
+    const response = await api.post(`/admin/instructors/${id}/reset-password`, {
+      new_password: newPassword
+    });
+    return response.data;
   }
 };
 
@@ -946,6 +959,34 @@ export const workCheckBookingsApi = {
    */
   clone: async (data) => {
     const response = await api.post('/admin/work-check-bookings/clone', data);
+    return response.data;
+  }
+};
+
+// Instructor Portal API (used by instructor-role users)
+export const instructorPortalApi = {
+  getMe: async () => {
+    const response = await api.get('/admin/instructor/me');
+    return response.data;
+  },
+
+  getDashboardStats: async () => {
+    const response = await api.get('/admin/instructor/dashboard/stats');
+    return response.data;
+  },
+
+  listGroups: async (params = {}) => {
+    const response = await api.get('/admin/instructor/groups', { params });
+    return response.data;
+  },
+
+  getGroup: async (groupId) => {
+    const response = await api.get(`/admin/instructor/groups/${groupId}`);
+    return response.data;
+  },
+
+  getSchedule: async (params = {}) => {
+    const response = await api.get('/admin/instructor/schedule', { params });
     return response.data;
   }
 };

@@ -173,6 +173,33 @@ async function handlePut(req, res, id) {
     });
   }
 
+  // Sync auth user if instructor has portal access
+  if (updatedInstructor.auth_user_id) {
+    const authUpdates = {};
+
+    // Sync email change
+    if (updates.email !== undefined) {
+      authUpdates.email = updates.email.toLowerCase().trim();
+    }
+
+    // Sync active status (ban/unban)
+    if (updates.is_active !== undefined) {
+      authUpdates.ban_duration = updates.is_active ? 'none' : '876000h';
+    }
+
+    if (Object.keys(authUpdates).length > 0) {
+      const { error: authSyncError } = await supabaseAdmin.auth.admin.updateUserById(
+        updatedInstructor.auth_user_id,
+        authUpdates
+      );
+
+      if (authSyncError) {
+        // Non-fatal: log but don't fail the request
+        console.error('[Auth Sync WARNING] Failed to sync auth user:', authSyncError.message);
+      }
+    }
+  }
+
   console.log(`[Instructor Updated] ${id}`);
 
   res.status(200).json({
@@ -212,6 +239,18 @@ async function handleDelete(req, res, id) {
       success: false,
       error: { code: 'INSTRUCTOR_NOT_FOUND', message: `Instructor with ID ${id} not found` }
     });
+  }
+
+  // Ban auth user to prevent login
+  if (deletedInstructor.auth_user_id) {
+    const { error: banError } = await supabaseAdmin.auth.admin.updateUserById(
+      deletedInstructor.auth_user_id,
+      { ban_duration: '876000h' }
+    );
+
+    if (banError) {
+      console.error('[Auth Sync WARNING] Failed to ban auth user:', banError.message);
+    }
   }
 
   console.log(`[Instructor Soft Deleted] ${id} - ${deletedInstructor.instructor_name}`);
