@@ -74,6 +74,8 @@ module.exports = async (req, res) => {
           updateData.confirmed_at = new Date().toISOString();
         } else if (target_status === 'cancelled') {
           updateData.cancelled_at = new Date().toISOString();
+        } else if (target_status === 'marked') {
+          updateData.marked_at = new Date().toISOString();
         }
 
         updates.push(updateData);

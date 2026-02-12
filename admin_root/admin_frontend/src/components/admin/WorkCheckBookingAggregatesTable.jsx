@@ -316,11 +316,11 @@ const AggregateRowWithBookings = ({
         </td>
       </tr>
 
-      {/* Expanded Bookings - Only show pending, confirmed, completed */}
+      {/* Expanded Bookings - Only show pending, confirmed, marked, completed */}
       {isExpanded && bookings.length > 0 && (() => {
-        // Filter to only show pending, confirmed, and completed bookings
+        // Filter to only show pending, confirmed, marked, and completed bookings
         const visibleBookings = bookings.filter(b =>
-          ['pending', 'confirmed', 'completed'].includes(b.status?.toLowerCase())
+          ['pending', 'confirmed', 'marked', 'completed'].includes(b.status?.toLowerCase())
         );
 
         if (visibleBookings.length === 0) return null;

@@ -83,8 +83,7 @@ module.exports = async (req, res) => {
         break;
       case 'completed':
         query = query
-          .eq('status', 'confirmed')
-          .lt('work_check_slots.slot_date', today);
+          .in('status', ['marked', 'completed']);
         break;
       case 'cancelled':
         query = query.in('status', ['cancelled', 'rejected']);
@@ -179,8 +178,10 @@ module.exports = async (req, res) => {
         if (isInFuture) {
           categorized.upcoming.push(booking);
         } else {
-          categorized.completed.push(booking);
+          categorized.upcoming.push(booking);
         }
+      } else if (booking.status === 'marked' || booking.status === 'completed') {
+        categorized.completed.push(booking);
       } else if (booking.status === 'cancelled' || booking.status === 'rejected') {
         categorized.cancelled.push(booking);
       }

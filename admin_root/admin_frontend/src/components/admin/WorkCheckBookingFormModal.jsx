@@ -18,6 +18,8 @@ import { workCheckSlotsApi, studentsApi } from '../../services/adminApi';
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending' },
   { value: 'confirmed', label: 'Confirmed' },
+  { value: 'marked', label: 'Marked' },
+  { value: 'completed', label: 'Completed' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'cancelled', label: 'Cancelled' }
 ];

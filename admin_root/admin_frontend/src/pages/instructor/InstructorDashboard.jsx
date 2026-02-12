@@ -5,12 +5,14 @@
  */
 
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import {
   useInstructorProfile,
   useInstructorDashboardStats,
   useInstructorGroups,
   useInstructorGroupDetail,
-  useInstructorSchedule
+  useInstructorSchedule,
+  useMarkBookings
 } from '../../hooks/useInstructorPortalData';
 import {
   UserGroupIcon,
@@ -204,6 +206,23 @@ const InstructorDashboard = () => {
   const schedule = scheduleRes?.data?.schedule || [];
   const totalSessions = scheduleRes?.data?.total_sessions || 0;
   const scheduleTotalPages = scheduleRes?.data?.total_pages || 1;
+
+  // Mark bookings mutation
+  const markBookingsMutation = useMarkBookings();
+  const [markingBookingId, setMarkingBookingId] = useState(null);
+
+  const handleToggleMark = async (booking) => {
+    const action = booking.status === 'marked' ? 'unmark' : 'mark';
+    setMarkingBookingId(booking.id);
+    try {
+      await markBookingsMutation.mutateAsync({ bookingIds: [booking.id], action });
+      toast.success(action === 'mark' ? 'Booking marked as completed' : 'Booking unmarked');
+    } catch (error) {
+      toast.error(error?.response?.data?.error?.message || 'Failed to update booking');
+    } finally {
+      setMarkingBookingId(null);
+    }
+  };
 
   // Reset to page 1 when filter changes
   const handleScheduleFilterChange = (filter) => {
@@ -413,6 +432,7 @@ const InstructorDashboard = () => {
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Time</th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Groups</th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Students</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
@@ -457,6 +477,43 @@ const InstructorDashboard = () => {
                               </span>
                             ))}
                           </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {session.bookings && session.bookings.length > 0 ? (
+                            <div className="space-y-2">
+                              {session.bookings.map((booking) => (
+                                <div key={booking.id} className="flex items-center gap-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={booking.status === 'marked'}
+                                    disabled={booking.status === 'pending' || markingBookingId === booking.id}
+                                    onChange={() => handleToggleMark(booking)}
+                                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                                  />
+                                  {markingBookingId === booking.id && (
+                                    <svg className="animate-spin h-3 w-3 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                  )}
+                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                                    {booking.student_name}
+                                  </span>
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                                    booking.status === 'marked'
+                                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                      : booking.status === 'confirmed'
+                                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                                  }`}>
+                                    {booking.status}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400 dark:text-gray-500">No bookings</span>
+                          )}
                         </td>
                       </tr>
                     ))

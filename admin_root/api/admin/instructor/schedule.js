@@ -153,6 +153,36 @@ module.exports = async (req, res) => {
       studentCounts[gid] = count || 0;
     }
 
+    // Fetch bookings for all slots (with student names)
+    const slotIds = slots.map(s => s.id);
+    let bookingsBySlot = {};
+    if (slotIds.length > 0) {
+      const { data: bookings } = await supabaseAdmin
+        .from('work_check_bookings')
+        .select(`
+          id, slot_id, student_id, status, type, marked_at,
+          student:hubspot_contact_credits!work_check_bookings_student_id_fkey (
+            student_id, firstname, lastname
+          )
+        `)
+        .in('slot_id', slotIds)
+        .in('status', ['pending', 'confirmed', 'marked']);
+
+      for (const b of (bookings || [])) {
+        if (!bookingsBySlot[b.slot_id]) bookingsBySlot[b.slot_id] = [];
+        bookingsBySlot[b.slot_id].push({
+          id: b.id,
+          student_id: b.student_id,
+          student_name: b.student
+            ? `${b.student.firstname || ''} ${b.student.lastname || ''}`.trim()
+            : b.student_id,
+          status: b.status,
+          type: b.type,
+          marked_at: b.marked_at
+        });
+      }
+    }
+
     // Group slots by date
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const dateMap = new Map();
@@ -184,7 +214,8 @@ module.exports = async (req, res) => {
         slot_id: slot.id,
         time: slot.slot_time,
         duration_minutes: slot.duration_minutes,
-        groups
+        groups,
+        bookings: bookingsBySlot[slot.id] || []
       });
     }
 

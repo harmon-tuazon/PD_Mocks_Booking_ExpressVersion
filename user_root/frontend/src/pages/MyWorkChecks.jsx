@@ -319,6 +319,11 @@ const MyWorkChecks = () => {
       pending: { color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', label: 'Pending', icon: '⏳' },
       cancelled: { color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300', label: 'Cancelled', icon: '✕' },
       completed: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300', label: 'Completed', icon: '✓' },
+      marked: {
+        color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+        label: 'Completed',
+        icon: '✓'
+      },
       no_show: { color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300', label: 'No Show', icon: '⚠' }
     };
 

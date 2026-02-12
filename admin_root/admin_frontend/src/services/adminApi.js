@@ -988,6 +988,14 @@ export const instructorPortalApi = {
   getSchedule: async (params = {}) => {
     const response = await api.get('/admin/instructor/schedule', { params });
     return response.data;
+  },
+
+  markBookings: async (bookingIds, action) => {
+    const response = await api.post('/admin/instructor/bookings/mark', {
+      booking_ids: bookingIds,
+      action
+    });
+    return response.data;
   }
 };
 

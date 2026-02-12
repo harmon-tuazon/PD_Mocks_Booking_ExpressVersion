@@ -1998,8 +1998,8 @@ const schemas = {
     date_to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({
       'string.pattern.base': 'date_to must be in YYYY-MM-DD format'
     }),
-    status: Joi.string().valid('pending', 'confirmed', 'rejected', 'cancelled').messages({
-      'any.only': 'Status must be one of: pending, confirmed, rejected, cancelled'
+    status: Joi.string().valid('pending', 'confirmed', 'marked', 'completed', 'rejected', 'cancelled').messages({
+      'any.only': 'Status must be one of: pending, confirmed, marked, completed, rejected, cancelled'
     }),
     type: Joi.string().valid('Demo', 'Work Check', 'Supervised Session').messages({
       'any.only': 'Type must be one of: Demo, Work Check, Supervised Session'
@@ -2020,7 +2020,7 @@ const schemas = {
     slot_id: Joi.string().uuid(),
     group_id: Joi.string().max(100),
     location: Joi.string().valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online'),
-    status: Joi.string().valid('pending', 'confirmed', 'rejected', 'cancelled', 'all').default('all'),
+    status: Joi.string().valid('pending', 'confirmed', 'marked', 'completed', 'rejected', 'cancelled', 'all').default('all'),
     type: Joi.string().valid('Demo', 'Work Check', 'Supervised Session', 'all').default('all'),
     date_from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({
       'string.pattern.base': 'date_from must be in YYYY-MM-DD format'
@@ -2059,9 +2059,9 @@ const schemas = {
   // Work Check Booking Update
   workCheckBookingUpdate: Joi.object({
     status: Joi.string()
-      .valid('pending', 'confirmed', 'rejected', 'cancelled')
+      .valid('pending', 'confirmed', 'marked', 'completed', 'rejected', 'cancelled')
       .messages({
-        'any.only': 'Status must be one of: pending, confirmed, rejected, cancelled'
+        'any.only': 'Status must be one of: pending, confirmed, marked, completed, rejected, cancelled'
       }),
     type: Joi.string()
       .valid('Demo', 'Work Check', 'Supervised Session')
@@ -2085,10 +2085,10 @@ const schemas = {
         'any.required': 'Booking IDs are required'
       }),
     target_status: Joi.string()
-      .valid('pending', 'confirmed', 'rejected', 'cancelled')
+      .valid('pending', 'confirmed', 'marked', 'completed', 'rejected', 'cancelled')
       .required()
       .messages({
-        'any.only': 'Target status must be one of: pending, confirmed, rejected, cancelled',
+        'any.only': 'Target status must be one of: pending, confirmed, marked, completed, rejected, cancelled',
         'any.required': 'Target status is required'
       })
   }),
@@ -2129,6 +2129,27 @@ const schemas = {
       }),
     preserve_status: Joi.boolean().default(false),
     preserve_type: Joi.boolean().default(true)
+  }),
+
+  // Instructor Mark Bookings
+  instructorMarkBookings: Joi.object({
+    booking_ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(50)
+      .required()
+      .messages({
+        'array.min': 'At least one booking ID is required',
+        'array.max': 'Cannot mark more than 50 bookings at once',
+        'any.required': 'Booking IDs are required'
+      }),
+    action: Joi.string()
+      .valid('mark', 'unmark')
+      .required()
+      .messages({
+        'any.only': 'Action must be either mark or unmark',
+        'any.required': 'Action is required'
+      })
   })
 
 };

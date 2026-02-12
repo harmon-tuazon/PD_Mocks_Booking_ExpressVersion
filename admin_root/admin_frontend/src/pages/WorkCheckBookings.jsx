@@ -5,7 +5,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { Calendar, CheckCircle, Clock, XCircle, Ban, Plus } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, XCircle, Ban, Plus, ClipboardCheck, BadgeCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useWorkCheckBookingAggregates } from '../hooks/useWorkCheckBookingsData';
 import { useWorkCheckBookingMutations } from '../hooks/useWorkCheckBookingMutations';
@@ -120,6 +120,8 @@ function WorkCheckBookings() {
     let total = 0;
     let pending = 0;
     let confirmed = 0;
+    let marked = 0;
+    let completed = 0;
     let rejected = 0;
     let cancelled = 0;
 
@@ -127,6 +129,8 @@ function WorkCheckBookings() {
       total += agg.total_bookings || 0;
       pending += agg.pending_count || 0;
       confirmed += agg.confirmed_count || 0;
+      marked += agg.marked_count || 0;
+      completed += agg.completed_count || 0;
       rejected += agg.rejected_count || 0;
       cancelled += agg.cancelled_count || 0;
     });
@@ -136,7 +140,7 @@ function WorkCheckBookings() {
       total = aggregatesData.pagination.preloaded_bookings;
     }
 
-    return { total, pending, confirmed, rejected, cancelled };
+    return { total, pending, confirmed, marked, completed, rejected, cancelled };
   }, [aggregates, aggregatesData?.pagination]);
 
   // Toggle expand handler
@@ -307,7 +311,7 @@ function WorkCheckBookings() {
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-5 mb-6">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-7 mb-6">
           <StatCard
             name="Total Bookings"
             value={stats.total ?? '--'}
@@ -330,6 +334,22 @@ function WorkCheckBookings() {
             icon={CheckCircle}
             bgColor="bg-green-50"
             textColor="text-green-600"
+            isLoading={aggregatesLoading}
+          />
+          <StatCard
+            name="Marked"
+            value={stats.marked ?? '--'}
+            icon={ClipboardCheck}
+            bgColor="bg-amber-50"
+            textColor="text-amber-600"
+            isLoading={aggregatesLoading}
+          />
+          <StatCard
+            name="Completed"
+            value={stats.completed ?? '--'}
+            icon={BadgeCheck}
+            bgColor="bg-blue-50"
+            textColor="text-blue-600"
             isLoading={aggregatesLoading}
           />
           <StatCard

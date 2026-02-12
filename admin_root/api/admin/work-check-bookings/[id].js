@@ -116,6 +116,7 @@ async function getBooking(req, res, id) {
     created_at: booking.created_at,
     confirmed_at: booking.confirmed_at,
     cancelled_at: booking.cancelled_at,
+    marked_at: booking.marked_at,
     slot: booking.slot ? {
       id: booking.slot.id,
       slot_date: booking.slot.slot_date,
@@ -181,6 +182,9 @@ async function updateBooking(req, res, id) {
     }
     if (updates.status === 'cancelled' && existingBooking.status !== 'cancelled') {
       updateData.cancelled_at = new Date().toISOString();
+    }
+    if (updates.status === 'marked' && existingBooking.status !== 'marked') {
+      updateData.marked_at = new Date().toISOString();
     }
   }
 

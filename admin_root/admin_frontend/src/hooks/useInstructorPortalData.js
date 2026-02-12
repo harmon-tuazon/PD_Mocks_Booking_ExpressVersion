@@ -2,7 +2,7 @@
  * Custom hooks for instructor portal data fetching
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { instructorPortalApi } from '../services/adminApi';
 
 /**
@@ -68,5 +68,20 @@ export function useInstructorSchedule(params = {}, options = {}) {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     ...options
+  });
+}
+
+/**
+ * Mutation hook for marking/unmarking bookings
+ */
+export function useMarkBookings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingIds, action }) =>
+      instructorPortalApi.markBookings(bookingIds, action),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['instructor', 'schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['instructor', 'dashboard-stats'] });
+    }
   });
 }
