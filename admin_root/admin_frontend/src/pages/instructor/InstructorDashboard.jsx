@@ -185,6 +185,15 @@ const GroupCard = ({ group }) => {
   );
 };
 
+// ─── Helpers ────────────────────────────────────────────────
+const formatTime = (timeStr) => {
+  if (!timeStr) return '-';
+  const [h, m] = timeStr.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hours = h % 12 || 12;
+  return `${hours}:${String(m).padStart(2, '0')} ${period}`;
+};
+
 // ─── Main Dashboard ──────────────────────────────────────────
 const InstructorDashboard = () => {
   const { data: profileRes, isLoading: profileLoading } = useInstructorProfile();
@@ -380,106 +389,88 @@ const InstructorDashboard = () => {
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Time</th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Groups</th>
-                    <th scope="col" className="px-3 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">Mark</th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student</th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th scope="col" className="px-3 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">Mark</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
-                  {schedule.map((day) =>
-                    day.sessions.map((session, sessionIdx) => {
-                      const bookings = session.bookings && session.bookings.length > 0
-                        ? session.bookings
-                        : [null]; // at least one row per session
+                  {schedule.map((day) => {
+                    // Filter to only sessions that have bookings
+                    const sessionsWithBookings = day.sessions.filter(s => s.bookings && s.bookings.length > 0);
+                    if (sessionsWithBookings.length === 0) return null;
+
+                    // Total booking rows for this day (for date rowSpan)
+                    const dayTotalRows = sessionsWithBookings.reduce((sum, s) => sum + s.bookings.length, 0);
+
+                    let isFirstRowOfDay = true;
+
+                    return sessionsWithBookings.map((session, sessionIdx) => {
+                      const bookings = session.bookings;
                       const totalBookingRows = bookings.length;
 
-                      return bookings.map((booking, bookingIdx) => (
-                        <tr key={`${day.date}-${sessionIdx}-${bookingIdx}`} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                          {/* Date cell: spans all booking rows for the first session of each day */}
-                          {sessionIdx === 0 && bookingIdx === 0 ? (
-                            <td className="px-6 py-4" rowSpan={day.sessions.reduce((sum, s) => sum + Math.max((s.bookings?.length || 0), 1), 0)}>
-                              <div className="flex items-center gap-2">
-                                <CalendarDaysIcon className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                  {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
-                                    weekday: 'short',
-                                    month: 'short',
-                                    day: 'numeric'
-                                  })}
-                                </span>
-                              </div>
-                            </td>
-                          ) : sessionIdx > 0 && bookingIdx === 0 ? null : null}
+                      return bookings.map((booking, bookingIdx) => {
+                        const showDateCell = isFirstRowOfDay;
+                        if (isFirstRowOfDay) isFirstRowOfDay = false;
 
-                          {/* Time cell: spans all booking rows for this session */}
-                          {bookingIdx === 0 && (
-                            <td className="px-6 py-4" rowSpan={totalBookingRows}>
-                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {session.time || '-'}
-                              </span>
-                              {session.duration_minutes && (
-                                <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">
-                                  ({session.duration_minutes}m)
-                                </span>
-                              )}
-                            </td>
-                          )}
-
-                          {/* Groups cell: spans all booking rows for this session */}
-                          {bookingIdx === 0 && (
-                            <td className="px-6 py-4" rowSpan={totalBookingRows}>
-                              <div className="flex flex-wrap gap-2">
-                                {session.groups.map((group) => (
-                                  <span
-                                    key={group.group_id}
-                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 whitespace-nowrap"
-                                  >
-                                    {group.group_name || group.group_id}
-                                    <span className="ml-1.5 text-blue-600 dark:text-blue-300">
-                                      {group.student_count}s
-                                    </span>
+                        return (
+                          <tr key={`${day.date}-${sessionIdx}-${bookingIdx}`} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                            {/* Date cell: spans all booking rows for the entire day */}
+                            {showDateCell && (
+                              <td className="px-6 py-4" rowSpan={dayTotalRows}>
+                                <div className="flex items-center gap-2">
+                                  <CalendarDaysIcon className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
+                                      weekday: 'short',
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric'
+                                    })}
                                   </span>
-                                ))}
-                              </div>
-                            </td>
-                          )}
+                                </div>
+                              </td>
+                            )}
 
-                          {/* Mark (checkbox) column */}
-                          <td className="px-3 py-4 text-center">
-                            {booking ? (
-                              <div className="flex items-center justify-center">
-                                {markingBookingId === booking.id ? (
-                                  <svg className="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                  </svg>
-                                ) : (
-                                  <input
-                                    type="checkbox"
-                                    checked={booking.status === 'marked'}
-                                    disabled={booking.status === 'pending' || markingBookingId === booking.id}
-                                    onChange={() => handleToggleMark(booking)}
-                                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-                                  />
+                            {/* Time cell: spans all booking rows for this session */}
+                            {bookingIdx === 0 && (
+                              <td className="px-6 py-4" rowSpan={totalBookingRows}>
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  {formatTime(session.time)}
+                                </span>
+                                {session.duration_minutes && (
+                                  <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">
+                                    ({session.duration_minutes}m)
+                                  </span>
                                 )}
-                              </div>
-                            ) : null}
-                          </td>
+                              </td>
+                            )}
 
-                          {/* Student name column */}
-                          <td className="px-6 py-4">
-                            {booking ? (
+                            {/* Groups cell: spans all booking rows for this session */}
+                            {bookingIdx === 0 && (
+                              <td className="px-6 py-4" rowSpan={totalBookingRows}>
+                                <div className="flex flex-wrap gap-2">
+                                  {session.groups.map((group) => (
+                                    <span
+                                      key={group.group_id}
+                                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 whitespace-nowrap"
+                                    >
+                                      {group.group_name || group.group_id}
+                                    </span>
+                                  ))}
+                                </div>
+                              </td>
+                            )}
+
+                            {/* Student name column */}
+                            <td className="px-6 py-4">
                               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {booking.student_name}
                               </span>
-                            ) : (
-                              <span className="text-sm text-gray-400 dark:text-gray-500">No bookings</span>
-                            )}
-                          </td>
+                            </td>
 
-                          {/* Status column */}
-                          <td className="px-6 py-4">
-                            {booking && (
+                            {/* Status column */}
+                            <td className="px-6 py-4">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
                                 booking.status === 'marked'
                                   ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
@@ -489,12 +480,43 @@ const InstructorDashboard = () => {
                               }`}>
                                 {booking.status}
                               </span>
-                            )}
-                          </td>
-                        </tr>
-                      ));
-                    })
-                  )}
+                            </td>
+
+                            {/* Mark column (circular checkbox, last column) */}
+                            <td className="px-3 py-4 text-center">
+                              <div className="flex items-center justify-center">
+                                {markingBookingId === booking.id ? (
+                                  <svg className="animate-spin h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                ) : (
+                                  <button
+                                    onClick={() => handleToggleMark(booking)}
+                                    disabled={booking.status === 'pending'}
+                                    className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${
+                                      booking.status === 'marked'
+                                        ? 'bg-primary-600 border-primary-600 dark:bg-primary-500 dark:border-primary-500'
+                                        : booking.status === 'pending'
+                                        ? 'border-gray-300 dark:border-gray-600 opacity-40 cursor-not-allowed'
+                                        : 'border-gray-300 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-400 cursor-pointer'
+                                    }`}
+                                    title={booking.status === 'pending' ? 'Cannot mark pending bookings' : booking.status === 'marked' ? 'Unmark' : 'Mark as completed'}
+                                  >
+                                    {booking.status === 'marked' && (
+                                      <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      });
+                    });
+                  })}
                 </tbody>
               </table>
             </div>
