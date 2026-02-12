@@ -407,12 +407,12 @@ const InstructorDashboard = () => {
         ) : (
           <div className="bg-white dark:bg-dark-card overflow-hidden shadow dark:shadow-gray-900/50 sm:rounded-lg">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 font-body">
                 <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Groups</th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Time</th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Groups</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
@@ -422,9 +422,7 @@ const InstructorDashboard = () => {
                         {sessionIdx === 0 ? (
                           <td className="px-6 py-4" rowSpan={day.sessions.length}>
                             <div className="flex items-center gap-2">
-                              <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
+                              <CalendarDaysIcon className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
                                   weekday: 'short',
@@ -436,7 +434,7 @@ const InstructorDashboard = () => {
                           </td>
                         ) : null}
                         <td className="px-6 py-4">
-                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             {session.time || '-'}
                           </span>
                           {session.duration_minutes && (
@@ -450,7 +448,7 @@ const InstructorDashboard = () => {
                             {session.groups.map((group) => (
                               <span
                                 key={group.group_id}
-                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 whitespace-nowrap"
                               >
                                 {group.group_name || group.group_id}
                                 <span className="ml-1.5 text-blue-600 dark:text-blue-300">

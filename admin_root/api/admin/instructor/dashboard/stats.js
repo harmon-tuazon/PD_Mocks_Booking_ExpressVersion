@@ -4,9 +4,9 @@
  * Role: 'instructor'
  */
 
-const { requireRole } = require('../middleware/requireRole');
-const { getInstructorFromUser } = require('../../_shared/instructor-helpers');
-const { supabaseAdmin } = require('../../_shared/supabase');
+const { requireRole } = require('../../middleware/requireRole');
+const { getInstructorFromUser } = require('../../../_shared/instructor-helpers');
+const { supabaseAdmin } = require('../../../_shared/supabase');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
