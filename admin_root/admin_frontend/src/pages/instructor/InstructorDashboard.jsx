@@ -17,7 +17,8 @@ import {
   AcademicCapIcon,
   CalendarDaysIcon,
   ChevronDownIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  ChevronLeftIcon
 } from '@heroicons/react/24/outline';
 
 // ─── Stat Card (matches DashboardMetrics.jsx pattern) ────────
@@ -193,10 +194,22 @@ const InstructorDashboard = () => {
   const groups = groupsRes?.data || [];
 
   // Schedule state
-  const [days, setDays] = useState(30);
-  const { data: scheduleRes, isLoading: scheduleLoading, error: scheduleError } = useInstructorSchedule({ days, limit: 50 });
+  const [scheduleFilter, setScheduleFilter] = useState('upcoming');
+  const [schedulePage, setSchedulePage] = useState(1);
+  const { data: scheduleRes, isLoading: scheduleLoading, error: scheduleError } = useInstructorSchedule({
+    filter: scheduleFilter,
+    page: schedulePage,
+    limit: 25
+  });
   const schedule = scheduleRes?.data?.schedule || [];
   const totalSessions = scheduleRes?.data?.total_sessions || 0;
+  const scheduleTotalPages = scheduleRes?.data?.total_pages || 1;
+
+  // Reset to page 1 when filter changes
+  const handleScheduleFilterChange = (filter) => {
+    setScheduleFilter(filter);
+    setSchedulePage(1);
+  };
 
   const profile = profileRes?.data;
   const stats = statsRes?.data;
@@ -204,6 +217,7 @@ const InstructorDashboard = () => {
   const firstName = profile?.instructor_name?.split(' ')[0] || 'Instructor';
 
   return (
+    <div className="container-app py-8">
     <div className="space-y-6">
       {/* Page Header (matches MockExamsDashboard) */}
       <div className="mb-8 flex items-center justify-between">
@@ -334,29 +348,33 @@ const InstructorDashboard = () => {
         )}
       </div>
 
-      {/* ─── Upcoming Schedule Section ──────────────────────── */}
+      {/* ─── Schedule Section ─────────────────────────────────── */}
       <div>
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="font-headline text-xl font-bold text-navy-900 dark:text-gray-100">Upcoming Schedule</h2>
+            <h2 className="font-headline text-xl font-bold text-navy-900 dark:text-gray-100">Schedule</h2>
             {!scheduleLoading && (
               <p className="mt-1 font-body text-sm text-gray-600 dark:text-gray-300">
-                Next {days} days &middot; {totalSessions} sessions
+                {totalSessions} session{totalSessions !== 1 ? 's' : ''}
               </p>
             )}
           </div>
           <div className="flex items-center gap-1.5">
-            {[7, 14, 30, 60].map((d) => (
+            {[
+              { key: 'today', label: 'Today' },
+              { key: 'this_week', label: 'This Week' },
+              { key: 'upcoming', label: 'Upcoming' }
+            ].map(({ key, label }) => (
               <button
-                key={d}
-                onClick={() => setDays(d)}
+                key={key}
+                onClick={() => handleScheduleFilterChange(key)}
                 className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
-                  days === d
+                  scheduleFilter === key
                     ? 'bg-primary-600 dark:bg-primary-500 text-white shadow-sm'
                     : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
-                {d}d
+                {label}
               </button>
             ))}
           </div>
@@ -378,9 +396,11 @@ const InstructorDashboard = () => {
           <div className="bg-white dark:bg-dark-card overflow-hidden shadow dark:shadow-gray-900/50 rounded-lg">
             <div className="text-center py-12">
               <CalendarDaysIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No upcoming sessions</h3>
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No sessions found</h3>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                No sessions in the next {days} days.
+                {scheduleFilter === 'today' ? 'No sessions scheduled for today.' :
+                 scheduleFilter === 'this_week' ? 'No sessions scheduled this week.' :
+                 'No upcoming sessions.'}
               </p>
             </div>
           </div>
@@ -405,15 +425,13 @@ const InstructorDashboard = () => {
                               <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
-                              <div>
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                  {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
-                                    weekday: 'short',
-                                    month: 'short',
-                                    day: 'numeric'
-                                  })}
-                                </span>
-                              </div>
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
+                                  weekday: 'short',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </span>
                             </div>
                           </td>
                         ) : null}
@@ -448,9 +466,91 @@ const InstructorDashboard = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {scheduleTotalPages > 1 && (
+              <div className="bg-white dark:bg-dark-card px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      Page <span className="font-medium">{schedulePage}</span> of{' '}
+                      <span className="font-medium">{scheduleTotalPages}</span>
+                      {' '}&middot; {totalSessions} total sessions
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                      <button
+                        onClick={() => setSchedulePage(p => Math.max(1, p - 1))}
+                        disabled={schedulePage === 1}
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span className="sr-only">Previous</span>
+                        <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
+                      </button>
+
+                      {[...Array(Math.min(5, scheduleTotalPages))].map((_, index) => {
+                        let pageNumber;
+                        if (scheduleTotalPages <= 5) {
+                          pageNumber = index + 1;
+                        } else if (schedulePage <= 3) {
+                          pageNumber = index + 1;
+                        } else if (schedulePage >= scheduleTotalPages - 2) {
+                          pageNumber = scheduleTotalPages - 4 + index;
+                        } else {
+                          pageNumber = schedulePage - 2 + index;
+                        }
+
+                        return (
+                          <button
+                            key={pageNumber}
+                            onClick={() => setSchedulePage(pageNumber)}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                              schedulePage === pageNumber
+                                ? 'z-10 bg-primary-50 dark:bg-primary-900/30 border-primary-500 text-primary-600 dark:text-primary-400'
+                                : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            {pageNumber}
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        onClick={() => setSchedulePage(p => Math.min(scheduleTotalPages, p + 1))}
+                        disabled={schedulePage === scheduleTotalPages}
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span className="sr-only">Next</span>
+                        <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+
+                {/* Mobile pagination */}
+                <div className="flex-1 flex justify-between sm:hidden">
+                  <button
+                    onClick={() => setSchedulePage(p => Math.max(1, p - 1))}
+                    disabled={schedulePage === 1}
+                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setSchedulePage(p => Math.min(scheduleTotalPages, p + 1))}
+                    disabled={schedulePage === scheduleTotalPages}
+                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 };
