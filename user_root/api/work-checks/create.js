@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    const { student_id, email, slot_id, work_check_type } = value;
+    const { student_id, email, slot_id, work_check_type, lab, seat } = value;
 
     console.log(`📝 [WORK-CHECK] Creating booking: ${student_id} -> ${slot_id} (${work_check_type})`);
 
@@ -212,7 +212,9 @@ module.exports = async (req, res) => {
       student_id: contact.student_id,
       type: work_check_type,  // Column is named 'type' in work_check_bookings table
       status: autoApprove ? 'confirmed' : 'pending',
-      ...(autoApprove && { confirmed_at: new Date().toISOString() })
+      ...(autoApprove && { confirmed_at: new Date().toISOString() }),
+      ...(lab && { lab: lab.toUpperCase() }),
+      ...(seat && { seat })
     };
 
     const { data: booking, error: insertError } = await supabaseAdmin

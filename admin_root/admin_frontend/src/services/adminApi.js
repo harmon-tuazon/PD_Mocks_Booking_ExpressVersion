@@ -996,6 +996,11 @@ export const instructorPortalApi = {
       action
     });
     return response.data;
+  },
+
+  getAnalytics: async (params = {}) => {
+    const response = await api.get('/admin/instructor/analytics', { params });
+    return response.data;
   }
 };
 

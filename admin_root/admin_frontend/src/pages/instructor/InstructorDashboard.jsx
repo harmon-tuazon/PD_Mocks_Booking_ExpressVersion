@@ -154,27 +154,6 @@ const GroupCard = ({ group }) => {
                 <p className="text-sm text-gray-500 dark:text-gray-400">No students enrolled in this group</p>
               )}
 
-              {/* Upcoming Instruction Dates */}
-              {detail.instruction_dates && detail.instruction_dates.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Upcoming Instruction Dates</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {detail.instruction_dates.map((d, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                      >
-                        {new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                        {d.time && <span className="ml-1 text-blue-600 dark:text-blue-300">{d.time}</span>}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <p className="text-sm text-gray-500 dark:text-gray-400 px-6 py-5">Failed to load group details</p>
@@ -309,7 +288,7 @@ const InstructorDashboard = () => {
                     day: 'numeric'
                   })}
                   {stats.next_session.time && (
-                    <span className="text-gray-500 dark:text-gray-400 ml-2">at {stats.next_session.time}</span>
+                    <span className="text-gray-500 dark:text-gray-400 ml-2">at {formatTime(stats.next_session.time)}</span>
                   )}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">

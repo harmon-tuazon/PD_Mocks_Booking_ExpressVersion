@@ -58,7 +58,9 @@ const WorkCheckBookingFormModal = ({
     slot_id: '',
     student_id: '',
     status: 'pending',
-    type: 'Work Check'
+    type: 'Work Check',
+    lab: '',
+    seat: ''
   });
 
   // Dropdown data
@@ -137,7 +139,9 @@ const WorkCheckBookingFormModal = ({
         slot_id: booking.slot_id || '',
         student_id: booking.student_id || '',
         status: booking.status || 'pending',
-        type: booking.type || 'Work Check'
+        type: booking.type || 'Work Check',
+        lab: booking.lab || '',
+        seat: booking.seat || ''
       });
       setSelectedStudent({
         id: booking.student_id,
@@ -150,7 +154,9 @@ const WorkCheckBookingFormModal = ({
         slot_id: '',
         student_id: '',
         status: 'pending',
-        type: 'Work Check'
+        type: 'Work Check',
+        lab: '',
+        seat: ''
       });
       setSelectedStudent(null);
       setStudentSearch('');
@@ -187,14 +193,18 @@ const WorkCheckBookingFormModal = ({
       // Edit mode - only send status and type
       onSubmit(booking.id, {
         status: formData.status,
-        type: formData.type
+        type: formData.type,
+        lab: formData.lab || null,
+        seat: formData.seat ? parseInt(formData.seat) : null
       });
     } else {
       // Create mode - send slot_id, student_id, type
       onSubmit(null, {
         slot_id: formData.slot_id,
         student_id: formData.student_id,
-        type: formData.type
+        type: formData.type,
+        lab: formData.lab || null,
+        seat: formData.seat ? parseInt(formData.seat) : null
       });
     }
   };
@@ -285,6 +295,18 @@ const WorkCheckBookingFormModal = ({
                         <span className="text-gray-500 dark:text-gray-400">Time:</span>
                         <p className="font-medium text-gray-900 dark:text-gray-100">
                           {booking.slot?.slot_time || '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Lab:</span>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">
+                          {booking.lab || '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Seat:</span>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">
+                          {booking.seat || '-'}
                         </p>
                       </div>
                     </div>
@@ -493,6 +515,46 @@ const WorkCheckBookingFormModal = ({
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    {/* Lab */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Lab <span className="text-xs text-gray-400">(A, B, C, D, E, B9)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.lab}
+                        onChange={(e) => {
+                          const val = e.target.value.toUpperCase();
+                          setFormData({ ...formData, lab: val });
+                        }}
+                        placeholder="e.g., A, B, C, D, E, B9"
+                        maxLength={2}
+                        className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                      />
+                      {formData.lab && !['A', 'B', 'C', 'D', 'E', 'B9'].includes(formData.lab) && (
+                        <p className="mt-1 text-xs text-red-500">Must be one of: A, B, C, D, E, B9</p>
+                      )}
+                    </div>
+
+                    {/* Seat */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Seat <span className="text-xs text-gray-400">(1-50)</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.seat}
+                        onChange={(e) => setFormData({ ...formData, seat: e.target.value })}
+                        placeholder="1-50"
+                        min={1}
+                        max={50}
+                        className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-dark-card text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                      />
+                      {formData.seat && (parseInt(formData.seat) < 1 || parseInt(formData.seat) > 50) && (
+                        <p className="mt-1 text-xs text-red-500">Must be between 1 and 50</p>
+                      )}
                     </div>
                   </div>
 

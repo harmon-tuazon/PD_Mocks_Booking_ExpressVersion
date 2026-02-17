@@ -16,6 +16,9 @@ const WORK_CHECK_TYPES = [
   { value: 'Supervised Session', label: 'Supervised Session', description: 'Supervised practice session' }
 ];
 
+// Valid lab values
+const VALID_LABS = ['A', 'B', 'C', 'D', 'E', 'B9'];
+
 const WorkCheckConfirmPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -26,6 +29,10 @@ const WorkCheckConfirmPage = () => {
 
   // Local state
   const [workCheckType, setWorkCheckType] = useState(null);
+  const [lab, setLab] = useState('');
+  const [seat, setSeat] = useState('');
+  const [labError, setLabError] = useState('');
+  const [seatError, setSeatError] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -65,6 +72,35 @@ const WorkCheckConfirmPage = () => {
     return endTime ? `${startTime} - ${endTime}` : startTime;
   };
 
+  // Validate lab input on blur (auto-uppercase)
+  const handleLabBlur = () => {
+    if (lab.trim()) {
+      const uppercased = lab.trim().toUpperCase();
+      setLab(uppercased);
+      if (!VALID_LABS.includes(uppercased)) {
+        setLabError('Invalid lab. Valid options: A, B, C, D, E, B9');
+      } else {
+        setLabError('');
+      }
+    } else {
+      setLabError('');
+    }
+  };
+
+  // Validate seat input on blur
+  const handleSeatBlur = () => {
+    if (seat !== '') {
+      const seatNum = parseInt(seat, 10);
+      if (isNaN(seatNum) || seatNum < 1 || seatNum > 50) {
+        setSeatError('Seat number must be between 1 and 50');
+      } else {
+        setSeatError('');
+      }
+    } else {
+      setSeatError('');
+    }
+  };
+
   // Handle booking submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -73,6 +109,35 @@ const WorkCheckConfirmPage = () => {
       setError('Please select a work check type');
       return;
     }
+
+    // Validate lab if provided
+    let hasValidationError = false;
+    if (lab.trim()) {
+      const uppercased = lab.trim().toUpperCase();
+      if (!VALID_LABS.includes(uppercased)) {
+        setLabError('Invalid lab. Valid options: A, B, C, D, E, B9');
+        hasValidationError = true;
+      } else {
+        setLabError('');
+      }
+    } else {
+      setLabError('');
+    }
+
+    // Validate seat if provided
+    if (seat !== '') {
+      const seatNum = parseInt(seat, 10);
+      if (isNaN(seatNum) || seatNum < 1 || seatNum > 50) {
+        setSeatError('Seat number must be between 1 and 50');
+        hasValidationError = true;
+      } else {
+        setSeatError('');
+      }
+    } else {
+      setSeatError('');
+    }
+
+    if (hasValidationError) return;
 
     setLoading(true);
     setError(null);
@@ -87,7 +152,9 @@ const WorkCheckConfirmPage = () => {
         session.studentId,
         session.email,
         slot.slot_id,
-        workCheckType
+        workCheckType,
+        lab || undefined,
+        seat ? parseInt(seat) : undefined
       );
 
       if (response.success) {
@@ -286,6 +353,73 @@ const WorkCheckConfirmPage = () => {
                   </label>
                 ))}
               </div>
+            </div>
+
+            {/* Lab Field */}
+            <div>
+              <label className="block text-sm font-subheading font-medium text-navy-700 dark:text-gray-300 mb-2">
+                Lab (e.g., A, B, C, D, E, B9) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={lab}
+                onChange={(e) => {
+                  setLab(e.target.value);
+                  if (labError) setLabError('');
+                }}
+                onBlur={handleLabBlur}
+                placeholder="Enter lab (A, B, C, D, E, or B9)"
+                className={`
+                  w-full px-4 py-2.5 rounded-lg border text-sm
+                  bg-white dark:bg-dark-hover
+                  text-gray-900 dark:text-gray-100
+                  placeholder-gray-400 dark:placeholder-gray-500
+                  focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400
+                  ${labError
+                    ? 'border-red-300 dark:border-red-600'
+                    : 'border-gray-200 dark:border-gray-600'
+                  }
+                `}
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Valid options: A, B, C, D, E, B9
+              </p>
+              {labError && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{labError}</p>
+              )}
+            </div>
+
+            {/* Seat Field */}
+            <div>
+              <label className="block text-sm font-subheading font-medium text-navy-700 dark:text-gray-300 mb-2">
+                Seat Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                value={seat}
+                onChange={(e) => {
+                  setSeat(e.target.value);
+                  if (seatError) setSeatError('');
+                }}
+                onBlur={handleSeatBlur}
+                min={1}
+                max={50}
+                placeholder="Enter seat number (1-50)"
+                className={`
+                  w-full px-4 py-2.5 rounded-lg border text-sm
+                  bg-white dark:bg-dark-hover
+                  text-gray-900 dark:text-gray-100
+                  placeholder-gray-400 dark:placeholder-gray-500
+                  focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400
+                  ${seatError
+                    ? 'border-red-300 dark:border-red-600'
+                    : 'border-gray-200 dark:border-gray-600'
+                  }
+                `}
+              />
+              {seatError && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{seatError}</p>
+              )}
             </div>
 
             {/* Submit Button */}

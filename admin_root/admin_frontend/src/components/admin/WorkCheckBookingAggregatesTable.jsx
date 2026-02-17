@@ -351,8 +351,10 @@ const AggregateRowWithBookings = ({
                     )}
                   </div>
                   <div className="col-span-1">Name</div>
-                  <div className="col-span-2">Student ID</div>
-                  <div className="col-span-2">Instructor</div>
+                  <div className="col-span-1">Student ID</div>
+                  <div className="col-span-1">Instructor</div>
+                  <div className="col-span-1">Lab</div>
+                  <div className="col-span-1">Seat</div>
                   <div className="col-span-2">Status</div>
                   <div className="col-span-2">Type</div>
                   <div className="col-span-2">Actions</div>
@@ -388,11 +390,17 @@ const AggregateRowWithBookings = ({
                       <div className="col-span-1 font-medium text-gray-900 dark:text-gray-100 truncate">
                         {booking.student_name || 'Unknown'}
                       </div>
-                      <div className="col-span-2 text-gray-600 dark:text-gray-400">
+                      <div className="col-span-1 text-gray-600 dark:text-gray-400 truncate">
                         {booking.student_id || '-'}
                       </div>
-                      <div className="col-span-2 text-gray-600 dark:text-gray-300 truncate">
+                      <div className="col-span-1 text-gray-600 dark:text-gray-300 truncate">
                         {booking.instructor_name || '-'}
+                      </div>
+                      <div className="col-span-1 text-gray-600 dark:text-gray-400">
+                        {booking.lab || '-'}
+                      </div>
+                      <div className="col-span-1 text-gray-600 dark:text-gray-400">
+                        {booking.seat || '-'}
                       </div>
                       <div className="col-span-2 flex justify-center">
                         <WorkCheckBookingStatusBadge status={booking.status} />

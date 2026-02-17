@@ -2053,6 +2053,24 @@ const schemas = {
       .default('Work Check')
       .messages({
         'any.only': 'Type must be one of: Demo, Work Check, Supervised Session'
+      }),
+    lab: Joi.string()
+      .valid('A', 'B', 'C', 'D', 'E', 'B9')
+      .optional()
+      .allow('', null)
+      .messages({
+        'any.only': 'Lab must be one of: A, B, C, D, E, B9'
+      }),
+    seat: Joi.number()
+      .integer()
+      .min(1)
+      .max(50)
+      .optional()
+      .allow(null)
+      .messages({
+        'number.min': 'Seat number must be at least 1',
+        'number.max': 'Seat number must be at most 50',
+        'number.integer': 'Seat number must be a whole number'
       })
   }),
 
@@ -2067,6 +2085,24 @@ const schemas = {
       .valid('Demo', 'Work Check', 'Supervised Session')
       .messages({
         'any.only': 'Type must be one of: Demo, Work Check, Supervised Session'
+      }),
+    lab: Joi.string()
+      .valid('A', 'B', 'C', 'D', 'E', 'B9')
+      .optional()
+      .allow('', null)
+      .messages({
+        'any.only': 'Lab must be one of: A, B, C, D, E, B9'
+      }),
+    seat: Joi.number()
+      .integer()
+      .min(1)
+      .max(50)
+      .optional()
+      .allow(null)
+      .messages({
+        'number.min': 'Seat number must be at least 1',
+        'number.max': 'Seat number must be at most 50',
+        'number.integer': 'Seat number must be a whole number'
       })
   }).min(1).messages({
     'object.min': 'At least one property must be provided for update'
@@ -2227,6 +2263,18 @@ function validationMiddleware(schemaName) {
 }
 
 module.exports = {
+  // Schema for instructor analytics query params
+  instructorAnalytics: Joi.object({
+    date_from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional().messages({
+      'string.pattern.base': 'date_from must be in YYYY-MM-DD format'
+    }),
+    date_to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional().messages({
+      'string.pattern.base': 'date_to must be in YYYY-MM-DD format'
+    }),
+    group_id: Joi.string().max(50).optional(),
+    cycle: Joi.string().max(50).optional()
+  }),
+
   // Schema for updating trainee tokens (Admin)
   updateTraineeTokens: Joi.object({
     tokens: Joi.object({

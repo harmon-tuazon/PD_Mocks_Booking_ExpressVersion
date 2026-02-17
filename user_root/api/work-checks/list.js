@@ -51,6 +51,8 @@ module.exports = async (req, res) => {
         slot_id,
         student_id,
         status,
+        lab,
+        seat,
         created_at,
         confirmed_at,
         cancelled_at,
@@ -146,6 +148,8 @@ module.exports = async (req, res) => {
         booking_id: booking.id,   // Alias for backwards compatibility
         slot_id: booking.slot_id,
         status: booking.status,
+        lab: booking.lab || null,
+        seat: booking.seat || null,
         slot_date: slot.slot_date,
         slot_time: slot.slot_time,
         end_time: endTime,

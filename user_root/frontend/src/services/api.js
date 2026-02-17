@@ -337,12 +337,14 @@ const apiService = {
      * @param {string} slotId - Slot UUID
      * @param {string} workCheckType - Type: 'Demo', 'Work Check', or 'Supervised Session'
      */
-    create: async (studentId, email, slotId, workCheckType) => {
+    create: async (studentId, email, slotId, workCheckType, lab, seat) => {
       return api.post('/work-checks/create', {
         student_id: studentId,
         email,
         slot_id: slotId,
-        work_check_type: workCheckType
+        work_check_type: workCheckType,
+        ...(lab && { lab }),
+        ...(seat && { seat })
       });
     },
 

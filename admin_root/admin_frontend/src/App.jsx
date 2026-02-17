@@ -6,6 +6,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute'
 import ProtectedInstructorRoute from './components/admin/ProtectedInstructorRoute'
 import InstructorDashboard from './pages/instructor/InstructorDashboard'
+import InstructorAnalytics from './pages/instructor/InstructorAnalytics'
 import MockExams from './pages/MockExams'
 import MockExamsDashboard from './pages/MockExamsDashboard'
 import MockExamDetail from './pages/MockExamDetail'
@@ -91,6 +92,7 @@ function App() {
                 }
               >
                 <Route index element={<InstructorDashboard />} />
+                <Route path="analytics" element={<InstructorAnalytics />} />
               </Route>
 
               {/* Admin Routes */}

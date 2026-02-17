@@ -26,6 +26,7 @@ export function useInstructorDashboardStats(options = {}) {
     queryKey: ['instructor', 'dashboard-stats'],
     queryFn: () => instructorPortalApi.getDashboardStats(),
     staleTime: 60 * 1000, // 1 minute
+    refetchInterval: 60 * 60 * 1000, // silent refetch every 1 hour
     refetchOnWindowFocus: true,
     ...options
   });
@@ -66,6 +67,19 @@ export function useInstructorSchedule(params = {}, options = {}) {
     queryKey: ['instructor', 'schedule', JSON.stringify(params)],
     queryFn: () => instructorPortalApi.getSchedule(params),
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    ...options
+  });
+}
+
+/**
+ * Hook for fetching instructor analytics data
+ */
+export function useInstructorAnalytics(params = {}, options = {}) {
+  return useQuery({
+    queryKey: ['instructor', 'analytics', JSON.stringify(params)],
+    queryFn: () => instructorPortalApi.getAnalytics(params),
+    staleTime: 5 * 60 * 1000, // 5 minutes — also acts as natural rate limiter for manual refresh
     refetchOnWindowFocus: false,
     ...options
   });

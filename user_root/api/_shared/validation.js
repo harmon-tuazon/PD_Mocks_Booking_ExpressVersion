@@ -300,6 +300,24 @@ const schemas = {
       .messages({
         'any.only': 'Work check type must be Demo, Work Check, or Supervised Session',
         'any.required': 'Work check type is required'
+      }),
+    lab: Joi.string()
+      .valid('A', 'B', 'C', 'D', 'E', 'B9')
+      .optional()
+      .allow('', null)
+      .messages({
+        'any.only': 'Lab must be one of: A, B, C, D, E, B9'
+      }),
+    seat: Joi.number()
+      .integer()
+      .min(1)
+      .max(50)
+      .optional()
+      .allow(null)
+      .messages({
+        'number.min': 'Seat number must be at least 1',
+        'number.max': 'Seat number must be at most 50',
+        'number.integer': 'Seat number must be a whole number'
       })
   }),
 
