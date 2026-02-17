@@ -328,6 +328,14 @@ const InstructorAnalytics = ({ instructorId = null }) => {
                 ))}
               </select>
 
+              {/* Reset Button - beside filters */}
+              <button
+                onClick={handleReset}
+                className="inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-all duration-200"
+              >
+                Reset
+              </button>
+
               {/* Spacer */}
               <div className="flex-1" />
 
@@ -335,18 +343,10 @@ const InstructorAnalytics = ({ instructorId = null }) => {
               <button
                 onClick={() => refetch()}
                 disabled={isFetching}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title={isFetching ? 'Refreshing...' : 'Refresh analytics'}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-primary-600 dark:bg-primary-500 text-white hover:bg-primary-700 dark:hover:bg-primary-600 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
-                <ArrowPathIcon className={`h-5 w-5 text-gray-500 dark:text-gray-400 ${isFetching ? 'animate-spin' : ''}`} />
-              </button>
-
-              {/* Reset Button */}
-              <button
-                onClick={handleReset}
-                className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
-              >
-                Reset
+                <ArrowPathIcon className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+                {isFetching ? 'Refreshing...' : 'Refresh'}
               </button>
             </div>
           </div>
