@@ -480,9 +480,9 @@ const InstructorAnalytics = ({ instructorId = null }) => {
           </div>
         )}
 
-        {/* ─── Bookings Over Time (Dual-Line Chart) ─────────── */}
+        {/* ─── Bookings Over Time (Combo Chart) ──────────────── */}
         {isLoading ? (
-          <SectionSkeleton height="h-48" />
+          <SectionSkeleton height="h-64" />
         ) : (
           <div className="bg-white dark:bg-dark-card overflow-hidden shadow dark:shadow-gray-900/50 rounded-lg">
             <div className="p-6">
@@ -492,92 +492,132 @@ const InstructorAnalytics = ({ instructorId = null }) => {
 
               {chartData.length > 0 ? (
                 <>
-                  <div className="relative" style={{ height: '160px' }}>
-                    {/* SVG dual-line chart */}
-                    <svg
-                      className="absolute top-0 left-0 w-full h-full"
-                      viewBox="0 0 100 100"
-                      preserveAspectRatio="none"
-                    >
-                      {/* Horizontal grid lines */}
-                      {[25, 50, 75].map((y) => (
-                        <line
-                          key={y}
-                          x1="0" y1={y} x2="100" y2={y}
-                          stroke="currentColor"
-                          className="text-gray-100 dark:text-gray-700"
-                          strokeWidth="1"
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      ))}
+                  {/* Chart with Y-axes */}
+                  <div className="flex items-stretch">
+                    {/* Left Y-axis: Bookings count */}
+                    <div className="flex flex-col justify-between items-end pr-2 flex-shrink-0" style={{ width: '36px', height: '200px' }}>
+                      <span className="text-[10px] text-blue-500 font-medium leading-none">{maxChartBookings}</span>
+                      <span className="text-[10px] text-blue-500 font-medium leading-none">{Math.round(maxChartBookings / 2)}</span>
+                      <span className="text-[10px] text-blue-500 font-medium leading-none">0</span>
+                    </div>
 
-                      {/* Bookings line (primary blue) */}
-                      {chartData.length > 1 && (
-                        <polyline
-                          points={chartData.map((d, i) => {
-                            const x = ((i + 0.5) / chartData.length) * 100;
-                            const y = 100 - (d.bookings / maxChartBookings) * 100;
-                            return `${x},${y}`;
-                          }).join(' ')}
-                          fill="none"
-                          stroke="#3B82F6"
-                          strokeWidth="2.5"
-                          vectorEffect="non-scaling-stroke"
-                          strokeLinejoin="round"
-                        />
-                      )}
+                    {/* Chart area */}
+                    <div className="flex-1 relative" style={{ height: '200px' }}>
+                      {/* Bars for booking counts */}
+                      <div className="flex items-end gap-1 h-full">
+                        {chartData.map((d, i) => (
+                          <div key={i} className="flex-1 min-w-0" style={{ minWidth: '16px' }}>
+                            <div className="w-full flex flex-col justify-end h-full">
+                              <div
+                                className="w-full bg-primary-200 dark:bg-primary-800/50 rounded-t transition-all duration-300"
+                                style={{
+                                  height: `${(d.bookings / maxChartBookings) * 100}%`,
+                                  minHeight: d.bookings > 0 ? '4px' : '0'
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
 
-                      {/* Attendance rate line (amber) */}
-                      {chartData.length > 1 && (
-                        <polyline
-                          points={chartData.map((d, i) => {
-                            const x = ((i + 0.5) / chartData.length) * 100;
-                            const y = 100 - Math.min(d.attendance_rate, 100);
-                            return `${x},${y}`;
-                          }).join(' ')}
-                          fill="none"
-                          stroke="#F59E0B"
-                          strokeWidth="2.5"
-                          vectorEffect="non-scaling-stroke"
-                          strokeLinejoin="round"
-                        />
-                      )}
-                    </svg>
+                      {/* SVG overlay: grid + lines */}
+                      <svg
+                        className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                        viewBox="0 0 100 100"
+                        preserveAspectRatio="none"
+                      >
+                        {/* Horizontal grid lines */}
+                        {[0, 25, 50, 75, 100].map((y) => (
+                          <line
+                            key={y}
+                            x1="0" y1={y} x2="100" y2={y}
+                            stroke="currentColor"
+                            className="text-gray-200 dark:text-gray-700"
+                            strokeWidth="1"
+                            vectorEffect="non-scaling-stroke"
+                            strokeDasharray={y === 0 || y === 100 ? 'none' : '4 3'}
+                          />
+                        ))}
 
-                    {/* Dot markers for bookings (blue) */}
-                    {chartData.map((d, i) => (
-                      <div
-                        key={`booking-dot-${i}`}
-                        className="absolute w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white dark:border-gray-800 pointer-events-none"
-                        style={{
-                          left: `${((i + 0.5) / chartData.length) * 100}%`,
-                          bottom: `${(d.bookings / maxChartBookings) * 100}%`,
-                          transform: 'translate(-50%, 50%)'
-                        }}
-                        title={`${d.label}: ${d.bookings} bookings`}
-                      />
-                    ))}
+                        {/* Bookings trend line (blue) */}
+                        {chartData.length > 1 && (
+                          <polyline
+                            points={chartData.map((d, i) => {
+                              const x = ((i + 0.5) / chartData.length) * 100;
+                              const y = 100 - (d.bookings / maxChartBookings) * 100;
+                              return `${x},${y}`;
+                            }).join(' ')}
+                            fill="none"
+                            stroke="#3B82F6"
+                            strokeWidth="2"
+                            vectorEffect="non-scaling-stroke"
+                            strokeLinejoin="round"
+                          />
+                        )}
 
-                    {/* Dot markers for attendance rate (amber) */}
-                    {chartData.map((d, i) => (
-                      <div
-                        key={`att-dot-${i}`}
-                        className="absolute w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white dark:border-gray-800 pointer-events-none"
-                        style={{
-                          left: `${((i + 0.5) / chartData.length) * 100}%`,
-                          bottom: `${Math.min(d.attendance_rate, 100)}%`,
-                          transform: 'translate(-50%, 50%)'
-                        }}
-                        title={`Attendance: ${d.attendance_rate}%`}
-                      />
-                    ))}
+                        {/* Attendance rate line (amber) */}
+                        {chartData.length > 1 && (
+                          <polyline
+                            points={chartData.map((d, i) => {
+                              const x = ((i + 0.5) / chartData.length) * 100;
+                              const y = 100 - Math.min(d.attendance_rate, 100);
+                              return `${x},${y}`;
+                            }).join(' ')}
+                            fill="none"
+                            stroke="#F59E0B"
+                            strokeWidth="2"
+                            vectorEffect="non-scaling-stroke"
+                            strokeLinejoin="round"
+                          />
+                        )}
+                      </svg>
+
+                      {/* Dot + data label: bookings (blue) */}
+                      {chartData.map((d, i) => {
+                        const leftPct = ((i + 0.5) / chartData.length) * 100;
+                        const bottomPct = (d.bookings / maxChartBookings) * 100;
+                        return (
+                          <div key={`b-${i}`} className="absolute pointer-events-none" style={{ left: `${leftPct}%`, bottom: `${bottomPct}%`, transform: 'translate(-50%, 50%)' }}>
+                            <div className="relative flex flex-col items-center">
+                              <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 leading-none mb-0.5" style={{ transform: 'translateY(-10px)' }}>
+                                {d.bookings}
+                              </span>
+                              <div className="w-2 h-2 rounded-full bg-blue-500 border border-white dark:border-gray-800" />
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Dot + data label: attendance rate (amber) */}
+                      {chartData.map((d, i) => {
+                        const leftPct = ((i + 0.5) / chartData.length) * 100;
+                        const bottomPct = Math.min(d.attendance_rate, 100);
+                        return (
+                          <div key={`a-${i}`} className="absolute pointer-events-none" style={{ left: `${leftPct}%`, bottom: `${bottomPct}%`, transform: 'translate(-50%, 50%)' }}>
+                            <div className="relative flex flex-col items-center">
+                              <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 leading-none mb-0.5" style={{ transform: 'translateY(-10px)' }}>
+                                {d.attendance_rate}%
+                              </span>
+                              <div className="w-2 h-2 rounded-full bg-amber-500 border border-white dark:border-gray-800" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Right Y-axis: Attendance rate % */}
+                    <div className="flex flex-col justify-between items-start pl-2 flex-shrink-0" style={{ width: '36px', height: '200px' }}>
+                      <span className="text-[10px] text-amber-500 font-medium leading-none">100%</span>
+                      <span className="text-[10px] text-amber-500 font-medium leading-none">50%</span>
+                      <span className="text-[10px] text-amber-500 font-medium leading-none">0%</span>
+                    </div>
                   </div>
 
-                  {/* Labels row */}
-                  <div className="flex gap-1.5 mt-1">
+                  {/* X-axis labels */}
+                  <div className="flex mt-2" style={{ marginLeft: '36px', marginRight: '36px' }}>
                     {chartData.map((d, i) => (
                       <div key={i} className="flex-1 min-w-0 text-center" style={{ minWidth: '16px' }}>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate block">
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate block">
                           {d.label}
                         </span>
                       </div>
@@ -587,11 +627,15 @@ const InstructorAnalytics = ({ instructorId = null }) => {
                   {/* Legend */}
                   <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-1.5">
-                      <span className="inline-block w-3 h-0.5 rounded bg-blue-500" />
-                      <span className="text-xs text-gray-500 dark:text-gray-400">Bookings</span>
+                      <span className="inline-block w-3 h-3 rounded-sm bg-primary-200 dark:bg-primary-800/50" />
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Bookings (bars)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="inline-block w-3 h-0.5 rounded bg-amber-500" />
+                      <span className="inline-block w-4 h-0.5 rounded bg-blue-500" />
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Bookings (trend)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-block w-4 h-0.5 rounded bg-amber-500" />
                       <span className="text-xs text-gray-500 dark:text-gray-400">Attendance Rate</span>
                     </div>
                     {weeklyTrends.length >= 12 && (
