@@ -3,6 +3,7 @@
  * Displays instructors in a sortable, paginated table with actions
  */
 
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeftIcon, ChevronRightIcon, UserIcon } from '@heroicons/react/24/outline';
 import { Pencil } from 'lucide-react';
 
@@ -25,6 +26,8 @@ const InstructorTable = ({
   onToggleSelection,
   isSelected
 }) => {
+  const navigate = useNavigate();
+
   // Calculate pagination display values
   const itemsPerPage = 50;
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
@@ -187,7 +190,7 @@ const InstructorTable = ({
                       )}
                     </td>
                   )}
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
                         <div className="h-10 w-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
@@ -197,9 +200,12 @@ const InstructorTable = ({
                         </div>
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <button
+                          onClick={() => navigate(`/work-check/instructors/${instructor.id}`)}
+                          className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:underline"
+                        >
                           {instructor.instructor_name}
-                        </div>
+                        </button>
                         {instructor.instructor_id && (
                           <div className="text-xs text-gray-500 dark:text-gray-400">
                             ID: {instructor.instructor_id}

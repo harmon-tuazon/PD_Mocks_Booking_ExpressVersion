@@ -1,11 +1,13 @@
 /**
- * InstructorAnalytics - Analytics dashboard for instructor portal
+ * InstructorAnalytics - Analytics dashboard for instructor portal and admin portal
  * Displays KPIs, charts, and tables for work check booking performance
- * Matches InstructorDashboard styling patterns
+ * Supports dual-mode: instructor portal (own data) or admin view (specific instructor via prop)
  */
 
 import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useInstructorAnalytics, useInstructorGroups } from '../../hooks/useInstructorPortalData';
+import { instructorsApi } from '../../services/adminApi';
 import { ArrowPathIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 
 // ─── Status color mapping ────────────────────────────────────
@@ -37,6 +39,31 @@ const formatTime = (timeStr) => {
   const period = h >= 12 ? 'PM' : 'AM';
   const hours = h % 12 || 12;
   return `${hours}:${String(m).padStart(2, '0')} ${period}`;
+};
+
+const formatMonthLabel = (monthStr) => {
+  const [year, month] = monthStr.split('-');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${months[parseInt(month, 10) - 1]} '${year.slice(2)}`;
+};
+
+const aggregateToMonthly = (trends) => {
+  const monthMap = {};
+  for (const w of trends) {
+    const monthKey = w.week_start.substring(0, 7);
+    if (!monthMap[monthKey]) {
+      monthMap[monthKey] = { bookings: 0, rateWeightedSum: 0 };
+    }
+    monthMap[monthKey].bookings += w.bookings;
+    monthMap[monthKey].rateWeightedSum += w.attendance_rate * w.bookings;
+  }
+  return Object.keys(monthMap).sort().map(month => ({
+    label: formatMonthLabel(month),
+    bookings: monthMap[month].bookings,
+    attendance_rate: monthMap[month].bookings > 0
+      ? Math.round(monthMap[month].rateWeightedSum / monthMap[month].bookings * 10) / 10
+      : 0
+  }));
 };
 
 // ─── Stat Card (matches InstructorDashboard pattern) ─────────
@@ -72,15 +99,27 @@ const SectionSkeleton = ({ height = 'h-48' }) => (
 );
 
 // ─── Main Component ──────────────────────────────────────────
-const InstructorAnalytics = () => {
+const InstructorAnalytics = ({ instructorId = null }) => {
+  const isAdminView = !!instructorId;
+
   // Filter state
   const [dateRange, setDateRange] = useState('all');
   const [selectedCycle, setSelectedCycle] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
 
-  // Fetch groups for cycle/group dropdowns
-  const { data: groupsRes } = useInstructorGroups({ status: 'all' });
-  const allGroups = groupsRes?.data || [];
+  // Fetch groups: instructor portal uses existing hook, admin uses instructorsApi
+  const { data: portalGroupsRes } = useInstructorGroups(
+    { status: 'all' },
+    { enabled: !isAdminView }
+  );
+  const { data: adminGroupsRes } = useQuery({
+    queryKey: ['admin-instructor-groups', instructorId],
+    queryFn: () => instructorsApi.getGroups(instructorId, { status: 'all' }),
+    enabled: isAdminView,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false
+  });
+  const allGroups = (isAdminView ? adminGroupsRes?.data : portalGroupsRes?.data) || [];
 
   // Compute distinct cycles from groups
   const distinctCycles = useMemo(() => {
@@ -121,8 +160,17 @@ const InstructorAnalytics = () => {
     return p;
   }, [dateRange, selectedCycle, selectedGroup]);
 
-  // Fetch analytics data
-  const { data, isLoading, isFetching, error, refetch } = useInstructorAnalytics(params);
+  // Fetch analytics: instructor portal uses existing hook, admin uses instructorsApi
+  const portalAnalytics = useInstructorAnalytics(params, { enabled: !isAdminView });
+  const adminAnalytics = useQuery({
+    queryKey: ['admin-instructor-analytics', instructorId, JSON.stringify(params)],
+    queryFn: () => instructorsApi.getAnalytics(instructorId, params),
+    enabled: isAdminView,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false
+  });
+
+  const { data, isLoading, isFetching, error, refetch } = isAdminView ? adminAnalytics : portalAnalytics;
   const analytics = data?.data;
 
   // Cascade: when cycle changes, clear group if not in filtered set
@@ -147,17 +195,18 @@ const InstructorAnalytics = () => {
   // ─── Error State ──────────────────────────────────────────
   if (error && !isLoading) {
     return (
-      <div className="container-app py-8">
+      <div className={isAdminView ? '' : 'container-app py-8'}>
         <div className="space-y-6">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="font-headline text-3xl font-bold text-navy-900 dark:text-gray-100">
-              Analytics
-            </h1>
-            <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">
-              Your work check performance overview
-            </p>
-          </div>
+          {!isAdminView && (
+            <div className="mb-8">
+              <h1 className="font-headline text-3xl font-bold text-navy-900 dark:text-gray-100">
+                Analytics
+              </h1>
+              <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">
+                Your work check performance overview
+              </p>
+            </div>
+          )}
 
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-700 dark:text-red-300">
             Failed to load analytics data. Please try again later.
@@ -179,28 +228,45 @@ const InstructorAnalytics = () => {
   // Compute total for status breakdown bar
   const statusTotal = Object.values(statusBreakdown).reduce((sum, v) => sum + (v || 0), 0);
 
-  // Compute max for weekly trend bars
-  const maxWeeklyBookings = Math.max(...weeklyTrends.map((w) => w.bookings), 1);
+  // Auto-aggregate: weekly if < 12 data points, monthly if >= 12
+  const chartData = useMemo(() => {
+    if (weeklyTrends.length === 0) return [];
+    if (weeklyTrends.length < 12) {
+      return weeklyTrends.map(w => ({
+        label: formatWeekLabel(w.week_start),
+        bookings: w.bookings,
+        attendance_rate: w.attendance_rate
+      }));
+    }
+    return aggregateToMonthly(weeklyTrends);
+  }, [weeklyTrends]);
+
+  const maxChartBookings = Math.max(...chartData.map((d) => d.bookings), 1);
+
+  // Cap busiest times to top 5
+  const busiestTimesDisplay = busiestTimes.slice(0, 5);
 
   // Compute max for busiest days/times bars
   const maxDayAvg = Math.max(...busiestDays.map((d) => d.avg_bookings), 1);
-  const maxTimeAvg = Math.max(...busiestTimes.map((t) => t.avg_bookings), 1);
+  const maxTimeAvg = Math.max(...busiestTimesDisplay.map((t) => t.avg_bookings), 1);
 
   // Check if data is empty (no bookings in period)
   const hasData = analytics && (kpis.total_bookings > 0 || kpis.total_sessions > 0);
 
   return (
-    <div className="container-app py-8">
+    <div className={isAdminView ? '' : 'container-app py-8'}>
       <div className="space-y-6">
-        {/* ─── Page Header ──────────────────────────────────── */}
-        <div className="mb-8">
-          <h1 className="font-headline text-3xl font-bold text-navy-900 dark:text-gray-100">
-            Analytics
-          </h1>
-          <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">
-            Your work check performance overview
-          </p>
-        </div>
+        {/* ─── Page Header (hidden in admin view — parent provides it) ── */}
+        {!isAdminView && (
+          <div className="mb-8">
+            <h1 className="font-headline text-3xl font-bold text-navy-900 dark:text-gray-100">
+              Analytics
+            </h1>
+            <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">
+              Your work check performance overview
+            </p>
+          </div>
+        )}
 
         {/* ─── Filter Bar ───────────────────────────────────── */}
         {isLoading ? (
@@ -240,7 +306,7 @@ const InstructorAnalytics = () => {
               <select
                 value={selectedCycle}
                 onChange={(e) => handleCycleChange(e.target.value)}
-                className="block rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 py-1.5 pl-3 pr-8"
+                className="block w-auto pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               >
                 <option value="">All Cycles</option>
                 {distinctCycles.map((cycle) => (
@@ -252,7 +318,7 @@ const InstructorAnalytics = () => {
               <select
                 value={selectedGroup}
                 onChange={(e) => setSelectedGroup(e.target.value)}
-                className="block rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 py-1.5 pl-3 pr-8"
+                className="block w-auto pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               >
                 <option value="">All Groups</option>
                 {filteredGroups.map((group) => (
@@ -414,7 +480,7 @@ const InstructorAnalytics = () => {
           </div>
         )}
 
-        {/* ─── Weekly Trends ────────────────────────────────── */}
+        {/* ─── Bookings Over Time (Combo Chart) ──────────────── */}
         {isLoading ? (
           <SectionSkeleton height="h-48" />
         ) : (
@@ -424,28 +490,98 @@ const InstructorAnalytics = () => {
                 Bookings Over Time
               </h3>
 
-              {weeklyTrends.length > 0 ? (
-                <div className="flex items-end gap-2 overflow-x-auto pb-2">
-                  {weeklyTrends.map((week) => (
-                    <div key={week.week_start} className="flex flex-col items-center flex-1 min-w-0" style={{ minWidth: '40px' }}>
-                      <div className="w-full flex flex-col justify-end" style={{ height: '160px' }}>
+              {chartData.length > 0 ? (
+                <>
+                  <div className="relative" style={{ height: '160px' }}>
+                    {/* Bars for booking counts */}
+                    <div className="flex items-end gap-1.5 h-full">
+                      {chartData.map((d, i) => (
                         <div
-                          className="w-full bg-primary-400 dark:bg-primary-500 rounded-t transition-all duration-300"
-                          style={{
-                            height: `${(week.bookings / maxWeeklyBookings) * 100}%`,
-                            minHeight: week.bookings > 0 ? '4px' : '0'
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate w-full text-center">
-                        {formatWeekLabel(week.week_start)}
-                      </span>
-                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                        {week.bookings}
-                      </span>
+                          key={i}
+                          className="flex-1 min-w-0"
+                          style={{ minWidth: '16px' }}
+                        >
+                          <div className="w-full flex flex-col justify-end h-full">
+                            <div
+                              className="w-full bg-primary-300 dark:bg-primary-600 rounded-t transition-all duration-300"
+                              style={{
+                                height: `${(d.bookings / maxChartBookings) * 100}%`,
+                                minHeight: d.bookings > 0 ? '4px' : '0'
+                              }}
+                              title={`${d.label}: ${d.bookings} bookings`}
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+
+                    {/* Line overlay for attendance rate */}
+                    {chartData.length > 1 && (
+                      <svg
+                        className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                        viewBox="0 0 100 100"
+                        preserveAspectRatio="none"
+                      >
+                        <polyline
+                          points={chartData.map((d, i) => {
+                            const x = ((i + 0.5) / chartData.length) * 100;
+                            const y = 100 - Math.min(d.attendance_rate, 100);
+                            return `${x},${y}`;
+                          }).join(' ')}
+                          fill="none"
+                          stroke="#F59E0B"
+                          strokeWidth="2"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      </svg>
+                    )}
+
+                    {/* Dot markers for attendance rate */}
+                    {chartData.map((d, i) => (
+                      <div
+                        key={`dot-${i}`}
+                        className="absolute w-2 h-2 rounded-full bg-amber-500 pointer-events-none"
+                        style={{
+                          left: `${((i + 0.5) / chartData.length) * 100}%`,
+                          bottom: `${Math.min(d.attendance_rate, 100)}%`,
+                          transform: 'translate(-50%, 50%)'
+                        }}
+                        title={`Attendance: ${d.attendance_rate}%`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Labels row */}
+                  <div className="flex gap-1.5 mt-1">
+                    {chartData.map((d, i) => (
+                      <div key={i} className="flex-1 min-w-0 text-center" style={{ minWidth: '16px' }}>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate block">
+                          {d.label}
+                        </span>
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                          {d.bookings}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Legend */}
+                  <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-block w-3 h-3 rounded-sm bg-primary-300 dark:bg-primary-600" />
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Bookings</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-block w-3 h-0.5 rounded bg-amber-500" />
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Attendance Rate</span>
+                    </div>
+                    {weeklyTrends.length >= 12 && (
+                      <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto italic">
+                        Aggregated monthly
+                      </span>
+                    )}
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-8">
                   <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
@@ -507,9 +643,9 @@ const InstructorAnalytics = () => {
                   Busiest Times
                 </h3>
 
-                {busiestTimes.length > 0 ? (
+                {busiestTimesDisplay.length > 0 ? (
                   <div className="space-y-3">
-                    {busiestTimes.map((item, idx) => (
+                    {busiestTimesDisplay.map((item, idx) => (
                       <div key={item.time} className="flex items-center gap-3">
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-24 flex-shrink-0">
                           {formatTime(item.time)}

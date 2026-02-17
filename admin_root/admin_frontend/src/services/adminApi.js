@@ -744,6 +744,24 @@ export const instructorsApi = {
       new_password: newPassword
     });
     return response.data;
+  },
+
+  /**
+   * Get analytics for a specific instructor (admin view)
+   */
+  getAnalytics: async (id, params = {}) => {
+    const response = await api.get('/admin/instructor/analytics', {
+      params: { ...params, instructor_id: id }
+    });
+    return response.data;
+  },
+
+  /**
+   * Get groups assigned to a specific instructor (for admin filter dropdowns)
+   */
+  getGroups: async (id, params = {}) => {
+    const response = await api.get(`/admin/instructors/${id}/groups`, { params });
+    return response.data;
   }
 };
 

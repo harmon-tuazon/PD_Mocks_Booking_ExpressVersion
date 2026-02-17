@@ -2,10 +2,11 @@
  * GET /api/admin/instructor/analytics
  * Instructor analytics: KPIs, status/type breakdowns, weekly trends,
  * group performance, busiest days/times.
- * Role: 'instructor'
+ * Role: 'instructor' (own analytics) or 'admin' (any instructor via instructor_id param)
  */
 
 const { requireRole } = require('../middleware/requireRole');
+const { requireAdmin } = require('../middleware/requireAdmin');
 const { getInstructorFromUser } = require('../../_shared/instructor-helpers');
 const { supabaseAdmin } = require('../../_shared/supabase');
 const { instructorAnalytics } = require('../../_shared/validation');
@@ -20,17 +21,41 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // ---- Auth ----
-    const user = await requireRole(req, 'instructor');
-    const instructor = await getInstructorFromUser(user);
-
     // ---- Validate query params ----
+    // (validate first so instructor_id is available for auth routing)
     const { error: validationError, value } = instructorAnalytics.validate(req.query);
     if (validationError) {
       return res.status(400).json({
         success: false,
         error: { code: 'VALIDATION_ERROR', message: validationError.details[0].message }
       });
+    }
+
+    // ---- Auth ----
+    let instructor;
+
+    if (value.instructor_id) {
+      // Admin path: admin user viewing a specific instructor's analytics
+      await requireAdmin(req);
+
+      const { data: instructorData, error: instructorError } = await supabaseAdmin
+        .from('instructors')
+        .select('id, instructor_name, email, is_active')
+        .eq('id', value.instructor_id)
+        .single();
+
+      if (instructorError || !instructorData) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'INSTRUCTOR_NOT_FOUND', message: 'Instructor not found' }
+        });
+      }
+
+      instructor = instructorData;
+    } else {
+      // Instructor portal path: instructor viewing their own analytics
+      const user = await requireRole(req, 'instructor');
+      instructor = await getInstructorFromUser(user);
     }
 
     const today = new Date().toISOString().split('T')[0];

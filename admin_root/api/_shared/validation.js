@@ -2272,7 +2272,8 @@ module.exports = {
       'string.pattern.base': 'date_to must be in YYYY-MM-DD format'
     }),
     group_id: Joi.string().max(50).optional(),
-    cycle: Joi.string().max(50).optional()
+    cycle: Joi.string().max(50).optional(),
+    instructor_id: Joi.string().uuid().optional()
   }),
 
   // Schema for updating trainee tokens (Admin)
