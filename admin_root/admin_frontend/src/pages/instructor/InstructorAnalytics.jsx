@@ -506,7 +506,7 @@ const InstructorAnalytics = ({ instructorId = null }) => {
                       {/* Bars for booking counts */}
                       <div className="flex items-end gap-1 h-full">
                         {chartData.map((d, i) => (
-                          <div key={i} className="flex-1 min-w-0" style={{ minWidth: '16px' }}>
+                          <div key={i} className="flex-1 min-w-0 h-full" style={{ minWidth: '16px' }}>
                             <div className="w-full flex flex-col justify-end h-full">
                               <div
                                 className="w-full bg-blue-300 dark:bg-blue-700/60 rounded-t transition-all duration-300"
