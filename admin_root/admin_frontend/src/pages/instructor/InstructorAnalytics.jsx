@@ -74,7 +74,7 @@ const SectionSkeleton = ({ height = 'h-48' }) => (
 // ─── Main Component ──────────────────────────────────────────
 const InstructorAnalytics = () => {
   // Filter state
-  const [dateRange, setDateRange] = useState('month');
+  const [dateRange, setDateRange] = useState('all');
   const [selectedCycle, setSelectedCycle] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
 
@@ -139,7 +139,7 @@ const InstructorAnalytics = () => {
 
   // Reset all filters
   const handleReset = () => {
-    setDateRange('month');
+    setDateRange('all');
     setSelectedCycle('');
     setSelectedGroup('');
   };
