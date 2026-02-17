@@ -74,7 +74,7 @@ const SectionSkeleton = ({ height = 'h-48' }) => (
 // ─── Main Component ──────────────────────────────────────────
 const InstructorAnalytics = () => {
   // Filter state
-  const [dateRange, setDateRange] = useState('30d');
+  const [dateRange, setDateRange] = useState('month');
   const [selectedCycle, setSelectedCycle] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
 
@@ -100,13 +100,22 @@ const InstructorAnalytics = () => {
   // Compute query params from filter state
   const params = useMemo(() => {
     const p = {};
-    if (dateRange !== 'all') {
-      const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90;
-      const from = new Date();
-      from.setDate(from.getDate() - days);
-      p.date_from = from.toISOString().split('T')[0];
-      p.date_to = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    if (dateRange === 'week') {
+      // This week: Monday to today
+      const day = today.getDay(); // 0=Sun
+      const diff = day === 0 ? 6 : day - 1; // days since Monday
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - diff);
+      p.date_from = monday.toISOString().split('T')[0];
+      p.date_to = today.toISOString().split('T')[0];
+    } else if (dateRange === 'month') {
+      // This month: 1st of current month to today
+      const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      p.date_from = firstOfMonth.toISOString().split('T')[0];
+      p.date_to = today.toISOString().split('T')[0];
     }
+    // 'all' — no date params, backend defaults to all time
     if (selectedCycle) p.cycle = selectedCycle;
     if (selectedGroup) p.group_id = selectedGroup;
     return p;
@@ -130,7 +139,7 @@ const InstructorAnalytics = () => {
 
   // Reset all filters
   const handleReset = () => {
-    setDateRange('30d');
+    setDateRange('month');
     setSelectedCycle('');
     setSelectedGroup('');
   };
@@ -209,10 +218,9 @@ const InstructorAnalytics = () => {
               {/* Date Range Presets */}
               <div className="flex items-center gap-1.5">
                 {[
-                  { key: '7d', label: '7d' },
-                  { key: '30d', label: '30d' },
-                  { key: '90d', label: '90d' },
-                  { key: 'all', label: 'All' }
+                  { key: 'all', label: 'All Time' },
+                  { key: 'week', label: 'This Week' },
+                  { key: 'month', label: 'This Month' }
                 ].map(({ key, label }) => (
                   <button
                     key={key}
