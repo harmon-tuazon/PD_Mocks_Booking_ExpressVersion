@@ -34,12 +34,9 @@ module.exports = async (req, res) => {
     }
 
     const today = new Date().toISOString().split('T')[0];
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split('T')[0];
 
-    const dateFrom = value.date_from || thirtyDaysAgo;
-    const dateTo = value.date_to || today;
+    const dateFrom = value.date_from || null;
+    const dateTo = value.date_to || null;
     const filterGroupId = value.group_id || null;
     const filterCycle = value.cycle || null;
 
@@ -71,9 +68,10 @@ module.exports = async (req, res) => {
       .from('work_check_slots')
       .select('id, slot_date, slot_time, group_id, duration_minutes, location, total_slots')
       .eq('instructor_id', instructor.id)
-      .eq('is_active', true)
-      .gte('slot_date', dateFrom)
-      .lte('slot_date', dateTo);
+      .eq('is_active', true);
+
+    if (dateFrom) slotsQuery = slotsQuery.gte('slot_date', dateFrom);
+    if (dateTo) slotsQuery = slotsQuery.lte('slot_date', dateTo);
 
     if (filterGroupId) {
       slotsQuery = slotsQuery.contains('group_id', [filterGroupId]);
@@ -209,7 +207,7 @@ module.exports = async (req, res) => {
       });
 
     // ---- Group performance ----
-    // Collect all unique group_ids from slots
+    // Collect group_ids from slots AND from instructor's assigned groups
     const uniqueGroupIds = new Set();
     for (const slot of slots) {
       if (Array.isArray(slot.group_id)) {
@@ -217,6 +215,17 @@ module.exports = async (req, res) => {
           uniqueGroupIds.add(gid);
         }
       }
+    }
+
+    // Also fetch all groups assigned to this instructor (may include groups without slots)
+    const { data: instructorAssignments } = await supabaseAdmin
+      .from('groups_instructors')
+      .select('group_id')
+      .eq('instructor_id', instructor.id)
+      .eq('status', 'active');
+
+    for (const a of (instructorAssignments || [])) {
+      uniqueGroupIds.add(a.group_id);
     }
 
     const groupPerformance = [];
@@ -348,7 +357,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: {
-        period: { date_from: dateFrom, date_to: dateTo },
+        period: { date_from: dateFrom || 'all', date_to: dateTo || today },
         kpis: {
           total_sessions: totalSessions,
           total_bookings: totalBookings,
