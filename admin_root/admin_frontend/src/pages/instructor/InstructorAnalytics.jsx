@@ -509,7 +509,7 @@ const InstructorAnalytics = ({ instructorId = null }) => {
                           <div key={i} className="flex-1 min-w-0" style={{ minWidth: '16px' }}>
                             <div className="w-full flex flex-col justify-end h-full">
                               <div
-                                className="w-full bg-primary-200 dark:bg-primary-800/50 rounded-t transition-all duration-300"
+                                className="w-full bg-blue-300 dark:bg-blue-700/60 rounded-t transition-all duration-300"
                                 style={{
                                   height: `${(d.bookings / maxChartBookings) * 100}%`,
                                   minHeight: d.bookings > 0 ? '4px' : '0'
@@ -532,7 +532,7 @@ const InstructorAnalytics = ({ instructorId = null }) => {
                             key={y}
                             x1="0" y1={y} x2="100" y2={y}
                             stroke="currentColor"
-                            className="text-gray-200 dark:text-gray-700"
+                            className="text-gray-300 dark:text-gray-600"
                             strokeWidth="1"
                             vectorEffect="non-scaling-stroke"
                             strokeDasharray={y === 0 || y === 100 ? 'none' : '4 3'}
@@ -627,7 +627,7 @@ const InstructorAnalytics = ({ instructorId = null }) => {
                   {/* Legend */}
                   <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-1.5">
-                      <span className="inline-block w-3 h-3 rounded-sm bg-primary-200 dark:bg-primary-800/50" />
+                      <span className="inline-block w-3 h-3 rounded-sm bg-blue-300 dark:bg-blue-700/60" />
                       <span className="text-xs text-gray-500 dark:text-gray-400">Bookings (bars)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
