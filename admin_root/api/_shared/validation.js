@@ -1998,8 +1998,8 @@ const schemas = {
     date_to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({
       'string.pattern.base': 'date_to must be in YYYY-MM-DD format'
     }),
-    status: Joi.string().valid('pending', 'confirmed', 'marked', 'completed', 'rejected', 'cancelled').messages({
-      'any.only': 'Status must be one of: pending, confirmed, marked, completed, rejected, cancelled'
+    status: Joi.string().valid('pending', 'confirmed', 'marked', 'completed', 'rejected', 'cancelled', 'active').messages({
+      'any.only': 'Status must be one of: pending, confirmed, marked, completed, rejected, cancelled, active'
     }),
     type: Joi.string().valid('Demo', 'Work Check', 'Supervised Session').messages({
       'any.only': 'Type must be one of: Demo, Work Check, Supervised Session'

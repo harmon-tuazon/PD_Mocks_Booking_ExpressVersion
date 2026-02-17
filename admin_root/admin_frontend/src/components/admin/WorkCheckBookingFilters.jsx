@@ -27,6 +27,7 @@ const LOCATIONS = [
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status' },
+  { value: 'active', label: 'Active' },
   { value: 'pending', label: 'Pending' },
   { value: 'confirmed', label: 'Confirmed' },
   { value: 'marked', label: 'Marked' },

@@ -79,7 +79,7 @@ function WorkCheckBookings() {
     location: locationFilter || undefined,
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
-    status: statusFilter !== 'all' ? statusFilter : undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined, // 'all' sends no filter; 'active' sends 'active' to API
     type: typeFilter !== 'all' ? typeFilter : undefined,
     sort_by: sortBy,
     sort_order: sortOrder
