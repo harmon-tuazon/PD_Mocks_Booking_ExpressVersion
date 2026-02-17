@@ -480,7 +480,7 @@ const InstructorAnalytics = ({ instructorId = null }) => {
           </div>
         )}
 
-        {/* ─── Bookings Over Time (Combo Chart) ──────────────── */}
+        {/* ─── Bookings Over Time (Dual-Line Chart) ─────────── */}
         {isLoading ? (
           <SectionSkeleton height="h-48" />
         ) : (
@@ -493,35 +493,42 @@ const InstructorAnalytics = ({ instructorId = null }) => {
               {chartData.length > 0 ? (
                 <>
                   <div className="relative" style={{ height: '160px' }}>
-                    {/* Bars for booking counts */}
-                    <div className="flex items-end gap-1.5 h-full">
-                      {chartData.map((d, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 min-w-0"
-                          style={{ minWidth: '16px' }}
-                        >
-                          <div className="w-full flex flex-col justify-end h-full">
-                            <div
-                              className="w-full bg-primary-300 dark:bg-primary-600 rounded-t transition-all duration-300"
-                              style={{
-                                height: `${(d.bookings / maxChartBookings) * 100}%`,
-                                minHeight: d.bookings > 0 ? '4px' : '0'
-                              }}
-                              title={`${d.label}: ${d.bookings} bookings`}
-                            />
-                          </div>
-                        </div>
+                    {/* SVG dual-line chart */}
+                    <svg
+                      className="absolute top-0 left-0 w-full h-full"
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                    >
+                      {/* Horizontal grid lines */}
+                      {[25, 50, 75].map((y) => (
+                        <line
+                          key={y}
+                          x1="0" y1={y} x2="100" y2={y}
+                          stroke="currentColor"
+                          className="text-gray-100 dark:text-gray-700"
+                          strokeWidth="1"
+                          vectorEffect="non-scaling-stroke"
+                        />
                       ))}
-                    </div>
 
-                    {/* Line overlay for attendance rate */}
-                    {chartData.length > 1 && (
-                      <svg
-                        className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                        viewBox="0 0 100 100"
-                        preserveAspectRatio="none"
-                      >
+                      {/* Bookings line (primary blue) */}
+                      {chartData.length > 1 && (
+                        <polyline
+                          points={chartData.map((d, i) => {
+                            const x = ((i + 0.5) / chartData.length) * 100;
+                            const y = 100 - (d.bookings / maxChartBookings) * 100;
+                            return `${x},${y}`;
+                          }).join(' ')}
+                          fill="none"
+                          stroke="#3B82F6"
+                          strokeWidth="2.5"
+                          vectorEffect="non-scaling-stroke"
+                          strokeLinejoin="round"
+                        />
+                      )}
+
+                      {/* Attendance rate line (amber) */}
+                      {chartData.length > 1 && (
                         <polyline
                           points={chartData.map((d, i) => {
                             const x = ((i + 0.5) / chartData.length) * 100;
@@ -530,17 +537,32 @@ const InstructorAnalytics = ({ instructorId = null }) => {
                           }).join(' ')}
                           fill="none"
                           stroke="#F59E0B"
-                          strokeWidth="2"
+                          strokeWidth="2.5"
                           vectorEffect="non-scaling-stroke"
+                          strokeLinejoin="round"
                         />
-                      </svg>
-                    )}
+                      )}
+                    </svg>
 
-                    {/* Dot markers for attendance rate */}
+                    {/* Dot markers for bookings (blue) */}
                     {chartData.map((d, i) => (
                       <div
-                        key={`dot-${i}`}
-                        className="absolute w-2 h-2 rounded-full bg-amber-500 pointer-events-none"
+                        key={`booking-dot-${i}`}
+                        className="absolute w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white dark:border-gray-800 pointer-events-none"
+                        style={{
+                          left: `${((i + 0.5) / chartData.length) * 100}%`,
+                          bottom: `${(d.bookings / maxChartBookings) * 100}%`,
+                          transform: 'translate(-50%, 50%)'
+                        }}
+                        title={`${d.label}: ${d.bookings} bookings`}
+                      />
+                    ))}
+
+                    {/* Dot markers for attendance rate (amber) */}
+                    {chartData.map((d, i) => (
+                      <div
+                        key={`att-dot-${i}`}
+                        className="absolute w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white dark:border-gray-800 pointer-events-none"
                         style={{
                           left: `${((i + 0.5) / chartData.length) * 100}%`,
                           bottom: `${Math.min(d.attendance_rate, 100)}%`,
@@ -558,9 +580,6 @@ const InstructorAnalytics = ({ instructorId = null }) => {
                         <span className="text-xs text-gray-500 dark:text-gray-400 truncate block">
                           {d.label}
                         </span>
-                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                          {d.bookings}
-                        </span>
                       </div>
                     ))}
                   </div>
@@ -568,7 +587,7 @@ const InstructorAnalytics = ({ instructorId = null }) => {
                   {/* Legend */}
                   <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-1.5">
-                      <span className="inline-block w-3 h-3 rounded-sm bg-primary-300 dark:bg-primary-600" />
+                      <span className="inline-block w-3 h-0.5 rounded bg-blue-500" />
                       <span className="text-xs text-gray-500 dark:text-gray-400">Bookings</span>
                     </div>
                     <div className="flex items-center gap-1.5">
