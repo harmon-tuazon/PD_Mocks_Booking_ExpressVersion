@@ -5,7 +5,7 @@
  * Supports date/session filtering and PDF download via jsPDF.
  */
 
-import { useState, useRef, useCallback, Fragment } from 'react';
+import { useState, useRef, useCallback, useEffect, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import jsPDF from 'jspdf';
@@ -19,7 +19,10 @@ import {
 } from '@/components/ui/select';
 import { workCheckBookingsApi } from '../../services/adminApi';
 
-// ─── Color palette (matching NDECC reference screenshot) ───
+// ─── Logo URL (same as navbar) ───
+const LOGO_URL = 'https://46814382.fs1.hubspotusercontent-na1.net/hubfs/46814382/logo%20dark%20blue.png';
+
+// ─── Color palette (matching NDECC reference) ───
 const COLORS = {
   canvasBg: '#163B4E',
   titleText: '#E8634F',
@@ -28,37 +31,63 @@ const COLORS = {
   groupHeaderBg: '#E8634F',
   groupHeaderText: '#FFFFFF',
   cellBg: '#FFFFFF',
-  cellBorder: '#D0D0D0',
+  cellBorder: '#C8D6DB',
   cellTimeText: '#333333',
   cellNameText: '#333333',
-  logoText: '#FFFFFF',
 };
 
 // ─── Canvas layout constants ───
 const CONFIG = {
-  BASE_WIDTH: 1920,
-  MIN_COL_WIDTH: 240,
-  HEADER_HEIGHT: 120,
-  GROUP_HEADER_HEIGHT: 35,
-  ROW_HEIGHT: 38,
-  COLUMN_GAP: 12,
-  INSTRUCTOR_LABEL_HEIGHT: 32,
-  SESSION_GAP: 20,
-  PADDING: 40,
-  TIME_COL_WIDTH: 75,
+  CANVAS_WIDTH: 1920,       // Fixed width — never changes regardless of group count
+  MIN_HEIGHT: 700,          // Minimum canvas height for consistent sizing
+  HEADER_HEIGHT: 110,       // Space for logo + title
+  LOGO_HEIGHT: 65,          // Rendered logo height
+  GROUP_HEADER_HEIGHT: 36,  // Coral "TIME | GROUP X MORNING" bar
+  ROW_HEIGHT: 40,           // Each time-slot row
+  COLUMN_GAP: 14,           // Gap between group columns
+  INSTRUCTOR_LABEL_HEIGHT: 38, // Space for instructor name above column
+  SESSION_GAP: 28,          // Gap between MORNING and AFTERNOON sections
+  PADDING: 40,              // Canvas edge padding
+  TIME_COL_WIDTH: 70,       // Width of the TIME sub-column
+  BORDER_RADIUS: 20,        // Rounded corners on the chart
 };
 
-/** Format date string as "20th February 2026" style */
+/** Load an image from URL, returns a promise */
+const loadImage = (url) => new Promise((resolve, reject) => {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => resolve(img);
+  img.onerror = () => reject(new Error('Failed to load image'));
+  img.src = url;
+});
+
+/** Draw a rounded rectangle path */
+const drawRoundedRect = (ctx, x, y, w, h, r) => {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+};
+
+/** Format date string as "20th February" style */
 const formatDateForTitle = (dateStr) => {
-  const d = new Date(dateStr + 'T00:00:00');
-  const day = d.getDate();
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const day = date.getDate();
   const suffix = [, 'st', 'nd', 'rd'][day % 10 > 3 ? 0 : (day % 100 - day % 10 !== 10) * (day % 10)] || 'th';
-  const month = d.toLocaleDateString('en-GB', { month: 'long' });
+  const month = date.toLocaleDateString('en-GB', { month: 'long' });
   return `${day}${suffix} ${month}`;
 };
 
 /** Truncate long names with ellipsis */
-const truncateName = (name, maxLen = 20) => {
+const truncateName = (name, maxLen = 24) => {
   if (!name || name.length <= maxLen) return name || '';
   return name.substring(0, maxLen - 1) + '\u2026';
 };
@@ -73,6 +102,16 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
   const canvasRef = useRef(null);
+  const logoRef = useRef(null);
+
+  // Pre-load logo when modal opens
+  useEffect(() => {
+    if (isOpen && !logoRef.current) {
+      loadImage(LOGO_URL)
+        .then(img => { logoRef.current = img; })
+        .catch(() => { logoRef.current = null; });
+    }
+  }, [isOpen]);
 
   /** Fetch data then render the canvas — only fires on button click */
   const generateDiagram = useCallback(async () => {
@@ -104,27 +143,23 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
         .filter(g => g.bookings.AM.length > 0 || g.bookings.PM.length > 0);
 
       if (filteredGroups.length === 0) {
-        setImageDataUrl(null);
+        setError('No bookings found for the selected session.');
         return;
       }
 
-      // Master time lists (from all slots for the date)
+      // Master time lists (ALL slot times for the date, always displayed)
       const amTimes = sessionFilter === 'PM' ? [] : (slot_times?.AM || []);
       const pmTimes = sessionFilter === 'AM' ? [] : (slot_times?.PM || []);
 
-      // Use whichever is larger: master list or max bookings per group
+      // Row count = master time list length (every slot is always shown)
       const maxAM = Math.max(amTimes.length, ...filteredGroups.map(g => g.bookings.AM.length));
       const maxPM = Math.max(pmTimes.length, ...filteredGroups.map(g => g.bookings.PM.length));
 
       const showAM = sessionFilter !== 'PM' && maxAM > 0;
       const showPM = sessionFilter !== 'AM' && maxPM > 0;
 
-      // ─── Calculate canvas dimensions ───
-      const numGroups = filteredGroups.length;
-      const canvasWidth = Math.max(
-        CONFIG.BASE_WIDTH,
-        CONFIG.PADDING * 2 + numGroups * CONFIG.MIN_COL_WIDTH + (numGroups - 1) * CONFIG.COLUMN_GAP
-      );
+      // ─── Canvas dimensions (FIXED width, dynamic height) ───
+      const canvasWidth = CONFIG.CANVAS_WIDTH;
 
       let contentHeight = CONFIG.PADDING + CONFIG.HEADER_HEIGHT + CONFIG.INSTRUCTOR_LABEL_HEIGHT;
       if (showAM) contentHeight += CONFIG.GROUP_HEADER_HEIGHT + maxAM * CONFIG.ROW_HEIGHT;
@@ -132,7 +167,7 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
       if (showPM) contentHeight += CONFIG.GROUP_HEADER_HEIGHT + maxPM * CONFIG.ROW_HEIGHT;
       contentHeight += CONFIG.PADDING;
 
-      const canvasHeight = Math.max(contentHeight, 500);
+      const canvasHeight = Math.max(contentHeight, CONFIG.MIN_HEIGHT);
 
       // ─── Set up canvas ───
       const canvas = canvasRef.current;
@@ -140,32 +175,43 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
       canvas.height = canvasHeight;
       const ctx = canvas.getContext('2d');
 
-      // 1. Background
+      // 1. Rounded rectangle background
+      drawRoundedRect(ctx, 0, 0, canvasWidth, canvasHeight, CONFIG.BORDER_RADIUS);
       ctx.fillStyle = COLORS.canvasBg;
-      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+      ctx.fill();
+      ctx.save();
+      ctx.clip(); // Clip all drawing to the rounded shape
 
-      // 2. Header
+      // 2. Header — Logo image
       const headerY = CONFIG.PADDING;
+      const logoImg = logoRef.current;
 
-      // "PrepDoctors" logo text
-      ctx.fillStyle = COLORS.logoText;
-      ctx.font = 'bold 28px "Segoe UI", Arial, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('PrepDoctors', CONFIG.PADDING, headerY + 30);
+      if (logoImg) {
+        const lh = CONFIG.LOGO_HEIGHT;
+        const lw = logoImg.width * (lh / logoImg.height);
+        ctx.drawImage(logoImg, CONFIG.PADDING, headerY + 5, lw, lh);
+      } else {
+        // Text fallback if logo failed to load
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 30px "Segoe UI", Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('PrepDoctors', CONFIG.PADDING, headerY + 15);
+      }
 
-      // Title
+      // 3. Header — Title (centered, large coral text)
       ctx.fillStyle = COLORS.titleText;
-      ctx.font = 'bold 36px "Segoe UI", Arial, sans-serif';
+      ctx.font = 'bold 40px "Segoe UI", Arial, sans-serif';
       ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.fillText(
-        `NDECC CLINICAL SKILLS - WORKCHECK \u2014 ${formatDateForTitle(selectedDate)}`,
-        canvasWidth / 2,
-        headerY + 30
+        `NDECC CLINICAL SKILLS - WORKCHECK - ${formatDateForTitle(selectedDate)}`,
+        canvasWidth / 2 + 60, // Offset slightly right to balance with logo
+        headerY + CONFIG.LOGO_HEIGHT / 2 + 5
       );
 
-      // Dashed divider line
-      const dividerY = headerY + CONFIG.HEADER_HEIGHT - 20;
+      // 4. Dashed divider line
+      const dividerY = headerY + CONFIG.HEADER_HEIGHT - 10;
       ctx.strokeStyle = COLORS.dividerLine;
       ctx.setLineDash([10, 6]);
       ctx.lineWidth = 2;
@@ -175,61 +221,63 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // 3. Column widths
+      // 5. Column widths — evenly distributed across FULL fixed width
+      const numGroups = filteredGroups.length;
       const totalGaps = (numGroups - 1) * CONFIG.COLUMN_GAP;
       const availableWidth = canvasWidth - CONFIG.PADDING * 2 - totalGaps;
       const colWidth = Math.floor(availableWidth / numGroups);
       const nameColWidth = colWidth - CONFIG.TIME_COL_WIDTH;
 
-      // 4. Draw each group column
-      const contentStartY = dividerY + 15;
+      // Adaptive text truncation based on column width
+      const maxNameChars = Math.max(18, Math.floor(nameColWidth / 9));
+
+      // 6. Draw each group column
+      const contentStartY = dividerY + 12;
 
       filteredGroups.forEach((group, colIndex) => {
         const colX = CONFIG.PADDING + colIndex * (colWidth + CONFIG.COLUMN_GAP);
         let curY = contentStartY;
 
-        // ─── Instructor name (centered above column) ───
+        // ─── Instructor name (white, bold, centered above column) ───
         ctx.fillStyle = COLORS.instructorText;
         ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(
-          group.instructor_name || '',
+          (group.instructor_name || '').toUpperCase(),
           colX + colWidth / 2,
           curY + CONFIG.INSTRUCTOR_LABEL_HEIGHT / 2
         );
         curY += CONFIG.INSTRUCTOR_LABEL_HEIGHT;
 
-        // Build booking lookup for this group: time -> student_name
+        // Build booking lookup: slot_time → student_name
         const amLookup = {};
-        for (const b of group.bookings.AM) {
-          amLookup[b.slot_time] = b.student_name;
-        }
+        for (const b of group.bookings.AM) amLookup[b.slot_time] = b.student_name;
         const pmLookup = {};
-        for (const b of group.bookings.PM) {
-          pmLookup[b.slot_time] = b.student_name;
-        }
+        for (const b of group.bookings.PM) pmLookup[b.slot_time] = b.student_name;
 
-        // ─── Helper: draw a session section ───
+        // ─── Helper: draw a session section (MORNING or AFTERNOON) ───
         const drawSession = (sessionLabel, masterTimes, lookup, maxRows) => {
           // Coral header bar
           ctx.fillStyle = COLORS.groupHeaderBg;
           ctx.fillRect(colX, curY, colWidth, CONFIG.GROUP_HEADER_HEIGHT);
 
+          // Header text: "TIME" on the left, "GROUP NAME SESSION" on the right
           ctx.fillStyle = COLORS.groupHeaderText;
           ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
-          ctx.fillText('TIME', colX + 8, curY + CONFIG.GROUP_HEADER_HEIGHT / 2);
+          const headerCenterY = curY + CONFIG.GROUP_HEADER_HEIGHT / 2;
+          ctx.fillText('TIME', colX + 10, headerCenterY);
           ctx.fillText(
             `${group.group_name.toUpperCase()} ${sessionLabel}`,
-            colX + CONFIG.TIME_COL_WIDTH + 8,
-            curY + CONFIG.GROUP_HEADER_HEIGHT / 2
+            colX + CONFIG.TIME_COL_WIDTH + 10,
+            headerCenterY
           );
 
           curY += CONFIG.GROUP_HEADER_HEIGHT;
 
-          // Use master time list, fill up to maxRows with empty rows
+          // Rows — always use master time list so all slots are displayed
           const rowTimes = masterTimes.length > 0 ? masterTimes : Object.keys(lookup).sort();
           const totalRows = Math.max(rowTimes.length, maxRows);
 
@@ -265,8 +313,8 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
               ctx.textAlign = 'left';
               ctx.textBaseline = 'middle';
               ctx.fillText(
-                truncateName(name),
-                colX + CONFIG.TIME_COL_WIDTH + 8,
+                truncateName(name, maxNameChars),
+                colX + CONFIG.TIME_COL_WIDTH + 10,
                 rowY + CONFIG.ROW_HEIGHT / 2
               );
             }
@@ -285,6 +333,8 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
           drawSession('AFTERNOON', pmTimes, pmLookup, maxPM);
         }
       });
+
+      ctx.restore(); // Release clip
 
       // Convert canvas to data URL for preview
       setImageDataUrl(canvas.toDataURL('image/png'));
