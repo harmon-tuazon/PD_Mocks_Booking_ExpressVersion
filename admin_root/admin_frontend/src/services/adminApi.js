@@ -81,9 +81,16 @@ api.interceptors.response.use(
           return api(originalRequest);
         }
       } catch (refreshErr) {
-        // Refresh failed — fall through to error handling below
+        // Refresh failed — fall through
         console.error('Token refresh failed:', refreshErr.message);
       }
+
+      // Refresh failed or returned no session — force logout
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      try { await supabase.auth.signOut(); } catch (_) { /* ignore */ }
+      window.location.href = '/login';
+      return new Promise(() => {}); // Halt — page is redirecting
     }
 
     // Log non-401 errors
