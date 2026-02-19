@@ -1011,6 +1011,16 @@ export const workCheckBookingsApi = {
   clone: async (data) => {
     const response = await api.post('/admin/work-check-bookings/clone', data);
     return response.data;
+  },
+
+  /**
+   * Get diagram data for seating chart rendering
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @returns {Promise<Object>} Groups with bookings organized by AM/PM
+   */
+  getDiagramData: async (date) => {
+    const response = await api.get('/admin/work-check-bookings/diagram-data', { params: { date } });
+    return response.data;
   }
 };
 

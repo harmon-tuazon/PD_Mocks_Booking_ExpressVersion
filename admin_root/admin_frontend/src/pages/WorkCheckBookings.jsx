@@ -5,7 +5,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { Calendar, CheckCircle, Clock, XCircle, Ban, Plus, ClipboardCheck, BadgeCheck } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, XCircle, Ban, Plus, ClipboardCheck, BadgeCheck, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useWorkCheckBookingAggregates } from '../hooks/useWorkCheckBookingsData';
 import { useWorkCheckBookingMutations } from '../hooks/useWorkCheckBookingMutations';
@@ -16,6 +16,7 @@ import WorkCheckBookingSelectionToolbar from '../components/admin/WorkCheckBooki
 import WorkCheckBookingFormModal from '../components/admin/WorkCheckBookingFormModal';
 import DeleteWorkCheckBookingsModal from '../components/admin/DeleteWorkCheckBookingsModal';
 import CloneWorkCheckBookingsModal from '../components/admin/CloneWorkCheckBookingsModal';
+import SeatingDiagramModal from '../components/admin/SeatingDiagramModal';
 
 /**
  * Statistics card component
@@ -56,6 +57,7 @@ function WorkCheckBookings() {
   const [editingBooking, setEditingBooking] = useState(null); // null = create mode, object = edit mode
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
+  const [isSeatingDiagramOpen, setIsSeatingDiagramOpen] = useState(false);
 
   // Filter state
   const [instructorFilter, setInstructorFilter] = useState('');
@@ -289,13 +291,22 @@ function WorkCheckBookings() {
               Manage student bookings for work check sessions
             </p>
           </div>
-          <button
-            onClick={handleOpenCreateModal}
-            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
-          >
-            <Plus className="-ml-1 mr-2 h-5 w-5" />
-            Create Booking
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setIsSeatingDiagramOpen(true)}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
+            >
+              <Camera className="-ml-1 mr-2 h-5 w-5" />
+              Seating Diagram
+            </button>
+            <button
+              onClick={handleOpenCreateModal}
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
+            >
+              <Plus className="-ml-1 mr-2 h-5 w-5" />
+              Create Booking
+            </button>
+          </div>
         </div>
 
         {/* Statistics Cards */}
@@ -433,6 +444,12 @@ function WorkCheckBookings() {
           selectedBookings={bulkSelection.selectedBookings}
           onConfirm={handleConfirmClone}
           isCloning={bulkSelection.isSubmitting}
+        />
+
+        {/* Seating Diagram Modal */}
+        <SeatingDiagramModal
+          isOpen={isSeatingDiagramOpen}
+          onClose={() => setIsSeatingDiagramOpen(false)}
         />
       </div>
     </div>

@@ -1,0 +1,445 @@
+/**
+ * SeatingDiagramModal Component
+ * Renders a visual seating chart of work check bookings organized by student group,
+ * styled to match the NDECC seating arrangement format.
+ * Supports date/session filtering and PDF download via jsPDF.
+ */
+
+import { useState, useRef, useCallback, Fragment } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useQuery } from '@tanstack/react-query';
+import jsPDF from 'jspdf';
+import { workCheckBookingsApi } from '../../services/adminApi';
+
+// ─── Color palette (matching NDECC reference screenshot) ───
+const COLORS = {
+  canvasBg: '#163B4E',
+  titleText: '#E8634F',
+  dividerLine: '#4A7A8A',
+  instructorText: '#FFFFFF',
+  groupHeaderBg: '#E8634F',
+  groupHeaderText: '#FFFFFF',
+  cellBg: '#FFFFFF',
+  cellBorder: '#D0D0D0',
+  cellTimeText: '#333333',
+  cellNameText: '#333333',
+  logoText: '#FFFFFF',
+};
+
+// ─── Canvas layout constants ───
+const CONFIG = {
+  BASE_WIDTH: 1920,
+  MIN_COL_WIDTH: 240,
+  HEADER_HEIGHT: 120,
+  GROUP_HEADER_HEIGHT: 35,
+  ROW_HEIGHT: 38,
+  COLUMN_GAP: 12,
+  INSTRUCTOR_LABEL_HEIGHT: 32,
+  SESSION_GAP: 20,
+  PADDING: 40,
+  TIME_COL_WIDTH: 75,
+};
+
+/** Format date string as "20th February 2026" style */
+const formatDateForTitle = (dateStr) => {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDate();
+  const suffix = [, 'st', 'nd', 'rd'][day % 10 > 3 ? 0 : (day % 100 - day % 10 !== 10) * (day % 10)] || 'th';
+  const month = d.toLocaleDateString('en-GB', { month: 'long' });
+  return `${day}${suffix} ${month}`;
+};
+
+/** Truncate long names with ellipsis */
+const truncateName = (name, maxLen = 20) => {
+  if (!name || name.length <= maxLen) return name || '';
+  return name.substring(0, maxLen - 1) + '\u2026';
+};
+
+/** Get today as YYYY-MM-DD */
+const getTodayString = () => new Date().toISOString().split('T')[0];
+
+const SeatingDiagramModal = ({ isOpen, onClose }) => {
+  const [selectedDate, setSelectedDate] = useState(getTodayString());
+  const [sessionFilter, setSessionFilter] = useState('BOTH');
+  const [imageDataUrl, setImageDataUrl] = useState(null);
+  const [generating, setGenerating] = useState(false);
+  const canvasRef = useRef(null);
+
+  // Fetch diagram data when modal is open and date is set
+  const { data, isLoading } = useQuery({
+    queryKey: ['diagram-data', selectedDate],
+    queryFn: () => workCheckBookingsApi.getDiagramData(selectedDate),
+    enabled: isOpen && !!selectedDate,
+  });
+
+  /** Build the canvas image from fetched data */
+  const generateDiagram = useCallback(() => {
+    if (!data?.data?.groups || data.data.groups.length === 0) return;
+
+    setGenerating(true);
+
+    try {
+      const { groups, slot_times } = data.data;
+
+      // Filter groups based on session selection
+      const filteredGroups = groups
+        .map(group => ({
+          ...group,
+          bookings: {
+            AM: sessionFilter === 'PM' ? [] : group.bookings.AM,
+            PM: sessionFilter === 'AM' ? [] : group.bookings.PM,
+          },
+        }))
+        .filter(g => g.bookings.AM.length > 0 || g.bookings.PM.length > 0);
+
+      if (filteredGroups.length === 0) {
+        setImageDataUrl(null);
+        return;
+      }
+
+      // Master time lists (from all slots for the date)
+      const amTimes = sessionFilter === 'PM' ? [] : (slot_times?.AM || []);
+      const pmTimes = sessionFilter === 'AM' ? [] : (slot_times?.PM || []);
+
+      // Use whichever is larger: master list or max bookings per group
+      const maxAM = Math.max(amTimes.length, ...filteredGroups.map(g => g.bookings.AM.length));
+      const maxPM = Math.max(pmTimes.length, ...filteredGroups.map(g => g.bookings.PM.length));
+
+      const showAM = sessionFilter !== 'PM' && maxAM > 0;
+      const showPM = sessionFilter !== 'AM' && maxPM > 0;
+
+      // ─── Calculate canvas dimensions ───
+      const numGroups = filteredGroups.length;
+      const canvasWidth = Math.max(
+        CONFIG.BASE_WIDTH,
+        CONFIG.PADDING * 2 + numGroups * CONFIG.MIN_COL_WIDTH + (numGroups - 1) * CONFIG.COLUMN_GAP
+      );
+
+      let contentHeight = CONFIG.PADDING + CONFIG.HEADER_HEIGHT + CONFIG.INSTRUCTOR_LABEL_HEIGHT;
+      if (showAM) contentHeight += CONFIG.GROUP_HEADER_HEIGHT + maxAM * CONFIG.ROW_HEIGHT;
+      if (showAM && showPM) contentHeight += CONFIG.SESSION_GAP;
+      if (showPM) contentHeight += CONFIG.GROUP_HEADER_HEIGHT + maxPM * CONFIG.ROW_HEIGHT;
+      contentHeight += CONFIG.PADDING;
+
+      const canvasHeight = Math.max(contentHeight, 500);
+
+      // ─── Set up canvas ───
+      const canvas = canvasRef.current;
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      const ctx = canvas.getContext('2d');
+
+      // 1. Background
+      ctx.fillStyle = COLORS.canvasBg;
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+      // 2. Header
+      const headerY = CONFIG.PADDING;
+
+      // "PrepDoctors" logo text
+      ctx.fillStyle = COLORS.logoText;
+      ctx.font = 'bold 28px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('PrepDoctors', CONFIG.PADDING, headerY + 30);
+
+      // Title
+      ctx.fillStyle = COLORS.titleText;
+      ctx.font = 'bold 36px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        `NDECC CLINICAL SKILLS - WORKCHECK \u2014 ${formatDateForTitle(selectedDate)}`,
+        canvasWidth / 2,
+        headerY + 30
+      );
+
+      // Dashed divider line
+      const dividerY = headerY + CONFIG.HEADER_HEIGHT - 20;
+      ctx.strokeStyle = COLORS.dividerLine;
+      ctx.setLineDash([10, 6]);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(CONFIG.PADDING, dividerY);
+      ctx.lineTo(canvasWidth - CONFIG.PADDING, dividerY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 3. Column widths
+      const totalGaps = (numGroups - 1) * CONFIG.COLUMN_GAP;
+      const availableWidth = canvasWidth - CONFIG.PADDING * 2 - totalGaps;
+      const colWidth = Math.floor(availableWidth / numGroups);
+      const nameColWidth = colWidth - CONFIG.TIME_COL_WIDTH;
+
+      // 4. Draw each group column
+      const contentStartY = dividerY + 15;
+
+      filteredGroups.forEach((group, colIndex) => {
+        const colX = CONFIG.PADDING + colIndex * (colWidth + CONFIG.COLUMN_GAP);
+        let curY = contentStartY;
+
+        // ─── Instructor name (centered above column) ───
+        ctx.fillStyle = COLORS.instructorText;
+        ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(
+          group.instructor_name || '',
+          colX + colWidth / 2,
+          curY + CONFIG.INSTRUCTOR_LABEL_HEIGHT / 2
+        );
+        curY += CONFIG.INSTRUCTOR_LABEL_HEIGHT;
+
+        // Build booking lookup for this group: time -> student_name
+        const amLookup = {};
+        for (const b of group.bookings.AM) {
+          amLookup[b.slot_time] = b.student_name;
+        }
+        const pmLookup = {};
+        for (const b of group.bookings.PM) {
+          pmLookup[b.slot_time] = b.student_name;
+        }
+
+        // ─── Helper: draw a session section ───
+        const drawSession = (sessionLabel, masterTimes, lookup, maxRows) => {
+          // Coral header bar
+          ctx.fillStyle = COLORS.groupHeaderBg;
+          ctx.fillRect(colX, curY, colWidth, CONFIG.GROUP_HEADER_HEIGHT);
+
+          ctx.fillStyle = COLORS.groupHeaderText;
+          ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('TIME', colX + 8, curY + CONFIG.GROUP_HEADER_HEIGHT / 2);
+          ctx.fillText(
+            `${group.group_name.toUpperCase()} ${sessionLabel}`,
+            colX + CONFIG.TIME_COL_WIDTH + 8,
+            curY + CONFIG.GROUP_HEADER_HEIGHT / 2
+          );
+
+          curY += CONFIG.GROUP_HEADER_HEIGHT;
+
+          // Use master time list, fill up to maxRows with empty rows
+          const rowTimes = masterTimes.length > 0 ? masterTimes : Object.keys(lookup).sort();
+          const totalRows = Math.max(rowTimes.length, maxRows);
+
+          for (let i = 0; i < totalRows; i++) {
+            const rowY = curY + i * CONFIG.ROW_HEIGHT;
+            const time = rowTimes[i] || '';
+            const name = time ? (lookup[time] || '') : '';
+
+            // Time cell
+            ctx.fillStyle = COLORS.cellBg;
+            ctx.fillRect(colX, rowY, CONFIG.TIME_COL_WIDTH, CONFIG.ROW_HEIGHT);
+            ctx.strokeStyle = COLORS.cellBorder;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(colX, rowY, CONFIG.TIME_COL_WIDTH, CONFIG.ROW_HEIGHT);
+
+            if (time) {
+              ctx.fillStyle = COLORS.cellTimeText;
+              ctx.font = '14px "Segoe UI", Arial, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(time, colX + CONFIG.TIME_COL_WIDTH / 2, rowY + CONFIG.ROW_HEIGHT / 2);
+            }
+
+            // Name cell
+            ctx.fillStyle = COLORS.cellBg;
+            ctx.fillRect(colX + CONFIG.TIME_COL_WIDTH, rowY, nameColWidth, CONFIG.ROW_HEIGHT);
+            ctx.strokeStyle = COLORS.cellBorder;
+            ctx.strokeRect(colX + CONFIG.TIME_COL_WIDTH, rowY, nameColWidth, CONFIG.ROW_HEIGHT);
+
+            if (name) {
+              ctx.fillStyle = COLORS.cellNameText;
+              ctx.font = '14px "Segoe UI", Arial, sans-serif';
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(
+                truncateName(name),
+                colX + CONFIG.TIME_COL_WIDTH + 8,
+                rowY + CONFIG.ROW_HEIGHT / 2
+              );
+            }
+          }
+
+          curY += totalRows * CONFIG.ROW_HEIGHT;
+        };
+
+        if (showAM) {
+          drawSession('MORNING', amTimes, amLookup, maxAM);
+        }
+        if (showAM && showPM) {
+          curY += CONFIG.SESSION_GAP;
+        }
+        if (showPM) {
+          drawSession('AFTERNOON', pmTimes, pmLookup, maxPM);
+        }
+      });
+
+      // Convert canvas to data URL for preview
+      setImageDataUrl(canvas.toDataURL('image/png'));
+    } finally {
+      setGenerating(false);
+    }
+  }, [data, sessionFilter, selectedDate]);
+
+  /** Download the current diagram as a PDF */
+  const downloadPDF = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !canvas.width) return;
+
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'px',
+      format: [canvas.width, canvas.height],
+    });
+    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+
+    const sessionLabel = sessionFilter === 'BOTH' ? 'All' : sessionFilter;
+    pdf.save(`Seating_Diagram_${sessionLabel}_${selectedDate}.pdf`);
+  }, [sessionFilter, selectedDate]);
+
+  const hasData = data?.data?.groups?.length > 0;
+
+  return (
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black/50" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-5xl transform overflow-hidden rounded-lg bg-white dark:bg-dark-card shadow-xl transition-all">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    Seating Diagram
+                  </Dialog.Title>
+                  <button
+                    onClick={onClose}
+                    className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="px-6 py-4 space-y-4">
+                  {/* Controls row */}
+                  <div className="flex items-end gap-4 flex-wrap">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Date
+                      </label>
+                      <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => {
+                          setSelectedDate(e.target.value);
+                          setImageDataUrl(null);
+                        }}
+                        className="block w-48 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Session
+                      </label>
+                      <select
+                        value={sessionFilter}
+                        onChange={(e) => {
+                          setSessionFilter(e.target.value);
+                          setImageDataUrl(null);
+                        }}
+                        className="block w-36 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                      >
+                        <option value="BOTH">Both</option>
+                        <option value="AM">Morning</option>
+                        <option value="PM">Afternoon</option>
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={generateDiagram}
+                      disabled={!selectedDate || isLoading || generating || !hasData}
+                      className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    >
+                      {generating ? 'Generating...' : 'Generate Diagram'}
+                    </button>
+                  </div>
+
+                  {/* Status messages */}
+                  {isLoading && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Loading bookings...</p>
+                  )}
+
+                  {!isLoading && !hasData && selectedDate && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <p className="text-blue-800 dark:text-blue-300 text-sm">
+                        No bookings found for this date.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Canvas preview */}
+                  {imageDataUrl && (
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-auto max-h-[60vh]">
+                      <img
+                        src={imageDataUrl}
+                        alt="Seating Diagram"
+                        className="w-full h-auto"
+                      />
+                    </div>
+                  )}
+
+                  {/* Hidden offscreen canvas */}
+                  <canvas ref={canvasRef} style={{ display: 'none' }} />
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                  {imageDataUrl && (
+                    <button
+                      onClick={downloadPDF}
+                      className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
+                    >
+                      Download PDF
+                    </button>
+                  )}
+                  <button
+                    onClick={onClose}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
+                  >
+                    Close
+                  </button>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </div>
+      </Dialog>
+    </Transition>
+  );
+};
+
+export default SeatingDiagramModal;
