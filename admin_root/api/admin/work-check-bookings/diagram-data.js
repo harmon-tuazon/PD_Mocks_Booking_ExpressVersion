@@ -1,8 +1,8 @@
 /**
  * GET /api/admin/work-check-bookings/diagram-data
  * Returns bookings enriched with group_name for seating diagram rendering.
- * Fetches all active bookings for a given date, resolves each student's group,
- * and returns data organized by group with AM/PM sessions.
+ * Fetches confirmed/completed/marked bookings for a given date, resolves
+ * each student's group, and returns data organized by group with AM/PM sessions.
  * Permission: 'workcheck.view'
  */
 
@@ -33,55 +33,9 @@ module.exports = async (req, res) => {
 
     console.log('[Diagram Data] Fetching for date:', date);
 
-    // Step 1: Fetch all slots for the date with instructor info
-    const { data: slots, error: slotsError } = await supabaseAdmin
-      .from('work_check_slots')
-      .select(`
-        id,
-        slot_date,
-        slot_time,
-        duration_minutes,
-        location,
-        group_id,
-        instructor_id,
-        instructor:instructors!work_check_slots_instructor_id_fkey (
-          id,
-          instructor_name
-        )
-      `)
-      .eq('slot_date', date);
-
-    if (slotsError) {
-      throw new Error(`Failed to fetch slots: ${slotsError.message}`);
-    }
-
-    console.log(`[Diagram Data] Found ${slots?.length || 0} slots for date ${date}`);
-
-    if (!slots || slots.length === 0) {
-      return res.status(200).json({
-        success: true,
-        data: { date, slot_times: { AM: [], PM: [] }, groups: [] }
-      });
-    }
-
-    // Build master list of all slot times for the date
-    const slotTimesSet = { AM: new Set(), PM: new Set() };
-    for (const slot of slots) {
-      const time = slot.slot_time.substring(0, 5);
-      const hour = parseInt(time.split(':')[0], 10);
-      const session = hour < 12 ? 'AM' : 'PM';
-      slotTimesSet[session].add(time);
-    }
-    const slotTimes = {
-      AM: [...slotTimesSet.AM].sort(),
-      PM: [...slotTimesSet.PM].sort()
-    };
-
-    const slotIds = slots.map(s => s.id);
-    const slotMap = new Map(slots.map(s => [s.id, s]));
-
-    // Step 2: Fetch bookings with diagram-relevant statuses only
-    const { data: bookings, error: bookingsError } = await supabaseAdmin
+    // Step 1: Fetch bookings with slot + student data in a single query
+    // (same join pattern as list.js)
+    const { data: allBookings, error: bookingsError } = await supabaseAdmin
       .from('work_check_bookings')
       .select(`
         id,
@@ -89,33 +43,67 @@ module.exports = async (req, res) => {
         student_id,
         status,
         type,
+        slot:work_check_slots!work_check_bookings_slot_id_fkey (
+          id,
+          slot_date,
+          slot_time,
+          duration_minutes,
+          location,
+          group_id,
+          instructor_id,
+          instructor:instructors!work_check_slots_instructor_id_fkey (
+            id,
+            instructor_name
+          )
+        ),
         student:hubspot_contact_credits!work_check_bookings_student_id_fkey (
           student_id,
           firstname,
           lastname
         )
       `)
-      .in('slot_id', slotIds)
       .in('status', ['confirmed', 'completed', 'marked']);
 
     if (bookingsError) {
       throw new Error(`Failed to fetch bookings: ${bookingsError.message}`);
     }
 
-    console.log(`[Diagram Data] Found ${bookings?.length || 0} bookings for ${slotIds.length} slots`);
+    console.log(`[Diagram Data] Total bookings with status filter: ${allBookings?.length || 0}`);
 
-    if (!bookings || bookings.length === 0) {
+    // Step 2: Filter by slot_date in JavaScript (proven pattern from list.js)
+    const bookings = (allBookings || []).filter(b => b.slot?.slot_date === date);
+
+    console.log(`[Diagram Data] Bookings matching date ${date}: ${bookings.length}`);
+
+    if (bookings.length === 0) {
       return res.status(200).json({
         success: true,
-        data: { date, slot_times: slotTimes, groups: [] }
+        data: { date, slot_times: { AM: [], PM: [] }, groups: [] }
       });
     }
+
+    // Build slot map and master time list from matched bookings' slots
+    const slotMap = new Map();
+    const slotTimesSet = { AM: new Set(), PM: new Set() };
+
+    for (const booking of bookings) {
+      if (!booking.slot) continue;
+      slotMap.set(booking.slot.id, booking.slot);
+      const time = booking.slot.slot_time.substring(0, 5);
+      const hour = parseInt(time.split(':')[0], 10);
+      slotTimesSet[hour < 12 ? 'AM' : 'PM'].add(time);
+    }
+
+    const slotTimes = {
+      AM: [...slotTimesSet.AM].sort(),
+      PM: [...slotTimesSet.PM].sort()
+    };
 
     // Step 3: Get all student_ids to look up their group memberships
     const studentIds = [...new Set(bookings.map(b => b.student_id).filter(Boolean))];
 
     // Step 4: Fetch group memberships for these students
-    const studentGroupsMap = {}; // student_id -> [group_ids]
+    const studentGroupsMap = {};
     if (studentIds.length > 0) {
       const { data: memberships, error: memberError } = await supabaseAdmin
         .from('groups_students')
@@ -136,7 +124,7 @@ module.exports = async (req, res) => {
     for (const gids of Object.values(studentGroupsMap)) {
       gids.forEach(gid => allGroupIds.add(gid));
     }
-    for (const slot of slots) {
+    for (const slot of slotMap.values()) {
       if (slot.group_id && Array.isArray(slot.group_id)) {
         slot.group_id.forEach(gid => allGroupIds.add(gid));
       }
@@ -154,10 +142,9 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Step 6: Also resolve instructor per group from slots
-    // Map: group_id -> instructor_name (from slots that serve that group)
+    // Step 6: Resolve instructor per group from slots
     const groupInstructorMap = {};
-    for (const slot of slots) {
+    for (const slot of slotMap.values()) {
       if (!slot.group_id || !Array.isArray(slot.group_id)) continue;
       const instructorName = slot.instructor?.instructor_name || null;
       if (!instructorName) continue;
@@ -172,14 +159,14 @@ module.exports = async (req, res) => {
     const groupColumns = {};
 
     for (const booking of bookings) {
-      const slot = slotMap.get(booking.slot_id);
+      const slot = booking.slot;
       if (!slot) continue;
 
       const studentName = booking.student
         ? `${booking.student.firstname || ''} ${booking.student.lastname || ''}`.trim()
         : 'Unknown';
 
-      const slotTime = slot.slot_time.substring(0, 5); // "08:00"
+      const slotTime = slot.slot_time.substring(0, 5);
       const hour = parseInt(slotTime.split(':')[0], 10);
       const session = hour < 12 ? 'AM' : 'PM';
 
