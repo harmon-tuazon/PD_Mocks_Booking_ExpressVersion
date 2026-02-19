@@ -52,6 +52,27 @@ const CONFIG = {
   BORDER_RADIUS: 20,        // Rounded corners on the chart
 };
 
+// ─── Fixed NDECC time slots (always displayed regardless of bookings/slots) ───
+// display: what's rendered on the diagram, key: 24-hour format to match DB values
+const FIXED_TIME_SLOTS = {
+  AM: [
+    { display: '08:00', key: '08:00' },
+    { display: '08:50', key: '08:50' },
+    { display: '09:40', key: '09:40' },
+    { display: '10:30', key: '10:30' },
+    { display: '11:20', key: '11:20' },
+    { display: '12:10', key: '12:10' },
+  ],
+  PM: [
+    { display: '1:50', key: '13:50' },
+    { display: '2:40', key: '14:40' },
+    { display: '3:30', key: '15:30' },
+    { display: '4:20', key: '16:20' },
+    { display: '5:10', key: '17:10' },
+    { display: '6:00', key: '18:00' },
+  ],
+};
+
 /** Load an image from URL, returns a promise */
 const loadImage = (url) => new Promise((resolve, reject) => {
   const img = new Image();
@@ -129,7 +150,7 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
         return;
       }
 
-      const { groups, slot_times } = result.data;
+      const { groups } = result.data;
 
       // Filter groups based on session selection
       const filteredGroups = groups
@@ -147,13 +168,12 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
         return;
       }
 
-      // Master time lists (ALL slot times for the date, always displayed)
-      const amTimes = sessionFilter === 'PM' ? [] : (slot_times?.AM || []);
-      const pmTimes = sessionFilter === 'AM' ? [] : (slot_times?.PM || []);
+      // Fixed NDECC time slots — always displayed regardless of bookings
+      const amSlots = sessionFilter === 'PM' ? [] : FIXED_TIME_SLOTS.AM;
+      const pmSlots = sessionFilter === 'AM' ? [] : FIXED_TIME_SLOTS.PM;
 
-      // Row count = master time list length (every slot is always shown)
-      const maxAM = Math.max(amTimes.length, ...filteredGroups.map(g => g.bookings.AM.length));
-      const maxPM = Math.max(pmTimes.length, ...filteredGroups.map(g => g.bookings.PM.length));
+      const maxAM = amSlots.length;
+      const maxPM = pmSlots.length;
 
       const showAM = sessionFilter !== 'PM' && maxAM > 0;
       const showPM = sessionFilter !== 'AM' && maxPM > 0;
@@ -262,7 +282,8 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
         for (const b of group.bookings.PM) pmLookup[b.slot_time] = b.student_name;
 
         // ─── Helper: draw a session section (MORNING or AFTERNOON) ───
-        const drawSession = (sessionLabel, masterTimes, lookup, maxRows) => {
+        // slots: array of { display, key } from FIXED_TIME_SLOTS
+        const drawSession = (sessionLabel, slots, lookup) => {
           // Coral header bar
           ctx.fillStyle = COLORS.groupHeaderBg;
           ctx.fillRect(colX, curY, colWidth, CONFIG.GROUP_HEADER_HEIGHT);
@@ -282,14 +303,11 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
 
           curY += CONFIG.GROUP_HEADER_HEIGHT;
 
-          // Rows — always use master time list so all slots are displayed
-          const rowTimes = masterTimes.length > 0 ? masterTimes : Object.keys(lookup).sort();
-          const totalRows = Math.max(rowTimes.length, maxRows);
-
-          for (let i = 0; i < totalRows; i++) {
+          // Rows — always render every fixed time slot
+          for (let i = 0; i < slots.length; i++) {
             const rowY = curY + i * CONFIG.ROW_HEIGHT;
-            const time = rowTimes[i] || '';
-            const name = time ? (lookup[time] || '') : '';
+            const { display, key } = slots[i];
+            const name = lookup[key] || '';
 
             // Time cell
             ctx.fillStyle = COLORS.cellBg;
@@ -298,13 +316,11 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
             ctx.lineWidth = 1;
             ctx.strokeRect(colX, rowY, CONFIG.TIME_COL_WIDTH, CONFIG.ROW_HEIGHT);
 
-            if (time) {
-              ctx.fillStyle = COLORS.cellTimeText;
-              ctx.font = '14px "Segoe UI", Arial, sans-serif';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(time, colX + CONFIG.TIME_COL_WIDTH / 2, rowY + CONFIG.ROW_HEIGHT / 2);
-            }
+            ctx.fillStyle = COLORS.cellTimeText;
+            ctx.font = '14px "Segoe UI", Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(display, colX + CONFIG.TIME_COL_WIDTH / 2, rowY + CONFIG.ROW_HEIGHT / 2);
 
             // Name cell
             ctx.fillStyle = COLORS.cellBg;
@@ -325,17 +341,17 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
             }
           }
 
-          curY += totalRows * CONFIG.ROW_HEIGHT;
+          curY += slots.length * CONFIG.ROW_HEIGHT;
         };
 
         if (showAM) {
-          drawSession('MORNING', amTimes, amLookup, maxAM);
+          drawSession('MORNING', amSlots, amLookup);
         }
         if (showAM && showPM) {
           curY += CONFIG.SESSION_GAP;
         }
         if (showPM) {
-          drawSession('AFTERNOON', pmTimes, pmLookup, maxPM);
+          drawSession('AFTERNOON', pmSlots, pmLookup);
         }
       });
 

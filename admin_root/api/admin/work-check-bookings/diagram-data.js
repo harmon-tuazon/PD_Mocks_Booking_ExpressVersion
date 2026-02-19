@@ -82,38 +82,13 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Build slot map from matched bookings' slots
+    // Build slot map and time list from matched bookings' slots
     const slotMap = new Map();
+    const slotTimesSet = { AM: new Set(), PM: new Set() };
+
     for (const booking of bookings) {
       if (!booking.slot) continue;
       slotMap.set(booking.slot.id, booking.slot);
-    }
-
-    // Fetch ALL slots for this date to build the complete master time list
-    // (includes slots without bookings so empty rows are displayed)
-    const { data: allDateSlots } = await supabaseAdmin
-      .from('work_check_slots')
-      .select('id, slot_time, slot_date, group_id, instructor_id, instructor:instructors!work_check_slots_instructor_id_fkey (id, instructor_name)')
-      .eq('slot_date', date);
-
-    const slotTimesSet = { AM: new Set(), PM: new Set() };
-
-    // Add times from ALL slots for this date
-    if (allDateSlots) {
-      for (const slot of allDateSlots) {
-        const time = slot.slot_time.substring(0, 5);
-        const hour = parseInt(time.split(':')[0], 10);
-        slotTimesSet[hour < 12 ? 'AM' : 'PM'].add(time);
-        // Also add these slots to the slotMap for group/instructor resolution
-        if (!slotMap.has(slot.id)) {
-          slotMap.set(slot.id, slot);
-        }
-      }
-    }
-
-    // Also add times from booking slots (in case the direct date query missed any)
-    for (const booking of bookings) {
-      if (!booking.slot) continue;
       const time = booking.slot.slot_time.substring(0, 5);
       const hour = parseInt(time.split(':')[0], 10);
       slotTimesSet[hour < 12 ? 'AM' : 'PM'].add(time);
