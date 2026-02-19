@@ -182,13 +182,18 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
       ctx.save();
       ctx.clip(); // Clip all drawing to the rounded shape
 
-      // 2. Header — Logo image
+      // 2. Header — Logo image with white background
       const headerY = CONFIG.PADDING;
       const logoImg = logoRef.current;
 
       if (logoImg) {
         const lh = CONFIG.LOGO_HEIGHT;
         const lw = logoImg.width * (lh / logoImg.height);
+        const logoPad = 8;
+        // White rounded rectangle behind the logo so it's visible on dark bg
+        ctx.fillStyle = '#FFFFFF';
+        drawRoundedRect(ctx, CONFIG.PADDING - logoPad, headerY + 5 - logoPad, lw + logoPad * 2, lh + logoPad * 2, 10);
+        ctx.fill();
         ctx.drawImage(logoImg, CONFIG.PADDING, headerY + 5, lw, lh);
       } else {
         // Text fallback if logo failed to load
