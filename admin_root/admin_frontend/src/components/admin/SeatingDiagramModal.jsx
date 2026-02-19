@@ -169,8 +169,37 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
       }
 
       // Fixed NDECC time slots — always displayed regardless of bookings
-      const amSlots = sessionFilter === 'PM' ? [] : FIXED_TIME_SLOTS.AM;
-      const pmSlots = sessionFilter === 'AM' ? [] : FIXED_TIME_SLOTS.PM;
+      // Then merge in any booking times that fall outside the fixed schedule
+      const fixedAmKeys = new Set(FIXED_TIME_SLOTS.AM.map(s => s.key));
+      const fixedPmKeys = new Set(FIXED_TIME_SLOTS.PM.map(s => s.key));
+
+      const extraAm = new Set();
+      const extraPm = new Set();
+      for (const g of filteredGroups) {
+        for (const b of g.bookings.AM) {
+          if (!fixedAmKeys.has(b.slot_time)) extraAm.add(b.slot_time);
+        }
+        for (const b of g.bookings.PM) {
+          if (!fixedPmKeys.has(b.slot_time)) extraPm.add(b.slot_time);
+        }
+      }
+
+      // Build merged slot lists: fixed slots + any extras sorted into position
+      const buildMergedSlots = (fixedSlots, extras) => {
+        const merged = [...fixedSlots];
+        for (const time of [...extras].sort()) {
+          // Display as-is for AM (already HH:MM), convert for PM
+          const hour = parseInt(time.split(':')[0], 10);
+          const display = hour > 12 ? `${hour - 12}:${time.split(':')[1]}` : time;
+          merged.push({ display, key: time });
+        }
+        // Sort by 24-hour key so extra times appear in correct position
+        merged.sort((a, b) => a.key.localeCompare(b.key));
+        return merged;
+      };
+
+      const amSlots = sessionFilter === 'PM' ? [] : buildMergedSlots(FIXED_TIME_SLOTS.AM, extraAm);
+      const pmSlots = sessionFilter === 'AM' ? [] : buildMergedSlots(FIXED_TIME_SLOTS.PM, extraPm);
 
       const maxAM = amSlots.length;
       const maxPM = pmSlots.length;
