@@ -90,9 +90,9 @@ token.json
 test-results/
 .vercel
 .env*.local
+.env.local
 
 .serena
-.claude
 documentation/
 features/
 improvements/

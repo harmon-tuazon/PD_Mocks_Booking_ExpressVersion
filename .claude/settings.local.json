@@ -50,7 +50,8 @@
       "Bash(npx eslint:*)",
       "Bash(git checkout:*)",
       "Bash(wc:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
