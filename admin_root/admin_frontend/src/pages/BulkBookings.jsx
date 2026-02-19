@@ -321,7 +321,9 @@ PREP003,987654321,clinical skills`;
    */
   const formatDate = (dateString) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('en-US', {
+    // Parse YYYY-MM-DD parts directly to avoid timezone offset shifting the day
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'

@@ -383,7 +383,9 @@ Mock Discussion,2026-03-17,6,Online,14:00,15:00,C,scheduled,2026-03-10T09:00:00Z
    */
   const formatDate = (dateString) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('en-US', {
+    // Parse YYYY-MM-DD parts directly to avoid timezone offset shifting the day
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
