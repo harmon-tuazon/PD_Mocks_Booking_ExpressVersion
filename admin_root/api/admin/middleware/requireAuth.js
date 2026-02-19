@@ -1,9 +1,33 @@
 /**
  * Authentication Middleware
- * Verifies JWT token and adds user to request
+ * Verifies JWT token, validates request timestamp, and adds user to request
  */
 
 const { verifyToken } = require('../../_shared/supabase');
+const crypto = require('crypto');
+
+// Maximum allowed age for a request timestamp (5 minutes)
+const MAX_REQUEST_AGE_MS = 5 * 60 * 1000;
+
+/**
+ * Validate request timestamp to prevent replay attacks
+ * Rejects requests older than 5 minutes
+ * @param {Request} req - HTTP request object
+ */
+function validateRequestTimestamp(req) {
+  const timestamp = req.headers['x-request-timestamp'];
+
+  // Skip validation if header not present (backwards compatibility)
+  if (!timestamp) return;
+
+  const requestTime = parseInt(timestamp, 10);
+  if (isNaN(requestTime)) return;
+
+  const age = Math.abs(Date.now() - requestTime);
+  if (age > MAX_REQUEST_AGE_MS) {
+    throw new Error('Request expired');
+  }
+}
 
 /**
  * Middleware to require authentication
@@ -12,6 +36,9 @@ const { verifyToken } = require('../../_shared/supabase');
  */
 async function requireAuth(req) {
   try {
+    // Validate request freshness (replay attack prevention)
+    validateRequestTimestamp(req);
+
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
 
@@ -26,6 +53,27 @@ async function requireAuth(req) {
 
     if (error || !user) {
       throw new Error('Invalid or expired token');
+    }
+
+    // Validate device fingerprint (soft check - warn on mismatch)
+    // Uses User-Agent only, stored at login time in user_metadata
+    const storedFingerprint = user.user_metadata?.device_fingerprint;
+    if (storedFingerprint) {
+      const userAgent = req.headers['user-agent'] || '';
+      const currentFingerprint = crypto
+        .createHash('sha256')
+        .update(userAgent)
+        .digest('hex')
+        .substring(0, 16);
+
+      if (currentFingerprint !== storedFingerprint) {
+        console.warn(
+          `[Auth] Device fingerprint mismatch for user ${user.id}. ` +
+          `Expected: ${storedFingerprint}, Got: ${currentFingerprint}`
+        );
+        // Soft check: log warning but don't block
+        // Change to throw new Error('Device fingerprint mismatch') for hard enforcement
+      }
     }
 
     // Return user object

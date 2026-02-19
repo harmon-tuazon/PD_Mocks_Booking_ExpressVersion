@@ -64,9 +64,10 @@ const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'];
  * Restricts to only necessary headers to prevent header injection
  */
 const ALLOWED_HEADERS = [
-  'Authorization',      // For JWT tokens
-  'Content-Type',       // For request body format
-  'X-Requested-With',   // For AJAX requests
+  'Authorization',         // For JWT tokens
+  'Content-Type',          // For request body format
+  'X-Requested-With',      // For AJAX requests
+  'X-Request-Timestamp',   // For replay attack prevention
 ];
 
 /**

@@ -11,7 +11,6 @@ import { getUserSession } from '../../utils/auth';
 
 // Work check type options
 const WORK_CHECK_TYPES = [
-  { value: 'Demo', label: 'Demo', description: 'Demonstration session with instructor feedback' },
   { value: 'Work Check', label: 'Work Check', description: 'Standard work check assessment' },
   { value: 'Supervised Session', label: 'Supervised Session', description: 'Supervised practice session' }
 ];

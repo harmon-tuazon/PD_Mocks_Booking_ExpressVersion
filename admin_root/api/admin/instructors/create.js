@@ -13,6 +13,7 @@
 const { requirePermission } = require('../middleware/requirePermission');
 const { validationMiddleware } = require('../../_shared/validation');
 const { supabaseAdmin } = require('../../_shared/supabase');
+const { sanitizeFields } = require('../../_shared/sanitize');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -36,7 +37,9 @@ module.exports = async (req, res) => {
       });
     });
 
-    const { instructor_name, email, password } = req.validatedData;
+    // Sanitize user-provided string fields to prevent stored XSS
+    const sanitized = sanitizeFields(req.validatedData, ['instructor_name']);
+    const { instructor_name, email, password } = sanitized;
     const normalizedEmail = email.toLowerCase().trim();
 
     // Do NOT log password

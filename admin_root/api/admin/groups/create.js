@@ -8,6 +8,7 @@ const { requirePermission } = require('../middleware/requirePermission');
 const { validationMiddleware } = require('../../_shared/validation');
 const { getCache } = require('../../_shared/cache');
 const { supabaseAdmin } = require('../../_shared/supabase');
+const { sanitizeFields } = require('../../_shared/sanitize');
 
 /**
  * Generate unique group ID
@@ -43,6 +44,9 @@ module.exports = async (req, res) => {
       });
     });
 
+    // Sanitize user-provided string fields to prevent stored XSS
+    const sanitized = sanitizeFields(req.validatedData, ['groupName', 'location', 'phase']);
+
     const {
       groupName,
       location,
@@ -51,7 +55,7 @@ module.exports = async (req, res) => {
       endDate,
       maxCapacity,
       phase
-    } = req.validatedData;
+    } = sanitized;
 
     // Generate group ID
     let groupId = generateGroupId(startDate, timePeriod, groupName);

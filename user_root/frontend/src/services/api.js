@@ -19,6 +19,10 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Add request timestamp for replay attack prevention
+    config.headers['X-Request-Timestamp'] = Date.now().toString();
+
     return config;
   },
   (error) => {

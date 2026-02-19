@@ -5,6 +5,7 @@
 
 const { supabasePublic, verifyToken } = require('../../_shared/supabase');
 const Joi = require('joi');
+const crypto = require('crypto');
 
 // Login request validation schema
 const loginSchema = Joi.object({
@@ -107,6 +108,33 @@ module.exports = async (req, res) => {
     // Clear failed attempts on successful login
     loginAttempts.delete(attemptKey);
 
+    // Compute device fingerprint from User-Agent for replay detection
+    // Uses User-Agent only (not IP) to avoid false logouts on network changes
+    const userAgent = req.headers['user-agent'] || '';
+    const deviceFingerprint = crypto
+      .createHash('sha256')
+      .update(userAgent)
+      .digest('hex')
+      .substring(0, 16);
+
+    // Store fingerprint in user metadata (non-blocking, best-effort)
+    try {
+      const { createClient } = require('@supabase/supabase-js');
+      const supabaseService = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+      await supabaseService.auth.admin.updateUserById(user.id, {
+        user_metadata: {
+          ...user.user_metadata,
+          device_fingerprint: deviceFingerprint
+        }
+      });
+    } catch (fpError) {
+      // Non-blocking - log but don't fail login
+      console.warn('[Login] Failed to store device fingerprint:', fpError.message);
+    }
+
     // Set session cookie if Remember Me is checked
     if (rememberMe && session?.refresh_token) {
       res.setHeader('Set-Cookie', [
@@ -125,7 +153,7 @@ module.exports = async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        user_metadata: user.user_metadata || {},
+        user_metadata: { ...(user.user_metadata || {}), device_fingerprint: deviceFingerprint },
         user_role: userWithClaims?.user_role || 'viewer',
         permissions: userWithClaims?.permissions || []
       },
