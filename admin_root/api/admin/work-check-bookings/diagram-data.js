@@ -55,6 +55,8 @@ module.exports = async (req, res) => {
       throw new Error(`Failed to fetch slots: ${slotsError.message}`);
     }
 
+    console.log(`[Diagram Data] Found ${slots?.length || 0} slots for date ${date}`);
+
     if (!slots || slots.length === 0) {
       return res.status(200).json({
         success: true,
@@ -94,11 +96,14 @@ module.exports = async (req, res) => {
         )
       `)
       .in('slot_id', slotIds)
-      .not('status', 'in', '("cancelled","rejected")');
+      .neq('status', 'cancelled')
+      .neq('status', 'rejected');
 
     if (bookingsError) {
       throw new Error(`Failed to fetch bookings: ${bookingsError.message}`);
     }
+
+    console.log(`[Diagram Data] Found ${bookings?.length || 0} bookings for ${slotIds.length} slots`);
 
     if (!bookings || bookings.length === 0) {
       return res.status(200).json({
