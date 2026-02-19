@@ -64,7 +64,7 @@ function WorkCheckBookings() {
   const [locationFilter, setLocationFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [typeFilter, setTypeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('slot_date');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -176,7 +176,7 @@ function WorkCheckBookings() {
     setLocationFilter('');
     setDateFrom('');
     setDateTo('');
-    setStatusFilter('all');
+    setStatusFilter('active');
     setTypeFilter('all');
     setCurrentPage(1);
   }, []);

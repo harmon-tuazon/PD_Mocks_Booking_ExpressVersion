@@ -9,6 +9,14 @@ import { useState, useRef, useCallback, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import jsPDF from 'jspdf';
+import { DatePicker } from '@/components/ui/date-picker';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { workCheckBookingsApi } from '../../services/adminApi';
 
 // ─── Color palette (matching NDECC reference screenshot) ───
@@ -348,40 +356,38 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
                 {/* Body */}
                 <div className="px-6 py-4 space-y-4">
                   {/* Controls row */}
-                  <div className="flex items-end gap-4 flex-wrap">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Date
-                      </label>
-                      <input
-                        type="date"
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="min-w-[180px]">
+                      <DatePicker
                         value={selectedDate}
-                        onChange={(e) => {
-                          setSelectedDate(e.target.value);
+                        onChange={(value) => {
+                          setSelectedDate(value);
                           setImageDataUrl(null);
                           setError(null);
                         }}
-                        className="block w-48 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                        placeholder="Select Date"
+                        className="w-full"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Session
-                      </label>
-                      <select
+                    <div className="min-w-[140px]">
+                      <Select
                         value={sessionFilter}
-                        onChange={(e) => {
-                          setSessionFilter(e.target.value);
+                        onValueChange={(value) => {
+                          setSessionFilter(value);
                           setImageDataUrl(null);
                           setError(null);
                         }}
-                        className="block w-36 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                       >
-                        <option value="BOTH">Both</option>
-                        <option value="AM">Morning</option>
-                        <option value="PM">Afternoon</option>
-                      </select>
+                        <SelectTrigger title="Session">
+                          <SelectValue placeholder="Session" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="BOTH">Both</SelectItem>
+                          <SelectItem value="AM">Morning</SelectItem>
+                          <SelectItem value="PM">Afternoon</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
