@@ -30,10 +30,10 @@ const COLORS = {
   instructorText: '#FFFFFF',
   groupHeaderBg: '#E8634F',
   groupHeaderText: '#FFFFFF',
-  cellBg: '#FFFFFF',
-  cellBorder: '#C8D6DB',
-  cellTimeText: '#333333',
-  cellNameText: '#333333',
+  cellBg: '#4ECDC4',           // Bright teal row background
+  cellBorder: '#163B4E',      // Matches canvas bg for subtle grid
+  cellTimeText: '#163B4E',    // Dark text on bright teal
+  cellNameText: '#163B4E',    // Dark text on bright teal
 };
 
 // ─── Canvas layout constants ───
@@ -332,12 +332,11 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
 
           curY += CONFIG.GROUP_HEADER_HEIGHT;
 
-          // Rows — always render every fixed time slot
+          // Rows — always render every fixed time slot with alternating colors
           for (let i = 0; i < slots.length; i++) {
             const rowY = curY + i * CONFIG.ROW_HEIGHT;
             const { display, key } = slots[i];
             const name = lookup[key] || '';
-
             // Time cell
             ctx.fillStyle = COLORS.cellBg;
             ctx.fillRect(colX, rowY, CONFIG.TIME_COL_WIDTH, CONFIG.ROW_HEIGHT);
@@ -346,7 +345,7 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
             ctx.strokeRect(colX, rowY, CONFIG.TIME_COL_WIDTH, CONFIG.ROW_HEIGHT);
 
             ctx.fillStyle = COLORS.cellTimeText;
-            ctx.font = '14px "Segoe UI", Arial, sans-serif';
+            ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(display, colX + CONFIG.TIME_COL_WIDTH / 2, rowY + CONFIG.ROW_HEIGHT / 2);
@@ -359,12 +358,12 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
 
             if (name) {
               ctx.fillStyle = COLORS.cellNameText;
-              ctx.font = '14px "Segoe UI", Arial, sans-serif';
-              ctx.textAlign = 'left';
+              ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+              ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
               ctx.fillText(
                 truncateName(name, maxNameChars),
-                colX + CONFIG.TIME_COL_WIDTH + 10,
+                colX + CONFIG.TIME_COL_WIDTH + nameColWidth / 2,
                 rowY + CONFIG.ROW_HEIGHT / 2
               );
             }
