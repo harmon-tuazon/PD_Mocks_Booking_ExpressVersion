@@ -4,6 +4,7 @@
  */
 
 import axios from 'axios';
+import { supabase } from '../utils/supabaseClient';
 
 // Configure base URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -55,13 +56,39 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor for error handling
+// Add response interceptor with token refresh on 401
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Log errors that aren't handled by AuthContext (non-401 errors)
-    if (error.response?.status !== 401 && !error.config?._retry) {
-      console.error('❌ API Error:', {
+  async (error) => {
+    const originalRequest = error.config;
+
+    // On 401, attempt one token refresh before failing
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const { data, error: refreshError } = await supabase.auth.refreshSession();
+
+        if (data?.session && !refreshError) {
+          // Update localStorage so future requests use the new token
+          localStorage.setItem('access_token', data.session.access_token);
+          if (data.session.refresh_token) {
+            localStorage.setItem('refresh_token', data.session.refresh_token);
+          }
+
+          // Retry the original request with the fresh token
+          originalRequest.headers['Authorization'] = `Bearer ${data.session.access_token}`;
+          return api(originalRequest);
+        }
+      } catch (refreshErr) {
+        // Refresh failed — fall through to error handling below
+        console.error('Token refresh failed:', refreshErr.message);
+      }
+    }
+
+    // Log non-401 errors
+    if (error.response?.status !== 401) {
+      console.error('API Error:', {
         url: error.config?.url,
         method: error.config?.method?.toUpperCase(),
         status: error.response?.status,
@@ -70,16 +97,12 @@ api.interceptors.response.use(
     }
 
     if (error.response) {
-      // Server responded with error status
       const errorData = error.response.data;
       const message = errorData?.error?.message || errorData?.message || 'An error occurred';
-
       throw new Error(message);
     } else if (error.request) {
-      // Request made but no response
       throw new Error('No response from server. Please check your connection.');
     } else {
-      // Error setting up request
       throw new Error(error.message || 'Request failed');
     }
   }
