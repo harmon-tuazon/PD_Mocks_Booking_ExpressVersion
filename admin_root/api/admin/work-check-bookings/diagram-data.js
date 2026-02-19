@@ -80,7 +80,7 @@ module.exports = async (req, res) => {
     const slotIds = slots.map(s => s.id);
     const slotMap = new Map(slots.map(s => [s.id, s]));
 
-    // Step 2: Fetch all active bookings for those slots
+    // Step 2: Fetch bookings with diagram-relevant statuses only
     const { data: bookings, error: bookingsError } = await supabaseAdmin
       .from('work_check_bookings')
       .select(`
@@ -96,8 +96,7 @@ module.exports = async (req, res) => {
         )
       `)
       .in('slot_id', slotIds)
-      .neq('status', 'cancelled')
-      .neq('status', 'rejected');
+      .in('status', ['confirmed', 'completed', 'marked']);
 
     if (bookingsError) {
       throw new Error(`Failed to fetch bookings: ${bookingsError.message}`);

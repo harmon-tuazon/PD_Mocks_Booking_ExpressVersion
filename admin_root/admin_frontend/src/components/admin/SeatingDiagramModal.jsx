@@ -8,7 +8,6 @@
 import { useState, useRef, useCallback, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { useQuery } from '@tanstack/react-query';
 import jsPDF from 'jspdf';
 import { workCheckBookingsApi } from '../../services/adminApi';
 
@@ -64,23 +63,26 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
   const [sessionFilter, setSessionFilter] = useState('BOTH');
   const [imageDataUrl, setImageDataUrl] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState(null);
   const canvasRef = useRef(null);
 
-  // Fetch diagram data when modal is open and date is set
-  const { data, isLoading } = useQuery({
-    queryKey: ['diagram-data', selectedDate],
-    queryFn: () => workCheckBookingsApi.getDiagramData(selectedDate),
-    enabled: isOpen && !!selectedDate,
-  });
-
-  /** Build the canvas image from fetched data */
-  const generateDiagram = useCallback(() => {
-    if (!data?.data?.groups || data.data.groups.length === 0) return;
+  /** Fetch data then render the canvas — only fires on button click */
+  const generateDiagram = useCallback(async () => {
+    if (!selectedDate) return;
 
     setGenerating(true);
+    setError(null);
+    setImageDataUrl(null);
 
     try {
-      const { groups, slot_times } = data.data;
+      const result = await workCheckBookingsApi.getDiagramData(selectedDate);
+
+      if (!result?.data?.groups || result.data.groups.length === 0) {
+        setError('No bookings found for this date.');
+        return;
+      }
+
+      const { groups, slot_times } = result.data;
 
       // Filter groups based on session selection
       const filteredGroups = groups
@@ -278,10 +280,13 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
 
       // Convert canvas to data URL for preview
       setImageDataUrl(canvas.toDataURL('image/png'));
+    } catch (err) {
+      console.error('Diagram generation error:', err);
+      setError(err.message || 'Failed to generate diagram');
     } finally {
       setGenerating(false);
     }
-  }, [data, sessionFilter, selectedDate]);
+  }, [sessionFilter, selectedDate]);
 
   /** Download the current diagram as a PDF */
   const downloadPDF = useCallback(() => {
@@ -299,8 +304,6 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
     const sessionLabel = sessionFilter === 'BOTH' ? 'All' : sessionFilter;
     pdf.save(`Seating_Diagram_${sessionLabel}_${selectedDate}.pdf`);
   }, [sessionFilter, selectedDate]);
-
-  const hasData = data?.data?.groups?.length > 0;
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -356,6 +359,7 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
                         onChange={(e) => {
                           setSelectedDate(e.target.value);
                           setImageDataUrl(null);
+                          setError(null);
                         }}
                         className="block w-48 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                       />
@@ -370,6 +374,7 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
                         onChange={(e) => {
                           setSessionFilter(e.target.value);
                           setImageDataUrl(null);
+                          setError(null);
                         }}
                         className="block w-36 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                       >
@@ -378,26 +383,12 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
                         <option value="PM">Afternoon</option>
                       </select>
                     </div>
-
-                    <button
-                      onClick={generateDiagram}
-                      disabled={!selectedDate || isLoading || generating || !hasData}
-                      className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                    >
-                      {generating ? 'Generating...' : 'Generate Diagram'}
-                    </button>
                   </div>
 
-                  {/* Status messages */}
-                  {isLoading && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Loading bookings...</p>
-                  )}
-
-                  {!isLoading && !hasData && selectedDate && (
+                  {/* Error / info message */}
+                  {error && (
                     <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                      <p className="text-blue-800 dark:text-blue-300 text-sm">
-                        No bookings found for this date.
-                      </p>
+                      <p className="text-blue-800 dark:text-blue-300 text-sm">{error}</p>
                     </div>
                   )}
 
@@ -431,6 +422,13 @@ const SeatingDiagramModal = ({ isOpen, onClose }) => {
                     className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
                   >
                     Close
+                  </button>
+                  <button
+                    onClick={generateDiagram}
+                    disabled={!selectedDate || generating}
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  >
+                    {generating ? 'Generating...' : 'Generate Diagram'}
                   </button>
                 </div>
               </Dialog.Panel>
