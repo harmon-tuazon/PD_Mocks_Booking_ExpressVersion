@@ -92,7 +92,6 @@ test-results/
 .env*.local
 
 .serena
-.claude
 documentation/
 features/
 improvements/

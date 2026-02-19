@@ -49,7 +49,9 @@
       "Bash(curl:*)",
       "Bash(npx eslint:*)",
       "Bash(git checkout:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
