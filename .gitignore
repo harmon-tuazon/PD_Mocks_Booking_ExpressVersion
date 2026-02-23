@@ -5,6 +5,7 @@
 .env.staging
 /admin_root/admin_frontend/.env
 /admin_root/.env
+migration/
 
 # Dependencies
 node_modules/
