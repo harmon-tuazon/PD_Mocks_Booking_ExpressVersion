@@ -3,16 +3,16 @@
  * POST /api/admin/mock-exams/batch-delete
  */
 
-jest.mock('../../api/admin/middleware/requireAdmin');
-jest.mock('../../api/_shared/validation');
-jest.mock('../../api/_shared/cache');
-jest.mock('../../api/_shared/hubspot');
+jest.mock('../../src/middleware/requireAdmin');
+jest.mock('../../src/services/validation');
+jest.mock('../../src/services/cache');
+jest.mock('../../src/services/hubspot');
 
-const batchDeleteHandler = require('../../api/admin/mock-exams/batch-delete');
-const { requireAdmin } = require('../../api/admin/middleware/requireAdmin');
-const { validationMiddleware } = require('../../api/_shared/validation');
-const { getCache } = require('../../api/_shared/cache');
-const hubspot = require('../../api/_shared/hubspot');
+const { batchDelete: batchDeleteHandler } = require('../../src/controllers/mockExams/batchDelete');
+const { requireAdmin } = require('../../src/middleware/requireAdmin');
+const { validationMiddleware } = require('../../src/services/validation');
+const { getCache } = require('../../src/services/cache');
+const hubspot = require('../../src/services/hubspot');
 
 describe('Batch Delete Mock Exam Sessions', () => {
   let mockReq, mockRes, mockCache;

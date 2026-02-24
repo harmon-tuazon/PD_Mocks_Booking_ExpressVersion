@@ -2,8 +2,8 @@ module.exports = {
   testEnvironment: 'node',
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
-    'api/**/*.js',
-    '!api/**/*.test.js',
+    'src/**/*.js',
+    '!src/**/*.test.js',
     '!**/node_modules/**'
   ],
   testMatch: [

@@ -4,7 +4,7 @@
  */
 
 // Mock dependencies before requiring modules
-jest.mock('../../api/admin/middleware/requireAdmin', () => ({
+jest.mock('../../src/middleware/requireAdmin', () => ({
   requireAdmin: jest.fn()
 }));
 
@@ -20,7 +20,7 @@ const mockHubSpotInstance = {
   deleteBooking: jest.fn()
 };
 
-jest.mock('../../api/_shared/hubspot', () => {
+jest.mock('../../src/services/hubspot', () => {
   const mockHubSpotService = jest.fn().mockImplementation(() => mockHubSpotInstance);
 
   return {
@@ -33,17 +33,17 @@ jest.mock('../../api/_shared/hubspot', () => {
   };
 });
 
-jest.mock('../../api/_shared/cache', () => ({
+jest.mock('../../src/services/cache', () => ({
   getCache: jest.fn(() => ({
     delete: jest.fn().mockResolvedValue(true),
     deletePattern: jest.fn().mockResolvedValue(true)
   }))
 }));
 
-const { requireAdmin } = require('../../api/admin/middleware/requireAdmin');
-const { HubSpotService, HUBSPOT_OBJECTS } = require('../../api/_shared/hubspot');
-const { getCache } = require('../../api/_shared/cache');
-const createBookingEndpoint = require('../../api/admin/bookings/create');
+const { requireAdmin } = require('../../src/middleware/requireAdmin');
+const { HubSpotService, HUBSPOT_OBJECTS } = require('../../src/services/hubspot');
+const { getCache } = require('../../src/services/cache');
+const { create: createBookingEndpoint } = require('../../src/controllers/bookings/create');
 
 describe('Admin Booking Creation Endpoint', () => {
   let req, res;

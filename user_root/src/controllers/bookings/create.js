@@ -1,0 +1,490 @@
+const crypto = require('crypto');
+const { HubSpotService, HUBSPOT_OBJECTS } = require('../../services/hubspot');
+const { getCache } = require('../../services/cache');
+const RedisLockService = require('../../services/redis');
+const {
+  getContactCreditsFromSupabase,
+  createBookingAtomic,
+  checkIdempotencyKey,
+  checkExistingBookingInSupabase,
+  checkExistingBookingByMockType,
+  supabaseAdmin,
+  updateExamBookingCountInSupabase
+} = require('../../services/supabase-data');
+const { sanitizeInput } = require('../../services/auth');
+
+/**
+ * Generate idempotency key from request data
+ * Uses SHA-256 hash of deterministic request components
+ */
+function generateIdempotencyKey(data) {
+  const keyData = {
+    contact_id: data.contact_id,
+    mock_exam_id: data.mock_exam_id,
+    exam_date: data.exam_date,
+    mock_type: data.mock_type,
+    timestamp_bucket: Math.floor(Date.now() / (5 * 60 * 1000)) // 5-minute buckets
+  };
+
+  const keyString = JSON.stringify(keyData, Object.keys(keyData).sort());
+  const hash = crypto.createHash('sha256').update(keyString).digest('hex');
+  return `idem_${hash.substring(0, 32)}`;
+}
+
+/**
+ * POST /api/bookings/create
+ * Create a new booking for a mock exam slot and handle all associations
+ *
+ * Prerequisites (applied by route middleware):
+ *   - authenticate: populates req.user
+ *   - validateBody(schemas.bookingCreation): validates req.body
+ */
+const create = async (req, res, next) => {
+  const redis = new RedisLockService();
+  let lockToken = null;
+
+  try {
+    // Accept both snake_case (frontend) and camelCase (legacy) field names
+    const studentId = req.body.student_id || req.body.studentId;
+    const email = req.body.email;
+    const mockExamId = req.body.mock_exam_id || req.body.mockExamId;
+    const location = req.body.attending_location || req.body.location;
+    const dominantHand = req.body.dominant_hand ?? req.body.dominantHand;
+
+    // Validate required fields
+    if (!studentId || !email || !mockExamId) {
+      const error = new Error('Missing required fields: student_id, email, mock_exam_id');
+      error.status = 400;
+      error.code = 'VALIDATION_ERROR';
+      return next(error);
+    }
+
+    // Sanitize email to lowercase for consistency
+    const sanitizedEmail = email.toLowerCase().trim();
+
+    // ========================================================================
+    // STEP 1: Retrieve mock exam details (Supabase-first)
+    // ========================================================================
+    console.log(`📋 [BOOKING-CREATE] Retrieving mock exam details for exam ID: ${mockExamId}`);
+
+    const { data: examData, error: examError } = await supabaseAdmin
+      .from('hubspot_mock_exams')
+      .select('*')
+      .eq('hubspot_id', mockExamId)
+      .single();
+
+    if (examError || !examData) {
+      console.error(`❌ [BOOKING-CREATE] Mock exam not found in Supabase:`, examError);
+      const error = new Error('Mock exam not found');
+      error.status = 404;
+      error.code = 'EXAM_NOT_FOUND';
+      return next(error);
+    }
+
+    const {
+      mock_type,
+      mock_set,
+      exam_date,
+      start_time,
+      end_time,
+      location: examLocation,
+      capacity,
+      total_bookings: currentTotalBookings,
+      hubspot_id: mock_exam_id
+    } = examData;
+
+    console.log(`✅ [BOOKING-CREATE] Exam details retrieved: ${mock_type} on ${exam_date}`);
+
+    // ========================================================================
+    // STEP 2: Retrieve contact details (Supabase-first)
+    // ========================================================================
+    console.log(`👤 [BOOKING-CREATE] Retrieving contact for student: ${studentId}`);
+
+    const { data: contacts, error: contactError } = await supabaseAdmin
+      .from('hubspot_contact_credits')
+      .select('*')
+      .eq('student_id', studentId.toUpperCase())
+      .eq('email', sanitizedEmail);
+
+    if (contactError || !contacts || contacts.length === 0) {
+      console.error(`❌ [BOOKING-CREATE] Contact not found in Supabase:`, contactError);
+      const error = new Error('Student not found. Please ensure you are registered.');
+      error.status = 404;
+      error.code = 'CONTACT_NOT_FOUND';
+      return next(error);
+    }
+
+    const contact = contacts[0];
+    const contact_id = contact.hubspot_id;
+
+    console.log(`✅ [BOOKING-CREATE] Contact found: ${contact.student_name} (ID: ${contact_id})`);
+
+    // ========================================================================
+    // STEP 3: Acquire distributed lock for race condition prevention
+    // ========================================================================
+    console.log(`🔒 [BOOKING-CREATE] Acquiring distributed lock for exam: ${mock_exam_id}`);
+
+    lockToken = await redis.acquireLock(mock_exam_id, 10000);
+    if (!lockToken) {
+      console.error(`❌ [BOOKING-CREATE] Failed to acquire lock - another booking in progress`);
+      const error = new Error('Another booking is in progress for this exam. Please try again.');
+      error.status = 409;
+      error.code = 'LOCK_ACQUISITION_FAILED';
+      return next(error);
+    }
+
+    console.log(`✅ [BOOKING-CREATE] Lock acquired: ${lockToken}`);
+
+    // ========================================================================
+    // STEP 4: Check capacity using ACTUAL booking count (authoritative)
+    // ========================================================================
+    const { count: actualBookingCount, error: countError } = await supabaseAdmin
+      .from('hubspot_bookings')
+      .select('*', { count: 'exact', head: true })
+      .eq('associated_mock_exam', mock_exam_id)
+      .eq('is_active', 'Active');
+
+    if (countError) {
+      console.error(`⚠️ [BOOKING-CREATE] Failed to count bookings, falling back to property:`, countError.message);
+    }
+
+    const effectiveBookingCount = countError ? currentTotalBookings : actualBookingCount;
+    console.log(`📊 [BOOKING-CREATE] Checking capacity: ${effectiveBookingCount}/${capacity} (actual count: ${actualBookingCount}, property: ${currentTotalBookings})`);
+
+    if (effectiveBookingCount >= capacity) {
+      await redis.releaseLock(mock_exam_id, lockToken);
+      lockToken = null;
+      console.error(`❌ [BOOKING-CREATE] Exam is full (${effectiveBookingCount}/${capacity})`);
+      const error = new Error('This exam is fully booked');
+      error.status = 409;
+      error.code = 'EXAM_FULL';
+      return next(error);
+    }
+
+    // ========================================================================
+    // STEP 5: Check for duplicate bookings (same date + same mock type)
+    // ========================================================================
+    const normalizedExamDate = exam_date.includes('T') ? exam_date.split('T')[0] : exam_date;
+
+    // TIER 1: Redis cache check (fast path)
+    const cacheKey = `booking:${contact_id}:${normalizedExamDate}:${mock_type}`;
+    console.log(`🔍 [BOOKING-CREATE] TIER 1 - Checking Redis cache: ${cacheKey}`);
+
+    const cachedBooking = await redis.get(cacheKey);
+    if (cachedBooking) {
+      await redis.releaseLock(mock_exam_id, lockToken);
+      lockToken = null;
+      console.error(`❌ [BOOKING-CREATE] Duplicate booking detected in cache for ${mock_type} on ${normalizedExamDate}`);
+      const error = new Error(`You already have a ${mock_type} booking for this date`);
+      error.status = 409;
+      error.code = 'DUPLICATE_BOOKING';
+      return next(error);
+    }
+
+    // TIER 2: Supabase check (authoritative)
+    console.log(`🔍 [BOOKING-CREATE] TIER 2 - Checking Supabase for existing ${mock_type} booking on ${normalizedExamDate}`);
+
+    const duplicateCheck = await checkExistingBookingByMockType(contact_id, normalizedExamDate, mock_type);
+
+    if (duplicateCheck.exists) {
+      const examDateTime = new Date(`${normalizedExamDate}T23:59:59Z`);
+      const ttlSeconds = Math.max(Math.floor((examDateTime - Date.now()) / 1000), 86400);
+      await redis.setex(cacheKey, ttlSeconds, duplicateCheck.existingBooking.booking_id);
+
+      await redis.releaseLock(mock_exam_id, lockToken);
+      lockToken = null;
+      console.error(`❌ [BOOKING-CREATE] Duplicate ${mock_type} booking found in Supabase: ${duplicateCheck.existingBooking.booking_id}`);
+      const error = new Error(`You already have a ${mock_type} booking for this date (${duplicateCheck.existingBooking.booking_id})`);
+      error.status = 409;
+      error.code = 'DUPLICATE_BOOKING';
+      return next(error);
+    }
+
+    console.log(`✅ [BOOKING-CREATE] No duplicate ${mock_type} booking found for ${normalizedExamDate}`);
+
+    // ========================================================================
+    // STEP 6: Validate student has sufficient credits
+    // ========================================================================
+    console.log(`💳 [BOOKING-CREATE] Validating credits for ${mock_type}`);
+
+    let creditField, tokenName;
+    let specificCredits = 0;
+    let sharedCredits = parseInt(contact.shared_mock_credits) || 0;
+
+    switch (mock_type) {
+      case 'Situational Judgment':
+        creditField = 'sj_credits';
+        tokenName = 'Situational Judgment Token';
+        specificCredits = parseInt(contact.sj_credits) || 0;
+        break;
+      case 'Clinical Skills':
+        creditField = 'cs_credits';
+        tokenName = 'Clinical Skills Token';
+        specificCredits = parseInt(contact.cs_credits) || 0;
+        break;
+      case 'Mini-mock':
+        creditField = 'sjmini_credits';
+        tokenName = 'Mini-mock Token';
+        specificCredits = parseInt(contact.sjmini_credits) || 0;
+        break;
+      default: {
+        await redis.releaseLock(mock_exam_id, lockToken);
+        lockToken = null;
+        console.error(`❌ [BOOKING-CREATE] Invalid exam type: ${mock_type}`);
+        const error = new Error(`Invalid exam type: ${mock_type}`);
+        error.status = 400;
+        error.code = 'INVALID_EXAM_TYPE';
+        return next(error);
+      }
+    }
+
+    const hasCredits = mock_type === 'Mini-mock'
+      ? specificCredits > 0
+      : (specificCredits > 0 || sharedCredits > 0);
+
+    if (!hasCredits) {
+      await redis.releaseLock(mock_exam_id, lockToken);
+      lockToken = null;
+      console.error(`❌ [BOOKING-CREATE] Insufficient credits`);
+      const error = new Error('You do not have sufficient credits to book this exam');
+      error.status = 402;
+      error.code = 'INSUFFICIENT_CREDITS';
+      return next(error);
+    }
+
+    console.log(`✅ [BOOKING-CREATE] Credits validated: ${specificCredits} specific, ${sharedCredits} shared`);
+
+    // ========================================================================
+    // STEP 7: Determine which credit to deduct (specific first, then shared)
+    // ========================================================================
+    let creditToDeduct, tokenUsed;
+
+    if (specificCredits > 0) {
+      creditToDeduct = creditField;
+      tokenUsed = tokenName;
+      console.log(`💰 [BOOKING-CREATE] Deducting specific credit: ${tokenName}`);
+    } else if (sharedCredits > 0 && mock_type !== 'Mini-mock') {
+      creditToDeduct = 'shared_mock_credits';
+      tokenUsed = 'Shared Token';
+      console.log(`💰 [BOOKING-CREATE] Deducting shared credit`);
+    } else {
+      await redis.releaseLock(mock_exam_id, lockToken);
+      lockToken = null;
+      console.error(`❌ [BOOKING-CREATE] No valid credits to deduct`);
+      const error = new Error('You do not have sufficient credits to book this exam');
+      error.status = 402;
+      error.code = 'INSUFFICIENT_CREDITS';
+      return next(error);
+    }
+
+    // ========================================================================
+    // STEP 8: Generate booking ID and idempotency key
+    // ========================================================================
+    const examDate = new Date(exam_date);
+    const formattedDate = examDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const bookingId = `${mock_type}-${studentId}-${formattedDate}`;
+
+    const idempotencyKey = generateIdempotencyKey({
+      contact_id,
+      mock_exam_id,
+      exam_date,
+      mock_type
+    });
+
+    const currentCreditValue = creditToDeduct === 'shared_mock_credits'
+      ? sharedCredits
+      : specificCredits;
+    const newCreditValue = currentCreditValue - 1;
+
+    console.log(`🎫 [BOOKING-CREATE] Generated booking ID: ${bookingId}`);
+    console.log(`🔑 [BOOKING-CREATE] Idempotency key: ${idempotencyKey}`);
+
+    // ========================================================================
+    // STEP 9: Create atomic booking in Supabase with credit deduction
+    // ========================================================================
+    console.log(`📝 [BOOKING-CREATE] Creating atomic booking in Supabase`);
+
+    const { data: bookingResult, error: bookingError } = await supabaseAdmin.rpc(
+      'create_booking_atomic',
+      {
+        p_booking_id: bookingId,
+        p_mock_exam_id: mock_exam_id,
+        p_student_id: studentId.toUpperCase(),
+        p_student_name: contact.firstname && contact.lastname
+          ? `${contact.firstname} ${contact.lastname}`
+          : contact.student_name || 'Unknown',
+        p_student_email: sanitizedEmail,
+        p_attending_location: location || examLocation || 'TBD',
+        p_dominant_hand: dominantHand || 'Right',
+        p_token_used: tokenUsed,
+        p_credit_field: creditToDeduct,
+        p_idempotency_key: idempotencyKey,
+        p_new_credit_value: newCreditValue,
+        p_mock_set: mock_set || null
+      }
+    );
+
+    if (bookingError) {
+      await redis.releaseLock(mock_exam_id, lockToken);
+      lockToken = null;
+      console.error(`❌ [BOOKING-CREATE] Supabase atomic booking failed:`, bookingError);
+      const error = new Error(bookingError.message || 'Failed to create booking');
+      error.status = 500;
+      error.code = 'BOOKING_CREATION_FAILED';
+      return next(error);
+    }
+
+    console.log(`✅ [BOOKING-CREATE] Atomic booking created: ${bookingResult.hubspot_id}`);
+
+    // ========================================================================
+    // STEP 10: Increment Redis counter for real-time capacity tracking
+    // ========================================================================
+    const counterKey = `exam:${mock_exam_id}:bookings`;
+    const TTL_1_HOUR = 60 * 60;
+
+    const existingCount = await redis.get(counterKey);
+    let newTotalBookings;
+
+    if (existingCount === null) {
+      newTotalBookings = currentTotalBookings + 1;
+      await redis.setex(counterKey, TTL_1_HOUR, newTotalBookings);
+      console.log(`✅ [REDIS] Seeded exam counter with TTL: ${counterKey} = ${newTotalBookings}`);
+    } else {
+      newTotalBookings = await redis.incr(counterKey);
+      console.log(`✅ [REDIS] Incremented exam counter: ${counterKey} = ${newTotalBookings}`);
+    }
+
+    // ========================================================================
+    // STEP 10b: Sync total_bookings to Supabase (atomic increment)
+    // ========================================================================
+    try {
+      await updateExamBookingCountInSupabase(mock_exam_id, 1, 'increment');
+      console.log(`✅ [BOOKING-CREATE] Supabase exam total_bookings incremented atomically`);
+    } catch (examUpdateError) {
+      console.error(`⚠️ [BOOKING-CREATE] Failed to increment exam total_bookings in Supabase:`, examUpdateError.message);
+    }
+
+    // ========================================================================
+    // STEP 11: Cache booking to prevent duplicates
+    // ========================================================================
+    await redis.set(cacheKey, bookingResult.hubspot_id, 86400);
+    console.log(`✅ [BOOKING-CREATE] Booking cached: ${cacheKey}`);
+
+    // ========================================================================
+    // STEP 12: Get updated credits after deduction
+    // ========================================================================
+    const { data: updatedContact, error: creditsFetchError } = await supabaseAdmin
+      .from('hubspot_contact_credits')
+      .select('*')
+      .eq('hubspot_id', contact_id)
+      .single();
+
+    if (creditsFetchError) {
+      console.error(`⚠️ [BOOKING-CREATE] Failed to fetch updated credits:`, creditsFetchError);
+    }
+
+    const creditsAfterDeduction = updatedContact ? {
+      sj_credits: parseInt(updatedContact.sj_credits) || 0,
+      cs_credits: parseInt(updatedContact.cs_credits) || 0,
+      sjmini_credits: parseInt(updatedContact.sjmini_credits) || 0,
+      mock_discussion_token: parseInt(updatedContact.mock_discussion_token) || 0,
+      shared_mock_credits: parseInt(updatedContact.shared_mock_credits) || 0
+    } : null;
+
+    console.log(`💳 [BOOKING-CREATE] Credits after deduction:`, creditsAfterDeduction);
+
+    // ========================================================================
+    // STEP 13: Return success response
+    // ========================================================================
+    const response = {
+      success: true,
+      data: {
+        booking_id: bookingResult.booking_code,
+        id: bookingResult.booking_id,
+        examType: mock_type,
+        examDate: exam_date,
+        startTime: start_time,
+        endTime: end_time,
+        location: location || examLocation,
+        tokenUsed: tokenUsed,
+        creditsAfterDeduction
+      },
+      message: 'Booking created successfully'
+    };
+
+    // ========================================================================
+    // DUAL WEBHOOK INTEGRATION - Sync to HubSpot (fire-and-forget)
+    // ========================================================================
+    const { HubSpotWebhookService } = require('../../services/hubspot-webhook');
+
+    process.nextTick(() => {
+      (async () => {
+        const examSyncResult = await HubSpotWebhookService.syncWithRetry(
+          'totalBookings',
+          mock_exam_id,
+          newTotalBookings
+        );
+
+        if (examSyncResult.success) {
+          console.log(`✅ [WEBHOOK-EXAM] HubSpot exam count synced: ${examSyncResult.message}`);
+        } else {
+          console.error(`❌ [WEBHOOK-EXAM] Exam sync failed: ${examSyncResult.message}`);
+        }
+
+        const creditsSyncResult = await HubSpotWebhookService.syncContactCredits(
+          contact_id,
+          sanitizedEmail,
+          creditsAfterDeduction
+        );
+
+        if (creditsSyncResult.success) {
+          console.log(`[WEBHOOK-CREDITS] HubSpot credits synced: ${creditsSyncResult.message}`);
+        } else {
+          console.error(`[WEBHOOK-CREDITS] Credits sync failed: ${creditsSyncResult.message}`);
+        }
+
+        if (!examSyncResult.success && !creditsSyncResult.success) {
+          console.error(`[WEBHOOK] Both webhooks failed - reconciliation cron will fix drift within 2 hours`);
+        }
+      })().catch(err => {
+        console.error('[WEBHOOK] Unexpected error in webhook sync:', err.message);
+      });
+    });
+
+    // ========================================================================
+    // REDIS LOCK RELEASE
+    // ========================================================================
+    if (lockToken) {
+      await redis.releaseLock(mock_exam_id, lockToken);
+      lockToken = null;
+      console.log(`✅ Lock released successfully`);
+    }
+
+    return res.status(201).json(response);
+
+  } catch (error) {
+    if (lockToken) {
+      try {
+        await redis.releaseLock(req.body.mock_exam_id || req.body.mockExamId, lockToken);
+        console.log(`✅ Lock released after error`);
+      } catch (releaseError) {
+        console.error(`❌ Failed to release lock:`, releaseError);
+      }
+    }
+
+    console.error('❌ Booking creation error:', {
+      message: error.message,
+      status: error.status || 500,
+      code: error.code || 'INTERNAL_ERROR',
+      stack: error.stack
+    });
+
+    next(error);
+  }
+};
+
+module.exports = { create };
