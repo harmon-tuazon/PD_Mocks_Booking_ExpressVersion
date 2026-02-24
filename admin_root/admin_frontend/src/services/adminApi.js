@@ -4,6 +4,7 @@
  */
 
 import axios from 'axios';
+import { supabase } from '../utils/supabaseClient';
 
 // Configure base URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -45,6 +46,9 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // Add request timestamp for replay attack prevention
+    config.headers['X-Request-Timestamp'] = Date.now().toString();
+
     return config;
   },
   (error) => {
@@ -52,13 +56,46 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor for error handling
+// Add response interceptor with token refresh on 401
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Log errors that aren't handled by AuthContext (non-401 errors)
-    if (error.response?.status !== 401 && !error.config?._retry) {
-      console.error('❌ API Error:', {
+  async (error) => {
+    const originalRequest = error.config;
+
+    // On 401, attempt one token refresh before failing
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const { data, error: refreshError } = await supabase.auth.refreshSession();
+
+        if (data?.session && !refreshError) {
+          // Update localStorage so future requests use the new token
+          localStorage.setItem('access_token', data.session.access_token);
+          if (data.session.refresh_token) {
+            localStorage.setItem('refresh_token', data.session.refresh_token);
+          }
+
+          // Retry the original request with the fresh token
+          originalRequest.headers['Authorization'] = `Bearer ${data.session.access_token}`;
+          return api(originalRequest);
+        }
+      } catch (refreshErr) {
+        // Refresh failed — fall through
+        console.error('Token refresh failed:', refreshErr.message);
+      }
+
+      // Refresh failed or returned no session — force logout
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      try { await supabase.auth.signOut(); } catch (_) { /* ignore */ }
+      window.location.href = '/login';
+      return new Promise(() => {}); // Halt — page is redirecting
+    }
+
+    // Log non-401 errors
+    if (error.response?.status !== 401) {
+      console.error('API Error:', {
         url: error.config?.url,
         method: error.config?.method?.toUpperCase(),
         status: error.response?.status,
@@ -67,16 +104,12 @@ api.interceptors.response.use(
     }
 
     if (error.response) {
-      // Server responded with error status
       const errorData = error.response.data;
       const message = errorData?.error?.message || errorData?.message || 'An error occurred';
-
       throw new Error(message);
     } else if (error.request) {
-      // Request made but no response
       throw new Error('No response from server. Please check your connection.');
     } else {
-      // Error setting up request
       throw new Error(error.message || 'Request failed');
     }
   }
@@ -497,6 +530,537 @@ export const bulkBookingsApi = {
    */
   createFromCSV: async (csvData) => {
     const response = await api.post('/admin/bookings/bulk-create', { csv_data: csvData });
+    return response.data;
+  }
+};
+
+/**
+ * Groups API endpoints
+ * For Workcheck Group Management
+ */
+export const groupsApi = {
+  /**
+   * List groups with pagination, filtering, and sorting
+   * @param {Object} params - Query parameters (page, limit, sort_by, sort_order, filter_status, search)
+   * @returns {Promise<Object>} Paginated groups
+   */
+  list: async (params = {}) => {
+    const response = await api.get('/admin/groups/list', { params });
+    return response.data;
+  },
+
+  /**
+   * Create a new group
+   * @param {Object} data - Group data (groupName, description, timePeriod, startDate, endDate, maxCapacity)
+   * @returns {Promise<Object>} Created group
+   */
+  create: async (data) => {
+    const response = await api.post('/admin/groups/create', data);
+    return response.data;
+  },
+
+  /**
+   * Get single group with details and students
+   * @param {string} id - Group ID (group_id or UUID)
+   * @returns {Promise<Object>} Group details with students
+   */
+  getById: async (id) => {
+    const response = await api.get(`/admin/groups/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Update a group
+   * @param {string} id - Group ID (group_id or UUID)
+   * @param {Object} data - Update data
+   * @returns {Promise<Object>} Updated group
+   */
+  update: async (id, data) => {
+    const response = await api.put(`/admin/groups/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete a group
+   * @param {string} id - Group ID (group_id or UUID)
+   * @returns {Promise<Object>} Deletion confirmation
+   */
+  delete: async (id) => {
+    const response = await api.delete(`/admin/groups/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Get group statistics
+   * @returns {Promise<Object>} Statistics (total, active, totalStudents, averageSize)
+   */
+  getStatistics: async () => {
+    const response = await api.get('/admin/groups/statistics');
+    return response.data;
+  },
+
+  /**
+   * Assign a student to a group
+   * @param {Object} data - { groupId, contactId }
+   * @returns {Promise<Object>} Assignment result
+   */
+  assignStudent: async (data) => {
+    const response = await api.post('/admin/groups/assign-student', data);
+    return response.data;
+  },
+
+  /**
+   * Bulk assign students to a group
+   * @param {Object} data - { groupId, contactIds }
+   * @returns {Promise<Object>} Bulk assignment result
+   */
+  bulkAssignStudents: async (data) => {
+    const response = await api.post('/admin/groups/bulk-assign-students', data);
+    return response.data;
+  },
+
+  /**
+   * Remove a student from a group
+   * @param {string} groupId - Group ID
+   * @param {string} studentId - Contact ID or assignment ID
+   * @returns {Promise<Object>} Removal confirmation
+   */
+  removeStudent: async (groupId, studentId) => {
+    const response = await api.delete(`/admin/groups/${groupId}/students/${studentId}`);
+    return response.data;
+  },
+
+  /**
+   * Clone a group
+   * @param {string} id - Source group ID
+   * @param {Object} data - Clone data (groupName, timePeriod, startDate, endDate, maxCapacity, includeStudents)
+   * @returns {Promise<Object>} Cloned group
+   */
+  clone: async (id, data) => {
+    const response = await api.post(`/admin/groups/${id}/clone`, data);
+    return response.data;
+  },
+
+  /**
+   * Assign an instructor to a group
+   * @param {Object} data - { groupId, instructorId }
+   * @returns {Promise<Object>} Assignment result
+   */
+  assignInstructor: async (data) => {
+    const response = await api.post('/admin/groups/assign-instructor', data);
+    return response.data;
+  },
+
+  /**
+   * Remove an instructor from a group
+   * @param {string} groupId - Group ID
+   * @param {string} instructorId - Instructor ID or assignment ID
+   * @returns {Promise<Object>} Removal confirmation
+   */
+  removeInstructor: async (groupId, instructorId) => {
+    const response = await api.delete(`/admin/groups/${groupId}/instructors/${instructorId}`);
+    return response.data;
+  },
+
+  /**
+   * Bulk toggle status for multiple groups
+   * @param {Array<string>} ids - Array of group IDs (group_id, not UUID)
+   * @returns {Promise<Object>} Result with summary and details
+   */
+  bulkToggleStatus: async (ids) => {
+    const response = await api.post('/admin/groups/bulk-toggle-status', { ids });
+    return response.data;
+  },
+
+  /**
+   * Bulk delete multiple groups
+   * @param {Array<string>} ids - Array of group IDs (group_id, not UUID)
+   * @returns {Promise<Object>} Result with deleted and blocked counts
+   */
+  bulkDelete: async (ids) => {
+    const response = await api.post('/admin/groups/bulk-delete', { ids });
+    return response.data;
+  }
+};
+
+/**
+ * Instructor API endpoints
+ */
+export const instructorsApi = {
+  /**
+   * List instructors with pagination and filtering
+   */
+  list: async (params = {}) => {
+    const response = await api.get('/admin/instructors/list', { params });
+    return response.data;
+  },
+
+  /**
+   * Get single instructor by ID
+   */
+  getById: async (id) => {
+    const response = await api.get(`/admin/instructors/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Create a new instructor
+   */
+  create: async (data) => {
+    const response = await api.post('/admin/instructors/create', data);
+    return response.data;
+  },
+
+  /**
+   * Update an instructor
+   */
+  update: async (id, data) => {
+    const response = await api.put(`/admin/instructors/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete (deactivate) an instructor
+   */
+  delete: async (id) => {
+    const response = await api.delete(`/admin/instructors/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Get instructors for dropdown (active only, minimal fields)
+   */
+  getDropdown: async () => {
+    const response = await api.get('/admin/instructors/dropdown');
+    return response.data;
+  },
+
+  /**
+   * Bulk toggle status for multiple instructors
+   * @param {Array<string>} ids - Array of instructor IDs to toggle
+   * @returns {Promise<Object>} Toggle result with updated instructors
+   */
+  bulkToggleStatus: async (ids) => {
+    const response = await api.post('/admin/instructors/bulk-toggle-status', { ids });
+    return response.data;
+  },
+
+  /**
+   * Clone an instructor with a new email suffix
+   * @param {string} id - Source instructor ID
+   * @param {Object} data - Clone data (instructorName, emailSuffix, isActive)
+   * @returns {Promise<Object>} Cloned instructor data
+   */
+  clone: async (id, data) => {
+    const response = await api.post(`/admin/instructors/${id}/clone`, data);
+    return response.data;
+  },
+
+  /**
+   * Bulk delete multiple instructors
+   * @param {Array<string>} ids - Array of instructor IDs (UUIDs)
+   * @returns {Promise<Object>} Result with deleted and blocked counts
+   */
+  bulkDelete: async (ids) => {
+    const response = await api.post('/admin/instructors/bulk-delete', { ids });
+    return response.data;
+  },
+
+  /**
+   * Reset an instructor's password
+   * @param {string} id - Instructor UUID
+   * @param {string} newPassword - New password (min 8 chars)
+   * @returns {Promise<Object>} Result with success message
+   */
+  resetPassword: async (id, newPassword) => {
+    const response = await api.post(`/admin/instructors/${id}/reset-password`, {
+      new_password: newPassword
+    });
+    return response.data;
+  },
+
+  /**
+   * Get analytics for a specific instructor (admin view)
+   */
+  getAnalytics: async (id, params = {}) => {
+    const response = await api.get('/admin/instructor/analytics', {
+      params: { ...params, instructor_id: id }
+    });
+    return response.data;
+  },
+
+  /**
+   * Get groups assigned to a specific instructor (for admin filter dropdowns)
+   */
+  getGroups: async (id, params = {}) => {
+    const response = await api.get(`/admin/instructors/${id}/groups`, { params });
+    return response.data;
+  }
+};
+
+/**
+ * Work Check Slots API endpoints
+ * For managing instructor time slots
+ */
+export const workCheckSlotsApi = {
+  /**
+   * List slots with pagination, filtering, and sorting
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Object>} Paginated slots
+   */
+  list: async (params = {}) => {
+    const response = await api.get('/admin/work-check-slots/list', { params });
+    return response.data;
+  },
+
+  /**
+   * Get a single slot by ID
+   * @param {string} id - Slot ID (UUID)
+   * @returns {Promise<Object>} Slot data
+   */
+  get: async (id) => {
+    const response = await api.get(`/admin/work-check-slots/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Create a new slot
+   * @param {Object} data - Slot data
+   * @returns {Promise<Object>} Created slot
+   */
+  create: async (data) => {
+    const response = await api.post('/admin/work-check-slots/create', data);
+    return response.data;
+  },
+
+  /**
+   * Update a slot
+   * @param {string} id - Slot ID
+   * @param {Object} data - Update data
+   * @returns {Promise<Object>} Updated slot
+   */
+  update: async (id, data) => {
+    const response = await api.put(`/admin/work-check-slots/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete a slot
+   * @param {string} id - Slot ID
+   * @returns {Promise<Object>} Delete result
+   */
+  delete: async (id) => {
+    const response = await api.delete(`/admin/work-check-slots/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Bulk toggle status for multiple slots
+   * @param {Array<string>} ids - Array of slot IDs
+   * @param {string} action - 'toggle', 'activate', or 'deactivate'
+   * @returns {Promise<Object>} Toggle result
+   */
+  bulkToggle: async (ids, action = 'toggle') => {
+    const response = await api.post('/admin/work-check-slots/bulk-toggle', { ids, action });
+    return response.data;
+  },
+
+  /**
+   * Bulk delete multiple slots
+   * @param {Array<string>} ids - Array of slot IDs
+   * @returns {Promise<Object>} Delete result with blocked details
+   */
+  bulkDelete: async (ids) => {
+    const response = await api.post('/admin/work-check-slots/bulk-delete', { ids });
+    return response.data;
+  },
+
+  /**
+   * Clone slots to different instructor/groups/dates
+   * @param {Object} data - Clone configuration
+   * @returns {Promise<Object>} Clone result
+   */
+  clone: async (data) => {
+    const response = await api.post('/admin/work-check-slots/clone', data);
+    return response.data;
+  },
+
+  /**
+   * Bulk edit multiple slots
+   * @param {Array<string>} ids - Array of slot IDs
+   * @param {Object} updates - Fields to update
+   * @returns {Promise<Object>} Edit result
+   */
+  bulkEdit: async (ids, updates) => {
+    const response = await api.post('/admin/work-check-slots/bulk-edit', { ids, updates });
+    return response.data;
+  }
+};
+
+/**
+ * Students API endpoints
+ * For searching and listing students (contacts)
+ */
+export const studentsApi = {
+  /**
+   * Search for students by name, email, or student_id
+   * @param {Object} params - Query parameters (q, limit, group_id)
+   * @returns {Promise<Object>} Array of matching students
+   */
+  search: async (params = {}) => {
+    const response = await api.get('/admin/students/search', { params });
+    return response.data;
+  }
+};
+
+/**
+ * Work Check Bookings API endpoints
+ * For managing work check booking records
+ */
+export const workCheckBookingsApi = {
+  /**
+   * List booking aggregates grouped by date/time/location
+   * @param {Object} params - Query parameters (page, limit, location, date_from, date_to, status, type, instructor_id)
+   * @returns {Promise<Object>} Paginated aggregates with preloaded bookings
+   */
+  getAggregates: async (params = {}) => {
+    const response = await api.get('/admin/work-check-bookings/aggregates', { params });
+    return response.data;
+  },
+
+  /**
+   * List bookings (flat view) with pagination, filtering, and sorting
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Object>} Paginated bookings
+   */
+  list: async (params = {}) => {
+    const response = await api.get('/admin/work-check-bookings/list', { params });
+    return response.data;
+  },
+
+  /**
+   * Get a single booking by ID
+   * @param {string} id - Booking ID (UUID)
+   * @returns {Promise<Object>} Booking data
+   */
+  get: async (id) => {
+    const response = await api.get(`/admin/work-check-bookings/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Update a booking
+   * @param {string} id - Booking ID
+   * @param {Object} data - Update data (status, type)
+   * @returns {Promise<Object>} Updated booking
+   */
+  update: async (id, data) => {
+    const response = await api.put(`/admin/work-check-bookings/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete a booking
+   * @param {string} id - Booking ID
+   * @returns {Promise<Object>} Delete result
+   */
+  delete: async (id) => {
+    const response = await api.delete(`/admin/work-check-bookings/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Bulk toggle status for multiple bookings
+   * @param {Array<string>} ids - Array of booking IDs
+   * @param {string} targetStatus - 'pending', 'confirmed', 'rejected', 'cancelled'
+   * @returns {Promise<Object>} Toggle result
+   */
+  bulkToggle: async (ids, targetStatus) => {
+    const response = await api.post('/admin/work-check-bookings/bulk-toggle', {
+      ids,
+      target_status: targetStatus
+    });
+    return response.data;
+  },
+
+  /**
+   * Bulk delete multiple bookings
+   * @param {Array<string>} ids - Array of booking IDs
+   * @returns {Promise<Object>} Delete result
+   */
+  bulkDelete: async (ids) => {
+    const response = await api.post('/admin/work-check-bookings/bulk-delete', { ids });
+    return response.data;
+  },
+
+  /**
+   * Create a single booking
+   * @param {Object} data - Booking data { slot_id, student_id, type }
+   * @returns {Promise<Object>} Created booking
+   */
+  create: async (data) => {
+    const response = await api.post('/admin/work-check-bookings/create', data);
+    return response.data;
+  },
+
+  /**
+   * Clone bookings to new target slots
+   * @param {Object} data - Clone configuration { ids, target_slot_ids, preserve_status, preserve_type }
+   * @returns {Promise<Object>} Clone result
+   */
+  clone: async (data) => {
+    const response = await api.post('/admin/work-check-bookings/clone', data);
+    return response.data;
+  },
+
+  /**
+   * Get diagram data for seating chart rendering
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @returns {Promise<Object>} Groups with bookings organized by AM/PM
+   */
+  getDiagramData: async (date) => {
+    const response = await api.get('/admin/work-check-bookings/diagram-data', { params: { date } });
+    return response.data;
+  }
+};
+
+// Instructor Portal API (used by instructor-role users)
+export const instructorPortalApi = {
+  getMe: async () => {
+    const response = await api.get('/admin/instructor/me');
+    return response.data;
+  },
+
+  getDashboardStats: async () => {
+    const response = await api.get('/admin/instructor/dashboard/stats');
+    return response.data;
+  },
+
+  listGroups: async (params = {}) => {
+    const response = await api.get('/admin/instructor/groups', { params });
+    return response.data;
+  },
+
+  getGroup: async (groupId) => {
+    const response = await api.get(`/admin/instructor/groups/${groupId}`);
+    return response.data;
+  },
+
+  getSchedule: async (params = {}) => {
+    const response = await api.get('/admin/instructor/schedule', { params });
+    return response.data;
+  },
+
+  markBookings: async (bookingIds, action) => {
+    const response = await api.post('/admin/instructor/bookings/mark', {
+      booking_ids: bookingIds,
+      action
+    });
+    return response.data;
+  },
+
+  getAnalytics: async (params = {}) => {
+    const response = await api.get('/admin/instructor/analytics', { params });
     return response.data;
   }
 };

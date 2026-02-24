@@ -75,144 +75,77 @@ module.exports = async (req, res) => {
 
     // Detect if query is an email (contains @)
     const isEmail = trimmedQuery.includes('@');
-    console.log(`🔍 [SEARCH TYPE] ${isEmail ? 'Email detected' : 'Student ID'}`);
+    console.log(`🔍 [SEARCH TYPE] ${isEmail ? 'Email detected' : 'Name/Student ID'}`);
 
-    // Step 1: Try Supabase first (read-optimized layer)
-    let supabaseContact = null;
-    let supabaseFound = false;
+    // Search Supabase directly (primary source of truth)
+    let allContacts = [];
+    let dataSource = 'supabase';
 
     try {
-      if (isEmail) {
-        console.log(`🗄️ [SUPABASE] Searching by email: ${trimmedQuery}`);
-        supabaseContact = await getContactByEmailFromSupabase(trimmedQuery);
-      } else {
-        console.log(`🗄️ [SUPABASE] Searching by student_id: ${trimmedQuery}`);
-        supabaseContact = await getContactByStudentIdFromSupabase(trimmedQuery);
-      }
+      const { supabaseAdmin } = require('../../_shared/supabase');
 
-      if (supabaseContact) {
-        console.log(`✅ [SUPABASE HIT] Found contact in Supabase: ${supabaseContact.hubspot_id}`);
-        supabaseFound = true;
+      if (isEmail) {
+        // Exact email match
+        console.log(`🗄️ [SUPABASE] Searching by email: ${trimmedQuery}`);
+        const { data: emailResults, error: emailError } = await supabaseAdmin
+          .from('hubspot_contact_credits')
+          .select('*')
+          .ilike('email', trimmedQuery)
+          .limit(10);
+
+        if (!emailError && emailResults?.length > 0) {
+          console.log(`✅ [SUPABASE] Found ${emailResults.length} contact(s) by email`);
+          allContacts = emailResults.map(c => ({
+            id: c.hubspot_id,
+            properties: {
+              firstname: c.firstname,
+              lastname: c.lastname,
+              email: c.email,
+              student_id: c.student_id,
+              ndecc_exam_date: c.ndecc_exam_date,
+              mock_discussion_token: c.mock_discussion_token,
+              cs_credits: c.cs_credits,
+              sj_credits: c.sj_credits,
+              sjmini_credits: c.sjmini_credits,
+              shared_mock_credits: c.shared_mock_credits
+            }
+          }));
+        }
       } else {
-        console.log(`📭 [SUPABASE MISS] Contact not found in Supabase, falling back to HubSpot`);
+        // Search by student_id (exact) OR name (partial match)
+        console.log(`🗄️ [SUPABASE] Searching by student_id or name: ${trimmedQuery}`);
+        const searchPattern = `%${trimmedQuery}%`;
+
+        const { data: results, error: searchError } = await supabaseAdmin
+          .from('hubspot_contact_credits')
+          .select('*')
+          .or(`student_id.ilike.${searchPattern},firstname.ilike.${searchPattern},lastname.ilike.${searchPattern},email.ilike.${searchPattern}`)
+          .limit(10);
+
+        if (!searchError && results?.length > 0) {
+          console.log(`✅ [SUPABASE] Found ${results.length} contact(s) by name/student_id`);
+          allContacts = results.map(c => ({
+            id: c.hubspot_id,
+            properties: {
+              firstname: c.firstname,
+              lastname: c.lastname,
+              email: c.email,
+              student_id: c.student_id,
+              ndecc_exam_date: c.ndecc_exam_date,
+              mock_discussion_token: c.mock_discussion_token,
+              cs_credits: c.cs_credits,
+              sj_credits: c.sj_credits,
+              sjmini_credits: c.sjmini_credits,
+              shared_mock_credits: c.shared_mock_credits
+            }
+          }));
+        } else {
+          console.log(`📭 [SUPABASE] No contacts found matching: ${trimmedQuery}`);
+        }
       }
     } catch (supabaseError) {
-      console.error(`⚠️ [SUPABASE ERROR] Failed to query Supabase, falling back to HubSpot:`, supabaseError.message);
-    }
-
-    // Step 2: If found in Supabase, use that data
-    let allContacts = [];
-    let dataSource = 'unknown';
-
-    if (supabaseFound && supabaseContact) {
-      // Transform Supabase contact to match expected format
-      allContacts = [{
-        id: supabaseContact.hubspot_id,
-        properties: {
-          firstname: supabaseContact.firstname,
-          lastname: supabaseContact.lastname,
-          email: supabaseContact.email,
-          student_id: supabaseContact.student_id,
-          ndecc_exam_date: supabaseContact.ndecc_exam_date,
-          mock_discussion_token: supabaseContact.mock_discussion_token,
-          cs_credits: supabaseContact.cs_credits,
-          sj_credits: supabaseContact.sj_credits,
-          sjmini_credits: supabaseContact.sjmini_credits,
-          shared_mock_credits: supabaseContact.shared_mock_credits
-        }
-      }];
-      dataSource = 'supabase';
-      console.log(`✅ [DATA SOURCE] Using Supabase data (~50ms)`);
-    } else {
-      // Step 3: Fallback to HubSpot if not in Supabase
-      try {
-        if (isEmail) {
-          console.log(`📧 [HUBSPOT] Searching by email: ${trimmedQuery}`);
-
-          const emailFilter = {
-            filters: [
-              {
-                propertyName: 'email',
-                operator: 'EQ',
-                value: trimmedQuery
-              }
-            ]
-          };
-
-          // Search with exact email match
-          const emailResponse = await hubspot.apiCall('POST',
-            `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/search`,
-            {
-              filterGroups: [emailFilter],
-              properties: [
-                'firstname', 'lastname', 'email', 'student_id', 'ndecc_exam_date',
-                // Token properties
-                'mock_discussion_token', 'cs_credits', 'sj_credits', 'sjmini_credits', 'shared_mock_credits'
-              ],
-              limit: 10
-            }
-          );
-
-          if (emailResponse.results && emailResponse.results.length > 0) {
-            console.log(`✅ [HUBSPOT] Found ${emailResponse.results.length} contact(s) by email`);
-            allContacts = emailResponse.results;
-            dataSource = 'hubspot';
-
-            // Auto-populate Supabase with HubSpot data (fire-and-forget)
-            if (allContacts.length > 0) {
-              syncContactToSupabase(allContacts[0]).catch(err => {
-                console.error(`⚠️ [SUPABASE SYNC] Failed to auto-populate (non-blocking):`, err.message);
-              });
-            }
-          } else {
-            console.log(`❌ [HUBSPOT] No contacts found by email`);
-          }
-        } else {
-          // Search by student_id
-          console.log(`🔢 [HUBSPOT] Searching by student_id: ${trimmedQuery}`);
-
-          const studentIdFilter = {
-            filters: [
-              {
-                propertyName: 'student_id',
-                operator: 'EQ',
-                value: trimmedQuery
-              }
-            ]
-          };
-
-          const studentIdResponse = await hubspot.apiCall('POST',
-            `/crm/v3/objects/${HUBSPOT_OBJECTS.contacts}/search`,
-            {
-              filterGroups: [studentIdFilter],
-              properties: [
-                'firstname', 'lastname', 'email', 'student_id', 'ndecc_exam_date',
-                // Token properties
-                'mock_discussion_token', 'cs_credits', 'sj_credits', 'sjmini_credits', 'shared_mock_credits'
-              ],
-              limit: 10
-            }
-          );
-
-          if (studentIdResponse.results && studentIdResponse.results.length > 0) {
-            console.log(`✅ [HUBSPOT] Found ${studentIdResponse.results.length} contact(s) by student_id`);
-            allContacts = studentIdResponse.results;
-            dataSource = 'hubspot';
-
-            // Auto-populate Supabase with HubSpot data (fire-and-forget)
-            if (allContacts.length > 0) {
-              syncContactToSupabase(allContacts[0]).catch(err => {
-                console.error(`⚠️ [SUPABASE SYNC] Failed to auto-populate (non-blocking):`, err.message);
-              });
-            }
-          } else {
-            console.log(`❌ [HUBSPOT] No contacts found by student_id`);
-          }
-        }
-      } catch (hubspotError) {
-        console.error('❌ [HUBSPOT] API error:', hubspotError);
-        throw hubspotError; // Re-throw to be handled by outer catch
-      }
+      console.error(`⚠️ [SUPABASE ERROR] Search failed:`, supabaseError.message);
+      // Don't throw - just return empty results
     }
 
     // Step 4: Transform the results

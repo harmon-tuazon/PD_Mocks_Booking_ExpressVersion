@@ -71,6 +71,10 @@
     {
       "path": "/api/admin/cron/sync-exams-backfill-bookings-from-hubspot",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/admin/cron/activate-scheduled-slots",
+      "schedule": "0 12 * * *"
     }
   ]
 }

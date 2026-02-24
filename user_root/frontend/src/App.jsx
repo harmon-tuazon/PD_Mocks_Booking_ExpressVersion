@@ -2,12 +2,18 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginForm from './components/LoginForm';
 import ProtectedRoute from './components/ProtectedRoute';
+import Dashboard from './components/dashboard/Dashboard';
 import ExamTypeSelector from './components/ExamTypeSelector';
 import ExamSessionsList from './components/ExamSessionsList';
 import BookingForm from './components/BookingForm';
 import BookingConfirmation from './components/BookingConfirmation';
 import MyBookings from './components/MyBookings';
 import MockDiscussions from './pages/MockDiscussions';
+import MyProgress from './pages/MyProgress';
+import WorkCheckBookingPage from './components/work-checks/WorkCheckBookingPage';
+import WorkCheckConfirmPage from './components/work-checks/WorkCheckConfirmPage';
+import WorkCheckSuccessPage from './components/work-checks/WorkCheckSuccessPage';
+import MyWorkChecks from './pages/MyWorkChecks';
 import ErrorBoundary from './components/ErrorBoundary';
 import MainLayout from './components/layout/MainLayout';
 import { ResponsiveLogo } from './components/shared/Logo';
@@ -25,6 +31,13 @@ function App() {
 
             {/* Login page - no authentication required */}
             <Route path="/login" element={<LoginForm />} />
+
+            {/* Dashboard - new home page after login */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
 
             {/* Protected booking flow - requires authentication */}
             <Route path="/book/exam-types" element={
@@ -64,6 +77,35 @@ function App() {
             <Route path="/my-bookings" element={
               <ProtectedRoute>
                 <MyBookings />
+              </ProtectedRoute>
+            } />
+
+            {/* My Progress page - requires authentication */}
+            <Route path="/my-progress" element={
+              <ProtectedRoute>
+                <MyProgress />
+              </ProtectedRoute>
+            } />
+
+            {/* Work Check routes */}
+            <Route path="/book/work-check" element={
+              <ProtectedRoute>
+                <WorkCheckBookingPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/book/work-check/confirm" element={
+              <ProtectedRoute>
+                <WorkCheckConfirmPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/book/work-check/success" element={
+              <ProtectedRoute>
+                <WorkCheckSuccessPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-work-checks" element={
+              <ProtectedRoute>
+                <MyWorkChecks />
               </ProtectedRoute>
             } />
 

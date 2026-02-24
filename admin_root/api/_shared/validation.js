@@ -1277,6 +1277,915 @@ const schemas = {
       .messages({
         'any.required': 'Tokens object is required'
       })
+  }),
+
+  // ============================================================
+  // GROUP MANAGEMENT SCHEMAS
+  // ============================================================
+
+  // Schema for group creation
+  groupCreation: Joi.object({
+    groupName: Joi.string()
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'string.min': 'Group name must be at least 1 character',
+        'string.max': 'Group name cannot exceed 100 characters',
+        'any.required': 'Group name is required'
+      }),
+    location: Joi.string()
+      .valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online')
+      .default('Mississauga')
+      .messages({
+        'any.only': 'Location must be one of: Mississauga, Vancouver, Calgary, Montreal, Richmond Hill, Online'
+      }),
+    timePeriod: Joi.string()
+      .valid('AM', 'PM')
+      .required()
+      .messages({
+        'any.only': 'Time period must be AM or PM',
+        'any.required': 'Time period is required'
+      }),
+    startDate: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Start date must be in YYYY-MM-DD format',
+        'any.required': 'Start date is required'
+      }),
+    endDate: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .allow(null, '')
+      .optional()
+      .messages({
+        'string.pattern.base': 'End date must be in YYYY-MM-DD format'
+      }),
+    maxCapacity: Joi.number()
+      .integer()
+      .min(1)
+      .max(100)
+      .default(20)
+      .messages({
+        'number.min': 'Max capacity must be at least 1',
+        'number.max': 'Max capacity cannot exceed 100'
+      }),
+    status: Joi.string()
+      .valid('active', 'inactive', 'completed')
+      .default('active')
+      .messages({
+        'any.only': 'Status must be one of: active, inactive, completed'
+      }),
+    cycle: Joi.string()
+      .max(50)
+      .allow(null, '')
+      .optional()
+      .messages({
+        'string.max': 'Cycle cannot exceed 50 characters'
+      }),
+    phase: Joi.string()
+      .valid('Learning', 'Practical', 'Pre-Exam')
+      .default('Learning')
+      .messages({
+        'any.only': 'Phase must be one of: Learning, Practical, Pre-Exam'
+      })
+  }).custom((value, helpers) => {
+    // Validate end date is after start date
+    if (value.endDate && value.startDate && value.endDate <= value.startDate) {
+      return helpers.error('custom.endDateBeforeStart');
+    }
+    return value;
+  }).messages({
+    'custom.endDateBeforeStart': 'End date must be after start date'
+  }),
+
+  // Schema for group update
+  groupUpdate: Joi.object({
+    groupName: Joi.string()
+      .min(1)
+      .max(100)
+      .optional()
+      .messages({
+        'string.min': 'Group name must be at least 1 character',
+        'string.max': 'Group name cannot exceed 100 characters'
+      }),
+    location: Joi.string()
+      .valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online')
+      .optional()
+      .messages({
+        'any.only': 'Location must be one of: Mississauga, Vancouver, Calgary, Montreal, Richmond Hill, Online'
+      }),
+    timePeriod: Joi.string()
+      .valid('AM', 'PM')
+      .optional()
+      .messages({
+        'any.only': 'Time period must be AM or PM'
+      }),
+    startDate: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .optional()
+      .messages({
+        'string.pattern.base': 'Start date must be in YYYY-MM-DD format'
+      }),
+    endDate: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .allow(null, '')
+      .optional()
+      .messages({
+        'string.pattern.base': 'End date must be in YYYY-MM-DD format'
+      }),
+    maxCapacity: Joi.number()
+      .integer()
+      .min(1)
+      .max(100)
+      .optional()
+      .messages({
+        'number.min': 'Max capacity must be at least 1',
+        'number.max': 'Max capacity cannot exceed 100'
+      }),
+    status: Joi.string()
+      .valid('active', 'inactive', 'completed')
+      .optional()
+      .messages({
+        'any.only': 'Status must be one of: active, inactive, completed'
+      }),
+    cycle: Joi.string()
+      .max(50)
+      .allow(null, '')
+      .optional()
+      .messages({
+        'string.max': 'Cycle cannot exceed 50 characters'
+      }),
+    phase: Joi.string()
+      .valid('Learning', 'Practical', 'Pre-Exam')
+      .optional()
+      .messages({
+        'any.only': 'Phase must be one of: Learning, Practical, Pre-Exam'
+      })
+  }).min(1).messages({
+    'object.min': 'At least one property must be provided for update'
+  }),
+
+  // Schema for group list query
+  groupList: Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(50),
+    sort_by: Joi.string()
+      .valid('start_date', 'group_name', 'created_at', 'status')
+      .default('start_date'),
+    sort_order: Joi.string().valid('asc', 'desc').default('desc'),
+    filter_status: Joi.string()
+      .valid('all', 'active', 'inactive', 'completed')
+      .default('all'),
+    search: Joi.string().max(100).allow('').optional()
+  }),
+
+  // Schema for student assignment
+  studentAssignment: Joi.object({
+    groupId: Joi.string()
+      .required()
+      .messages({
+        'any.required': 'Group ID is required'
+      }),
+    contactId: Joi.string()
+      .required()
+      .messages({
+        'any.required': 'Contact ID is required'
+      })
+  }),
+
+  // Schema for bulk student assignment
+  bulkStudentAssignment: Joi.object({
+    groupId: Joi.string().required(),
+    studentIds: Joi.array()
+      .items(Joi.string())
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one student ID is required',
+        'array.max': 'Cannot assign more than 100 students at once'
+      })
+  }),
+
+  // Schema for group clone
+  groupClone: Joi.object({
+    groupName: Joi.string().min(1).max(100).required(),
+    location: Joi.string()
+      .valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online')
+      .optional()
+      .messages({
+        'any.only': 'Location must be one of: Mississauga, Vancouver, Calgary, Montreal, Richmond Hill, Online'
+      }),
+    timePeriod: Joi.string().valid('AM', 'PM').required(),
+    status: Joi.string()
+      .valid('active', 'inactive', 'completed')
+      .optional()
+      .messages({
+        'any.only': 'Status must be one of: active, inactive, completed'
+      }),
+    startDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    endDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow(null, ''),
+    maxCapacity: Joi.number().integer().min(1).max(100),
+    includeStudents: Joi.boolean().default(true),
+    cycle: Joi.string()
+      .max(50)
+      .allow(null, '')
+      .optional()
+      .messages({
+        'string.max': 'Cycle cannot exceed 50 characters'
+      })
+  }),
+
+  // ============================================================
+  // INSTRUCTOR MANAGEMENT SCHEMAS
+  // ============================================================
+
+  // Schema for instructor list query
+  instructorList: Joi.object({
+    page: Joi.number()
+      .integer()
+      .min(1)
+      .optional()
+      .default(1)
+      .messages({
+        'number.base': 'Page must be a number',
+        'number.integer': 'Page must be an integer',
+        'number.min': 'Page must be at least 1'
+      }),
+    limit: Joi.number()
+      .integer()
+      .min(1)
+      .max(100)
+      .optional()
+      .default(20)
+      .messages({
+        'number.base': 'Limit must be a number',
+        'number.integer': 'Limit must be an integer',
+        'number.min': 'Limit must be at least 1',
+        'number.max': 'Limit cannot exceed 100'
+      }),
+    search: Joi.string()
+      .max(100)
+      .optional()
+      .allow('')
+      .messages({
+        'string.max': 'Search query cannot exceed 100 characters'
+      }),
+    is_active: Joi.string()
+      .valid('true', 'false', 'all')
+      .optional()
+      .default('all')
+      .messages({
+        'any.only': 'is_active must be one of: true, false, all'
+      }),
+    sort_by: Joi.string()
+      .valid('instructor_name', 'email', 'created_at', 'updated_at')
+      .optional()
+      .default('instructor_name')
+      .messages({
+        'any.only': 'sort_by must be one of: instructor_name, email, created_at, updated_at'
+      }),
+    sort_order: Joi.string()
+      .valid('asc', 'desc')
+      .optional()
+      .default('asc')
+      .messages({
+        'any.only': 'sort_order must be either asc or desc'
+      })
+  }),
+
+  // Schema for instructor creation
+  instructorCreate: Joi.object({
+    instructor_name: Joi.string()
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'string.empty': 'Instructor name is required',
+        'string.min': 'Instructor name must be at least 1 character',
+        'string.max': 'Instructor name cannot exceed 100 characters',
+        'any.required': 'Instructor name is required'
+      }),
+    email: Joi.string()
+      .email()
+      .required()
+      .messages({
+        'string.email': 'Please enter a valid email address',
+        'any.required': 'Email is required'
+      }),
+    password: Joi.string()
+      .min(8)
+      .max(72)
+      .required()
+      .messages({
+        'string.empty': 'Password is required',
+        'string.min': 'Password must be at least 8 characters',
+        'string.max': 'Password cannot exceed 72 characters',
+        'any.required': 'Password is required'
+      })
+  }),
+
+  // Schema for instructor password reset
+  instructorResetPassword: Joi.object({
+    new_password: Joi.string()
+      .min(8)
+      .max(72)
+      .required()
+      .messages({
+        'string.empty': 'New password is required',
+        'string.min': 'Password must be at least 8 characters',
+        'string.max': 'Password cannot exceed 72 characters',
+        'any.required': 'New password is required'
+      })
+  }),
+
+  // Schema for provisioning portal access for existing instructors
+  instructorProvisionAccess: Joi.object({
+    password: Joi.string()
+      .min(8)
+      .max(72)
+      .required()
+      .messages({
+        'string.empty': 'Password is required',
+        'string.min': 'Password must be at least 8 characters',
+        'string.max': 'Password cannot exceed 72 characters',
+        'any.required': 'Password is required'
+      })
+  }),
+
+  // Schema for instructor portal - list groups
+  instructorGroupsList: Joi.object({
+    status: Joi.string()
+      .valid('active', 'completed', 'all')
+      .optional()
+      .default('active')
+      .messages({
+        'any.only': 'Status must be one of: active, completed, all'
+      })
+  }),
+
+  // Schema for instructor portal - upcoming schedule
+  instructorSchedule: Joi.object({
+    days: Joi.number()
+      .integer()
+      .min(1)
+      .max(90)
+      .optional()
+      .default(30)
+      .messages({
+        'number.base': 'Days must be a number',
+        'number.integer': 'Days must be an integer',
+        'number.min': 'Days must be at least 1',
+        'number.max': 'Days cannot exceed 90'
+      }),
+    limit: Joi.number()
+      .integer()
+      .min(1)
+      .max(100)
+      .optional()
+      .default(20)
+      .messages({
+        'number.base': 'Limit must be a number',
+        'number.integer': 'Limit must be an integer',
+        'number.min': 'Limit must be at least 1',
+        'number.max': 'Limit cannot exceed 100'
+      })
+  }),
+
+  // Schema for instructor update
+  instructorUpdate: Joi.object({
+    instructor_name: Joi.string()
+      .min(1)
+      .max(100)
+      .optional()
+      .messages({
+        'string.min': 'Instructor name must be at least 1 character',
+        'string.max': 'Instructor name cannot exceed 100 characters'
+      }),
+    email: Joi.string()
+      .email()
+      .optional()
+      .messages({
+        'string.email': 'Please enter a valid email address'
+      }),
+    is_active: Joi.boolean()
+      .optional()
+      .messages({
+        'boolean.base': 'is_active must be a boolean value'
+      })
+  }).min(1).messages({
+    'object.min': 'At least one property must be provided for update'
+  }),
+
+  // Schema for bulk toggle instructor status
+  instructorBulkToggleStatus: Joi.object({
+    ids: Joi.array()
+      .items(
+        Joi.string()
+          .guid({ version: ['uuidv4'] })
+          .messages({
+            'string.guid': 'Each ID must be a valid UUID'
+          })
+      )
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one instructor ID is required',
+        'array.max': 'Maximum 100 instructors can be toggled at once',
+        'any.required': 'Instructor IDs are required'
+      })
+  }),
+
+  // Schema for bulk toggle group status
+  groupBulkToggleStatus: Joi.object({
+    ids: Joi.array()
+      .items(
+        Joi.string()
+          .pattern(/^[A-Za-z0-9]+$/)
+          .messages({
+            'string.pattern.base': 'Each group ID must be alphanumeric'
+          })
+      )
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one group ID is required',
+        'array.max': 'Maximum 100 groups can be toggled at once',
+        'any.required': 'Group IDs are required'
+      })
+  }),
+
+  // Schema for cloning an instructor
+  instructorClone: Joi.object({
+    instructorName: Joi.string()
+      .min(2)
+      .max(100)
+      .trim()
+      .optional()
+      .messages({
+        'string.min': 'Instructor name must be at least 2 characters',
+        'string.max': 'Instructor name cannot exceed 100 characters'
+      }),
+    emailSuffix: Joi.string()
+      .min(1)
+      .max(50)
+      .pattern(/^[a-zA-Z0-9_.-]+$/)
+      .required()
+      .messages({
+        'string.min': 'Email suffix must be at least 1 character',
+        'string.max': 'Email suffix cannot exceed 50 characters',
+        'string.pattern.base': 'Email suffix can only contain letters, numbers, dots, dashes, and underscores',
+        'any.required': 'Email suffix is required'
+      }),
+    isActive: Joi.boolean()
+      .default(true)
+      .optional()
+      .messages({
+        'boolean.base': 'isActive must be a boolean value'
+      })
+  }),
+
+  // Schema for bulk delete groups
+  groupBulkDelete: Joi.object({
+    ids: Joi.array()
+      .items(
+        Joi.string()
+          .pattern(/^[A-Za-z0-9]+$/)
+          .messages({
+            'string.pattern.base': 'Each group ID must be alphanumeric'
+          })
+      )
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one group ID is required',
+        'array.max': 'Maximum 100 groups can be deleted at once',
+        'any.required': 'Group IDs are required'
+      })
+  }),
+
+  // Schema for bulk delete instructors
+  instructorBulkDelete: Joi.object({
+    ids: Joi.array()
+      .items(
+        Joi.string()
+          .uuid()
+          .messages({
+            'string.guid': 'Each instructor ID must be a valid UUID'
+          })
+      )
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one instructor ID is required',
+        'array.max': 'Maximum 100 instructors can be deleted at once',
+        'any.required': 'Instructor IDs are required'
+      })
+  }),
+
+  // ============================================================
+  // WORK CHECK SLOTS VALIDATION SCHEMAS
+  // ============================================================
+
+  // Work Check Slot List Query
+  workCheckSlotList: Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(50),
+    instructor_id: Joi.string().uuid(),
+    group_id: Joi.string().max(100),
+    location: Joi.string().valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online'),
+    date_from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/),
+    date_to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/),
+    is_active: Joi.string().valid('true', 'false', 'all').default('all'),
+    activation_status: Joi.string().valid('immediate', 'scheduled', 'all').default('all'),
+    sort_by: Joi.string().valid('slot_date', 'slot_time', 'instructor_name', 'location', 'created_at').default('slot_date'),
+    sort_order: Joi.string().valid('asc', 'desc').default('asc')
+  }),
+
+  // Work Check Slot Creation
+  workCheckSlotCreation: Joi.object({
+    instructor_id: Joi.string()
+      .uuid()
+      .required()
+      .messages({
+        'string.guid': 'Invalid instructor ID format',
+        'any.required': 'Instructor is required'
+      }),
+    group_id: Joi.array()
+      .items(Joi.string().max(100))
+      .min(1)
+      .max(20)
+      .required()
+      .messages({
+        'array.min': 'At least one group is required',
+        'array.max': 'Maximum 20 groups per slot'
+      }),
+    slot_date: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Date must be in YYYY-MM-DD format'
+      }),
+    slot_time: Joi.string()
+      .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Time must be in HH:MM format'
+      }),
+    duration_minutes: Joi.number()
+      .integer()
+      .min(15)
+      .max(120)
+      .default(30),
+    total_slots: Joi.number()
+      .integer()
+      .min(1)
+      .max(10)
+      .default(1),
+    location: Joi.string()
+      .valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online')
+      .required()
+      .messages({
+        'any.required': 'Location is required'
+      }),
+    activation_mode: Joi.string()
+      .valid('immediate', 'scheduled')
+      .default('immediate'),
+    available_from: Joi.date()
+      .iso()
+      .min('now')
+      .when('activation_mode', {
+        is: 'scheduled',
+        then: Joi.required().messages({
+          'any.required': 'Scheduled activation date/time is required when using scheduled mode'
+        }),
+        otherwise: Joi.optional().allow(null)
+      }),
+    auto_approve: Joi.boolean()
+      .default(true)
+      .messages({
+        'boolean.base': 'Auto approve must be a boolean value'
+      })
+  }).required(),
+
+  // Work Check Slot Update
+  workCheckSlotUpdate: Joi.object({
+    group_id: Joi.array()
+      .items(Joi.string().max(100))
+      .min(1)
+      .max(20),
+    slot_date: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/),
+    slot_time: Joi.string()
+      .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/),
+    duration_minutes: Joi.number()
+      .integer()
+      .min(15)
+      .max(120),
+    total_slots: Joi.number()
+      .integer()
+      .min(1)
+      .max(10),
+    location: Joi.string()
+      .valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online'),
+    is_active: Joi.boolean(),
+    available_from: Joi.date()
+      .iso()
+      .allow(null),
+    auto_approve: Joi.boolean()
+  }).min(1),
+
+  // Work Check Slot Bulk Toggle Status
+  workCheckSlotBulkToggle: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one slot ID is required',
+        'array.max': 'Maximum 100 slots can be toggled at once'
+      }),
+    action: Joi.string()
+      .valid('toggle', 'activate', 'deactivate')
+      .default('toggle')
+  }).required(),
+
+  // Work Check Slot Bulk Delete
+  workCheckSlotBulkDelete: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one slot ID is required',
+        'array.max': 'Maximum 100 slots can be deleted at once'
+      })
+  }).required(),
+
+  // Work Check Slot Clone
+  workCheckSlotClone: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(50)
+      .required()
+      .messages({
+        'array.min': 'At least one slot ID is required',
+        'array.max': 'Maximum 50 slots can be cloned at once'
+      }),
+    target_instructor_id: Joi.string().uuid().optional(),
+    target_groups: Joi.array()
+      .items(Joi.string().max(100))
+      .optional(),
+    date_offset_days: Joi.number()
+      .integer()
+      .min(-365)
+      .max(365)
+      .default(7),
+    copy_activation_settings: Joi.boolean().default(false),
+    copy_auto_approve: Joi.boolean().default(true)
+  }).required(),
+
+  // Work Check Slot Bulk Edit
+  workCheckSlotBulkEdit: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(100)
+      .required(),
+    updates: Joi.object({
+      location: Joi.string()
+        .valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online'),
+      duration_minutes: Joi.number()
+        .integer()
+        .min(15)
+        .max(120),
+      total_slots: Joi.number()
+        .integer()
+        .min(1)
+        .max(10),
+      is_active: Joi.boolean(),
+      group_id: Joi.array()
+        .items(Joi.string().max(100))
+        .min(1)
+        .max(20),
+      available_from: Joi.date()
+        .iso()
+        .allow(null),
+      auto_approve: Joi.boolean()
+    }).min(1).required()
+  }).required(),
+
+  // ============================================================
+  // WORK CHECK BOOKINGS VALIDATION SCHEMAS
+  // ============================================================
+
+  // Work Check Booking Aggregates Query
+  workCheckBookingAggregates: Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(50).default(20),
+    location: Joi.string().valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online'),
+    date_from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({
+      'string.pattern.base': 'date_from must be in YYYY-MM-DD format'
+    }),
+    date_to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({
+      'string.pattern.base': 'date_to must be in YYYY-MM-DD format'
+    }),
+    status: Joi.string().valid('pending', 'confirmed', 'marked', 'completed', 'rejected', 'cancelled', 'active').messages({
+      'any.only': 'Status must be one of: pending, confirmed, marked, completed, rejected, cancelled, active'
+    }),
+    type: Joi.string().valid('Demo', 'Work Check', 'Supervised Session').messages({
+      'any.only': 'Type must be one of: Demo, Work Check, Supervised Session'
+    }),
+    instructor_id: Joi.string().uuid().messages({
+      'string.guid': 'Invalid instructor ID format'
+    }),
+    sort_by: Joi.string().valid('slot_date', 'slot_time', 'location', 'total_bookings').default('slot_date'),
+    sort_order: Joi.string().valid('asc', 'desc').default('desc')
+  }),
+
+  // Work Check Booking List Query (flat view)
+  workCheckBookingList: Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(50),
+    student_id: Joi.string().max(100),
+    instructor_id: Joi.string().uuid(),
+    slot_id: Joi.string().uuid(),
+    group_id: Joi.string().max(100),
+    location: Joi.string().valid('Mississauga', 'Vancouver', 'Calgary', 'Montreal', 'Richmond Hill', 'Online'),
+    status: Joi.string().valid('pending', 'confirmed', 'marked', 'completed', 'rejected', 'cancelled', 'all').default('all'),
+    type: Joi.string().valid('Demo', 'Work Check', 'Supervised Session', 'all').default('all'),
+    date_from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({
+      'string.pattern.base': 'date_from must be in YYYY-MM-DD format'
+    }),
+    date_to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({
+      'string.pattern.base': 'date_to must be in YYYY-MM-DD format'
+    }),
+    sort_by: Joi.string().valid('created_at', 'slot_date', 'student_id', 'status', 'type').default('created_at'),
+    sort_order: Joi.string().valid('asc', 'desc').default('desc')
+  }),
+
+  // Work Check Booking Creation
+  workCheckBookingCreation: Joi.object({
+    slot_id: Joi.string()
+      .uuid()
+      .required()
+      .messages({
+        'string.guid': 'Slot ID must be a valid UUID',
+        'any.required': 'Slot ID is required'
+      }),
+    student_id: Joi.string()
+      .uuid()
+      .required()
+      .messages({
+        'string.guid': 'Student ID must be a valid UUID',
+        'any.required': 'Student ID is required'
+      }),
+    type: Joi.string()
+      .valid('Demo', 'Work Check', 'Supervised Session')
+      .default('Work Check')
+      .messages({
+        'any.only': 'Type must be one of: Demo, Work Check, Supervised Session'
+      }),
+    lab: Joi.string()
+      .valid('A', 'B', 'C', 'D', 'E', 'B9')
+      .optional()
+      .allow('', null)
+      .messages({
+        'any.only': 'Lab must be one of: A, B, C, D, E, B9'
+      }),
+    seat: Joi.number()
+      .integer()
+      .min(1)
+      .max(50)
+      .optional()
+      .allow(null)
+      .messages({
+        'number.min': 'Seat number must be at least 1',
+        'number.max': 'Seat number must be at most 50',
+        'number.integer': 'Seat number must be a whole number'
+      })
+  }),
+
+  // Work Check Booking Update
+  workCheckBookingUpdate: Joi.object({
+    status: Joi.string()
+      .valid('pending', 'confirmed', 'marked', 'completed', 'rejected', 'cancelled')
+      .messages({
+        'any.only': 'Status must be one of: pending, confirmed, marked, completed, rejected, cancelled'
+      }),
+    type: Joi.string()
+      .valid('Demo', 'Work Check', 'Supervised Session')
+      .messages({
+        'any.only': 'Type must be one of: Demo, Work Check, Supervised Session'
+      }),
+    lab: Joi.string()
+      .valid('A', 'B', 'C', 'D', 'E', 'B9')
+      .optional()
+      .allow('', null)
+      .messages({
+        'any.only': 'Lab must be one of: A, B, C, D, E, B9'
+      }),
+    seat: Joi.number()
+      .integer()
+      .min(1)
+      .max(50)
+      .optional()
+      .allow(null)
+      .messages({
+        'number.min': 'Seat number must be at least 1',
+        'number.max': 'Seat number must be at most 50',
+        'number.integer': 'Seat number must be a whole number'
+      })
+  }).min(1).messages({
+    'object.min': 'At least one property must be provided for update'
+  }),
+
+  // Work Check Booking Bulk Toggle Status
+  workCheckBookingBulkToggle: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one booking ID is required',
+        'array.max': 'Maximum 100 bookings can be toggled at once',
+        'any.required': 'Booking IDs are required'
+      }),
+    target_status: Joi.string()
+      .valid('pending', 'confirmed', 'marked', 'completed', 'rejected', 'cancelled')
+      .required()
+      .messages({
+        'any.only': 'Target status must be one of: pending, confirmed, marked, completed, rejected, cancelled',
+        'any.required': 'Target status is required'
+      })
+  }),
+
+  // Work Check Booking Bulk Delete
+  workCheckBookingBulkDelete: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(100)
+      .required()
+      .messages({
+        'array.min': 'At least one booking ID is required',
+        'array.max': 'Maximum 100 bookings can be deleted at once',
+        'any.required': 'Booking IDs are required'
+      })
+  }),
+
+  // Work Check Booking Clone
+  workCheckBookingClone: Joi.object({
+    ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(50)
+      .required()
+      .messages({
+        'array.min': 'At least one booking ID is required',
+        'array.max': 'Maximum 50 bookings can be cloned at once',
+        'any.required': 'Booking IDs are required'
+      }),
+    target_slot_ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .required()
+      .messages({
+        'array.min': 'At least one target slot ID is required',
+        'any.required': 'Target slot IDs are required'
+      }),
+    preserve_status: Joi.boolean().default(false),
+    preserve_type: Joi.boolean().default(true)
+  }),
+
+  // Instructor Mark Bookings
+  instructorMarkBookings: Joi.object({
+    booking_ids: Joi.array()
+      .items(Joi.string().uuid())
+      .min(1)
+      .max(50)
+      .required()
+      .messages({
+        'array.min': 'At least one booking ID is required',
+        'array.max': 'Cannot mark more than 50 bookings at once',
+        'any.required': 'Booking IDs are required'
+      }),
+    action: Joi.string()
+      .valid('mark', 'unmark')
+      .required()
+      .messages({
+        'any.only': 'Action must be either mark or unmark',
+        'any.required': 'Action is required'
+      })
   })
 
 };
@@ -1354,6 +2263,19 @@ function validationMiddleware(schemaName) {
 }
 
 module.exports = {
+  // Schema for instructor analytics query params
+  instructorAnalytics: Joi.object({
+    date_from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional().messages({
+      'string.pattern.base': 'date_from must be in YYYY-MM-DD format'
+    }),
+    date_to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional().messages({
+      'string.pattern.base': 'date_to must be in YYYY-MM-DD format'
+    }),
+    group_id: Joi.string().max(50).optional(),
+    cycle: Joi.string().max(50).optional(),
+    instructor_id: Joi.string().uuid().optional()
+  }),
+
   // Schema for updating trainee tokens (Admin)
   updateTraineeTokens: Joi.object({
     tokens: Joi.object({

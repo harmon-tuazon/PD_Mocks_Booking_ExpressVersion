@@ -378,7 +378,7 @@ const ExistingBookingsCard = ({
           <div className="px-4 py-3 border-b dark:border-dark-border">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">My Upcoming Mocks</h3>
+                <h3 className="font-subheading text-sm font-semibold text-primary-900 dark:text-gray-100">My Upcoming Mocks</h3>
                 {/* Refresh button - subtle, only shown when not loading */}
                 {!loading && (
                   <button

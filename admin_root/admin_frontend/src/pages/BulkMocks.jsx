@@ -383,7 +383,9 @@ Mock Discussion,2026-03-17,6,Online,14:00,15:00,C,scheduled,2026-03-10T09:00:00Z
    */
   const formatDate = (dateString) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('en-US', {
+    // Parse YYYY-MM-DD parts directly to avoid timezone offset shifting the day
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
@@ -416,16 +418,16 @@ Mock Discussion,2026-03-17,6,Online,14:00,15:00,C,scheduled,2026-03-10T09:00:00Z
         disabled={importState === 'processing' || importState === 'previewing'}
       />
 
-      <div className="mx-auto w-12 h-12 bg-gray-200 dark:bg-dark-hover rounded-full flex items-center justify-center mb-4">
+      <div className="mx-auto w-12 h-12 bg-gray-100 dark:bg-dark-hover rounded-full flex items-center justify-center mb-4">
         <svg className="w-6 h-6 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
       </div>
 
-      <p className="text-gray-700 dark:text-gray-300 mb-2">
+      <p className="text-gray-600 dark:text-gray-300 mb-2">
         Drag and drop your CSV file here
       </p>
-      <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+      <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
         or
       </p>
 
@@ -437,7 +439,7 @@ Mock Discussion,2026-03-17,6,Online,14:00,15:00,C,scheduled,2026-03-10T09:00:00Z
         Browse Files
       </button>
 
-      <p className="text-gray-600 dark:text-gray-400 text-xs mt-4">
+      <p className="text-gray-500 dark:text-gray-400 text-xs mt-4">
         Accepted format: .csv (max {MAX_ROWS} rows)
       </p>
     </div>
@@ -842,138 +844,83 @@ Mock Discussion,2026-03-17,6,Online,14:00,15:00,C,scheduled,2026-03-10T09:00:00Z
    * Render column reference section
    */
   const renderColumnReference = () => (
-    <div className="mt-8 space-y-6">
-      {/* Required Columns */}
-      <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
-            REQUIRED
-          </span>
-          <h3 className="font-medium text-gray-900 dark:text-gray-100">
-            Required Columns
-          </h3>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {REQUIRED_COLUMNS.map((col, idx) => (
-            <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-dark-bg rounded-lg">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono text-sm font-semibold text-primary-600 dark:text-primary-400">
-                    {col.name}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                  {col.description}
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-500">Example:</span>
-                  <code className="text-xs bg-gray-200 dark:bg-dark-hover px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-300">
-                    {col.example}
-                  </code>
-                </div>
-                {col.format && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-gray-500 dark:text-gray-500">Format:</span>
-                    <span className="text-xs text-gray-600 dark:text-gray-400">{col.format}</span>
-                  </div>
-                )}
-                {col.validValues && (
-                  <div className="mt-2">
-                    <span className="text-xs text-gray-500 dark:text-gray-500">Valid values: </span>
-                    <span className="text-xs text-gray-600 dark:text-gray-400">
-                      {col.validValues.join(', ')}
-                    </span>
-                  </div>
-                )}
-                {col.aliases && (
-                  <div className="mt-1">
-                    <span className="text-xs text-gray-500 dark:text-gray-500">Aliases: </span>
-                    <span className="text-xs text-gray-600 dark:text-gray-400">{col.aliases}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="mt-8 bg-gray-50 dark:bg-dark-bg rounded-lg p-6">
+      <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-4 text-lg">
+        Required Columns
+      </h3>
+      <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+        <li className="flex items-start gap-2">
+          <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">mock_type</span>
+          <span>Type of mock exam (e.g., "Situational Judgment", "SJ", "Clinical Skills", "CS")</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">exam_date</span>
+          <span>Date of the exam (YYYY-MM-DD format)</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">capacity</span>
+          <span>Maximum number of students (1-100)</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">location</span>
+          <span>Exam location (e.g., "Mississauga", "Calgary", "Online")</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">start_time</span>
+          <span>Exam start time (HH:MM 24-hour format)</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">end_time</span>
+          <span>Exam end time (HH:MM 24-hour format)</span>
+        </li>
+      </ul>
 
       {/* Optional Columns */}
-      <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-            OPTIONAL
-          </span>
-          <h3 className="font-medium text-gray-900 dark:text-gray-100">
-            Optional Columns
-          </h3>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {OPTIONAL_COLUMNS.map((col, idx) => (
-            <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-dark-bg rounded-lg">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono text-sm font-semibold text-primary-600 dark:text-primary-400">
-                    {col.name}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                  {col.description}
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-500">Example:</span>
-                  <code className="text-xs bg-gray-200 dark:bg-dark-hover px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-300">
-                    {col.example}
-                  </code>
-                </div>
-                {col.default && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-gray-500 dark:text-gray-500">Default:</span>
-                    <span className="text-xs text-green-600 dark:text-green-400">{col.default}</span>
-                  </div>
-                )}
-                {col.validValues && (
-                  <div className="mt-2">
-                    <span className="text-xs text-gray-500 dark:text-gray-500">Valid values: </span>
-                    <span className="text-xs text-gray-600 dark:text-gray-400">
-                      {col.validValues.join(', ')}
-                    </span>
-                  </div>
-                )}
-                {col.note && (
-                  <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 italic">
-                    Note: {col.note}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="mt-6 pt-6 border-t border-gray-200 dark:border-dark-border">
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          Optional Columns
+        </h4>
+        <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+          <li className="flex items-start gap-2">
+            <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">mock_set</span>
+            <span>Set identifier A-H (not for Mini-mock)</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">is_active</span>
+            <span>Exam status: "true", "false", or "scheduled" (default: true)</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="font-mono bg-gray-200 dark:bg-dark-card px-2 py-0.5 rounded text-xs">scheduled_activation_datetime</span>
+            <span>ISO datetime for scheduled activation (required if is_active is "scheduled")</span>
+          </li>
+        </ul>
       </div>
 
-      {/* Additional notes */}
-      <div className="bg-gray-50 dark:bg-dark-bg rounded-lg p-4">
+      {/* Tips */}
+      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-dark-border">
         <p className="text-xs text-gray-500 dark:text-gray-500">
-          <strong>Tips:</strong> Column headers are case-insensitive. Mock type and location accept flexible input (e.g., "SJ" for "Situational Judgment").
-          Times must be in 24-hour format. Scheduled exams require a future activation datetime in ISO format.
+          Column headers are case-insensitive. Mock type and location accept flexible input (e.g., "SJ" for "Situational Judgment").
+          Times must be in 24-hour format.
         </p>
       </div>
     </div>
   );
 
   return (
-    <div className="p-8">
-      {/* Page Header */}
-      <div className="mb-8 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Bulk Mocks Import
-        </h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Create multiple mock exams by uploading a CSV file. Rows are validated before creation.
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
+      <div className="container-app py-8">
+        {/* Page Header */}
+        <div className="mb-8">
+          <h1 className="font-headline text-3xl font-bold text-navy-900 dark:text-gray-100">
+            Bulk Mocks Import
+          </h1>
+          <p className="mt-2 font-body text-base text-gray-600 dark:text-gray-300">
+            Create multiple mock exams by uploading a CSV file. Rows are validated before creation.
+          </p>
+        </div>
 
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto">
+        {/* Main Content */}
+        <div className="max-w-4xl">
         {/* Limit Warning Banner */}
         {importState !== 'success' && !validationResult && (
           <div className="mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-center gap-3">
@@ -1016,6 +963,7 @@ Mock Discussion,2026-03-17,6,Online,14:00,15:00,C,scheduled,2026-03-10T09:00:00Z
 
         {/* Column Reference */}
         {importState !== 'success' && !validationResult && renderColumnReference()}
+        </div>
       </div>
     </div>
   );

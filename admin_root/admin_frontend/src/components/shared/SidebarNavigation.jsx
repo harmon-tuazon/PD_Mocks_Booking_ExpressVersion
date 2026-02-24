@@ -18,23 +18,67 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [dataManagementOpen, setDataManagementOpen] = useState(false);
+  const [workCheckOpen, setWorkCheckOpen] = useState(false);
   const dataManagementRef = useRef(null);
-  const closeTimeoutRef = useRef(null);
+  const workCheckRef = useRef(null);
+  const dataManagementTimeoutRef = useRef(null);
+  const workCheckTimeoutRef = useRef(null);
 
-  // Handle delayed close for submenu (prevents accidental closure)
-  const handleMouseLeave = () => {
-    closeTimeoutRef.current = setTimeout(() => {
+  // Handle delayed close for Data Management submenu
+  const handleDataManagementMouseLeave = () => {
+    dataManagementTimeoutRef.current = setTimeout(() => {
       setDataManagementOpen(false);
-    }, 200); // 200ms delay before closing
+    }, 200);
   };
 
-  // Cancel close timeout when mouse re-enters
-  const handleMouseEnter = () => {
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
+  const handleDataManagementMouseEnter = () => {
+    if (dataManagementTimeoutRef.current) {
+      clearTimeout(dataManagementTimeoutRef.current);
+      dataManagementTimeoutRef.current = null;
     }
   };
+
+  // Handle delayed close for Work Check submenu
+  const handleWorkCheckMouseLeave = () => {
+    workCheckTimeoutRef.current = setTimeout(() => {
+      setWorkCheckOpen(false);
+    }, 200);
+  };
+
+  const handleWorkCheckMouseEnter = () => {
+    if (workCheckTimeoutRef.current) {
+      clearTimeout(workCheckTimeoutRef.current);
+      workCheckTimeoutRef.current = null;
+    }
+  };
+
+  const isInstructor = user?.user_role === 'instructor';
+  const homeRoute = isInstructor ? '/instructor' : '/mock-exams';
+  const roleBadge = isInstructor ? 'Instructor' : 'Administrator';
+
+  // Navigation items for instructor (single dashboard)
+  const instructorNavigationItems = [
+    {
+      name: 'Dashboard',
+      href: '/instructor',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      ),
+      requiresAuth: true
+    },
+    {
+      name: 'Analytics',
+      href: '/instructor/analytics',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+        </svg>
+      ),
+      requiresAuth: true
+    }
+  ];
 
   // Navigation items for admin
   const navigationItems = [
@@ -63,7 +107,16 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
   // Data Management submenu items
   const dataManagementItems = [
     {
-      name: 'Bulk Bookings',
+      name: 'Users',
+      href: '/data-management/users',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      )
+    },
+    {
+      name: 'Import Bookings',
       href: '/data-management/bulk-bookings',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -72,7 +125,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
       )
     },
     {
-      name: 'Bulk Mocks',
+      name: 'Import Mocks',
       href: '/data-management/bulk-mocks',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,9 +135,55 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
     }
   ];
 
+  // Work Check submenu items
+  const workCheckItems = [
+    {
+      name: 'Groups',
+      href: '/work-check/groups',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      )
+    },
+    {
+      name: 'Instructors',
+      href: '/work-check/instructors',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path d="M12 14l9-5-9-5-9 5 9 5z" />
+          <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+        </svg>
+      )
+    },
+    {
+      name: 'Slots',
+      href: '/work-check/slots',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      )
+    },
+    {
+      name: 'Bookings',
+      href: '/work-check/bookings',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        </svg>
+      )
+    }
+  ];
+
   // Check if current path is active
   const isActivePath = (href) => {
-    return location.pathname === href || location.pathname.startsWith(href);
+    if (location.pathname === href) return true;
+    // Instructor nav items are peer pages — use exact match only to avoid
+    // /instructor matching /instructor/analytics
+    if (isInstructor) return false;
+    return location.pathname.startsWith(href);
   };
 
   // Handle navigation
@@ -108,8 +207,9 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
     return null;
   }
 
-  // Filter nav items based on auth requirements
-  const visibleNavItems = navigationItems.filter(item =>
+  // Filter nav items based on role and auth requirements
+  const baseItems = isInstructor ? instructorNavigationItems : navigationItems;
+  const visibleNavItems = baseItems.filter(item =>
     !item.requiresAuth || user
   );
 
@@ -138,7 +238,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
               <ResponsiveLogo
                 size="medium"
                 className="transition-opacity duration-300 hover:opacity-80"
-                onClick={() => handleNavigation('/mock-exams')}
+                onClick={() => handleNavigation(homeRoute)}
               />
             </div>
 
@@ -175,7 +275,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                   <span className="text-xs font-medium text-primary-700 dark:text-primary-300">
-                    Administrator
+                    {roleBadge}
                   </span>
                 </div>
               </div>
@@ -223,12 +323,101 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                 );
               })}
 
-              {/* Data Management Menu with Submenu */}
-              <li
+              {/* Work Check Menu with Submenu (admin only) */}
+              {!isInstructor && <li
+                ref={workCheckRef}
+                className="relative"
+                onMouseEnter={handleWorkCheckMouseEnter}
+                onMouseLeave={handleWorkCheckMouseLeave}
+              >
+                <button
+                  onClick={() => setWorkCheckOpen(!workCheckOpen)}
+                  className={`
+                    w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg
+                    transition-all duration-200 text-left
+                    ${workCheckOpen || location.pathname.startsWith('/work-check')
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-dark-hover'
+                    }
+                    focus:outline-none focus:ring-2 focus:ring-primary-400 dark:focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800
+                  `}
+                >
+                  <span className={`
+                    mr-3 flex-shrink-0
+                    ${workCheckOpen || location.pathname.startsWith('/work-check')
+                      ? 'text-primary-600 dark:text-primary-400'
+                      : 'text-gray-400 dark:text-gray-500'
+                    }
+                  `}>
+                    {/* Clipboard Check Icon for Work Check */}
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                  </span>
+                  <span className="flex-1">Work Check</span>
+
+                  {/* Chevron indicator */}
+                  <span className="ml-auto">
+                    <svg
+                      className={`w-4 h-4 transition-transform duration-200 ${workCheckOpen ? 'rotate-90' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                </button>
+
+                {/* Work Check Submenu */}
+                {workCheckOpen && (
+                  <div
+                    className="fixed left-64 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-xl z-[100]"
+                    style={{ marginTop: '-44px' }}
+                    onMouseEnter={handleWorkCheckMouseEnter}
+                    onMouseLeave={handleWorkCheckMouseLeave}
+                  >
+                    <div className="py-2">
+                      {workCheckItems.map((subItem) => {
+                        const isSubActive = isActivePath(subItem.href);
+
+                        return (
+                          <button
+                            key={subItem.name}
+                            onClick={() => {
+                              handleNavigation(subItem.href);
+                              setWorkCheckOpen(false);
+                            }}
+                            className={`
+                              w-full flex items-center px-4 py-2.5 text-sm font-medium
+                              transition-all duration-200 text-left
+                              ${isSubActive
+                                ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-dark-hover'
+                              }
+                            `}
+                          >
+                            <span className={`
+                              mr-3 flex-shrink-0
+                              ${isSubActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'}
+                            `}>
+                              {subItem.icon}
+                            </span>
+                            <span>{subItem.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </li>}
+
+              {/* Data Management Menu with Submenu (admin only) */}
+              {!isInstructor && <li
                 ref={dataManagementRef}
                 className="relative"
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
+                onMouseEnter={handleDataManagementMouseEnter}
+                onMouseLeave={handleDataManagementMouseLeave}
               >
                 <button
                   onClick={() => setDataManagementOpen(!dataManagementOpen)}
@@ -274,8 +463,8 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                   <div
                     className="fixed left-64 w-48 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-xl z-[100]"
                     style={{ marginTop: '-44px' }}
-                    onMouseEnter={handleMouseEnter}
-                    onMouseLeave={handleMouseLeave}
+                    onMouseEnter={handleDataManagementMouseEnter}
+                    onMouseLeave={handleDataManagementMouseLeave}
                   >
                     <div className="py-2">
                       {dataManagementItems.map((subItem) => {
@@ -310,7 +499,7 @@ const SidebarNavigation = ({ isOpen, setIsOpen, className = '' }) => {
                     </div>
                   </div>
                 )}
-              </li>
+              </li>}
             </ul>
           </nav>
 

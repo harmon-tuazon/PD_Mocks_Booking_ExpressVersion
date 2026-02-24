@@ -1,7 +1,7 @@
 # PrepDoctors Mock Exam Booking System - Architecture & Quality Analysis
 
-**Analysis Date**: October 16, 2025
-**System Version**: 1.0.0
+**Analysis Date**: October 16, 2025 (Updated: February 10, 2026)
+**System Version**: 1.5.0
 **Analysis Type**: Comprehensive Architecture Review & SWOT Analysis
 **Framework**: PrepDoctors HubSpot Automation Framework
 
@@ -47,8 +47,8 @@ The PrepDoctors Mock Exam Booking System is a full-stack serverless application 
 ┌─────────────────────────────────────────────────────────────────┐
 │                         CLIENT TIER                              │
 │  React 18 + Vite + Tailwind CSS + React Router                 │
-│  - Components: 30+ (shared, bookings, layout)                   │
-│  - State: Custom Hooks (useBookingFlow, useCachedCredits)      │
+│  - Components: 35+ (shared, bookings, dashboard, layout)        │
+│  - State: Custom Hooks (useBookingFlow, useCachedCredits, useDashboard) │
 │  - API Client: Axios with interceptors                          │
 └─────────────────────────────────────────────────────────────────┘
                               ↓ HTTPS
@@ -94,13 +94,14 @@ The PrepDoctors Mock Exam Booking System is a full-stack serverless application 
 
 | Metric | Count |
 |--------|-------|
-| API Endpoints | 9 |
-| React Components | 31 |
-| Custom Hooks | 2 |
-| Shared Components | 18 |
+| API Endpoints | 10 |
+| React Components | 37 |
+| Custom Hooks | 3 |
+| Shared Components | 19 |
+| Dashboard Components | 6 |
 | Backend Services | 5 |
-| Lines of Code (Backend) | ~3,500 |
-| Lines of Code (Frontend) | ~4,200 |
+| Lines of Code (Backend) | ~3,700 |
+| Lines of Code (Frontend) | ~4,800 |
 | HubSpot Custom Objects | 4 |
 
 ---
@@ -263,7 +264,14 @@ export default composeMiddleware(
 
 ```
 frontend/src/components/
-├── shared/           # 18 reusable components
+├── shared/           # 19 reusable components (including SidebarNavigation)
+├── dashboard/        # 6 dashboard components (NEW v1.5.0)
+│   ├── Dashboard.jsx           # Main dashboard page
+│   ├── ThisWeekActivities.jsx  # Activities section
+│   ├── ActivityCard.jsx        # Individual activity display
+│   ├── BookingWizard.jsx       # Two-card wizard section
+│   ├── MockExamCard.jsx        # Mock exam booking card
+│   └── WorkCheckCard.jsx       # Work check booking card
 ├── bookings/         # 3 booking-specific components
 ├── layout/           # 1 layout wrapper
 └── [feature].jsx     # 9 feature components
@@ -282,6 +290,10 @@ const useBookingFlow = (initialMockExamId = null) => {
 let creditCache = null;
 let subscribers = new Set();
 // Intelligent credit caching with subscribers
+
+// hooks/useDashboard.js - Dashboard data fetching (NEW v1.5.0)
+// Fetches unified dashboard data with auto-refresh every 60 seconds
+// Returns: data, loading, error, refresh
 ```
 
 #### 3. Design System (Score: 8/10)

@@ -19,11 +19,17 @@ function Login() {
   const location = useLocation()
   const { signIn, user } = useAuth()
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (role-based)
   useEffect(() => {
     if (user) {
-      const from = location.state?.from?.pathname || '/';
-      navigate(from, { replace: true });
+      const from = location.state?.from?.pathname;
+      if (from && from !== '/') {
+        navigate(from, { replace: true });
+      } else if (user.user_role === 'instructor') {
+        navigate('/instructor', { replace: true });
+      } else {
+        navigate('/mock-exams', { replace: true });
+      }
     }
   }, [user, navigate, location]);
 
@@ -36,9 +42,9 @@ function Login() {
       const result = await signIn(email, password, rememberMe)
 
       if (result.success) {
-        // Redirect to the page they tried to access or dashboard
-        const from = location.state?.from?.pathname || '/'
-        navigate(from, { replace: true })
+        // Role-based redirect is handled by the useEffect above
+        // when user state gets set after successful sign-in
+        return
       } else {
         setError(result.error || 'Login failed')
       }

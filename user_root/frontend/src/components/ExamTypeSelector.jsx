@@ -67,27 +67,29 @@ const ExamTypeSelector = () => {
 
   return (
     <div className="bg-gray-50 dark:bg-dark-bg min-h-full">
-      <div className="container-brand py-8 lg:py-12">
-        <div className="text-center mb-12 animate-fade-in">
-          <h1 className="font-headline text-h1 font-bold text-primary-900 dark:text-gray-100 mb-6">
+      <div className="container-brand py-4 md:py-8 lg:py-12">
+        {/* Header - Left aligned */}
+        <div className="mb-6 md:mb-12 animate-fade-in">
+          <h1 className="font-headline text-2xl md:text-3xl font-bold text-primary-900 dark:text-gray-100 mb-1 md:mb-2">
             Book Your Mock Exam
           </h1>
-          <p className="font-body text-lg text-primary-700 dark:text-gray-300 content-width-md">
-            Choose the type of mock exam you'd like to book. Check your available tokens below.
+          <p className="font-body text-xs md:text-sm text-primary-700 dark:text-gray-300">
+            Choose the type of mock exam you'd like to book.
           </p>
         </div>
 
-        {/* Exam Type Cards - Now at the top */}
-        <div className="grid-exam-cards-large content-width-lg mb-12">
+        {/* Exam Type Cards - Compact on mobile */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-8 content-width-lg mb-6 md:mb-12">
           {examTypes.map((exam, index) => (
             <div
               key={exam.type}
-              className="card-hover dark:bg-dark-card dark:border-dark-border dark:hover:border-dark-border animate-slide-up"
+              className="card-hover dark:bg-dark-card dark:border-dark-border dark:hover:border-dark-border animate-slide-up p-4 md:p-6"
               style={{ animationDelay: `${index * 100}ms` }}
               onClick={() => handleSelectType(exam.type)}
             >
               <div className="text-center">
-                <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+                {/* Icon - smaller on mobile */}
+                <div className="w-8 h-8 md:w-12 md:h-12 mx-auto mb-2 md:mb-4 flex items-center justify-center">
                   <img
                     src={exam.icon}
                     alt={`${exam.type} icon`}
@@ -98,26 +100,30 @@ const ExamTypeSelector = () => {
                   />
                 </div>
 
-                <h3 className="font-subheading text-xl font-semibold text-primary-900 dark:text-gray-100 mb-3">
+                {/* Title - smaller on mobile */}
+                <h3 className="font-subheading text-base md:text-xl font-semibold text-primary-900 dark:text-gray-100 mb-1.5 md:mb-3">
                   {exam.type}
                 </h3>
 
-                <p className="font-body text-primary-700 dark:text-gray-300 mb-6 leading-relaxed">
+                {/* Description - hidden on mobile, shown on tablet+ */}
+                <p className="hidden md:block font-body text-primary-700 dark:text-gray-300 mb-6 leading-relaxed">
                   {exam.description}
                 </p>
 
-                <div className="space-brand-small mb-6 font-body text-sm text-primary-600 dark:text-gray-400">
+                {/* Duration - compact on mobile */}
+                <div className="mb-3 md:mb-6 font-body text-xs md:text-sm text-primary-600 dark:text-gray-400">
                   <div className="flex items-center justify-center">
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                     </svg>
-                    <span>Duration: {exam.duration}</span>
+                    <span>{exam.duration}</span>
                   </div>
                 </div>
 
-                <button className="btn-primary w-full dark:bg-primary-600 dark:hover:bg-primary-700">
-                  View Available Sessions
-                  <svg className="w-4 h-4 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {/* Button - compact on mobile */}
+                <button className="btn-primary w-full text-xs md:text-sm py-2 md:py-2.5 dark:bg-primary-600 dark:hover:bg-primary-700">
+                  View Sessions
+                  <svg className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
@@ -129,7 +135,7 @@ const ExamTypeSelector = () => {
         {/* User Info Cards - Now below exam cards with fixed positioning */}
         {userSession && (
           <div className="content-width-lg">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               {/* Existing Bookings Card - Always on the LEFT */}
               <ExistingBookingsCard
                 studentId={userSession.studentId}
@@ -143,7 +149,7 @@ const ExamTypeSelector = () => {
               {credits && (
                 <div className="bg-white dark:bg-dark-card border dark:border-dark-border rounded-lg overflow-hidden shadow-sm">
                   <div className="px-3 py-2 border-b dark:border-dark-border">
-                    <h3 className="font-subheading text-sm font-medium text-primary-900 dark:text-gray-100">Available Tokens</h3>
+                    <h3 className="font-subheading text-sm font-semibold text-primary-900 dark:text-gray-100">Available Tokens</h3>
                     <p className="font-body text-xs text-primary-600 dark:text-gray-400 mt-0.5">Your current token balance</p>
                   </div>
 

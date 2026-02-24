@@ -69,9 +69,12 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Code is valid - mark as verified (don't delete yet, need for password update)
+    // Code is valid - mark as verified with short TTL
+    // Reduced from 30 minutes to 5 minutes to minimize replay window
+    // The update-password endpoint reads this key then deletes it
     otpData.verified = true;
-    await redis.setex(otpKey, 1800, JSON.stringify(otpData));
+    otpData.verified_at = Date.now();
+    await redis.setex(otpKey, 300, JSON.stringify(otpData));
     await redis.close();
 
     return res.status(200).json({
