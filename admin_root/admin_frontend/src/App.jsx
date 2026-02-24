@@ -4,12 +4,22 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute'
+import ProtectedInstructorRoute from './components/admin/ProtectedInstructorRoute'
+import InstructorDashboard from './pages/instructor/InstructorDashboard'
+import InstructorAnalytics from './pages/instructor/InstructorAnalytics'
 import MockExams from './pages/MockExams'
 import MockExamsDashboard from './pages/MockExamsDashboard'
 import MockExamDetail from './pages/MockExamDetail'
 import TraineeDashboard from './pages/TraineeDashboard'
 import BulkBookings from './pages/BulkBookings'
 import BulkMocks from './pages/BulkMocks'
+import Groups from './pages/Groups'
+import GroupDetail from './pages/GroupDetail'
+import Instructors from './pages/Instructors'
+import InstructorDetail from './pages/InstructorDetail'
+import WorkCheckSlots from './pages/WorkCheckSlots'
+import WorkCheckBookings from './pages/WorkCheckBookings'
+import Users from './pages/Users'
 import Login from './pages/Login'
 import PasswordReset from './pages/PasswordReset'
 import MainLayout from './components/layout/MainLayout'
@@ -73,6 +83,20 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/reset-password" element={<PasswordReset />} />
 
+              {/* Instructor Portal Routes */}
+              <Route
+                path="/instructor"
+                element={
+                  <ProtectedInstructorRoute>
+                    <MainLayout />
+                  </ProtectedInstructorRoute>
+                }
+              >
+                <Route index element={<InstructorDashboard />} />
+                <Route path="analytics" element={<InstructorAnalytics />} />
+              </Route>
+
+              {/* Admin Routes */}
               <Route
                 path="/"
                 element={
@@ -96,7 +120,16 @@ function App() {
                 {/* Trainee Dashboard */}
                 <Route path="trainees" element={<TraineeDashboard />} />
 
+                {/* Work Check Routes */}
+                <Route path="work-check/groups" element={<Groups />} />
+                <Route path="work-check/groups/:groupId" element={<GroupDetail />} />
+                <Route path="work-check/instructors" element={<Instructors />} />
+                <Route path="work-check/instructors/:instructorId" element={<InstructorDetail />} />
+                <Route path="work-check/slots" element={<WorkCheckSlots />} />
+                <Route path="work-check/bookings" element={<WorkCheckBookings />} />
+
                 {/* Data Management Routes */}
+                <Route path="data-management/users" element={<Users />} />
                 <Route path="data-management/bulk-bookings" element={<BulkBookings />} />
                 <Route path="data-management/bulk-mocks" element={<BulkMocks />} />
               </Route>

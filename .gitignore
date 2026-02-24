@@ -90,6 +90,7 @@ token.json
 test-results/
 .vercel
 .env*.local
+.env.local
 
 .serena
 features/
@@ -106,3 +107,6 @@ mock_exams_updated.csv
 
 # Misc.
 hubspot_scripts/
+
+#Other app
+prepdoctors-richmond-hill-main/

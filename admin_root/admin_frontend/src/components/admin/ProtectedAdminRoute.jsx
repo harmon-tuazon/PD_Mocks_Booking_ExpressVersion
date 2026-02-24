@@ -1,8 +1,6 @@
 /**
  * Protected Admin Route Component
- * Simplified to only check authentication (no role-based permissions)
- *
- * NOTE: Role-based permissions removed - any authenticated user can access protected routes
+ * Allows admins and legacy users (no role). Redirects instructors to /instructor.
  */
 
 import React from 'react';
@@ -27,7 +25,12 @@ const ProtectedAdminRoute = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // User is authenticated - grant access
+  // Instructors should not access admin routes
+  if (user.user_role === 'instructor') {
+    return <Navigate to="/instructor" replace />;
+  }
+
+  // Admin or legacy users (no role) can access
   return children;
 };
 

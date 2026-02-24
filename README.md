@@ -63,7 +63,15 @@ mocks_booking/
 │   │   │   │   ├── CapacityBadge.jsx     # Capacity indicators
 │   │   │   │   ├── CreditAlert.jsx       # Credit warnings
 │   │   │   │   ├── Logo.jsx              # Brand components
-│   │   │   │   └── SessionDrawer.jsx     # Session details
+│   │   │   │   ├── SessionDrawer.jsx     # Session details
+│   │   │   │   └── SidebarNavigation.jsx # Vertical nav with submenus
+│   │   │   ├── dashboard/       # Dashboard Components (NEW v1.5.0)
+│   │   │   │   ├── Dashboard.jsx         # Main dashboard page
+│   │   │   │   ├── ThisWeekActivities.jsx # Activities section
+│   │   │   │   ├── ActivityCard.jsx      # Individual activity display
+│   │   │   │   ├── BookingWizard.jsx     # Two-card wizard section
+│   │   │   │   ├── MockExamCard.jsx      # Mock exam booking card
+│   │   │   │   └── WorkCheckCard.jsx     # Work check booking card
 │   │   │   ├── BookingConfirmation.jsx   # Confirmation flow
 │   │   │   ├── BookingForm.jsx           # Booking interface
 │   │   │   ├── ExamSessionsList.jsx      # Session listings
@@ -78,7 +86,8 @@ mocks_booking/
 │   │   │   └── MockDiscussions.jsx       # Mock discussions page (NEW)
 │   │   ├── hooks/               # Custom React Hooks
 │   │   │   ├── useBookingFlow.js         # Booking state management
-│   │   │   └── useCachedCredits.js       # Credit caching hook (NEW)
+│   │   │   ├── useCachedCredits.js       # Credit caching hook
+│   │   │   └── useDashboard.js           # Dashboard data fetching (NEW v1.5.0)
 │   │   ├── services/            # API Integration Layer
 │   │   │   └── api.js                    # Axios configuration & utilities
 │   │   └── utils/               # Frontend Utilities
@@ -117,12 +126,18 @@ mocks_booking/
 
 ### API Endpoints
 
+#### Dashboard (NEW - v1.5.0)
+- `GET /api/dashboard` - Unified dashboard data endpoint
+  - Returns user info, this week's activities, tokens, and groups
+  - Uses parallel queries for efficiency (Supabase)
+  - Auto-calculates week range (Monday to Sunday)
+
 #### Mock Exam Management
 - `GET /api/mock-exams/available` - Fetch available exam sessions
 - `POST /api/mock-exams/validate-credits` - Validate user credits
 - `POST /api/mock-exams/sync-capacity` - Synchronize session capacity
 
-#### Mock Discussion Management (NEW)
+#### Mock Discussion Management
 - `GET /api/mock-discussions/available` - Fetch available discussion sessions
 - `POST /api/mock-discussions/validate-credits` - Validate mock_discussion_token
 - `POST /api/mock-discussions/create-booking` - Create discussion booking with idempotency
@@ -150,6 +165,7 @@ mocks_booking/
 - **Feature Components**: Booking flow, exam selection, confirmation, booking management
 - **Layout Components**: Authentication, routing, error boundaries
 - **Booking Components**: Specialized components for viewing and managing bookings
+- **Dashboard Components**: User dashboard with activities, tokens, and booking wizards (NEW v1.5.0)
 
 #### State Management
 - Custom hooks for booking flow state

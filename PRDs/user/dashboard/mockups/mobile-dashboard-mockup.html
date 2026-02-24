@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Mobile-First Mockup - PrepDoctors</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#e8f2ff',
+              100: '#d1e6ff',
+              200: '#a3ccff',
+              500: '#0660B2',
+              600: '#054E91',
+              700: '#043d73',
+              900: '#02376D',
+            },
+            teal: {
+              50: '#ecfdf9',
+              100: '#d1faf2',
+              400: '#44D3BB',
+              500: '#20c997',
+              600: '#18a57a',
+            },
+            coral: {
+              50: '#fef5f5',
+              100: '#fde8e8',
+              500: '#F45E56',
+            },
+            navy: {
+              800: '#002952',
+              900: '#02376D',
+            },
+            dark: {
+              bg: '#0f1419',
+              card: '#1a1f2e',
+              border: '#2a3441',
+            }
+          },
+          fontFamily: {
+            headline: ['Georgia', 'serif'],
+            subheading: ['system-ui', 'sans-serif'],
+            body: ['system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-gray-100">
+
+  <!-- Mobile/Desktop Toggle -->
+  <div class="fixed top-4 right-4 z-50 flex gap-2">
+    <button onclick="setView('mobile')" id="btn-mobile" class="px-3 py-1.5 text-sm font-medium rounded-md bg-primary-600 text-white">Mobile</button>
+    <button onclick="setView('desktop')" id="btn-desktop" class="px-3 py-1.5 text-sm font-medium rounded-md bg-gray-300 text-gray-700">Desktop</button>
+    <button onclick="toggleDark()" id="btn-dark" class="px-3 py-1.5 text-sm font-medium rounded-md bg-gray-800 text-white">Dark</button>
+  </div>
+
+  <!-- Container -->
+  <div id="container" class="mx-auto transition-all duration-300" style="max-width: 375px;">
+
+    <!-- ==================== MOBILE VIEW ==================== -->
+    <div id="mobile-view" class="min-h-screen bg-gray-50 dark:bg-dark-bg">
+
+      <!-- Simulated Sidebar Header (collapsed on mobile) -->
+      <div class="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+            <span class="text-white font-bold text-sm">PD</span>
+          </div>
+          <span class="font-semibold text-primary-900 dark:text-gray-100">PrepDoctors</span>
+        </div>
+        <button class="p-2 text-gray-500">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Main Content -->
+      <div class="px-4 py-4">
+
+        <!-- Header - Compact -->
+        <div class="mb-4">
+          <h1 class="text-xl font-bold text-navy-900 dark:text-gray-100 font-headline">
+            Welcome back, John!
+          </h1>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 font-body">
+            Here's what's happening this week.
+          </p>
+        </div>
+
+        <!-- Quick Action Buttons - Horizontal Scroll -->
+        <div class="mb-5">
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 font-subheading">Quick Actions</p>
+          <div class="overflow-x-auto scrollbar-hide -mx-4 px-4">
+            <div class="flex gap-3 pb-1">
+
+              <!-- SJ Button -->
+              <button class="flex-shrink-0 w-[72px] bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl p-3 shadow-sm hover:shadow-md transition-all active:scale-95">
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                  </div>
+                  <span class="text-xs font-medium text-gray-700 dark:text-gray-300">SJ</span>
+                  <span class="text-[10px] text-primary-600 dark:text-primary-400 font-semibold">3 tokens</span>
+                </div>
+              </button>
+
+              <!-- CS Button -->
+              <button class="flex-shrink-0 w-[72px] bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl p-3 shadow-sm hover:shadow-md transition-all active:scale-95">
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class="w-10 h-10 bg-teal-100 dark:bg-teal-900/30 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                    </svg>
+                  </div>
+                  <span class="text-xs font-medium text-gray-700 dark:text-gray-300">CS</span>
+                  <span class="text-[10px] text-teal-600 dark:text-teal-400 font-semibold">2 tokens</span>
+                </div>
+              </button>
+
+              <!-- Mini-mock Button -->
+              <button class="flex-shrink-0 w-[72px] bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl p-3 shadow-sm hover:shadow-md transition-all active:scale-95">
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                  </div>
+                  <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Mini</span>
+                  <span class="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">5 tokens</span>
+                </div>
+              </button>
+
+              <!-- Work Check Button -->
+              <button class="flex-shrink-0 w-[72px] bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl p-3 shadow-sm hover:shadow-md transition-all active:scale-95">
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                    </svg>
+                  </div>
+                  <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Work</span>
+                  <span class="text-[10px] text-green-600 dark:text-green-400 font-semibold">2 groups</span>
+                </div>
+              </button>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Activities Table -->
+        <div class="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden mb-4">
+          <div class="px-4 py-3 border-b border-gray-200 dark:border-dark-border flex items-center justify-between">
+            <h3 class="font-semibold text-gray-900 dark:text-gray-100 font-subheading">This Week</h3>
+            <button class="text-xs text-primary-600 dark:text-primary-400 font-medium hover:underline">View All</button>
+          </div>
+
+          <!-- Today -->
+          <div class="bg-primary-50 dark:bg-primary-900/20 px-4 py-2">
+            <span class="text-xs font-semibold text-primary-700 dark:text-primary-300 uppercase tracking-wide">Today - Feb 10</span>
+          </div>
+          <div class="px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-dark-border">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 bg-teal-100 dark:bg-teal-900/30 rounded-lg flex items-center justify-center">
+                <svg class="w-4 h-4 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Clinical Skills</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">9:00 AM - 5:30 PM</p>
+              </div>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 font-medium">Confirmed</span>
+          </div>
+
+          <!-- Wed -->
+          <div class="bg-gray-50 dark:bg-dark-bg px-4 py-2">
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Wed - Feb 12</span>
+          </div>
+          <div class="px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-dark-border">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Work Check</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">10:00 AM • Dr. Ahmad</p>
+              </div>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium">Pending</span>
+          </div>
+
+          <!-- Fri -->
+          <div class="bg-gray-50 dark:bg-dark-bg px-4 py-2">
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Fri - Feb 14</span>
+          </div>
+          <div class="px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+                <svg class="w-4 h-4 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Situational Judgment</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">1:00 PM - 3:30 PM</p>
+              </div>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 font-medium">Confirmed</span>
+          </div>
+        </div>
+
+        <!-- Tokens Table -->
+        <div class="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-200 dark:border-dark-border">
+            <h3 class="font-semibold text-gray-900 dark:text-gray-100 font-subheading">Your Tokens</h3>
+          </div>
+
+          <div class="divide-y divide-gray-100 dark:divide-dark-border">
+            <div class="px-4 py-2.5 flex items-center justify-between">
+              <span class="text-sm text-gray-600 dark:text-gray-400">SJ Credits</span>
+              <span class="text-sm font-semibold text-primary-600 dark:text-gray-100">3</span>
+            </div>
+            <div class="px-4 py-2.5 flex items-center justify-between">
+              <span class="text-sm text-gray-600 dark:text-gray-400">CS Credits</span>
+              <span class="text-sm font-semibold text-teal-600 dark:text-gray-100">2</span>
+            </div>
+            <div class="px-4 py-2.5 flex items-center justify-between">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Mini-mock</span>
+              <span class="text-sm font-semibold text-amber-600 dark:text-gray-100">5</span>
+            </div>
+            <div class="px-4 py-2.5 flex items-center justify-between">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Shared</span>
+              <span class="text-sm font-semibold text-purple-600 dark:text-gray-100">1</span>
+            </div>
+            <div class="px-4 py-2.5 flex items-center justify-between">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Discussion</span>
+              <span class="text-sm font-semibold text-orange-600 dark:text-gray-100">1</span>
+            </div>
+          </div>
+
+          <div class="px-4 py-3 bg-gray-50 dark:bg-dark-bg flex items-center justify-between border-t border-gray-200 dark:border-dark-border">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Total Available</span>
+            <span class="text-lg font-bold text-gray-900 dark:text-gray-100">12</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let isDark = false;
+    let isMobile = true;
+
+    function setView(view) {
+      isMobile = view === 'mobile';
+      const container = document.getElementById('container');
+      const btnMobile = document.getElementById('btn-mobile');
+      const btnDesktop = document.getElementById('btn-desktop');
+
+      if (isMobile) {
+        container.style.maxWidth = '375px';
+        btnMobile.className = 'px-3 py-1.5 text-sm font-medium rounded-md bg-primary-600 text-white';
+        btnDesktop.className = 'px-3 py-1.5 text-sm font-medium rounded-md bg-gray-300 text-gray-700';
+      } else {
+        container.style.maxWidth = '1024px';
+        btnMobile.className = 'px-3 py-1.5 text-sm font-medium rounded-md bg-gray-300 text-gray-700';
+        btnDesktop.className = 'px-3 py-1.5 text-sm font-medium rounded-md bg-primary-600 text-white';
+      }
+    }
+
+    function toggleDark() {
+      isDark = !isDark;
+      document.body.classList.toggle('dark', isDark);
+      document.getElementById('btn-dark').textContent = isDark ? 'Light' : 'Dark';
+    }
+  </script>
+
+</body>
+</html>

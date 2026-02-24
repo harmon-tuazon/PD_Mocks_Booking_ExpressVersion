@@ -4,7 +4,7 @@
  */
 
 // Mock hubspot before requiring refund service
-jest.mock('../../api/_shared/hubspot', () => {
+jest.mock('../../src/services/hubspot', () => {
   const mockApiCall = jest.fn();
   return {
     apiCall: mockApiCall,
@@ -14,8 +14,8 @@ jest.mock('../../api/_shared/hubspot', () => {
     }
   };
 });
-const hubspot = require('../../api/_shared/hubspot');
-const refundService = require('../../api/_shared/refund');
+const hubspot = require('../../src/services/hubspot');
+const refundService = require('../../src/services/refund');
 
 describe('RefundService Unit Tests', () => {
   beforeEach(() => {
