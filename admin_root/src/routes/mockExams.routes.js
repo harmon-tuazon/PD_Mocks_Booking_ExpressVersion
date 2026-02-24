@@ -53,12 +53,12 @@ router.get('/available-for-rebook', availableForRebook);
 router.get('/:id', getById);
 router.get('/:id/bookings', getBookings);
 router.patch('/:id/attendance', updateAttendance);
-router.post('/:id/cancel-bookings', cancelBookings);
+router.patch('/:id/cancel-bookings', cancelBookings);
 
 // Prerequisites
 router.get('/:id/prerequisites', getPrerequisites);
 router.post('/:id/prerequisites', addPrerequisite);
-router.post('/:id/prerequisites/delta', updatePrerequisitesDelta);
+router.patch('/:id/prerequisites/delta', updatePrerequisitesDelta);
 router.delete('/:id/prerequisites/:prerequisiteId', removePrerequisite);
 
 module.exports = router;
