@@ -92,7 +92,6 @@ test-results/
 .env*.local
 
 .serena
-documentation/
 features/
 improvements/
 screenshots/
