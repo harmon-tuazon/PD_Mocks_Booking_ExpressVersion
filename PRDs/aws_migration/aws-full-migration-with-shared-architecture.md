@@ -188,11 +188,11 @@ async function initializeDatabase() {
     ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 
     // Connection pool settings (match your other app)
-    max: parseInt(process.env.DB_POOL_MAX) || 10,
+    max: parseInt(process.env.DB_POOL_MAX) || 20,
     min: parseInt(process.env.DB_POOL_MIN) || 2,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
-    acquireTimeoutMillis: 10000
+    statement_timeout: 10000,  // Kill queries running longer than 10s to prevent pool starvation
   });
 
   // Test connection
@@ -208,6 +208,12 @@ async function initializeDatabase() {
   // Handle pool errors
   pool.on('error', (err) => {
     console.error('Unexpected database pool error:', err);
+  });
+
+  // Graceful shutdown — close pool on process exit to prevent leaked connections
+  process.on('SIGTERM', async () => {
+    await pool.end();
+    process.exit(0);
   });
 
   return pool;
@@ -706,17 +712,17 @@ module.exports = app;
 | Application | EC2 Instances | Pool Size | Total Connections |
 |-------------|---------------|-----------|-------------------|
 | Other App | 2 | 10 | 20 |
-| Mocks Booking | 2 | 10 | 20 |
+| Mocks Booking | 2 | 20 | 40 |
 | Development | 2 | 5 each | 10 |
-| **Total** | | | **50** |
+| **Total** | | | **70** |
 
 ### RDS Capacity
 
 | RDS Instance | Max Connections | Your Usage | Utilization |
 |--------------|-----------------|------------|-------------|
-| db.t4g.large | 680 | 50 | **7.4%** |
+| db.t4g.large | 680 | 70 | **10.3%** |
 
-**Plenty of headroom** - even if you scale to 10 EC2 instances total, you'd only use ~100 connections (15%).
+**Plenty of headroom** — a pool of 20 per instance can handle 500+ concurrent users (queries take ~5-50ms, connections reuse immediately). Even at 10 EC2 instances you'd only use ~200 connections (29%). RDS Proxy is not needed at this scale.
 
 ### Shared vs Separate RDS
 
