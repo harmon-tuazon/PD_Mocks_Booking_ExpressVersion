@@ -13,17 +13,7 @@ const { requirePermission } = require('../../middleware/requirePermission');
 const hubspot = require('../../services/hubspot');
 
 // Initialize Supabase client
-const { createClient } = require('@supabase/supabase-js');
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    }
-  }
-);
+const { supabaseAdmin } = require('../../services/supabase');
 
 async function forceSupabase(req, res) {
   const startTime = Date.now();

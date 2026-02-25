@@ -1,47 +1,62 @@
 /**
- * Supabase Client Configuration
- * Provides authenticated Supabase client for server-side operations
+ * Supabase Client Configuration (Admin Root)
+ *
+ * Architecture after AWS RDS migration:
+ * - supabaseAdmin.auth.*  → Real Supabase (JWT verification, user management)
+ * - supabaseAdmin.from()  → pg (direct PostgreSQL on AWS RDS)
+ * - supabaseAdmin.rpc()   → pg (stored function calls on AWS RDS)
+ *
+ * All data tables (groups, instructors, work_check_*, hubspot_*, etc.)
+ * now live in AWS RDS under the hubspot_sync schema.
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { createPgClient, getPool } = require('./pg-query-builder');
 
-// Initialize Supabase client with service role key for admin operations
-const supabaseAdmin = createClient(
+// Real Supabase client — ONLY for auth operations
+const _supabaseAuth = createClient(
   process.env.SUPABASE_URL || '',
   process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   {
     auth: {
       persistSession: false,
-      autoRefreshToken: false,
-    },
-    db: { schema: process.env.SUPABASE_SCHEMA_NAME } 
-  } 
-);
-
-// Initialize Supabase client with anon key for public operations
-const supabasePublic = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_ANON_KEY || '',
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
+      autoRefreshToken: false
     }
   }
 );
 
+// pg-backed client — for all data operations
+const _pgClient = createPgClient(getPool());
+
 /**
- * Decode JWT payload without verification (verification done by getUser)
- * @param {string} token - JWT token
- * @returns {object|null} - Decoded payload or null
+ * Hybrid supabaseAdmin:
+ *   .auth              → Real Supabase (auth.getUser, auth.admin.createUser, etc.)
+ *   .from(table)       → pg query builder (direct AWS RDS queries)
+ *   .rpc(fn, params)   → pg stored function call
+ */
+const supabaseAdmin = {
+  auth: _supabaseAuth.auth,
+  from(table) { return _pgClient.from(table); },
+  rpc(fnName, params) { return _pgClient.rpc(fnName, params); }
+};
+
+// Public client — for operations that need anon/public key context
+// Auth uses real Supabase; data queries use pg
+const supabasePublic = {
+  auth: _supabaseAuth.auth,
+  from(table) { return _pgClient.from(table); },
+  rpc(fnName, params) { return _pgClient.rpc(fnName, params); }
+};
+
+/**
+ * Decode JWT payload without verification
+ * (verification is done by Supabase auth.getUser)
  */
 function decodeJwtPayload(token) {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
-
-    const payload = parts[1];
-    const decoded = Buffer.from(payload, 'base64').toString('utf8');
+    const decoded = Buffer.from(parts[1], 'base64').toString('utf8');
     return JSON.parse(decoded);
   } catch (error) {
     console.error('JWT decode error:', error);
@@ -50,30 +65,21 @@ function decodeJwtPayload(token) {
 }
 
 /**
- * Verify and decode a Supabase JWT token
- * Returns user object with RBAC claims (user_role, permissions)
- * @param {string} token - JWT token from client
- * @returns {Promise<{user: object, error: object|null}>}
+ * Verify and decode a Supabase JWT token.
+ * Returns user object with RBAC claims (user_role, permissions).
  */
 async function verifyToken(token) {
   try {
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    const { data: { user }, error } = await _supabaseAuth.auth.getUser(token);
+    if (error) return { user: null, error };
 
-    if (error) {
-      return { user: null, error };
-    }
-
-    // Decode JWT to get custom claims (user_role, permissions)
     const jwtPayload = decodeJwtPayload(token);
-
-    // Merge user object with RBAC claims from JWT
     const userWithClaims = {
       ...user,
       user_role: jwtPayload?.user_role || 'viewer',
       permissions: jwtPayload?.permissions || [],
       role_assigned_at: jwtPayload?.role_assigned_at || null
     };
-
     return { user: userWithClaims, error: null };
   } catch (error) {
     console.error('Token verification error:', error);
@@ -81,8 +87,4 @@ async function verifyToken(token) {
   }
 }
 
-module.exports = {
-  supabaseAdmin,
-  supabasePublic,
-  verifyToken
-};
+module.exports = { supabaseAdmin, supabasePublic, verifyToken };

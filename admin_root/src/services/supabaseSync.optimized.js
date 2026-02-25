@@ -11,20 +11,7 @@
  * 5. Batch contact credit updates efficiently
  */
 
-const { createClient } = require('@supabase/supabase-js');
-
-// Initialize Supabase
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-    db: { schema: process.env.SUPABASE_SCHEMA_NAME || 'hubspot_sync' }
-  }
-);
+const { supabaseAdmin } = require('./supabase');
 
 // HubSpot API configuration
 const HUBSPOT_TOKEN = process.env.HS_PRIVATE_APP_TOKEN || '';

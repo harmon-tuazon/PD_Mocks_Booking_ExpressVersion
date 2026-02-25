@@ -6,9 +6,9 @@
  */
 
 const Joi = require('joi');
+const { supabaseAdmin } = require('../../services/supabase');
 const RedisLockService = require('../../services/redis');
 const axios = require('axios');
-const { createClient } = require('@supabase/supabase-js');
 
 // Validation schema
 const requestOtpSchema = Joi.object({
@@ -47,10 +47,7 @@ async function requestOtp(req, res) {
     }
 
     // Check if user exists in Supabase
-    const supabaseAdmin = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+
 
     const { data: users } = await supabaseAdmin.auth.admin.listUsers();
     const userExists = users?.users?.some(u => u.email === email);

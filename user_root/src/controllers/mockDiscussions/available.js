@@ -113,11 +113,7 @@ const available = async (req, res, next) => {
         const discussionIds = searchResult.results.map(discussion => discussion.id);
         console.log(`📋 Fetching prerequisites for ${discussionIds.length} discussions (Supabase-first)...`);
 
-        const { createClient } = require('@supabase/supabase-js');
-        const supabaseAdmin = createClient(
-          process.env.SUPABASE_URL,
-          process.env.SUPABASE_SERVICE_ROLE_KEY
-        );
+        const { supabaseAdmin } = require('../../services/supabase');
 
         const { data: supabaseExams, error: supabaseError } = await supabaseAdmin
           .from('hubspot_mock_exams')

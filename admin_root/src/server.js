@@ -44,7 +44,7 @@ app.use('/api', routes);
 app.use(express.static(path.join(__dirname, '../admin_frontend/dist')));
 
 // SPA fallback - all non-API routes serve index.html for client-side routing
-app.get('*', (req, res) => {
+app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(__dirname, '../admin_frontend/dist/index.html'));
 });
 
