@@ -51,18 +51,19 @@ jobs:
           sudo -u appuser pm2 save --force
 
           # Remove ALL env/secret files
-          rm -f $APP_DIR/admin_root/.env
-          rm -f $APP_DIR/admin_root/.env.production
-          rm -f $APP_DIR/admin_root/.env.local
-          rm -f $APP_DIR/admin_root/admin_frontend/.env
-          rm -f $APP_DIR/admin_root/admin_frontend/.env.production
-          rm -f $APP_DIR/admin_root/admin_frontend/.env.local
-          rm -f $APP_DIR/user_root/.env
-          rm -f $APP_DIR/user_root/.env.production
-          rm -f $APP_DIR/user_root/.env.local
-          rm -f $APP_DIR/user_root/frontend/.env
-          rm -f $APP_DIR/user_root/frontend/.env.production
-          rm -f $APP_DIR/user_root/frontend/.env.local
+          # Use sudo since files are owned by appuser but SSH session is ec2-user
+          sudo rm -f $APP_DIR/admin_root/.env
+          sudo rm -f $APP_DIR/admin_root/.env.production
+          sudo rm -f $APP_DIR/admin_root/.env.local
+          sudo rm -f $APP_DIR/admin_root/admin_frontend/.env
+          sudo rm -f $APP_DIR/admin_root/admin_frontend/.env.production
+          sudo rm -f $APP_DIR/admin_root/admin_frontend/.env.local
+          sudo rm -f $APP_DIR/user_root/.env
+          sudo rm -f $APP_DIR/user_root/.env.production
+          sudo rm -f $APP_DIR/user_root/.env.local
+          sudo rm -f $APP_DIR/user_root/frontend/.env
+          sudo rm -f $APP_DIR/user_root/frontend/.env.production
+          sudo rm -f $APP_DIR/user_root/frontend/.env.local
 
           # Clean caches
           sudo rm -rf /tmp/npm-*
