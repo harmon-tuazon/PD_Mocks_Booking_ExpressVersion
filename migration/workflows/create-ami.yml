@@ -1,0 +1,142 @@
+name: Create AMI (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      description:
+        description: 'Reason for AMI creation (e.g., OS updates, config change)'
+        required: true
+        type: string
+      deploy_to_production:
+        description: 'Deploy new AMI to production ASG?'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  AWS_REGION: ca-central-1
+
+jobs:
+  create-ami:
+    runs-on: ubuntu-latest
+
+    outputs:
+      ami_id: ${{ steps.create-ami.outputs.ami_id }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/dev-key.pem
+          chmod 600 ~/.ssh/dev-key.pem
+
+      - name: Prepare instance for AMI
+        run: |
+          ssh -i ~/.ssh/dev-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.DEV_INSTANCE_HOST }} << 'PREPARE_SCRIPT'
+          set -e
+          echo "=== Preparing for Manual AMI Creation ==="
+
+          # Stop PM2 processes
+          sudo -u appuser pm2 stop all
+          sudo -u appuser pm2 delete all
+          sudo -u appuser pm2 save --force
+
+          # Remove production secrets
+          rm -f /home/appuser/app/backend/.env.production
+          rm -f /home/appuser/app/frontend/.env.production
+
+          # Clean caches
+          sudo rm -rf /tmp/npm-*
+          sudo -u appuser npm cache clean --force 2>/dev/null || true
+
+          echo "=== Instance ready ==="
+          PREPARE_SCRIPT
+
+      - name: Create AMI
+        id: create-ami
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          AMI_NAME="prepdoc-manual-${TIMESTAMP}"
+
+          AMI_ID=$(aws ec2 create-image \
+            --instance-id ${{ secrets.DEV_INSTANCE_ID }} \
+            --name "$AMI_NAME" \
+            --description "Manual AMI - ${{ github.event.inputs.description }}" \
+            --no-reboot \
+            --tag-specifications \
+              "ResourceType=image,Tags=[
+                {Key=Name,Value=$AMI_NAME},
+                {Key=Project,Value=PrepDoctors},
+                {Key=Environment,Value=production},
+                {Key=CreatedBy,Value=Manual},
+                {Key=Version,Value=$TIMESTAMP},
+                {Key=Description,Value=${{ github.event.inputs.description }}},
+                {Key=Status,Value=active}
+              ]" \
+            --query ImageId --output text)
+
+          echo "AMI ID: $AMI_ID"
+          echo "ami_id=$AMI_ID" >> $GITHUB_OUTPUT
+
+      - name: Wait for AMI
+        run: |
+          aws ec2 wait image-available --image-ids ${{ steps.create-ami.outputs.ami_id }}
+          echo "AMI is available"
+
+      - name: Restart dev processes
+        run: |
+          ssh -i ~/.ssh/dev-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.DEV_INSTANCE_HOST }} << 'RESTART_SCRIPT'
+          cd /home/appuser/app/backend
+          sudo -u appuser pm2 start ecosystem.config.js --only prepdoc-development
+          cd /home/appuser/app/frontend
+          sudo -u appuser pm2 start ecosystem.config.js --only prepdoc-frontend-development
+          sudo -u appuser pm2 save
+          RESTART_SCRIPT
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/dev-key.pem
+
+  deploy-to-production:
+    needs: [create-ami]
+    if: ${{ github.event.inputs.deploy_to_production == 'true' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update Launch Template
+        run: |
+          NEW_AMI="${{ needs.create-ami.outputs.ami_id }}"
+          TEMPLATE_ID="${{ secrets.LAUNCH_TEMPLATE_ID }}"
+
+          aws ec2 create-launch-template-version \
+            --launch-template-id $TEMPLATE_ID \
+            --source-version '$Latest' \
+            --launch-template-data "{\"ImageId\":\"$NEW_AMI\"}" \
+            --query 'LaunchTemplateVersion.VersionNumber' \
+            --output text
+
+          aws ec2 modify-launch-template \
+            --launch-template-id $TEMPLATE_ID \
+            --default-version '$Latest'
+
+      - name: Start ASG Instance Refresh
+        run: |
+          aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name ${{ secrets.ASG_NAME }} \
+            --preferences '{"MinHealthyPercentage":100,"InstanceWarmup":300}'
+
+          echo "Instance refresh started. Monitor in AWS Console."

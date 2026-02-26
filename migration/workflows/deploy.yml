@@ -1,0 +1,210 @@
+name: Deploy to Production (Legacy - SSH to single EC2)
+
+# DISABLED: This workflow was the legacy SSH-based deploy to a single EC2 instance.
+# It has been replaced by deploy-and-ami.yml (AMI-based pipeline with ASG).
+# Kept as manual-only in case it's needed for the migration period.
+# Safe to delete once the AMI-based pipeline is fully operational.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+# Prevent concurrent deployments
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Run tests before deployment
+  pre-deploy-checks:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: prepdoc_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Run backend tests
+        run: npm run test:ci
+        working-directory: backend
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: prepdoc_test
+          DB_USER: test
+          DB_PASSWORD: test
+          JWT_SECRET: test-jwt-secret-for-ci
+          JWT_REFRESH_SECRET: test-jwt-refresh-secret-for-ci
+          NODE_ENV: test
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: https://prepdoctorsrhapplication.tech-lucid.com/api
+
+  # Deploy to EC2 with PM2
+  deploy:
+    needs: pre-deploy-checks
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to EC2 with PM2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+
+            echo "=========================================="
+            echo "Starting PM2 Deployment - $(date)"
+            echo "=========================================="
+
+            cd /home/appuser/app
+
+            # Pull latest changes
+            echo "Pulling latest code changes..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Backend deployment
+            echo "=========================================="
+            echo "Deploying Backend with PM2"
+            echo "=========================================="
+
+            cd backend
+
+            # Install dependencies
+            echo "Installing backend dependencies..."
+            npm ci --omit=dev
+
+            # Restart PM2 production process
+            echo "Restarting backend PM2 process..."
+            npm run pm2:restart:prod || npm run pm2:prod
+
+            cd ..
+
+            # Frontend deployment
+            echo "=========================================="
+            echo "Deploying Frontend with PM2"
+            echo "=========================================="
+
+            cd frontend
+
+            # Install dependencies (including devDependencies for TypeScript/build)
+            echo "Installing frontend dependencies..."
+            npm ci
+
+            # Build frontend
+            echo "Building frontend..."
+            npm run build
+
+            # Restart PM2 production process
+            echo "Restarting frontend PM2 process..."
+            npm run pm2:restart:prod || npm run pm2:prod
+
+            cd ..
+
+            # Health checks
+            echo "=========================================="
+            echo "Running Health Checks"
+            echo "=========================================="
+
+            # Wait for services to stabilize
+            echo "Waiting for services to initialize..."
+            sleep 10
+
+            # Check PM2 status
+            echo "PM2 Process Status:"
+            pm2 status
+
+            # Backend health check
+            echo "Checking Backend Health..."
+            for i in {1..12}; do
+              if curl -s http://localhost:5000/health > /dev/null; then
+                 echo "✓ Backend health check passed"
+                 BACKEND_OK=true
+                 break
+              fi
+              echo "Waiting for backend... ($i/12)"
+              sleep 5
+            done
+
+            if [ "$BACKEND_OK" != "true" ]; then
+               echo "✗ Backend health check failed"
+               pm2 logs prepdoc-production --lines 50 --nostream
+               exit 1
+            fi
+
+            # Frontend health check
+            echo "Checking Frontend Health..."
+            if curl -s -I http://localhost:3000 | grep -q "200\|301\|302"; then
+              echo "✓ Frontend is responding"
+            else
+              echo "✗ Frontend check failed"
+              pm2 logs prepdoc-frontend-production --lines 50 --nostream
+              exit 1
+            fi
+
+            # Show final PM2 status
+            echo "=========================================="
+            echo "PM2 Process Status:"
+            pm2 status
+
+            echo "=========================================="
+            echo "Deployment Complete - $(date)"
+            echo "=========================================="
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✓ PM2 deployment to ${{ github.event.inputs.environment || 'production' }} completed successfully!"
+          echo "Commit: ${{ github.sha }}"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "✗ PM2 deployment to ${{ github.event.inputs.environment || 'production' }} failed!"
+          echo "Commit: ${{ github.sha }}"
+          echo "Please check the logs for details."
