@@ -3,7 +3,7 @@
  * Tests the adminBookingCreation Joi schema
  */
 
-const { schemas } = require('../../api/_shared/validation');
+const { schemas } = require('../../src/services/validation');
 
 describe('Admin Booking Creation Validation Schema', () => {
   describe('Required Fields', () => {
