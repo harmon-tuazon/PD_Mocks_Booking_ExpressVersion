@@ -77,18 +77,19 @@ jobs:
           # Stop PM2 to free memory for builds
           sudo -u appuser pm2 stop all 2>/dev/null || true
 
-          # --- Admin App ---
-          echo "=== Building Admin App ==="
-          cd $APP_DIR/admin_root
+          # --- Backend Dependencies (workspace-aware install from root) ---
+          echo "=== Installing Backend Dependencies ==="
+          cd $APP_DIR
           sudo -u appuser npm ci --omit=dev
+
+          # --- Admin Frontend ---
+          echo "=== Building Admin Frontend ==="
           cd $APP_DIR/admin_root/admin_frontend
           sudo -u appuser npm ci
           sudo -u appuser bash -c "export NODE_OPTIONS=--max-old-space-size=1024 && npm run build"
 
-          # --- User App ---
-          echo "=== Building User App ==="
-          cd $APP_DIR/user_root
-          sudo -u appuser npm ci --omit=dev
+          # --- User Frontend ---
+          echo "=== Building User Frontend ==="
           cd $APP_DIR/user_root/frontend
           sudo -u appuser npm ci
           sudo -u appuser bash -c "export NODE_OPTIONS=--max-old-space-size=1024 && npm run build"

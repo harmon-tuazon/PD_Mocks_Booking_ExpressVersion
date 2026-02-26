@@ -36,16 +36,16 @@ jobs:
             # Stop PM2
             sudo -u appuser pm2 stop all 2>/dev/null || true
 
-            # Admin app
-            cd $APP_DIR/admin_root
+            # Backend deps (workspace-aware install from root)
+            cd $APP_DIR
             sudo -u appuser npm ci --omit=dev
+
+            # Admin frontend
             cd $APP_DIR/admin_root/admin_frontend
             sudo -u appuser npm ci
             sudo -u appuser npm run build
 
-            # User app
-            cd $APP_DIR/user_root
-            sudo -u appuser npm ci --omit=dev
+            # User frontend
             cd $APP_DIR/user_root/frontend
             sudo -u appuser npm ci
             sudo -u appuser npm run build
