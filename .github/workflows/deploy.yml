@@ -1,0 +1,83 @@
+name: Deploy to Dev (SSH Direct)
+
+# Manual-only — simple SSH deploy for quick dev deployments
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dev-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEV_INSTANCE_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            echo "=== SSH Direct Deploy - $(date) ==="
+
+            APP_DIR="/home/appuser/PD_Mocks_Booking_ExpressVersion"
+            cd $APP_DIR
+
+            # Pull latest
+            sudo -u appuser git fetch origin main
+            sudo -u appuser git reset --hard origin/main
+
+            # Stop PM2
+            sudo -u appuser pm2 stop all 2>/dev/null || true
+
+            # Admin app
+            cd $APP_DIR/admin_root
+            sudo -u appuser npm ci --omit=dev
+            cd $APP_DIR/admin_root/admin_frontend
+            sudo -u appuser npm ci
+            sudo -u appuser npm run build
+
+            # User app
+            cd $APP_DIR/user_root
+            sudo -u appuser npm ci --omit=dev
+            cd $APP_DIR/user_root/frontend
+            sudo -u appuser npm ci
+            sudo -u appuser npm run build
+
+            # Restart
+            cd $APP_DIR/admin_root
+            sudo -u appuser pm2 start ecosystem.config.js --only admin-app
+            cd $APP_DIR/user_root
+            sudo -u appuser pm2 start ecosystem.config.js --only user-app
+            sudo -u appuser pm2 save
+
+            sleep 10
+
+            # Health checks
+            echo "Checking admin app..."
+            for i in {1..12}; do
+              if curl -sf http://localhost:3002/api/health > /dev/null; then
+                echo "Admin health check passed"
+                break
+              fi
+              [ "$i" -eq 12 ] && echo "Admin health check FAILED" && sudo -u appuser pm2 logs admin-app --lines 30 --nostream && exit 1
+              sleep 5
+            done
+
+            echo "Checking user app..."
+            for i in {1..12}; do
+              if curl -sf http://localhost:3000/api/health > /dev/null; then
+                echo "User health check passed"
+                break
+              fi
+              [ "$i" -eq 12 ] && echo "User health check FAILED" && sudo -u appuser pm2 logs user-app --lines 30 --nostream && exit 1
+              sleep 5
+            done
+
+            echo "=== Deploy Complete - $(date) ==="

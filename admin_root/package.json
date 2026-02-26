@@ -9,6 +9,7 @@
     "build": "cd admin_frontend && npm install && npm run build",
     "setup": "bash scripts/setup-pm2.sh",
     "test": "jest",
+    "test:ci": "jest --ci --coverage --reporters=default",
     "test:coverage": "jest --coverage"
   },
   "dependencies": {

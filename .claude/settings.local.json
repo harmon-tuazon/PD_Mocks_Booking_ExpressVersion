@@ -53,7 +53,9 @@
       "Bash(aws:*)",
       "Bash(git fetch origin)",
       "mcp__ssh-mcp__exec",
-      "Bash(scp:*)"
+      "Bash(scp:*)",
+      "Bash(gh auth status)",
+      "Bash(where gh)"
     ],
     "deny": [],
     "ask": []

@@ -1,104 +1,178 @@
 #!/bin/bash
 # =============================================================================
-# EC2 User Data — paste this into your Launch Template
+# EC2 User Data — Admin App (admin_root)
 #
-# Runs automatically on EVERY new instance boot (first boot + auto-scaling).
-# Installs Node.js, clones the repo, builds the app, and starts PM2.
+# Paste this into your Launch Template (or append to existing user data).
+# Assumes the app is pre-baked into the AMI at /home/appuser/PD_Mocks_Booking_ExpressVersion/admin_root/
 #
+# Fetches secrets from AWS Secrets Manager, writes .env, starts PM2.
 # All output is logged to /var/log/user-data.log for debugging.
 # =============================================================================
 
-exec > /var/log/user-data.log 2>&1
-set -e
+exec > >(tee /var/log/user-data-admin.log|logger -t user-data-admin -s 2>/dev/console) 2>&1
 
-echo "=== EC2 User Data Start: $(date) ==="
+EXIT_CODE=0
+trap 'EXIT_CODE=1' ERR
+trap '/opt/aws/bin/cfn-signal -e $EXIT_CODE --stack prepdoc-asg-production --resource AutoScalingGroup --region ca-central-1 || true' EXIT
 
-# -----------------------------------------------------------------------------
-# CONFIGURATION — update these for your environment
-# -----------------------------------------------------------------------------
-APP_USER="ec2-user"
-APP_DIR="/home/${APP_USER}/admin_root"
-REPO_URL="https://github.com/your-org/your-repo.git"  # TODO: update this
-REPO_BRANCH="main"
-NODE_VERSION="18"
+dnf install -y aws-cfn-bootstrap || pip3 install aws-cfn-bootstrap || true
+
+echo "=== PrepDoctors Admin App Boot - $(date) ==="
 
 # -----------------------------------------------------------------------------
-# 1. Install Node.js (skip if already installed via AMI)
+# 1. Fetch secrets from AWS Secrets Manager
 # -----------------------------------------------------------------------------
-if ! command -v node &> /dev/null; then
-  echo "Installing Node.js ${NODE_VERSION}..."
-  curl -fsSL https://rpm.nodesource.com/setup_${NODE_VERSION}.x | bash -
-  yum install -y nodejs
-fi
-echo "Node: $(node -v), npm: $(npm -v)"
+
+# Database credentials
+DB_SECRET=$(aws secretsmanager get-secret-value \
+  --secret-id PrepDoctorsRHApp/DatabaseCanada/Postgres \
+  --query SecretString --output text \
+  --region ca-central-1 2>/dev/null || echo '{}')
+
+DB_USER=$(echo $DB_SECRET | jq -r '.username // "postgres"')
+DB_PASS=$(echo $DB_SECRET | jq -r '.password // ""')
+
+# JWT secrets
+JWT_SECRET_JSON=$(aws secretsmanager get-secret-value \
+  --secret-id PrepDoctorsRHApp/JWTSecrets \
+  --query SecretString --output text \
+  --region ca-central-1 2>/dev/null || echo '{}')
+
+JWT_SECRET_VAL=$(echo $JWT_SECRET_JSON | jq -r '.JWT_SECRET // ""')
+JWT_REFRESH_VAL=$(echo $JWT_SECRET_JSON | jq -r '.JWT_REFRESH_SECRET // ""')
+
+# Admin-specific secrets (HubSpot, Supabase, CRON, etc.)
+# TODO: Create this secret in Secrets Manager with keys:
+#   HS_PRIVATE_APP_TOKEN, HUBSPOT_PORTAL_ID, SUPABASE_URL, SUPABASE_ANON_KEY,
+#   SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, PD_Bookings_Cache_REDIS_URL,
+#   SHAKY_MOCKS_KEY, SUPABASE_EDGE_FUNCTION_URL
+ADMIN_SECRET=$(aws secretsmanager get-secret-value \
+  --secret-id PrepDoctorsRHApp/AdminApp/Secrets \
+  --query SecretString --output text \
+  --region ca-central-1 2>/dev/null || echo '{}')
+
+HS_TOKEN=$(echo $ADMIN_SECRET | jq -r '.HS_PRIVATE_APP_TOKEN // ""')
+HS_PORTAL=$(echo $ADMIN_SECRET | jq -r '.HUBSPOT_PORTAL_ID // ""')
+SUPABASE_URL=$(echo $ADMIN_SECRET | jq -r '.SUPABASE_URL // ""')
+SUPABASE_ANON=$(echo $ADMIN_SECRET | jq -r '.SUPABASE_ANON_KEY // ""')
+SUPABASE_SERVICE=$(echo $ADMIN_SECRET | jq -r '.SUPABASE_SERVICE_ROLE_KEY // ""')
+CRON_SECRET_VAL=$(echo $ADMIN_SECRET | jq -r '.CRON_SECRET // ""')
+REDIS_URL=$(echo $ADMIN_SECRET | jq -r '.PD_Bookings_Cache_REDIS_URL // ""')
+SHAKY_KEY=$(echo $ADMIN_SECRET | jq -r '.SHAKY_MOCKS_KEY // ""')
+EDGE_FUNC_URL=$(echo $ADMIN_SECRET | jq -r '.SUPABASE_EDGE_FUNCTION_URL // ""')
 
 # -----------------------------------------------------------------------------
-# 2. Install Git (Amazon Linux 2023 may already have it)
+# 2. Write backend .env
 # -----------------------------------------------------------------------------
-if ! command -v git &> /dev/null; then
-  echo "Installing Git..."
-  yum install -y git
-fi
+APP_DIR="/home/appuser/PD_Mocks_Booking_ExpressVersion/admin_root"
+
+cat > ${APP_DIR}/.env.production << ENVEOF
+NODE_ENV=production
+PORT=3002
+
+# Database (AWS RDS)
+DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@prepdoc-db-production.cpaeeycwemvb.ca-central-1.rds.amazonaws.com:5432/prepdocrhaws?sslmode=require
+DATABASE_SCHEMA=hubspot_sync
+
+# HubSpot
+HS_PRIVATE_APP_TOKEN=${HS_TOKEN}
+HUBSPOT_PORTAL_ID=${HS_PORTAL}
+
+# Supabase
+SUPABASE_URL=${SUPABASE_URL}
+SUPABASE_ANON_KEY=${SUPABASE_ANON}
+SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE}
+
+# Redis
+PD_Bookings_Cache_REDIS_URL=${REDIS_URL}
+CACHE_ENABLED=true
+
+# Auth & Security
+JWT_SECRET=${JWT_SECRET_VAL}
+JWT_REFRESH_SECRET=${JWT_REFRESH_VAL}
+JWT_EXPIRES_IN=24h
+JWT_REFRESH_EXPIRES_IN=7d
+CRON_SECRET=${CRON_SECRET_VAL}
+
+# Supabase Webhooks
+SHAKY_MOCKS_KEY=${SHAKY_KEY}
+SUPABASE_EDGE_FUNCTION_URL=${EDGE_FUNC_URL}
+
+# AWS
+AWS_REGION=ca-central-1
+
+# HubSpot Object Type IDs
+CONTACTS_OBJECT_ID=0-1
+DEALS_OBJECT_ID=0-3
+COURSES_OBJECT_ID=0-410
+TRANSACTIONS_OBJECT_ID=2-47045790
+PAYMENT_SCHEDULES_OBJECT_ID=2-47381547
+CREDIT_NOTES_OBJECT_ID=2-41609496
+CAMPUS_VENUES_OBJECT_ID=2-41607847
+ENROLLMENTS_OBJECT_ID=2-41701559
+LAB_STATIONS_OBJECT_ID=2-41603799
+BOOKINGS_OBJECT_ID=2-50158943
+MOCK_EXAMS_OBJECT_ID=2-50158913
+ENVEOF
 
 # -----------------------------------------------------------------------------
-# 3. Install PM2 globally
+# 3. Write admin frontend .env
 # -----------------------------------------------------------------------------
-if ! command -v pm2 &> /dev/null; then
-  echo "Installing PM2..."
-  npm install -g pm2
-fi
-echo "PM2: $(pm2 -v)"
+cat > ${APP_DIR}/admin_frontend/.env.production << ENVEOF
+VITE_SUPABASE_URL=${SUPABASE_URL}
+VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON}
+NODE_ENV=production
+ENVEOF
+
+chown appuser:appuser ${APP_DIR}/.env.production
+chown appuser:appuser ${APP_DIR}/admin_frontend/.env.production
+chmod 600 ${APP_DIR}/.env.production
+chmod 600 ${APP_DIR}/admin_frontend/.env.production
 
 # -----------------------------------------------------------------------------
-# 4. Clone or pull the repo
+# 4. Install dependencies and build frontend
 # -----------------------------------------------------------------------------
-if [ -d "$APP_DIR/.git" ]; then
-  echo "Repo exists, pulling latest..."
-  cd "$APP_DIR"
-  sudo -u "$APP_USER" git fetch origin
-  sudo -u "$APP_USER" git checkout "$REPO_BRANCH"
-  sudo -u "$APP_USER" git pull origin "$REPO_BRANCH"
-else
-  echo "Cloning repo..."
-  sudo -u "$APP_USER" git clone -b "$REPO_BRANCH" "$REPO_URL" "$APP_DIR"
-fi
+cd ${APP_DIR}
+sudo -u appuser npm ci --only=production
+mkdir -p ${APP_DIR}/logs
 
-cd "$APP_DIR"
+cd ${APP_DIR}/admin_frontend
+sudo -u appuser npm ci
+sudo -u appuser npm run build
 
 # -----------------------------------------------------------------------------
-# 5. Pull .env from S3 (if using S3 for secrets)
+# 5. Start PM2 process
 # -----------------------------------------------------------------------------
-# Uncomment and update the bucket path:
-# aws s3 cp s3://your-bucket/admin-app/.env "$APP_DIR/.env"
-# chown "$APP_USER:$APP_USER" "$APP_DIR/.env"
-# chmod 600 "$APP_DIR/.env"
+sudo -u appuser pm2 delete admin-app 2>/dev/null || true
+
+cd ${APP_DIR}
+sudo -u appuser pm2 start ecosystem.config.js --only admin-app
+
+sudo -u appuser pm2 save
+
+# PM2 boot persistence
+env PATH=$PATH:/usr/bin pm2 startup systemd -u appuser --hp /home/appuser
+systemctl enable pm2-appuser
 
 # -----------------------------------------------------------------------------
-# 6. Run the PM2 setup script (installs deps, builds, starts app)
+# 6. Health check
 # -----------------------------------------------------------------------------
-echo "Running PM2 setup..."
-chmod +x "$APP_DIR/scripts/setup-pm2.sh"
-sudo -u "$APP_USER" bash "$APP_DIR/scripts/setup-pm2.sh"
-
-# -----------------------------------------------------------------------------
-# 7. Verify health
-# -----------------------------------------------------------------------------
-echo "Waiting for app to start..."
+echo "Waiting for admin app to start..."
 sleep 5
 
 RETRIES=10
 for i in $(seq 1 $RETRIES); do
-  if curl -sf http://localhost:3001/api/health > /dev/null; then
-    echo "Health check passed on attempt $i"
+  if curl -sf http://localhost:3002/api/health > /dev/null; then
+    echo "Admin health check passed on attempt $i"
     break
   fi
   if [ "$i" -eq "$RETRIES" ]; then
-    echo "ERROR: Health check failed after $RETRIES attempts"
-    pm2 logs admin-app --lines 50 --nostream
-    exit 1
+    echo "ERROR: Admin health check failed after $RETRIES attempts"
+    sudo -u appuser pm2 logs admin-app --lines 50 --nostream
+    EXIT_CODE=1
   fi
-  echo "Health check attempt $i failed, retrying in 3s..."
+  echo "Admin health check attempt $i failed, retrying in 3s..."
   sleep 3
 done
 
-echo "=== EC2 User Data Complete: $(date) ==="
+echo "=== PrepDoctors Admin App Boot Complete - $(date) ==="

@@ -1,0 +1,211 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_call:
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ===========================================
+  # Admin Backend Tests
+  # ===========================================
+  admin-backend-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: admin_root/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: admin_root
+
+      - name: Run tests
+        run: npm run test:ci
+        working-directory: admin_root
+        env:
+          NODE_ENV: test
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-backend-coverage
+          path: admin_root/coverage/
+          retention-days: 7
+
+  # ===========================================
+  # User Backend Tests (run from root workspace)
+  # ===========================================
+  user-backend-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Run root-level tests (user backend)
+        run: npm run test:ci:root
+        env:
+          NODE_ENV: test
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: user-backend-coverage
+          path: coverage/
+          retention-days: 7
+
+  # ===========================================
+  # Admin Frontend Build & Lint
+  # ===========================================
+  admin-frontend-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: admin_root/admin_frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: admin_root/admin_frontend
+
+      - name: Run linter
+        run: npm run lint
+        working-directory: admin_root/admin_frontend
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build
+        working-directory: admin_root/admin_frontend
+        env:
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_ANON_KEY: placeholder-key-for-ci-build
+
+  # ===========================================
+  # User Frontend Build & Test
+  # ===========================================
+  user-frontend-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: user_root/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: user_root/frontend
+
+      - name: Run tests
+        run: npm run test:ci
+        working-directory: user_root/frontend
+        env:
+          NODE_ENV: test
+
+      - name: Build
+        run: npm run build
+        working-directory: user_root/frontend
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: user-frontend-coverage
+          path: user_root/frontend/coverage/
+          retention-days: 7
+
+  # ===========================================
+  # Security Scan
+  # ===========================================
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Audit admin backend
+        run: npm audit --audit-level=high
+        working-directory: admin_root
+        continue-on-error: true
+
+      - name: Audit user backend
+        run: npm audit --audit-level=high
+        working-directory: user_root
+        continue-on-error: true
+
+      - name: Audit admin frontend
+        run: npm audit --audit-level=high
+        working-directory: admin_root/admin_frontend
+        continue-on-error: true
+
+      - name: Audit user frontend
+        run: npm audit --audit-level=high
+        working-directory: user_root/frontend
+        continue-on-error: true
+
+  # ===========================================
+  # Gate Job: All checks passed
+  # ===========================================
+  ci-success:
+    needs: [admin-backend-tests, user-backend-tests, admin-frontend-build, user-frontend-build, security-scan]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.admin-backend-tests.result }}" != "success" ]]; then
+            echo "Admin backend tests failed"
+            exit 1
+          fi
+          if [[ "${{ needs.user-backend-tests.result }}" != "success" ]]; then
+            echo "User backend tests failed"
+            exit 1
+          fi
+          if [[ "${{ needs.admin-frontend-build.result }}" != "success" ]]; then
+            echo "Admin frontend build failed"
+            exit 1
+          fi
+          if [[ "${{ needs.user-frontend-build.result }}" != "success" ]]; then
+            echo "User frontend build failed"
+            exit 1
+          fi
+          echo "All CI checks passed!"

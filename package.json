@@ -21,6 +21,7 @@
     "test:user": "cd user_root && npm test",
     "test:admin": "cd admin_root && npm test",
     "test:all": "npm run test:user && npm run test:admin",
+    "test:ci:root": "jest --ci --coverage --reporters=default",
     "install:all": "npm install && cd user_root && npm install && cd ../admin_root && npm install",
     "clean": "rm -rf user_root/node_modules admin_root/node_modules user_root/frontend/dist admin_root/admin_frontend/dist",
     "verify:structure": "ls -la user_root/ && ls -la admin_root/",
