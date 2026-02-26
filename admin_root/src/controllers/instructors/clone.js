@@ -6,7 +6,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const clone = async (req, res, next) => {
   try {
@@ -38,7 +38,7 @@ const clone = async (req, res, next) => {
     } = req.validatedData;
 
     // Find source instructor
-    const { data: sourceInstructor, error: fetchError } = await supabaseAdmin
+    const { data: sourceInstructor, error: fetchError } = await db
       .from('instructors')
       .select('*')
       .eq('id', id)
@@ -59,7 +59,7 @@ const clone = async (req, res, next) => {
     const newEmail = `${localPart}${emailSuffix}${domainPart}`;
 
     // Check if the new email already exists
-    const { data: existingInstructor } = await supabaseAdmin
+    const { data: existingInstructor } = await db
       .from('instructors')
       .select('id')
       .eq('email', newEmail.toLowerCase())
@@ -79,7 +79,7 @@ const clone = async (req, res, next) => {
     const newName = instructorName?.trim() || `${sourceInstructor.instructor_name} (Copy)`;
 
     // Create new instructor
-    const { data: newInstructor, error: createError } = await supabaseAdmin
+    const { data: newInstructor, error: createError } = await db
       .from('instructors')
       .insert({
         instructor_name: newName,

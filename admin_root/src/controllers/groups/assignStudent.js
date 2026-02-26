@@ -7,7 +7,7 @@
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
 const { getCache } = require('../../services/cache');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const assignStudent = async (req, res, next) => {
   try {
@@ -24,7 +24,7 @@ const assignStudent = async (req, res, next) => {
     const { groupId, contactId } = req.validatedData;
 
     // Verify group exists
-    const { data: group } = await supabaseAdmin
+    const { data: group } = await db
       .from('groups')
       .select('id, group_id, group_name, max_capacity, status')
       .eq('group_id', groupId)
@@ -38,7 +38,7 @@ const assignStudent = async (req, res, next) => {
     }
 
     // Verify student exists in hubspot_contact_credits (by HubSpot ID)
-    const { data: contact } = await supabaseAdmin
+    const { data: contact } = await db
       .from('hubspot_contact_credits')
       .select('id, hubspot_id, student_id, email, firstname, lastname')
       .eq('hubspot_id', contactId)
@@ -54,7 +54,7 @@ const assignStudent = async (req, res, next) => {
     const studentId = contact.student_id;
 
     // Check if already assigned
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await db
       .from('groups_students')
       .select('id, status')
       .eq('group_id', group.group_id)
@@ -70,7 +70,7 @@ const assignStudent = async (req, res, next) => {
       }
 
       // Reactivate if previously removed
-      const { data: reactivated, error: reactivateError } = await supabaseAdmin
+      const { data: reactivated, error: reactivateError } = await db
         .from('groups_students')
         .update({ status: 'active', updated_at: new Date().toISOString() })
         .eq('id', existing.id)
@@ -106,7 +106,7 @@ const assignStudent = async (req, res, next) => {
     }
 
     // Check group capacity
-    const { count: currentCount } = await supabaseAdmin
+    const { count: currentCount } = await db
       .from('groups_students')
       .select('*', { count: 'exact', head: true })
       .eq('group_id', group.group_id)
@@ -120,7 +120,7 @@ const assignStudent = async (req, res, next) => {
     }
 
     // Create assignment
-    const { data: assignment, error: assignError } = await supabaseAdmin
+    const { data: assignment, error: assignError } = await db
       .from('groups_students')
       .insert({
         group_id: group.group_id,

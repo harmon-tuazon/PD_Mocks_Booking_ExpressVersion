@@ -5,7 +5,8 @@
  */
 
 const { schemas } = require('../../services/validation');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
+const { query: dbQuery, nestRow } = require('../../services/database');
 const RedisLockService = require('../../services/redis');
 
 // Initialize Redis service
@@ -32,7 +33,7 @@ const groups = async (req, res, next) => {
     console.log(`[WORK-CHECK] Fetching groups for session: ${student_id}`);
 
     // 1. Find contact in Supabase (validate session credentials)
-    const { data: contact, error: contactError } = await supabaseAdmin
+    const { data: contact, error: contactError } = await db
       .from('hubspot_contact_credits')
       .select('id, hubspot_id, student_id, email, firstname, lastname')
       .eq('student_id', student_id)
@@ -50,23 +51,24 @@ const groups = async (req, res, next) => {
       });
     }
 
-    // 2. Get trainee's active groups (using groups_students table)
-    const { data: groupMemberships, error: groupError } = await supabaseAdmin
-      .from('groups_students')
-      .select(`
-        group_id,
-        status,
-        groups (
-          group_id,
-          group_name,
-          time_period,
-          start_date,
-          end_date,
-          status
-        )
-      `)
-      .eq('student_id', contact.student_id)
-      .eq('status', 'active');
+    // 2. Get trainee's active groups (raw SQL with LEFT JOIN)
+    let groupMemberships, groupError;
+    try {
+      const { rows } = await dbQuery(`
+        SELECT gs.group_id, gs.status,
+               g.group_id AS g__group_id, g.group_name AS g__group_name,
+               g.time_period AS g__time_period, g.start_date AS g__start_date,
+               g.end_date AS g__end_date, g.status AS g__status
+        FROM groups_students gs
+        LEFT JOIN groups g ON g.group_id = gs.group_id
+        WHERE gs.student_id = $1 AND gs.status = $2
+      `, [contact.student_id, 'active']);
+      groupMemberships = rows.map(r => nestRow(r, { g: 'groups' }));
+      groupError = null;
+    } catch (err) {
+      groupMemberships = null;
+      groupError = { message: err.message };
+    }
 
     if (groupError) {
       console.error('[WORK-CHECK] Error fetching groups:', groupError);
@@ -96,15 +98,19 @@ const groups = async (req, res, next) => {
       });
     }
 
-    // 3. Get existing booking dates for duplicate prevention
-    const { data: existingBookings } = await supabaseAdmin
-      .from('work_check_bookings')
-      .select(`
-        id,
-        work_check_slots!inner (slot_date)
-      `)
-      .eq('student_id', contact.student_id)
-      .in('status', ['pending', 'confirmed']);
+    // 3. Get existing booking dates for duplicate prevention (raw SQL with INNER JOIN)
+    let existingBookings;
+    try {
+      const { rows } = await dbQuery(`
+        SELECT b.id, s.slot_date AS s__slot_date
+        FROM work_check_bookings b
+        INNER JOIN work_check_slots s ON s.id = b.slot_id
+        WHERE b.student_id = $1 AND b.status = ANY($2)
+      `, [contact.student_id, ['pending', 'confirmed']]);
+      existingBookings = rows.map(r => nestRow(r, { s: 'work_check_slots' }));
+    } catch (err) {
+      existingBookings = [];
+    }
 
     const existingBookingDates = (existingBookings || [])
       .map(b => b.work_check_slots?.slot_date)

@@ -435,9 +435,10 @@ async function cancelSingleBooking(hubspot, bookingData, redis, refundTokens = t
     if (redis && contactId && cancellationData.exam_date && cancellationData.mock_type) {
       try {
         // Normalize exam_date to YYYY-MM-DD format for consistent cache keys
-        const normalizedExamDate = cancellationData.exam_date.includes('T')
-          ? cancellationData.exam_date.split('T')[0]
-          : cancellationData.exam_date;
+        const examDateStr = String(cancellationData.exam_date);
+        const normalizedExamDate = examDateStr.includes('T')
+          ? examDateStr.split('T')[0]
+          : examDateStr;
 
         // New cache key format includes mock_type (Option B)
         const redisKey = `booking:${contactId}:${normalizedExamDate}:${cancellationData.mock_type}`;

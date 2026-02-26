@@ -7,7 +7,7 @@
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
 const { getCache } = require('../../services/cache');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const list = async (req, res, next) => {
   try {
@@ -58,7 +58,7 @@ const list = async (req, res, next) => {
     console.log(`[Cache MISS] Fetching groups data...`);
 
     // Build Supabase query
-    let query = supabaseAdmin
+    let query = db
       .from('groups')
       .select('*', { count: 'exact' });
 
@@ -91,7 +91,7 @@ const list = async (req, res, next) => {
 
     let studentCounts = {};
     if (groupIds.length > 0) {
-      const { data: countData, error: countError } = await supabaseAdmin
+      const { data: countData, error: countError } = await db
         .from('groups_students')
         .select('group_id')
         .in('group_id', groupIds)

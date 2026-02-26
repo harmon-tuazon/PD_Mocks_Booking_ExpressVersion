@@ -1,10 +1,10 @@
 /**
- * Supabase Client Configuration (Admin Root)
+ * Database Client Configuration (Admin Root)
  *
  * Architecture after AWS RDS migration:
- * - supabaseAdmin.auth.*  → Real Supabase (JWT verification, user management)
- * - supabaseAdmin.from()  → pg (direct PostgreSQL on AWS RDS)
- * - supabaseAdmin.rpc()   → pg (stored function calls on AWS RDS)
+ * - db.auth.*   → Real Supabase (JWT verification, user management)
+ * - db.from()   → pg (direct PostgreSQL on AWS RDS)
+ * - db.rpc()    → pg (stored function calls on AWS RDS)
  *
  * All data tables (groups, instructors, work_check_*, hubspot_*, etc.)
  * now live in AWS RDS under the hubspot_sync schema.
@@ -29,20 +29,20 @@ const _supabaseAuth = createClient(
 const _pgClient = createPgClient(getPool());
 
 /**
- * Hybrid supabaseAdmin:
+ * Hybrid db client:
  *   .auth              → Real Supabase (auth.getUser, auth.admin.createUser, etc.)
  *   .from(table)       → pg query builder (direct AWS RDS queries)
  *   .rpc(fn, params)   → pg stored function call
  */
-const supabaseAdmin = {
+const db = {
   auth: _supabaseAuth.auth,
   from(table) { return _pgClient.from(table); },
   rpc(fnName, params) { return _pgClient.rpc(fnName, params); }
 };
 
-// Public client — for operations that need anon/public key context
-// Auth uses real Supabase; data queries use pg
-const supabasePublic = {
+// Auth client — for login/refresh operations (uses real Supabase auth)
+// Data queries use pg
+const authClient = {
   auth: _supabaseAuth.auth,
   from(table) { return _pgClient.from(table); },
   rpc(fnName, params) { return _pgClient.rpc(fnName, params); }
@@ -87,4 +87,4 @@ async function verifyToken(token) {
   }
 }
 
-module.exports = { supabaseAdmin, supabasePublic, verifyToken };
+module.exports = { db, authClient, verifyToken };

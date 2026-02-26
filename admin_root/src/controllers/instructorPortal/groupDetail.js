@@ -6,7 +6,7 @@
 
 const { requireRole } = require('../../middleware/requireRole');
 const { getInstructorFromUser } = require('../../services/instructor-helpers');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const groupDetail = async (req, res, next) => {
   const { groupId } = req.params;
@@ -23,7 +23,7 @@ const groupDetail = async (req, res, next) => {
     const instructor = await getInstructorFromUser(user);
 
     // Verify this instructor is assigned to the requested group
-    const { data: assignment, error: assignError } = await supabaseAdmin
+    const { data: assignment, error: assignError } = await db
       .from('groups_instructors')
       .select('group_id, status, assigned_date')
       .eq('instructor_id', instructor.id)
@@ -38,7 +38,7 @@ const groupDetail = async (req, res, next) => {
     }
 
     // Fetch group details
-    const { data: group, error: groupError } = await supabaseAdmin
+    const { data: group, error: groupError } = await db
       .from('groups')
       .select('group_id, group_name, time_period, start_date, end_date, status, max_capacity, location, cycle, phase')
       .eq('group_id', groupId)
@@ -52,7 +52,7 @@ const groupDetail = async (req, res, next) => {
     }
 
     // Fetch students in this group (follows admin pattern from groups/[groupId].js)
-    const { data: groupStudents, error: studentsError } = await supabaseAdmin
+    const { data: groupStudents, error: studentsError } = await db
       .from('groups_students')
       .select('id, student_id, status, enrolled_at')
       .eq('group_id', group.group_id)
@@ -62,7 +62,7 @@ const groupDetail = async (req, res, next) => {
     if (groupStudents && groupStudents.length > 0) {
       // Fetch contact details by student_id
       const studentIds = groupStudents.map(gs => gs.student_id);
-      const { data: contacts } = await supabaseAdmin
+      const { data: contacts } = await db
         .from('hubspot_contact_credits')
         .select('student_id, email, firstname, lastname')
         .in('student_id', studentIds);
@@ -86,7 +86,7 @@ const groupDetail = async (req, res, next) => {
 
     // Fetch upcoming work_check_slots for this group
     const today = new Date().toISOString().split('T')[0];
-    const { data: slots } = await supabaseAdmin
+    const { data: slots } = await db
       .from('work_check_slots')
       .select('slot_date, slot_time, duration_minutes')
       .contains('group_id', [groupId])

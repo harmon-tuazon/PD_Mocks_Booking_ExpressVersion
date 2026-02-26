@@ -5,7 +5,7 @@
  * Security: Requires CRON_SECRET (Bearer token in Authorization header)
  */
 
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const activateScheduledSlots = async (req, res, next) => {
   const startTime = Date.now();
@@ -35,7 +35,7 @@ const activateScheduledSlots = async (req, res, next) => {
     console.log(`[CRON-ACTIVATE-SLOTS] Starting check at ${now}`);
 
     // Find slots that need activation
-    const { data: slotsToActivate, error: fetchError } = await supabaseAdmin
+    const { data: slotsToActivate, error: fetchError } = await db
       .from('work_check_slots')
       .select('id, instructor_id, slot_date, slot_time, available_from')
       .eq('is_active', false)
@@ -66,7 +66,7 @@ const activateScheduledSlots = async (req, res, next) => {
 
     const slotIds = slotsToActivate.map(s => s.id);
 
-    const { data: updatedSlots, error: updateError } = await supabaseAdmin
+    const { data: updatedSlots, error: updateError } = await db
       .from('work_check_slots')
       .update({
         is_active: true,

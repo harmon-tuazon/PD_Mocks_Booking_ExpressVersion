@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const remove = async (req, res, next) => {
   try {
@@ -32,7 +32,7 @@ const remove = async (req, res, next) => {
     console.log(`[Delete Work Check Slot] Attempting to delete slot ${id}`);
 
     // Check if slot exists
-    const { data: existingSlot, error: fetchError } = await supabaseAdmin
+    const { data: existingSlot, error: fetchError } = await db
       .from('work_check_slots')
       .select('id, slot_date, slot_time')
       .eq('id', id)
@@ -46,7 +46,7 @@ const remove = async (req, res, next) => {
     }
 
     // Check for active bookings
-    const { data: bookings, error: bookingsError } = await supabaseAdmin
+    const { data: bookings, error: bookingsError } = await db
       .from('work_check_bookings')
       .select('id')
       .eq('slot_id', id)
@@ -68,7 +68,7 @@ const remove = async (req, res, next) => {
     }
 
     // Delete the slot
-    const { error: deleteError } = await supabaseAdmin
+    const { error: deleteError } = await db
       .from('work_check_slots')
       .delete()
       .eq('id', id);

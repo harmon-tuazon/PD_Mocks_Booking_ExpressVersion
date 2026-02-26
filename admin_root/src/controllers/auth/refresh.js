@@ -5,7 +5,7 @@
  * Note: Only checks authentication, not role-based authorization.
  */
 
-const { supabasePublic } = require('../../services/supabase');
+const { authClient } = require('../../services/supabase');
 
 async function refresh(req, res) {
   try {
@@ -32,7 +32,7 @@ async function refresh(req, res) {
     }
 
     // Refresh the session using Supabase (authentication only)
-    const { data, error } = await supabasePublic.auth.refreshSession({
+    const { data, error } = await authClient.auth.refreshSession({
       refresh_token: refreshToken
     });
 

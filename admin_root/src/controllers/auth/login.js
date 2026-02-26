@@ -3,7 +3,7 @@
  * POST /api/admin/auth/login
  */
 
-const { supabasePublic } = require('../../services/supabase');
+const { authClient } = require('../../services/supabase');
 const Joi = require('joi');
 
 // Login request validation schema
@@ -61,7 +61,7 @@ async function login(req, res) {
     }
 
     // Sign in with Supabase
-    const { data, error } = await supabasePublic.auth.signInWithPassword({
+    const { data, error } = await authClient.auth.signInWithPassword({
       email,
       password
     });

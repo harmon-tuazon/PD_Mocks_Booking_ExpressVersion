@@ -13,7 +13,7 @@ const { validateInput } = require('../../services/validation');
 const hubspot = require('../../services/hubspot');
 const { HUBSPOT_OBJECTS } = require('../../services/hubspot');
 const Joi = require('joi');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 // Association type ID for "requires attendance at" relationship
 const PREREQUISITE_ASSOCIATION_TYPE_ID = 1340;
@@ -27,7 +27,7 @@ const { getCache } = require('../../services/cache');
  */
 async function syncPrerequisitesToSupabase(examId, addIds, removeIds) {
   try {
-    const { data, error } = await supabaseAdmin.rpc('update_exam_prerequisites', {
+    const { data, error } = await db.rpc('update_exam_prerequisites', {
       p_exam_id: examId,
       p_add_ids: addIds || [],
       p_remove_ids: removeIds || []
@@ -50,7 +50,7 @@ async function syncPrerequisitesToSupabase(examId, addIds, removeIds) {
  */
 async function setPrerequisitesInSupabase(examId, prerequisiteIds) {
   try {
-    const { data, error } = await supabaseAdmin.rpc('set_exam_prerequisites', {
+    const { data, error } = await db.rpc('set_exam_prerequisites', {
       p_exam_id: examId,
       p_prerequisite_ids: prerequisiteIds || []
     });
@@ -455,7 +455,7 @@ async function handleGetRequest(req, res, mockExamId) {
     let dataSource = 'hubspot';
 
     try {
-      const { data: examData, error: supabaseError } = await supabaseAdmin
+      const { data: examData, error: supabaseError } = await db
         .from('hubspot_mock_exams')
         .select('prerequisite_exam_ids, mock_type')
         .eq('hubspot_id', mockExamId)
@@ -467,7 +467,7 @@ async function handleGetRequest(req, res, mockExamId) {
         dataSource = 'supabase';
 
         // Fetch prerequisite exam details from Supabase
-        const { data: prereqExams, error: prereqError } = await supabaseAdmin
+        const { data: prereqExams, error: prereqError } = await db
           .from('hubspot_mock_exams')
           .select('hubspot_id, mock_type, exam_date, location, start_time, end_time, capacity, total_bookings, is_active')
           .in('hubspot_id', prerequisiteIds);

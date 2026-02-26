@@ -7,7 +7,8 @@
  */
 
 const { schemas } = require('../../services/validation');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
+const { query: dbQuery, nestRow } = require('../../services/database');
 
 const dashboard = async (req, res, next) => {
   try {
@@ -25,7 +26,7 @@ const dashboard = async (req, res, next) => {
     console.log(`[Dashboard] Fetching dashboard for student: ${student_id}`);
 
     // 1. Validate user and get basic info with credits
-    const { data: contact, error: contactError } = await supabaseAdmin
+    const { data: contact, error: contactError } = await db
       .from('hubspot_contact_credits')
       .select('id, hubspot_id, student_id, email, firstname, lastname, sj_credits, cs_credits, sjmini_credits, mock_discussion_token, shared_mock_credits')
       .eq('student_id', student_id)
@@ -47,8 +48,8 @@ const dashboard = async (req, res, next) => {
 
     // 3. Fetch upcoming activities in parallel (from today onwards)
     const [mockBookingsResult, workCheckBookingsResult, groupsResult] = await Promise.all([
-      // Upcoming mock exam bookings
-      supabaseAdmin
+      // Upcoming mock exam bookings (no joins needed — shim is fine)
+      db
         .from('hubspot_bookings')
         .select('id, exam_date, start_time, end_time, mock_type, attending_location, is_active')
         .eq('student_id', contact.student_id)
@@ -57,32 +58,43 @@ const dashboard = async (req, res, next) => {
         .order('exam_date', { ascending: true })
         .limit(maxUpcomingItems),
 
-      // Upcoming work check bookings
-      supabaseAdmin
-        .from('work_check_bookings')
-        .select(`
-          id, status, created_at,
-          work_check_slots!inner (
-            slot_date, slot_time, duration_minutes, location,
-            instructors ( instructor_name ),
-            group_id
-          )
-        `)
-        .eq('student_id', contact.student_id)
-        .gte('work_check_slots.slot_date', today)
-        .in('status', ['pending', 'confirmed'])
-        .order('work_check_slots(slot_date)', { ascending: true })
-        .limit(maxUpcomingItems),
+      // Upcoming work check bookings (raw SQL — 2-level JOIN with date filter)
+      (async () => {
+        try {
+          const { rows } = await dbQuery(`
+            SELECT b.id, b.status, b.created_at,
+                   s.slot_date AS s__slot_date, s.slot_time AS s__slot_time,
+                   s.duration_minutes AS s__duration_minutes, s.location AS s__location,
+                   s.group_id AS s__group_id,
+                   i.instructor_name AS i__instructor_name
+            FROM work_check_bookings b
+            INNER JOIN work_check_slots s ON s.id = b.slot_id
+            LEFT JOIN instructors i ON i.id = s.instructor_id
+            WHERE b.student_id = $1 AND s.slot_date >= $2 AND b.status = ANY($3)
+            ORDER BY s.slot_date ASC
+            LIMIT $4
+          `, [contact.student_id, today, ['pending', 'confirmed'], maxUpcomingItems]);
+          return { data: rows.map(r => nestRow(r, { s: 'work_check_slots', i: 'instructors' }, { i: 's' })), error: null };
+        } catch (err) {
+          return { data: null, error: { message: err.message } };
+        }
+      })(),
 
-      // User's active groups
-      supabaseAdmin
-        .from('groups_students')
-        .select(`
-          group_id, status,
-          groups ( group_id, group_name, status )
-        `)
-        .eq('student_id', contact.student_id)
-        .eq('status', 'active')
+      // User's active groups (raw SQL — single-level JOIN)
+      (async () => {
+        try {
+          const { rows } = await dbQuery(`
+            SELECT gs.group_id, gs.status,
+                   g.group_id AS g__group_id, g.group_name AS g__group_name, g.status AS g__status
+            FROM groups_students gs
+            LEFT JOIN groups g ON g.group_id = gs.group_id
+            WHERE gs.student_id = $1 AND gs.status = $2
+          `, [contact.student_id, 'active']);
+          return { data: rows.map(r => nestRow(r, { g: 'groups' })), error: null };
+        } catch (err) {
+          return { data: null, error: { message: err.message } };
+        }
+      })()
     ]);
 
     // Log any errors but continue

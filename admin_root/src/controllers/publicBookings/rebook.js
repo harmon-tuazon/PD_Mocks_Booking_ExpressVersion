@@ -17,7 +17,7 @@
 
 const Joi = require('joi');
 const { requireAdmin } = require('../../middleware/requireAdmin');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 const { getBookingCascading, getExamByIdFromSupabase } = require('../../services/supabase-data');
 const { HubSpotService } = require('../../services/hubspot');
 const RedisLockService = require('../../services/redis');
@@ -235,7 +235,7 @@ async function rebook(req, res) {
 
     console.log(`[REBOOK] Updating booking in Supabase:`, updateData);
 
-    const { data: updatedBooking, error: updateError } = await supabaseAdmin
+    const { data: updatedBooking, error: updateError } = await db
       .from('hubspot_bookings')
       .update(updateData)
       .eq('id', booking.id)

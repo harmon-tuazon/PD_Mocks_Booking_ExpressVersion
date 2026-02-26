@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const bulkDelete = async (req, res, next) => {
   console.log('[Work Check Bookings Bulk Delete] Endpoint hit:', req.method);
@@ -19,7 +19,7 @@ const bulkDelete = async (req, res, next) => {
     console.log(`[Bulk Delete Bookings] Attempting to delete ${ids.length} bookings`);
 
     // Verify bookings exist before deletion
-    const { data: existingBookings, error: fetchError } = await supabaseAdmin
+    const { data: existingBookings, error: fetchError } = await db
       .from('work_check_bookings')
       .select('id, student_id, status')
       .in('id', ids);
@@ -46,7 +46,7 @@ const bulkDelete = async (req, res, next) => {
     }
 
     // Perform deletion
-    const { error: deleteError, count } = await supabaseAdmin
+    const { error: deleteError, count } = await db
       .from('work_check_bookings')
       .delete()
       .in('id', foundIds);

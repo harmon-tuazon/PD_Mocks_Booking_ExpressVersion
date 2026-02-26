@@ -5,7 +5,7 @@
  */
 
 const { query } = require('./database');
-const { supabaseAdmin } = require('./supabase');
+const { db } = require('./supabase');
 
 // ============== HELPER FUNCTIONS ==============
 
@@ -345,5 +345,5 @@ module.exports = {
   createBookingAtomic: createBookingAtomic,
   cancelBookingAtomic: cancelBookingAtomic,
   checkIdempotencyKey: checkIdempotencyKey,
-  supabaseAdmin: supabaseAdmin
+  db: db
 };

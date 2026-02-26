@@ -6,7 +6,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { getCache } = require('../../services/cache');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const statistics = async (req, res, next) => {
   try {
@@ -27,7 +27,7 @@ const statistics = async (req, res, next) => {
 
     console.log(`[Cache MISS] Fetching group statistics...`);
 
-    const { data: groups, error: groupsError } = await supabaseAdmin
+    const { data: groups, error: groupsError } = await db
       .from('groups')
       .select('id, group_id, status, max_capacity');
 
@@ -35,7 +35,7 @@ const statistics = async (req, res, next) => {
       throw new Error(`Failed to fetch groups: ${groupsError.message}`);
     }
 
-    const { data: students, error: studentsError } = await supabaseAdmin
+    const { data: students, error: studentsError } = await db
       .from('groups_students')
       .select('group_id')
       .eq('status', 'active');

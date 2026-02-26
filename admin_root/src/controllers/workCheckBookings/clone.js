@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const clone = async (req, res, next) => {
   console.log('[Work Check Bookings Clone] Endpoint hit:', req.method);
@@ -25,7 +25,7 @@ const clone = async (req, res, next) => {
     console.log(`[Clone Bookings] Options: preserve_status=${preserve_status}, preserve_type=${preserve_type}`);
 
     // Fetch source bookings
-    const { data: sourceBookings, error: fetchError } = await supabaseAdmin
+    const { data: sourceBookings, error: fetchError } = await db
       .from('work_check_bookings')
       .select('*')
       .in('id', ids);
@@ -43,7 +43,7 @@ const clone = async (req, res, next) => {
     }
 
     // Verify target slots exist and get their auto_approve settings
-    const { data: targetSlots, error: slotError } = await supabaseAdmin
+    const { data: targetSlots, error: slotError } = await db
       .from('work_check_slots')
       .select('id, auto_approve')
       .in('id', target_slot_ids);
@@ -66,7 +66,7 @@ const clone = async (req, res, next) => {
 
     // Check for existing bookings to prevent duplicates
     const studentIds = [...new Set(sourceBookings.map(b => b.student_id))];
-    const { data: existingBookings, error: existingError } = await supabaseAdmin
+    const { data: existingBookings, error: existingError } = await db
       .from('work_check_bookings')
       .select('slot_id, student_id')
       .in('slot_id', target_slot_ids)
@@ -131,7 +131,7 @@ const clone = async (req, res, next) => {
     const errors = [];
 
     if (clonedBookings.length > 0) {
-      const { data: inserted, error: insertError } = await supabaseAdmin
+      const { data: inserted, error: insertError } = await db
         .from('work_check_bookings')
         .insert(clonedBookings)
         .select();

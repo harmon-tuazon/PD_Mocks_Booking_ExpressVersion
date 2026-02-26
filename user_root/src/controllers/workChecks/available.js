@@ -5,7 +5,8 @@
  */
 
 const { schemas } = require('../../services/validation');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
+const { query: dbQuery, nestRow } = require('../../services/database');
 
 const available = async (req, res, next) => {
   try {
@@ -23,7 +24,7 @@ const available = async (req, res, next) => {
     console.log(`[WORK-CHECK] Fetching available slots for: ${student_id}, today: ${new Date().toISOString().split('T')[0]}`);
 
     // 1. Validate contact
-    const { data: contact, error: contactError } = await supabaseAdmin
+    const { data: contact, error: contactError } = await db
       .from('hubspot_contact_credits')
       .select('id, student_id')
       .eq('student_id', student_id)
@@ -38,7 +39,7 @@ const available = async (req, res, next) => {
     }
 
     // 2. Get user's active groups
-    const { data: groupMemberships, error: groupError } = await supabaseAdmin
+    const { data: groupMemberships, error: groupError } = await db
       .from('groups_students')
       .select('group_id')
       .eq('student_id', contact.student_id)
@@ -62,54 +63,62 @@ const available = async (req, res, next) => {
       });
     }
 
-    // 3. Get existing booking dates for this user
-    const { data: existingBookings } = await supabaseAdmin
-      .from('work_check_bookings')
-      .select(`
-        id,
-        work_check_slots!inner (slot_date)
-      `)
-      .eq('student_id', contact.student_id)
-      .in('status', ['pending', 'confirmed']);
+    // 3. Get existing booking dates for this user (raw SQL with INNER JOIN)
+    let existingBookings;
+    try {
+      const { rows } = await dbQuery(`
+        SELECT b.id, s.slot_date AS s__slot_date
+        FROM work_check_bookings b
+        INNER JOIN work_check_slots s ON s.id = b.slot_id
+        WHERE b.student_id = $1 AND b.status = ANY($2)
+      `, [contact.student_id, ['pending', 'confirmed']]);
+      existingBookings = rows.map(r => nestRow(r, { s: 'work_check_slots' }));
+    } catch (err) {
+      existingBookings = [];
+    }
 
     const existingBookingDates = (existingBookings || [])
       .map(b => b.work_check_slots?.slot_date)
       .filter(Boolean);
 
-    // 4. Build query for available slots
-    let slotsQuery = supabaseAdmin
-      .from('work_check_slots')
-      .select(`
-        id,
-        instructor_id,
-        group_id,
-        slot_date,
-        slot_time,
-        duration_minutes,
-        total_slots,
-        location,
-        is_active,
-        available_from,
-        auto_approve,
-        instructors (
-          id,
-          instructor_name
-        )
-      `)
-      .eq('is_active', true)
-      .gte('slot_date', new Date().toISOString().split('T')[0])
-      .or(`available_from.is.null,available_from.lte.${new Date().toISOString()}`);
+    // 4. Build query for available slots (raw SQL with LEFT JOIN for instructor)
+    const todayStr = new Date().toISOString().split('T')[0];
+    const nowIso = new Date().toISOString();
+    let slotSql = `
+      SELECT s.id, s.instructor_id, s.group_id, s.slot_date, s.slot_time,
+             s.duration_minutes, s.total_slots, s.location, s.is_active,
+             s.available_from, s.auto_approve,
+             i.id AS i__id, i.instructor_name AS i__instructor_name
+      FROM work_check_slots s
+      LEFT JOIN instructors i ON i.id = s.instructor_id
+      WHERE s.is_active = true AND s.slot_date >= $1
+        AND (s.available_from IS NULL OR s.available_from <= $2)
+    `;
+    const slotParams = [todayStr, nowIso];
+    let paramIdx = 3;
 
     if (from_date) {
-      slotsQuery = slotsQuery.gte('slot_date', from_date);
+      slotSql += ` AND s.slot_date >= $${paramIdx}`;
+      slotParams.push(from_date);
+      paramIdx++;
     }
     if (to_date) {
-      slotsQuery = slotsQuery.lte('slot_date', to_date);
+      slotSql += ` AND s.slot_date <= $${paramIdx}`;
+      slotParams.push(to_date);
+      paramIdx++;
     }
 
-    slotsQuery = slotsQuery.order('slot_date', { ascending: true }).order('slot_time', { ascending: true });
+    slotSql += ` ORDER BY s.slot_date ASC, s.slot_time ASC`;
 
-    const { data: allSlots, error: slotsError } = await slotsQuery;
+    let allSlots, slotsError;
+    try {
+      const { rows } = await dbQuery(slotSql, slotParams);
+      allSlots = rows.map(r => nestRow(r, { i: 'instructors' }));
+      slotsError = null;
+    } catch (err) {
+      allSlots = null;
+      slotsError = { message: err.message };
+    }
 
     if (slotsError) {
       console.error('[WORK-CHECK] Error fetching slots:', slotsError);
@@ -135,7 +144,7 @@ const available = async (req, res, next) => {
     let bookingCounts = {};
 
     if (slotIds.length > 0) {
-      const { data: bookings } = await supabaseAdmin
+      const { data: bookings } = await db
         .from('work_check_bookings')
         .select('slot_id')
         .in('slot_id', slotIds)
@@ -153,7 +162,7 @@ const available = async (req, res, next) => {
 
     let groupNames = {};
     if (uniqueGroupIds.length > 0) {
-      const { data: groups } = await supabaseAdmin
+      const { data: groups } = await db
         .from('groups')
         .select('group_id, group_name')
         .in('group_id', uniqueGroupIds);

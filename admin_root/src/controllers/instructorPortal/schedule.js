@@ -11,7 +11,8 @@
 
 const { requireRole } = require('../../middleware/requireRole');
 const { getInstructorFromUser } = require('../../services/instructor-helpers');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
+const { query: dbQuery, nestRow } = require('../../services/database');
 
 const schedule = async (req, res, next) => {
   try {
@@ -46,14 +47,14 @@ const schedule = async (req, res, next) => {
     // 'upcoming' has no end date limit
 
     // Build base query conditions
-    let countQuery = supabaseAdmin
+    let countQuery = db
       .from('work_check_slots')
       .select('*', { count: 'exact', head: true })
       .eq('instructor_id', instructor.id)
       .eq('is_active', true)
       .gte('slot_date', startDate);
 
-    let dataQuery = supabaseAdmin
+    let dataQuery = db
       .from('work_check_slots')
       .select('id, slot_date, slot_time, duration_minutes, group_id, is_active')
       .eq('instructor_id', instructor.id)
@@ -123,7 +124,7 @@ const schedule = async (req, res, next) => {
     // Fetch group details
     let groupMap = {};
     if (allGroupIds.size > 0) {
-      const { data: groups } = await supabaseAdmin
+      const { data: groups } = await db
         .from('groups')
         .select('group_id, group_name, time_period, status')
         .in('group_id', Array.from(allGroupIds));
@@ -137,7 +138,7 @@ const schedule = async (req, res, next) => {
     // Count students per group
     const studentCounts = {};
     for (const gid of allGroupIds) {
-      const { count } = await supabaseAdmin
+      const { count } = await db
         .from('groups_students')
         .select('*', { count: 'exact', head: true })
         .eq('group_id', gid)
@@ -145,22 +146,25 @@ const schedule = async (req, res, next) => {
       studentCounts[gid] = count || 0;
     }
 
-    // Fetch bookings for all slots (with student names)
+    // Fetch bookings for all slots (with student names via raw SQL JOIN)
     const slotIds = slots.map(s => s.id);
     let bookingsBySlot = {};
     if (slotIds.length > 0) {
-      const { data: bookings } = await supabaseAdmin
-        .from('work_check_bookings')
-        .select(`
-          id, slot_id, student_id, status, type, marked_at,
-          student:hubspot_contact_credits!work_check_bookings_student_id_fkey (
-            student_id, firstname, lastname
-          )
-        `)
-        .in('slot_id', slotIds)
-        .in('status', ['pending', 'confirmed', 'marked']);
+      let allBookings;
+      try {
+        const { rows } = await dbQuery(`
+          SELECT b.id, b.slot_id, b.student_id, b.status, b.type, b.marked_at,
+                 c.student_id AS c__student_id, c.firstname AS c__firstname, c.lastname AS c__lastname
+          FROM work_check_bookings b
+          LEFT JOIN hubspot_contact_credits c ON c.student_id = b.student_id
+          WHERE b.slot_id = ANY($1) AND b.status = ANY($2)
+        `, [slotIds, ['pending', 'confirmed', 'marked']]);
+        allBookings = rows.map(r => nestRow(r, { c: 'student' }));
+      } catch (err) {
+        allBookings = [];
+      }
 
-      for (const b of (bookings || [])) {
+      for (const b of allBookings) {
         if (!bookingsBySlot[b.slot_id]) bookingsBySlot[b.slot_id] = [];
         bookingsBySlot[b.slot_id].push({
           id: b.id,

@@ -12,7 +12,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const provisionAccess = async (req, res, next) => {
   try {
@@ -40,7 +40,7 @@ const provisionAccess = async (req, res, next) => {
     }
 
     // Get instructor record
-    const { data: instructor, error: fetchError } = await supabaseAdmin
+    const { data: instructor, error: fetchError } = await db
       .from('instructors')
       .select('id, instructor_name, email, auth_user_id, is_active')
       .eq('id', id)
@@ -66,7 +66,7 @@ const provisionAccess = async (req, res, next) => {
     console.log(`[Provision Access] Creating auth account for instructor: ${instructor.instructor_name}`);
 
     // Step 1: Create Supabase Auth user
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: authData, error: authError } = await db.auth.admin.createUser({
       email: instructor.email,
       password: password,
       email_confirm: true
@@ -91,7 +91,7 @@ const provisionAccess = async (req, res, next) => {
     const authUserId = authData.user.id;
 
     // Step 2: Assign 'instructor' role via user_roles table
-    const { error: roleError } = await supabaseAdmin
+    const { error: roleError } = await db
       .from('user_roles')
       .insert({
         user_id: authUserId,
@@ -104,12 +104,12 @@ const provisionAccess = async (req, res, next) => {
       console.error('[RBAC ERROR] Failed to assign instructor role:', roleError.message);
       // Rollback: delete auth user
       console.log('[Rollback] Deleting auth user:', authUserId);
-      await supabaseAdmin.auth.admin.deleteUser(authUserId);
+      await db.auth.admin.deleteUser(authUserId);
       throw new Error(`Failed to assign role: ${roleError.message}`);
     }
 
     // Step 3: Link auth user to instructor record
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await db
       .from('instructors')
       .update({ auth_user_id: authUserId, updated_at: new Date().toISOString() })
       .eq('id', id);
@@ -118,14 +118,14 @@ const provisionAccess = async (req, res, next) => {
       console.error('[Supabase ERROR] Failed to link auth user:', updateError.message);
       // Rollback: delete user_roles and auth user
       console.log('[Rollback] Cleaning up role and auth user');
-      await supabaseAdmin.from('user_roles').delete().eq('user_id', authUserId);
-      await supabaseAdmin.auth.admin.deleteUser(authUserId);
+      await db.from('user_roles').delete().eq('user_id', authUserId);
+      await db.auth.admin.deleteUser(authUserId);
       throw new Error(`Failed to link auth account: ${updateError.message}`);
     }
 
     // If instructor is inactive, ban the auth user immediately
     if (!instructor.is_active) {
-      await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+      await db.auth.admin.updateUserById(authUserId, {
         ban_duration: '876000h'
       });
     }

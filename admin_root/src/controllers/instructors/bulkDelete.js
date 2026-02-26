@@ -9,7 +9,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const bulkDelete = async (req, res, next) => {
   try {
@@ -30,7 +30,7 @@ const bulkDelete = async (req, res, next) => {
     console.log(`[Bulk Delete Instructors] Attempting to delete ${ids.length} instructors:`, ids);
 
     // First, check which instructors are assigned to active groups
-    const { data: instructorsWithGroups, error: checkError } = await supabaseAdmin
+    const { data: instructorsWithGroups, error: checkError } = await db
       .from('groups_instructors')
       .select('instructor_id')
       .in('instructor_id', ids)
@@ -65,7 +65,7 @@ const bulkDelete = async (req, res, next) => {
     }
 
     // Fetch auth_user_ids for instructors that will be deleted (for auth cleanup)
-    const { data: instructorsToDelete } = await supabaseAdmin
+    const { data: instructorsToDelete } = await db
       .from('instructors')
       .select('id, auth_user_id')
       .in('id', deletableIds);
@@ -80,13 +80,13 @@ const bulkDelete = async (req, res, next) => {
 
       for (const authUserId of authUserIds) {
         // Remove role assignment first
-        await supabaseAdmin
+        await db
           .from('user_roles')
           .delete()
           .eq('user_id', authUserId);
 
         // Delete auth user
-        const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+        const { error: authDeleteError } = await db.auth.admin.deleteUser(authUserId);
         if (authDeleteError) {
           console.error(`[Auth WARNING] Failed to delete auth user ${authUserId}:`, authDeleteError.message);
         }
@@ -94,7 +94,7 @@ const bulkDelete = async (req, res, next) => {
     }
 
     // Delete the instructors that don't have active group assignments
-    const { data: deletedInstructors, error: deleteError } = await supabaseAdmin
+    const { data: deletedInstructors, error: deleteError } = await db
       .from('instructors')
       .delete()
       .in('id', deletableIds)

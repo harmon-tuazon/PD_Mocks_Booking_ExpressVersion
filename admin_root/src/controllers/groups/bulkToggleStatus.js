@@ -8,7 +8,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 const { getCache } = require('../../services/cache');
 
 const MAX_GROUPS_PER_REQUEST = 100;
@@ -60,7 +60,7 @@ const bulkToggleStatus = async (req, res, next) => {
     console.log(`[BULK-TOGGLE-GROUPS] Processing bulk toggle for ${ids.length} groups`);
     console.log(`[BULK-TOGGLE-GROUPS] Admin: ${adminEmail}`);
 
-    const { data: groups, error: fetchError } = await supabaseAdmin
+    const { data: groups, error: fetchError } = await db
       .from('groups')
       .select('id, group_id, group_name, status')
       .in('group_id', ids);
@@ -131,7 +131,7 @@ const bulkToggleStatus = async (req, res, next) => {
 
       for (const update of updates) {
         try {
-          const { error: updateError } = await supabaseAdmin
+          const { error: updateError } = await db
             .from('groups')
             .update({
               status: update.newStatus,

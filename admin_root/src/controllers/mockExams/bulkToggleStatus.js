@@ -26,7 +26,7 @@ const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
 const { getCache } = require('../../services/cache');
 const hubspot = require('../../services/hubspot');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -203,7 +203,7 @@ const bulkToggleStatus = async (req, res) => {
       try {
         const supabaseUpdates = results.successful.map(result => {
           // results.successful contains objects with sessionId and newState (already processed)
-          return supabaseAdmin
+          return db
             .from('hubspot_mock_exams')
             .update({
               is_active: result.newState,

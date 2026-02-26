@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { query: dbQuery } = require('../../services/database');
 
 const list = async (req, res, next) => {
   try {
@@ -30,89 +30,102 @@ const list = async (req, res, next) => {
       page, limit, instructor_id, group_id, location, date_from, date_to, is_active, activation_status, sort_by, sort_order
     });
 
-    // Build Supabase query with instructor join
-    let query = supabaseAdmin
-      .from('work_check_slots')
-      .select(`
-        *,
-        instructor:instructors!work_check_slots_instructor_id_fkey (
-          id,
-          instructor_name,
-          email
-        )
-      `, { count: 'exact' });
+    // Build raw SQL query with LEFT JOIN for instructor data
+    let sql = `
+      SELECT s.*,
+             i.id AS i__id, i.instructor_name AS i__instructor_name, i.email AS i__email,
+             COUNT(*) OVER() AS __total_count
+      FROM work_check_slots s
+      LEFT JOIN instructors i ON i.id = s.instructor_id
+      WHERE 1=1
+    `;
+    const params = [];
+    let paramIdx = 1;
 
     // Apply instructor filter
     if (instructor_id) {
-      query = query.eq('instructor_id', instructor_id);
+      sql += ` AND s.instructor_id = $${paramIdx}`;
+      params.push(instructor_id);
+      paramIdx++;
     }
 
     // Apply group filter (array contains)
     if (group_id) {
-      query = query.contains('group_id', [group_id]);
+      sql += ` AND s.group_id @> $${paramIdx}`;
+      params.push(JSON.stringify([group_id]));
+      paramIdx++;
     }
 
     // Apply location filter
     if (location) {
-      query = query.eq('location', location);
+      sql += ` AND s.location = $${paramIdx}`;
+      params.push(location);
+      paramIdx++;
     }
 
     // Apply date range filters
     if (date_from) {
-      query = query.gte('slot_date', date_from);
+      sql += ` AND s.slot_date >= $${paramIdx}`;
+      params.push(date_from);
+      paramIdx++;
     }
     if (date_to) {
-      query = query.lte('slot_date', date_to);
+      sql += ` AND s.slot_date <= $${paramIdx}`;
+      params.push(date_to);
+      paramIdx++;
     }
 
     // Apply active status filter
     if (is_active && is_active !== 'all') {
-      const isActiveBoolean = is_active === 'true';
-      query = query.eq('is_active', isActiveBoolean);
+      sql += ` AND s.is_active = $${paramIdx}`;
+      params.push(is_active === 'true');
+      paramIdx++;
     }
 
     // Apply activation status filter
     if (activation_status && activation_status !== 'all') {
       const now = new Date().toISOString();
       if (activation_status === 'scheduled') {
-        // Scheduled: available_from is not null AND in the future
-        query = query.not('available_from', 'is', null).gt('available_from', now);
+        sql += ` AND s.available_from IS NOT NULL AND s.available_from > $${paramIdx}`;
+        params.push(now);
+        paramIdx++;
       } else if (activation_status === 'immediate') {
-        // Immediate: available_from is null OR in the past
-        query = query.or(`available_from.is.null,available_from.lte.${now}`);
+        sql += ` AND (s.available_from IS NULL OR s.available_from <= $${paramIdx})`;
+        params.push(now);
+        paramIdx++;
       }
     }
 
     // Apply sorting
-    let sortColumn = sort_by || 'slot_date';
-    const ascending = sort_order === 'asc';
+    const allowedSortColumns = ['slot_date', 'slot_time', 'location', 'is_active', 'created_at', 'updated_at', 'instructor_name'];
+    let sortColumn = allowedSortColumns.includes(sort_by) ? sort_by : 'slot_date';
+    const sortDir = sort_order === 'asc' ? 'ASC' : 'DESC';
 
-    // Handle instructor_name sorting via nested field
+    // Handle instructor_name sorting via joined table
     if (sortColumn === 'instructor_name') {
-      // Sort by slot_date as fallback since we can't sort by nested field directly
-      sortColumn = 'slot_date';
+      sql += ` ORDER BY i.instructor_name ${sortDir}`;
+    } else {
+      sql += ` ORDER BY s.${sortColumn} ${sortDir}`;
     }
-
-    query = query.order(sortColumn, { ascending });
 
     // Secondary sort by slot_time for consistency
     if (sortColumn === 'slot_date') {
-      query = query.order('slot_time', { ascending: true });
+      sql += `, s.slot_time ASC`;
     }
 
     // Apply pagination
-    const offset = (page - 1) * limit;
-    query = query.range(offset, offset + limit - 1);
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 50;
+    const offset = (pageNum - 1) * limitNum;
+    sql += ` LIMIT ${parseInt(limitNum)} OFFSET ${parseInt(offset)}`;
 
-    const { data: slots, error, count } = await query;
+    const result = await dbQuery(sql, params);
+    const rows = result.rows;
 
-    if (error) {
-      console.error('[Supabase ERROR]', error.message);
-      throw new Error(`Failed to fetch work check slots: ${error.message}`);
-    }
+    // Extract total count and transform results
+    const totalRecords = rows.length > 0 ? parseInt(rows[0].__total_count || 0) : 0;
 
-    // Transform results
-    const transformedSlots = (slots || []).map(slot => {
+    const transformedSlots = rows.map(slot => {
       // Calculate activation status
       const now = new Date();
       const availableFrom = slot.available_from ? new Date(slot.available_from) : null;
@@ -121,8 +134,8 @@ const list = async (req, res, next) => {
       return {
         id: slot.id,
         instructor_id: slot.instructor_id,
-        instructor_name: slot.instructor?.instructor_name || null,
-        instructor_email: slot.instructor?.email || null,
+        instructor_name: slot.i__instructor_name || null,
+        instructor_email: slot.i__email || null,
         group_id: slot.group_id,
         slot_date: slot.slot_date,
         slot_time: slot.slot_time,
@@ -138,17 +151,15 @@ const list = async (req, res, next) => {
       };
     });
 
-    // Calculate pagination metadata
-    const totalRecords = count || 0;
-    const totalPages = Math.ceil(totalRecords / limit);
+    const totalPages = Math.ceil(totalRecords / limitNum);
 
     const response = {
       success: true,
       pagination: {
-        current_page: page,
+        current_page: pageNum,
         total_pages: totalPages,
         total_records: totalRecords,
-        records_per_page: limit
+        records_per_page: limitNum
       },
       data: transformedSlots
     };

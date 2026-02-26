@@ -6,7 +6,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { getCache } = require('../../services/cache');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 const Joi = require('joi');
 
 // Validation schema
@@ -30,7 +30,7 @@ const assignInstructor = async (req, res, next) => {
     const { groupId, instructorId } = value;
 
     // Verify group exists
-    const { data: group } = await supabaseAdmin
+    const { data: group } = await db
       .from('groups')
       .select('group_id, group_name, status')
       .eq('group_id', groupId)
@@ -46,7 +46,7 @@ const assignInstructor = async (req, res, next) => {
     // Verify instructor exists by UUID
     console.log(`[Assign Instructor] Looking up instructor with ID: ${instructorId}`);
 
-    const { data: instructor, error: lookupError } = await supabaseAdmin
+    const { data: instructor, error: lookupError } = await db
       .from('instructors')
       .select('id, instructor_name, email')
       .eq('id', instructorId)
@@ -65,7 +65,7 @@ const assignInstructor = async (req, res, next) => {
     const instructorUuid = instructor.id;
 
     // Check if already assigned
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await db
       .from('groups_instructors')
       .select('id, status')
       .eq('group_id', group.group_id)
@@ -84,7 +84,7 @@ const assignInstructor = async (req, res, next) => {
       }
 
       // Reactivate if previously removed
-      const { data: reactivated, error: reactivateError } = await supabaseAdmin
+      const { data: reactivated, error: reactivateError } = await db
         .from('groups_instructors')
         .update({
           status: 'active',
@@ -117,7 +117,7 @@ const assignInstructor = async (req, res, next) => {
     }
 
     // Create new assignment
-    const { data: assignment, error: assignError } = await supabaseAdmin
+    const { data: assignment, error: assignError } = await db
       .from('groups_instructors')
       .insert({
         group_id: group.group_id,

@@ -1,10 +1,10 @@
 /**
- * Supabase Client Configuration (User Root)
+ * Database Client Configuration (User Root)
  *
  * Architecture after AWS RDS migration:
- * - supabaseAdmin.auth.*  → Real Supabase (JWT verification)
- * - supabaseAdmin.from()  → pg (direct PostgreSQL on AWS RDS)
- * - supabaseAdmin.rpc()   → pg (stored function calls on AWS RDS)
+ * - db.auth.*   → Real Supabase (JWT verification)
+ * - db.from()   → pg (direct PostgreSQL on AWS RDS)
+ * - db.rpc()    → pg (stored function calls on AWS RDS)
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -33,15 +33,15 @@ const _supabaseAuth = createClient(
 const _pgClient = createPgClient(getPool());
 
 /**
- * Hybrid supabaseAdmin:
+ * Hybrid db client:
  *   .auth              → Real Supabase (JWT verification via auth.getUser)
  *   .from(table)       → pg query builder (direct AWS RDS queries)
  *   .rpc(fn, params)   → pg stored function call
  */
-const supabaseAdmin = {
+const db = {
   auth: _supabaseAuth.auth,
   from(table) { return _pgClient.from(table); },
   rpc(fnName, params) { return _pgClient.rpc(fnName, params); }
 };
 
-module.exports = { supabaseAdmin };
+module.exports = { db };

@@ -6,7 +6,7 @@
  */
 
 const Joi = require('joi');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 const RedisLockService = require('../../services/redis');
 const axios = require('axios');
 
@@ -49,7 +49,7 @@ async function requestOtp(req, res) {
     // Check if user exists in Supabase
 
 
-    const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+    const { data: users } = await db.auth.admin.listUsers();
     const userExists = users?.users?.some(u => u.email === email);
 
     if (userExists) {

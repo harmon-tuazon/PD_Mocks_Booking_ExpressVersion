@@ -7,7 +7,7 @@
  */
 
 const { HubSpotService } = require('../../services/hubspot');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 // HubSpot object type IDs
 const OBJECT_TYPES = {
@@ -23,7 +23,7 @@ async function syncBookings(summary) {
   console.log('[BATCH SYNC] Syncing bookings...');
   const hubspot = new HubSpotService();
 
-  const { data: newBookings, error: newError } = await supabaseAdmin
+  const { data: newBookings, error: newError } = await db
     .from('hubspot_bookings')
     .select('*')
     .is('hubspot_id', null);
@@ -80,7 +80,7 @@ async function syncBookings(summary) {
         );
       }
 
-      await supabaseAdmin
+      await db
         .from('hubspot_bookings')
         .update({
           hubspot_id: hubspotBooking.id,

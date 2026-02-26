@@ -18,7 +18,8 @@
 
 const { requireRole } = require('../../middleware/requireRole');
 const { getInstructorFromUser } = require('../../services/instructor-helpers');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
+const { query: dbQuery } = require('../../services/database');
 const { schemas } = require('../../services/validation');
 
 const markBookings = async (req, res, next) => {
@@ -42,12 +43,21 @@ const markBookings = async (req, res, next) => {
 
     console.log(`[Instructor Mark Bookings] instructor=${instructor.id}, action=${action}, booking_ids=${booking_ids.length}`);
 
-    // Fetch bookings with a join to work_check_slots to verify instructor ownership
-    const { data: bookings, error: fetchError } = await supabaseAdmin
-      .from('work_check_bookings')
-      .select('id, status, marked_at, slot_id, work_check_slots!inner(instructor_id)')
-      .in('id', booking_ids)
-      .eq('work_check_slots.instructor_id', instructor.id);
+    // Fetch bookings with INNER JOIN to verify instructor ownership
+    let bookings, fetchError;
+    try {
+      const { rows } = await dbQuery(`
+        SELECT b.id, b.status, b.marked_at, b.slot_id
+        FROM work_check_bookings b
+        INNER JOIN work_check_slots s ON s.id = b.slot_id
+        WHERE b.id = ANY($1) AND s.instructor_id = $2
+      `, [booking_ids, instructor.id]);
+      bookings = rows;
+      fetchError = null;
+    } catch (err) {
+      bookings = null;
+      fetchError = { message: err.message, code: err.code || 'UNKNOWN' };
+    }
 
     if (fetchError) {
       console.error('[Instructor Mark Bookings] Error fetching bookings:', fetchError.message);
@@ -89,7 +99,7 @@ const markBookings = async (req, res, next) => {
         ? { status: targetStatus, marked_at: now }
         : { status: targetStatus, marked_at: null };
 
-      const { data: updatedRows, error: updateError } = await supabaseAdmin
+      const { data: updatedRows, error: updateError } = await db
         .from('work_check_bookings')
         .update(updatePayload)
         .in('id', eligible)

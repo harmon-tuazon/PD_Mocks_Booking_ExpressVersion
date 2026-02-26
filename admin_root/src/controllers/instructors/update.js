@@ -6,7 +6,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const update = async (req, res, next) => {
   try {
@@ -51,7 +51,7 @@ const update = async (req, res, next) => {
 
     // Check if email is being changed and if it already exists
     if (updates.email) {
-      const { data: existingInstructor } = await supabaseAdmin
+      const { data: existingInstructor } = await db
         .from('instructors')
         .select('id')
         .eq('email', updates.email.toLowerCase())
@@ -69,7 +69,7 @@ const update = async (req, res, next) => {
       }
     }
 
-    const { data: updatedInstructor, error } = await supabaseAdmin
+    const { data: updatedInstructor, error } = await db
       .from('instructors')
       .update(updateData)
       .eq('id', id)
@@ -108,7 +108,7 @@ const update = async (req, res, next) => {
       }
 
       if (Object.keys(authUpdates).length > 0) {
-        const { error: authSyncError } = await supabaseAdmin.auth.admin.updateUserById(
+        const { error: authSyncError } = await db.auth.admin.updateUserById(
           updatedInstructor.auth_user_id,
           authUpdates
         );

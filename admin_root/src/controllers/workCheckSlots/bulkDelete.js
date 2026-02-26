@@ -7,7 +7,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const bulkDelete = async (req, res, next) => {
   try {
@@ -19,7 +19,7 @@ const bulkDelete = async (req, res, next) => {
     console.log(`[Bulk Delete Slots] Attempting to delete ${ids.length} slots`);
 
     // Fetch slot details for reporting
-    const { data: slots, error: fetchError } = await supabaseAdmin
+    const { data: slots, error: fetchError } = await db
       .from('work_check_slots')
       .select(`
         id,
@@ -37,7 +37,7 @@ const bulkDelete = async (req, res, next) => {
     }
 
     // Check which slots have active bookings
-    const { data: bookingsData, error: bookingsError } = await supabaseAdmin
+    const { data: bookingsData, error: bookingsError } = await db
       .from('work_check_bookings')
       .select('slot_id')
       .in('slot_id', ids)
@@ -86,7 +86,7 @@ const bulkDelete = async (req, res, next) => {
     }
 
     // Delete the slots that don't have active bookings
-    const { error: deleteError } = await supabaseAdmin
+    const { error: deleteError } = await db
       .from('work_check_slots')
       .delete()
       .in('id', deletableIds);

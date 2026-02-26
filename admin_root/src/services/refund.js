@@ -36,7 +36,7 @@
  */
 
 const hubspot = require('./hubspot');
-const { supabaseAdmin } = require('./supabase');
+const { db } = require('./supabase');
 const {
   updateContactCreditsInSupabase,
   getBookingCascading,
@@ -469,7 +469,7 @@ async function refundToken(identifier, adminEmail, tokenType = null) {
   const refundTimestamp = new Date().toISOString();
 
   // 6a: Update booking with refund info
-  const { error: bookingError } = await supabaseAdmin
+  const { error: bookingError } = await db
     .from('hubspot_bookings')
     .update({
       token_refunded: 'true',
@@ -487,7 +487,7 @@ async function refundToken(identifier, adminEmail, tokenType = null) {
   console.log('[REFUND] ✅ Booking updated in Supabase');
 
   // 6b: Restore credits in Supabase
-  const { error: creditError } = await supabaseAdmin
+  const { error: creditError } = await db
     .from('hubspot_contact_credits')
     .update({
       [effectiveTokenType]: restoredCredits,
@@ -499,7 +499,7 @@ async function refundToken(identifier, adminEmail, tokenType = null) {
   if (creditError) {
     // Rollback booking update on credit failure
     console.error('[REFUND] ❌ Credit update failed, attempting rollback...');
-    await supabaseAdmin
+    await db
       .from('hubspot_bookings')
       .update({
         token_refunded: null,

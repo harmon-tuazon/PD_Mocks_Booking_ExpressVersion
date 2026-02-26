@@ -7,7 +7,7 @@
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
 const { getCache } = require('../../services/cache');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 /**
  * Generate unique group ID
@@ -60,7 +60,7 @@ const clone = async (req, res, next) => {
 
     // Find source group
     let sourceGroup;
-    const { data: byGroupIdResult } = await supabaseAdmin
+    const { data: byGroupIdResult } = await db
       .from('groups')
       .select('*')
       .eq('group_id', groupId)
@@ -69,7 +69,7 @@ const clone = async (req, res, next) => {
     if (byGroupIdResult) {
       sourceGroup = byGroupIdResult;
     } else {
-      const { data: byUuid } = await supabaseAdmin
+      const { data: byUuid } = await db
         .from('groups')
         .select('*')
         .eq('id', groupId)
@@ -91,7 +91,7 @@ const clone = async (req, res, next) => {
     let isUnique = false;
 
     while (!isUnique && attempts < maxAttempts) {
-      const { data: existing } = await supabaseAdmin
+      const { data: existing } = await db
         .from('groups')
         .select('group_id')
         .eq('group_id', newGroupId)
@@ -115,7 +115,7 @@ const clone = async (req, res, next) => {
       });
     }
 
-    const { data: newGroup, error: createError } = await supabaseAdmin
+    const { data: newGroup, error: createError } = await db
       .from('groups')
       .insert({
         group_id: newGroupId,
@@ -138,7 +138,7 @@ const clone = async (req, res, next) => {
     let clonedStudents = 0;
 
     if (includeStudents) {
-      const { data: sourceStudents } = await supabaseAdmin
+      const { data: sourceStudents } = await db
         .from('groups_students')
         .select('student_id')
         .eq('group_id', sourceGroup.group_id)
@@ -151,7 +151,7 @@ const clone = async (req, res, next) => {
           status: 'active'
         }));
 
-        const { error: insertError } = await supabaseAdmin
+        const { error: insertError } = await db
           .from('groups_students')
           .insert(studentInserts);
 

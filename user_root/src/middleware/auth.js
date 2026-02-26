@@ -1,4 +1,4 @@
-const { supabaseAdmin } = require('../services/supabase');
+const { db } = require('../services/supabase');
 
 /**
  * Express authentication middleware
@@ -20,7 +20,7 @@ const authenticate = async (req, res, next) => {
 
     const token = authHeader.replace('Bearer ', '');
 
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    const { data: { user }, error } = await db.auth.getUser(token);
 
     if (error || !user) {
       return res.status(401).json({

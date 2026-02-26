@@ -22,7 +22,7 @@
  */
 
 const { requireAdmin } = require('../../middleware/requireAdmin');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 async function availableForRebook(req, res) {
   try {
@@ -52,7 +52,7 @@ async function availableForRebook(req, res) {
     const today = new Date().toISOString().split('T')[0];
 
     // 4. Build Supabase query - filter by mock_type and location
-    let query = supabaseAdmin
+    let query = db
       .from('hubspot_mock_exams')
       .select('*')
       .eq('mock_type', mock_type)

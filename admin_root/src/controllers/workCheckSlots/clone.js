@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const clone = async (req, res, next) => {
   try {
@@ -24,7 +24,7 @@ const clone = async (req, res, next) => {
     console.log(`[Clone Slots] Cloning ${ids.length} slots with offset ${date_offset_days} days`);
 
     // Fetch source slots
-    const { data: sourceSlots, error: fetchError } = await supabaseAdmin
+    const { data: sourceSlots, error: fetchError } = await db
       .from('work_check_slots')
       .select('*')
       .in('id', ids);
@@ -43,7 +43,7 @@ const clone = async (req, res, next) => {
 
     // If target_instructor_id provided, verify it exists
     if (target_instructor_id) {
-      const { data: instructor, error: instructorError } = await supabaseAdmin
+      const { data: instructor, error: instructorError } = await db
         .from('instructors')
         .select('id')
         .eq('id', target_instructor_id)
@@ -74,7 +74,7 @@ const clone = async (req, res, next) => {
 
     // Verify groups exist
     if (allGroupIds.length > 0) {
-      const { data: groups, error: groupsError } = await supabaseAdmin
+      const { data: groups, error: groupsError } = await db
         .from('groups')
         .select('group_id')
         .in('group_id', allGroupIds);
@@ -133,7 +133,7 @@ const clone = async (req, res, next) => {
     });
 
     // Insert new slots
-    const { data: createdSlots, error: insertError } = await supabaseAdmin
+    const { data: createdSlots, error: insertError } = await db
       .from('work_check_slots')
       .insert(newSlots)
       .select('id');
@@ -179,7 +179,7 @@ const clone = async (req, res, next) => {
 
       if (potentialAssignments.length > 0) {
         // Check which assignments already exist
-        const { data: existingAssignments } = await supabaseAdmin
+        const { data: existingAssignments } = await db
           .from('groups_instructors')
           .select('group_id, instructor_id, assigned_date')
           .in('group_id', potentialAssignments.map(a => a.group_id))
@@ -198,7 +198,7 @@ const clone = async (req, res, next) => {
         });
 
         if (newAssignments.length > 0) {
-          const { error: assignmentError } = await supabaseAdmin
+          const { error: assignmentError } = await db
             .from('groups_instructors')
             .insert(newAssignments);
 

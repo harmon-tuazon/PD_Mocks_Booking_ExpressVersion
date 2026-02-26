@@ -3,7 +3,7 @@
  * POST /api/admin/auth/logout
  */
 
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 async function logout(req, res) {
   try {
@@ -23,7 +23,7 @@ async function logout(req, res) {
     const token = authHeader.substring(7);
 
     // Sign out user using Supabase admin client
-    const { error } = await supabaseAdmin.auth.admin.signOut(token);
+    const { error } = await db.auth.admin.signOut(token);
 
     if (error) {
       console.error('Logout error:', error);

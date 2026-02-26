@@ -6,7 +6,8 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
+const { query: dbQuery, nestRow } = require('../../services/database');
 
 const diagramData = async (req, res, next) => {
   console.log('[Diagram Data] Endpoint hit:', req.method, req.url);
@@ -24,47 +25,34 @@ const diagramData = async (req, res, next) => {
 
     console.log('[Diagram Data] Fetching for date:', date);
 
-    // Step 1: Fetch bookings with slot + student data in a single query
-    // (same join pattern as list.js)
-    const { data: allBookings, error: bookingsError } = await supabaseAdmin
-      .from('work_check_bookings')
-      .select(`
-        id,
-        slot_id,
-        student_id,
-        status,
-        type,
-        slot:work_check_slots!work_check_bookings_slot_id_fkey (
-          id,
-          slot_date,
-          slot_time,
-          duration_minutes,
-          location,
-          group_id,
-          instructor_id,
-          instructor:instructors!work_check_slots_instructor_id_fkey (
-            id,
-            instructor_name
-          )
-        ),
-        student:hubspot_contact_credits!work_check_bookings_student_id_fkey (
-          student_id,
-          firstname,
-          lastname
-        )
-      `)
-      .in('status', ['confirmed', 'completed', 'marked']);
+    // Step 1: Fetch bookings with slot + student data via raw SQL (date filter in WHERE)
+    let bookings, bookingsError;
+    try {
+      const { rows } = await dbQuery(`
+        SELECT b.id, b.slot_id, b.student_id, b.status, b.type,
+               s.id AS s__id, s.slot_date AS s__slot_date, s.slot_time AS s__slot_time,
+               s.duration_minutes AS s__duration_minutes, s.location AS s__location,
+               s.group_id AS s__group_id, s.instructor_id AS s__instructor_id,
+               i.id AS i__id, i.instructor_name AS i__instructor_name,
+               c.student_id AS c__student_id, c.firstname AS c__firstname, c.lastname AS c__lastname
+        FROM work_check_bookings b
+        LEFT JOIN work_check_slots s ON s.id = b.slot_id
+        LEFT JOIN instructors i ON i.id = s.instructor_id
+        LEFT JOIN hubspot_contact_credits c ON c.student_id = b.student_id
+        WHERE b.status = ANY($1) AND s.slot_date = $2
+      `, [['confirmed', 'completed', 'marked'], date]);
+      bookings = rows.map(r => nestRow(r, { s: 'slot', i: 'instructor', c: 'student' }, { i: 's' }));
+      bookingsError = null;
+    } catch (err) {
+      bookings = null;
+      bookingsError = { message: err.message };
+    }
 
     if (bookingsError) {
       throw new Error(`Failed to fetch bookings: ${bookingsError.message}`);
     }
 
-    console.log(`[Diagram Data] Total bookings with status filter: ${allBookings?.length || 0}`);
-
-    // Step 2: Filter by slot_date in JavaScript (proven pattern from list.js)
-    const bookings = (allBookings || []).filter(b => b.slot?.slot_date === date);
-
-    console.log(`[Diagram Data] Bookings matching date ${date}: ${bookings.length}`);
+    console.log(`[Diagram Data] Bookings matching date ${date}: ${bookings?.length || 0}`);
 
     if (bookings.length === 0) {
       return res.status(200).json({
@@ -96,7 +84,7 @@ const diagramData = async (req, res, next) => {
     // Step 4: Fetch group memberships for these students
     const studentGroupsMap = {};
     if (studentIds.length > 0) {
-      const { data: memberships, error: memberError } = await supabaseAdmin
+      const { data: memberships, error: memberError } = await db
         .from('groups_students')
         .select('student_id, group_id')
         .in('student_id', studentIds)
@@ -123,7 +111,7 @@ const diagramData = async (req, res, next) => {
 
     let groupDetailsMap = {};
     if (allGroupIds.size > 0) {
-      const { data: groups, error: groupsError } = await supabaseAdmin
+      const { data: groups, error: groupsError } = await db
         .from('groups')
         .select('id, group_id, group_name, max_capacity')
         .in('group_id', [...allGroupIds]);

@@ -113,9 +113,9 @@ const available = async (req, res, next) => {
         const discussionIds = searchResult.results.map(discussion => discussion.id);
         console.log(`📋 Fetching prerequisites for ${discussionIds.length} discussions (Supabase-first)...`);
 
-        const { supabaseAdmin } = require('../../services/supabase');
+        const { db } = require('../../services/supabase');
 
-        const { data: supabaseExams, error: supabaseError } = await supabaseAdmin
+        const { data: supabaseExams, error: supabaseError } = await db
           .from('hubspot_mock_exams')
           .select('hubspot_id, prerequisite_exam_ids')
           .in('hubspot_id', discussionIds);

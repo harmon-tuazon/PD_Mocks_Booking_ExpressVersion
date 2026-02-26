@@ -22,7 +22,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 // Maximum instructors per request
 const MAX_INSTRUCTORS_PER_REQUEST = 100;
@@ -87,7 +87,7 @@ const bulkToggleStatus = async (req, res, next) => {
 
     // Fetch all instructors by their IDs from Supabase
     console.log(`[BULK-TOGGLE-INSTRUCTORS] Fetching instructor details from Supabase...`);
-    const { data: instructors, error: fetchError } = await supabaseAdmin
+    const { data: instructors, error: fetchError } = await db
       .from('instructors')
       .select('id, instructor_name, email, is_active, auth_user_id')
       .in('id', ids);
@@ -167,7 +167,7 @@ const bulkToggleStatus = async (req, res, next) => {
       // Process each update individually to track success/failure
       for (const update of updates) {
         try {
-          const { error: updateError } = await supabaseAdmin
+          const { error: updateError } = await db
             .from('instructors')
             .update({
               is_active: update.newState,
@@ -192,7 +192,7 @@ const bulkToggleStatus = async (req, res, next) => {
           } else {
             // Sync auth user ban/unban if instructor has portal access
             if (update.auth_user_id) {
-              const { error: authSyncError } = await supabaseAdmin.auth.admin.updateUserById(
+              const { error: authSyncError } = await db.auth.admin.updateUserById(
                 update.auth_user_id,
                 { ban_duration: update.newState ? 'none' : '876000h' }
               );

@@ -7,7 +7,7 @@
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
 const { getCache } = require('../../services/cache');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const bulkAssignStudents = async (req, res, next) => {
   try {
@@ -24,7 +24,7 @@ const bulkAssignStudents = async (req, res, next) => {
     const { groupId, studentIds } = req.validatedData;
 
     // Verify group exists
-    const { data: group } = await supabaseAdmin
+    const { data: group } = await db
       .from('groups')
       .select('group_id, group_name, max_capacity, status')
       .eq('group_id', groupId)
@@ -38,7 +38,7 @@ const bulkAssignStudents = async (req, res, next) => {
     }
 
     // Check current capacity
-    const { count: currentCount } = await supabaseAdmin
+    const { count: currentCount } = await db
       .from('groups_students')
       .select('*', { count: 'exact', head: true })
       .eq('group_id', groupId)
@@ -53,7 +53,7 @@ const bulkAssignStudents = async (req, res, next) => {
     }
 
     // Verify students exist in hubspot_contact_credits
-    const { data: contacts, error: contactsError } = await supabaseAdmin
+    const { data: contacts, error: contactsError } = await db
       .from('hubspot_contact_credits')
       .select('id, student_id, email, firstname, lastname')
       .in('student_id', studentIds);
@@ -66,7 +66,7 @@ const bulkAssignStudents = async (req, res, next) => {
     const missingStudents = studentIds.filter(id => !foundStudentIds.has(id));
 
     // Check existing assignments
-    const { data: existingAssignments } = await supabaseAdmin
+    const { data: existingAssignments } = await db
       .from('groups_students')
       .select('student_id, status')
       .eq('group_id', groupId)
@@ -102,7 +102,7 @@ const bulkAssignStudents = async (req, res, next) => {
         }
 
         if (existingStatus) {
-          const { error: reactivateError } = await supabaseAdmin
+          const { error: reactivateError } = await db
             .from('groups_students')
             .update({ status: 'active', updated_at: new Date().toISOString() })
             .eq('group_id', groupId)
@@ -121,7 +121,7 @@ const bulkAssignStudents = async (req, res, next) => {
             });
           }
         } else {
-          const { error: insertError } = await supabaseAdmin
+          const { error: insertError } = await db
             .from('groups_students')
             .insert({
               group_id: groupId,

@@ -179,11 +179,11 @@ async function cancelBookings(req, res) {
     // For Supabase-only bookings, fetch data from Supabase
     if (supabaseOnlyBookings.length > 0) {
       console.log(`🔍 [CANCEL] Fetching booking data from Supabase for ${supabaseOnlyBookings.length} Supabase-only bookings...`);
-      const { supabaseAdmin } = require('../../services/supabase');
+      const { db } = require('../../services/supabase');
 
       // Use id (Supabase UUID) for lookup
       const supabaseIds = supabaseOnlyBookings.map(b => b.id);
-      const { data: supabaseData, error: supabaseError } = await supabaseAdmin
+      const { data: supabaseData, error: supabaseError } = await db
         .from('hubspot_bookings')
         .select('id, is_active, exam_date, associated_contact_id, mock_type')
         .in('id', supabaseIds);
@@ -318,11 +318,11 @@ async function cancelBookings(req, res) {
     // Process Supabase-only cancellations (bookings not synced to HubSpot)
     if (supabaseOnlyUpdates.length > 0) {
       console.log(`⚡ [CANCEL] Processing ${supabaseOnlyUpdates.length} Supabase-only cancellations...`);
-      const { supabaseAdmin } = require('../../services/supabase');
+      const { db } = require('../../services/supabase');
 
       for (const update of supabaseOnlyUpdates) {
         try {
-          const { error: updateError } = await supabaseAdmin
+          const { error: updateError } = await db
             .from('hubspot_bookings')
             .update({
               is_active: 'Cancelled',
@@ -377,9 +377,10 @@ async function cancelBookings(req, res) {
 
           if (bookingData?.contact_id && bookingData?.exam_date && bookingData?.mock_type) {
             // Normalize exam_date to YYYY-MM-DD format for consistent cache keys
-            const normalizedExamDate = bookingData.exam_date.includes('T')
-              ? bookingData.exam_date.split('T')[0]
-              : bookingData.exam_date;
+            const examDateStr = String(bookingData.exam_date);
+            const normalizedExamDate = examDateStr.includes('T')
+              ? examDateStr.split('T')[0]
+              : examDateStr;
 
             // New cache key format includes mock_type (Option B)
             const redisKey = `booking:${bookingData.contact_id}:${normalizedExamDate}:${bookingData.mock_type}`;

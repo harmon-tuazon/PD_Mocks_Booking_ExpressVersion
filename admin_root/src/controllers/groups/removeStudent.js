@@ -6,7 +6,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { getCache } = require('../../services/cache');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const removeStudent = async (req, res, next) => {
   try {
@@ -22,7 +22,7 @@ const removeStudent = async (req, res, next) => {
     }
 
     // Verify group exists
-    const { data: group } = await supabaseAdmin
+    const { data: group } = await db
       .from('groups')
       .select('group_id, group_name')
       .eq('group_id', groupId)
@@ -38,7 +38,7 @@ const removeStudent = async (req, res, next) => {
     // Find the assignment by student_id first, then by assignment UUID
     let assignment;
 
-    const { data: byStudentId } = await supabaseAdmin
+    const { data: byStudentId } = await db
       .from('groups_students')
       .select('id, student_id, status')
       .eq('group_id', groupId)
@@ -49,7 +49,7 @@ const removeStudent = async (req, res, next) => {
     if (byStudentId) {
       assignment = byStudentId;
     } else {
-      const { data: byAssignmentId } = await supabaseAdmin
+      const { data: byAssignmentId } = await db
         .from('groups_students')
         .select('id, student_id, status')
         .eq('group_id', groupId)
@@ -68,7 +68,7 @@ const removeStudent = async (req, res, next) => {
     }
 
     // Soft delete
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await db
       .from('groups_students')
       .update({ status: 'removed', updated_at: new Date().toISOString() })
       .eq('id', assignment.id);

@@ -7,7 +7,7 @@
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
 const { getCache } = require('../../services/cache');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 const { sanitizeFields } = require('../../services/sanitize');
 
 /**
@@ -61,7 +61,7 @@ const create = async (req, res, next) => {
     let isUnique = false;
 
     while (!isUnique && attempts < maxAttempts) {
-      const { data: existing } = await supabaseAdmin
+      const { data: existing } = await db
         .from('groups')
         .select('group_id')
         .eq('group_id', groupId)
@@ -85,7 +85,7 @@ const create = async (req, res, next) => {
       });
     }
 
-    const { data: newGroup, error } = await supabaseAdmin
+    const { data: newGroup, error } = await db
       .from('groups')
       .insert({
         group_id: groupId,

@@ -13,7 +13,7 @@ const { requirePermission } = require('../../middleware/requirePermission');
 const hubspot = require('../../services/hubspot');
 
 // Initialize Supabase client
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 async function forceSupabase(req, res) {
   const startTime = Date.now();
@@ -88,7 +88,7 @@ async function forceSupabase(req, res) {
         };
       });
 
-      const { error } = await supabaseAdmin
+      const { error } = await db
         .from('hubspot_bookings')
         .upsert(records, { onConflict: 'hubspot_id' });
 
@@ -140,7 +140,7 @@ async function forceSupabase(req, res) {
         };
       });
 
-      const { error } = await supabaseAdmin
+      const { error } = await db
         .from('hubspot_mock_exams')
         .upsert(records, { onConflict: 'hubspot_id' });
 

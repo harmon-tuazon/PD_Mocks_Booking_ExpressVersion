@@ -124,9 +124,9 @@ async function findOverdueSessions() {
 
   try {
     // Query Supabase instead of HubSpot for better performance
-    const { supabaseAdmin } = require('./supabase');
+    const { db } = require('./supabase');
     
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('hubspot_mock_exams')
       .select('*')
       .eq('is_active', 'scheduled')

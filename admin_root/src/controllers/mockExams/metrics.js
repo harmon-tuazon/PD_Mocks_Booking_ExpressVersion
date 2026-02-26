@@ -77,7 +77,7 @@ async function metrics(req, res) {
 
         supabaseExams.forEach(exam => {
           // Strip time from exam_date if present
-          const examDate = exam.exam_date ? exam.exam_date.split(' ')[0].split('T')[0] : '';
+          const examDate = exam.exam_date ? String(exam.exam_date).split(' ')[0].split('T')[0] : '';
           const capacity = parseInt(exam.capacity) || 0;
           const bookings = parseInt(exam.total_bookings) || 0;
           const isActive = exam.is_active === 'true' || exam.is_active === true;

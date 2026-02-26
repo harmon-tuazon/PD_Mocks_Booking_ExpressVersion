@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const remove = async (req, res, next) => {
   try {
@@ -23,7 +23,7 @@ const remove = async (req, res, next) => {
     }
 
     // Soft delete by setting is_active to false
-    const { data: deletedInstructor, error } = await supabaseAdmin
+    const { data: deletedInstructor, error } = await db
       .from('instructors')
       .update({
         is_active: false,
@@ -42,7 +42,7 @@ const remove = async (req, res, next) => {
 
     // Ban auth user to prevent login
     if (deletedInstructor.auth_user_id) {
-      const { error: banError } = await supabaseAdmin.auth.admin.updateUserById(
+      const { error: banError } = await db.auth.admin.updateUserById(
         deletedInstructor.auth_user_id,
         { ban_duration: '876000h' }
       );

@@ -7,7 +7,7 @@
  */
 
 const { HubSpotService } = require('../services/hubspot');
-const { supabaseAdmin } = require('../services/supabase');
+const { db } = require('../services/supabase');
 
 const OBJECT_TYPES = {
   CONTACTS: '0-1',
@@ -26,7 +26,7 @@ async function runSyncBookings() {
   const hubspot = new HubSpotService();
 
   // Get bookings without hubspot_id (new bookings created in Supabase)
-  const { data: newBookings, error: fetchError } = await supabaseAdmin
+  const { data: newBookings, error: fetchError } = await db
     .from('hubspot_bookings')
     .select('*')
     .is('hubspot_id', null);
@@ -77,7 +77,7 @@ async function runSyncBookings() {
       }
 
       // Update Supabase with hubspot_id
-      await supabaseAdmin
+      await db
         .from('hubspot_bookings')
         .update({
           hubspot_id: hubspotBooking.id,

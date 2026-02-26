@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const getById = async (req, res, next) => {
   try {
@@ -23,7 +23,7 @@ const getById = async (req, res, next) => {
     // Try to find by group_id first, then by UUID
     let group;
 
-    const { data: byGroupId } = await supabaseAdmin
+    const { data: byGroupId } = await db
       .from('groups')
       .select('*')
       .eq('group_id', groupId)
@@ -32,7 +32,7 @@ const getById = async (req, res, next) => {
     if (byGroupId) {
       group = byGroupId;
     } else {
-      const { data: byUuid } = await supabaseAdmin
+      const { data: byUuid } = await db
         .from('groups')
         .select('*')
         .eq('id', groupId)
@@ -49,7 +49,7 @@ const getById = async (req, res, next) => {
     }
 
     // Fetch students for this group with contact details
-    const { data: groupStudents } = await supabaseAdmin
+    const { data: groupStudents } = await db
       .from('groups_students')
       .select(`
         id,
@@ -64,7 +64,7 @@ const getById = async (req, res, next) => {
     let students = [];
     if (groupStudents && groupStudents.length > 0) {
       const studentIds = groupStudents.map(gs => gs.student_id);
-      const { data: contacts } = await supabaseAdmin
+      const { data: contacts } = await db
         .from('hubspot_contact_credits')
         .select('id, student_id, email, firstname, lastname')
         .in('student_id', studentIds);
@@ -84,7 +84,7 @@ const getById = async (req, res, next) => {
     }
 
     // Fetch instructors for this group
-    const { data: groupInstructors } = await supabaseAdmin
+    const { data: groupInstructors } = await db
       .from('groups_instructors')
       .select(`
         id,
@@ -100,7 +100,7 @@ const getById = async (req, res, next) => {
     let instructors = [];
     if (groupInstructors && groupInstructors.length > 0) {
       const instructorIds = groupInstructors.map(gi => gi.instructor_id);
-      const { data: instructorDetails } = await supabaseAdmin
+      const { data: instructorDetails } = await db
         .from('instructors')
         .select('id, instructor_name, email')
         .in('id', instructorIds);

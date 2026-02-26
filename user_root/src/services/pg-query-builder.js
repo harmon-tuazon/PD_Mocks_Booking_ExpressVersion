@@ -1,14 +1,14 @@
 'use strict';
 
 /**
- * pg-backed Supabase Query Builder Compatibility Layer
+ * pg-backed Query Builder Compatibility Layer
  *
  * Implements the Supabase chained query API (.from().select().eq()...) on top
  * of the node-postgres (pg) library. This allows all existing controllers that
- * use supabaseAdmin.from(...) to work without modification after the database
+ * use db.from(...) to work without modification after the database
  * was migrated from Supabase to AWS RDS.
  *
- * Auth operations (supabaseAdmin.auth.*) still go to the real Supabase.
+ * Auth operations (db.auth.*) still go to the real Supabase.
  */
 
 const { Pool } = require('pg');
@@ -40,7 +40,13 @@ function getPool() {
 
 // Sanitize a SQL identifier (table/column name) and wrap in double-quotes
 function qid(name) {
-  return '"' + String(name).replace(/[^a-zA-Z0-9_]/g, '') + '"';
+  const str = String(name);
+  if (str.includes('.')) {
+    return str.split('.').map(part =>
+      '"' + part.replace(/[^a-zA-Z0-9_]/g, '') + '"'
+    ).join('.');
+  }
+  return '"' + str.replace(/[^a-zA-Z0-9_]/g, '') + '"';
 }
 
 // Parse Supabase column list: 'id, name, col3' -> '"id", "name", "col3"'
@@ -81,6 +87,7 @@ class QueryBuilder {
     // SELECT fields
     this._selectCols = '*';
     this._countMode = null;
+    this._head = false;
     // Mutation data
     this._insertData = null;
     this._updateData = null;
@@ -107,6 +114,7 @@ class QueryBuilder {
       this._op = 'SELECT';
       this._selectCols = parseCols(cols);
       if (opts && opts.count === 'exact') this._countMode = 'exact';
+      if (opts && opts.head) this._head = true;
     } else {
       // Called after insert/update/delete → RETURNING
       this._returning = true;
@@ -342,25 +350,38 @@ class QueryBuilder {
 
       // ---------- SELECT (default) ----------
       } else {
-        let cols = this._selectCols;
-        if (this._countMode === 'exact') {
-          cols = (cols === '*' ? '*' : cols) + ', COUNT(*) OVER() AS "__total_count__"';
+        // head + count: count-only query — don't fetch rows
+        if (this._head && this._countMode === 'exact') {
+          const { sql: whereSql, params: whereParams } = this._buildWhere(1);
+          sql = 'SELECT COUNT(*) AS "__count__" FROM ' + qtable + whereSql;
+          params = whereParams;
+        } else {
+          let cols = this._selectCols;
+          if (this._countMode === 'exact') {
+            cols = (cols === '*' ? '*' : cols) + ', COUNT(*) OVER() AS "__total_count__"';
+          }
+          const { sql: whereSql, params: whereParams } = this._buildWhere(1);
+          sql = 'SELECT ' + cols + ' FROM ' + qtable + whereSql;
+          if (this._orderClauses.length > 0) {
+            const orderParts = this._orderClauses.map(o =>
+              qid(o.col) + ' ' + o.dir + (o.nullsFirst ? ' NULLS FIRST' : '')
+            );
+            sql += ' ORDER BY ' + orderParts.join(', ');
+          }
+          if (this._limitVal !== null)  sql += ' LIMIT '  + parseInt(this._limitVal);
+          if (this._offsetVal !== null) sql += ' OFFSET ' + parseInt(this._offsetVal);
+          params = whereParams;
         }
-        const { sql: whereSql, params: whereParams } = this._buildWhere(1);
-        sql = 'SELECT ' + cols + ' FROM ' + qtable + whereSql;
-        if (this._orderClauses.length > 0) {
-          const orderParts = this._orderClauses.map(o =>
-            qid(o.col) + ' ' + o.dir + (o.nullsFirst ? ' NULLS FIRST' : '')
-          );
-          sql += ' ORDER BY ' + orderParts.join(', ');
-        }
-        if (this._limitVal !== null)  sql += ' LIMIT '  + parseInt(this._limitVal);
-        if (this._offsetVal !== null) sql += ' OFFSET ' + parseInt(this._offsetVal);
-        params = whereParams;
       }
 
       result = await pool.query(sql, params);
       const rows = result.rows;
+
+      // head + count: return count only, no data
+      if (this._head && this._countMode === 'exact') {
+        const count = rows.length > 0 ? parseInt(rows[0].__count__ || 0) : 0;
+        return { data: null, error: null, count };
+      }
 
       // Extract window-function count for SELECT with count mode
       let count = null;

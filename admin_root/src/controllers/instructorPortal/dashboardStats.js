@@ -6,7 +6,7 @@
 
 const { requireRole } = require('../../middleware/requireRole');
 const { getInstructorFromUser } = require('../../services/instructor-helpers');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const dashboardStats = async (req, res, next) => {
   try {
@@ -14,7 +14,7 @@ const dashboardStats = async (req, res, next) => {
     const instructor = await getInstructorFromUser(user);
 
     // Get all active group assignments for this instructor
-    const { data: assignments, error: assignError } = await supabaseAdmin
+    const { data: assignments, error: assignError } = await db
       .from('groups_instructors')
       .select('group_id, status')
       .eq('instructor_id', instructor.id)
@@ -33,7 +33,7 @@ const dashboardStats = async (req, res, next) => {
     let groups = [];
 
     if (groupIds.length > 0) {
-      const { data: groupData, error: groupError } = await supabaseAdmin
+      const { data: groupData, error: groupError } = await db
         .from('groups')
         .select('group_id, group_name, time_period, status, start_date, max_capacity')
         .in('group_id', groupIds);
@@ -44,7 +44,7 @@ const dashboardStats = async (req, res, next) => {
       }
 
       // Count students across assigned groups (uses groups_students, matching admin pattern)
-      const { count, error: traineeError } = await supabaseAdmin
+      const { count, error: traineeError } = await db
         .from('groups_students')
         .select('*', { count: 'exact', head: true })
         .in('group_id', groupIds)
@@ -57,7 +57,7 @@ const dashboardStats = async (req, res, next) => {
 
     // Get upcoming sessions from work_check_slots
     const today = new Date().toISOString().split('T')[0];
-    const { data: upcomingSlots, error: slotsError } = await supabaseAdmin
+    const { data: upcomingSlots, error: slotsError } = await db
       .from('work_check_slots')
       .select('id, slot_date, slot_time, group_id')
       .eq('instructor_id', instructor.id)

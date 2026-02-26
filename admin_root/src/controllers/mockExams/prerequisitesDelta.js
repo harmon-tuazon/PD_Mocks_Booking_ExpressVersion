@@ -8,7 +8,7 @@
  */
 
 const { requireAdmin } = require('../../middleware/requireAdmin');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 const hubspot = require('../../services/hubspot');
 const { HUBSPOT_OBJECTS } = require('../../services/hubspot');
 const Joi = require('joi');
@@ -74,7 +74,7 @@ async function updatePrerequisitesDelta(req, res) {
     }
 
     // Call Supabase RPC for atomic delta update
-    const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('update_exam_prerequisites', {
+    const { data: rpcResult, error: rpcError } = await db.rpc('update_exam_prerequisites', {
       p_exam_id: mockExamId,
       p_add_ids: add_prerequisites,
       p_remove_ids: remove_prerequisites
