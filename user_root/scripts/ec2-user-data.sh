@@ -25,28 +25,19 @@ echo "=== PrepDoctors User App Boot - $(date) ==="
 
 # Database credentials
 DB_SECRET=$(aws secretsmanager get-secret-value \
-  --secret-id PrepDoctorsRHApp/DatabaseCanada/Postgres \
+  --secret-id PrepDoctorsApp/DatabaseProduction/Postgres \
   --query SecretString --output text \
   --region ca-central-1 2>/dev/null || echo '{}')
 
 DB_USER=$(echo $DB_SECRET | jq -r '.username // "postgres"')
 DB_PASS=$(echo $DB_SECRET | jq -r '.password // ""')
 
-# JWT secrets
-JWT_SECRET_JSON=$(aws secretsmanager get-secret-value \
-  --secret-id PrepDoctorsRHApp/JWTSecrets \
-  --query SecretString --output text \
-  --region ca-central-1 2>/dev/null || echo '{}')
-
-JWT_SECRET_VAL=$(echo $JWT_SECRET_JSON | jq -r '.JWT_SECRET // ""')
-JWT_REFRESH_VAL=$(echo $JWT_SECRET_JSON | jq -r '.JWT_REFRESH_SECRET // ""')
-
 # User-app specific secrets (Supabase, HubSpot, Redis, CRON)
 # TODO: Create this secret in Secrets Manager with keys:
 #   HS_PRIVATE_APP_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
 #   PD_Bookings_Cache_REDIS_URL, CRON_SECRET
 USER_SECRET=$(aws secretsmanager get-secret-value \
-  --secret-id PrepDoctorsRHApp/UserApp/Secrets \
+  --secret-id PrepDoctorsApp/UserApp/Secret \
   --query SecretString --output text \
   --region ca-central-1 2>/dev/null || echo '{}')
 
@@ -61,7 +52,7 @@ CRON_SECRET_VAL=$(echo $USER_SECRET | jq -r '.CRON_SECRET // ""')
 # -----------------------------------------------------------------------------
 APP_DIR="/home/appuser/app/user_root"
 
-cat > ${APP_DIR}/.env.production << ENVEOF
+cat > ${APP_DIR}/.env << ENVEOF
 NODE_ENV=production
 PORT=3000
 
@@ -81,10 +72,6 @@ PD_Bookings_Cache_REDIS_URL=${REDIS_URL}
 CACHE_ENABLED=true
 
 # Auth & Security
-JWT_SECRET=${JWT_SECRET_VAL}
-JWT_REFRESH_SECRET=${JWT_REFRESH_VAL}
-JWT_EXPIRES_IN=24h
-JWT_REFRESH_EXPIRES_IN=7d
 CRON_SECRET=${CRON_SECRET_VAL}
 
 # AWS
@@ -94,16 +81,16 @@ ENVEOF
 # -----------------------------------------------------------------------------
 # 3. Write frontend .env
 # -----------------------------------------------------------------------------
-cat > ${APP_DIR}/frontend/.env.production << ENVEOF
+cat > ${APP_DIR}/frontend/.env << ENVEOF
 NEXT_PUBLIC_API_URL=/api
 NEXT_PUBLIC_API_BASE_URL=/api
 NODE_ENV=production
 ENVEOF
 
-chown appuser:appuser ${APP_DIR}/.env.production
-chown appuser:appuser ${APP_DIR}/frontend/.env.production
-chmod 600 ${APP_DIR}/.env.production
-chmod 600 ${APP_DIR}/frontend/.env.production
+chown appuser:appuser ${APP_DIR}/.env
+chown appuser:appuser ${APP_DIR}/frontend/.env
+chmod 600 ${APP_DIR}/.env
+chmod 600 ${APP_DIR}/frontend/.env
 
 # -----------------------------------------------------------------------------
 # 4. Install dependencies and build frontend

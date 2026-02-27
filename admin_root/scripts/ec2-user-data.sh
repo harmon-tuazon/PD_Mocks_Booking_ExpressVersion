@@ -25,21 +25,12 @@ echo "=== PrepDoctors Admin App Boot - $(date) ==="
 
 # Database credentials
 DB_SECRET=$(aws secretsmanager get-secret-value \
-  --secret-id PrepDoctorsRHApp/DatabaseCanada/Postgres \
+  --secret-id PrepDoctorsApp/DatabaseProduction/Postgres \
   --query SecretString --output text \
   --region ca-central-1 2>/dev/null || echo '{}')
 
 DB_USER=$(echo $DB_SECRET | jq -r '.username // "postgres"')
 DB_PASS=$(echo $DB_SECRET | jq -r '.password // ""')
-
-# JWT secrets
-JWT_SECRET_JSON=$(aws secretsmanager get-secret-value \
-  --secret-id PrepDoctorsRHApp/JWTSecrets \
-  --query SecretString --output text \
-  --region ca-central-1 2>/dev/null || echo '{}')
-
-JWT_SECRET_VAL=$(echo $JWT_SECRET_JSON | jq -r '.JWT_SECRET // ""')
-JWT_REFRESH_VAL=$(echo $JWT_SECRET_JSON | jq -r '.JWT_REFRESH_SECRET // ""')
 
 # Admin-specific secrets (HubSpot, Supabase, CRON, etc.)
 # TODO: Create this secret in Secrets Manager with keys:
@@ -47,7 +38,7 @@ JWT_REFRESH_VAL=$(echo $JWT_SECRET_JSON | jq -r '.JWT_REFRESH_SECRET // ""')
 #   SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, PD_Bookings_Cache_REDIS_URL,
 #   SHAKY_MOCKS_KEY, SUPABASE_EDGE_FUNCTION_URL
 ADMIN_SECRET=$(aws secretsmanager get-secret-value \
-  --secret-id PrepDoctorsRHApp/AdminApp/Secrets \
+  --secret-id PrepDoctorsApp/AdminApp/Secret \
   --query SecretString --output text \
   --region ca-central-1 2>/dev/null || echo '{}')
 
@@ -66,7 +57,7 @@ EDGE_FUNC_URL=$(echo $ADMIN_SECRET | jq -r '.SUPABASE_EDGE_FUNCTION_URL // ""')
 # -----------------------------------------------------------------------------
 APP_DIR="/home/appuser/app/admin_root"
 
-cat > ${APP_DIR}/.env.production << ENVEOF
+cat > ${APP_DIR}/.env << ENVEOF
 NODE_ENV=production
 PORT=3002
 
@@ -88,10 +79,6 @@ PD_Bookings_Cache_REDIS_URL=${REDIS_URL}
 CACHE_ENABLED=true
 
 # Auth & Security
-JWT_SECRET=${JWT_SECRET_VAL}
-JWT_REFRESH_SECRET=${JWT_REFRESH_VAL}
-JWT_EXPIRES_IN=24h
-JWT_REFRESH_EXPIRES_IN=7d
 CRON_SECRET=${CRON_SECRET_VAL}
 
 # Supabase Webhooks
@@ -118,16 +105,16 @@ ENVEOF
 # -----------------------------------------------------------------------------
 # 3. Write admin frontend .env
 # -----------------------------------------------------------------------------
-cat > ${APP_DIR}/admin_frontend/.env.production << ENVEOF
+cat > ${APP_DIR}/admin_frontend/.env << ENVEOF
 VITE_SUPABASE_URL=${SUPABASE_URL}
 VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON}
 NODE_ENV=production
 ENVEOF
 
-chown appuser:appuser ${APP_DIR}/.env.production
-chown appuser:appuser ${APP_DIR}/admin_frontend/.env.production
-chmod 600 ${APP_DIR}/.env.production
-chmod 600 ${APP_DIR}/admin_frontend/.env.production
+chown appuser:appuser ${APP_DIR}/.env
+chown appuser:appuser ${APP_DIR}/admin_frontend/.env
+chmod 600 ${APP_DIR}/.env
+chmod 600 ${APP_DIR}/admin_frontend/.env
 
 # -----------------------------------------------------------------------------
 # 4. Install dependencies and build frontend
