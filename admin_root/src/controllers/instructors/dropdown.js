@@ -7,7 +7,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const dropdown = async (req, res, next) => {
   try {
@@ -17,7 +17,7 @@ const dropdown = async (req, res, next) => {
     console.log('[Instructors Dropdown] Fetching active instructors for dropdown');
 
     // Fetch only active instructors with minimal fields
-    const { data: instructors, error } = await supabaseAdmin
+    const { data: instructors, error } = await db
       .from('instructors')
       .select('id, instructor_name, email')
       .eq('is_active', true)

@@ -6,7 +6,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { getCache } = require('../../services/cache');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const deleteGroup = async (req, res, next) => {
   try {
@@ -24,7 +24,7 @@ const deleteGroup = async (req, res, next) => {
     // Try to delete by group_id first, then by UUID
     let deleted;
 
-    const { data: byGroupId } = await supabaseAdmin
+    const { data: byGroupId } = await db
       .from('groups')
       .delete()
       .eq('group_id', groupId)
@@ -34,7 +34,7 @@ const deleteGroup = async (req, res, next) => {
     if (byGroupId) {
       deleted = byGroupId;
     } else {
-      const { data: byUuid } = await supabaseAdmin
+      const { data: byUuid } = await db
         .from('groups')
         .delete()
         .eq('id', groupId)

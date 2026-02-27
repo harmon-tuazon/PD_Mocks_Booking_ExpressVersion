@@ -7,7 +7,7 @@
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
 const { getCache } = require('../../services/cache');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const update = async (req, res, next) => {
   try {
@@ -48,7 +48,7 @@ const update = async (req, res, next) => {
     // Try to update by group_id first, then by UUID
     let result;
 
-    const { data: byGroupId } = await supabaseAdmin
+    const { data: byGroupId } = await db
       .from('groups')
       .update(updateData)
       .eq('group_id', groupId)
@@ -58,7 +58,7 @@ const update = async (req, res, next) => {
     if (byGroupId) {
       result = byGroupId;
     } else {
-      const { data: byUuid } = await supabaseAdmin
+      const { data: byUuid } = await db
         .from('groups')
         .update(updateData)
         .eq('id', groupId)

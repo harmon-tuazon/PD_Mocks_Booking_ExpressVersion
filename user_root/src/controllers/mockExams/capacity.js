@@ -1,5 +1,5 @@
 const RedisLockService = require('../../services/redis');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 const { createSuccessResponse } = require('../../services/auth');
 
 /**
@@ -29,7 +29,7 @@ const capacity = async (req, res, next) => {
     const redisBookings = await redis.get(`exam:${mockExamId}:bookings`);
 
     // TIER 2: Get capacity from Supabase
-    const { data: examData, error: supabaseError } = await supabaseAdmin
+    const { data: examData, error: supabaseError } = await db
       .from('hubspot_mock_exams')
       .select('capacity, total_bookings')
       .eq('hubspot_id', mockExamId)

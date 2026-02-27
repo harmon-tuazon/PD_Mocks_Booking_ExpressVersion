@@ -9,7 +9,7 @@
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
 const { getCache } = require('../../services/cache');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const bulkDelete = async (req, res, next) => {
   try {
@@ -28,7 +28,7 @@ const bulkDelete = async (req, res, next) => {
     console.log(`[Bulk Delete Groups] Attempting to delete ${ids.length} groups:`, ids);
 
     // Check which groups have students assigned
-    const { data: groupsWithStudents, error: checkError } = await supabaseAdmin
+    const { data: groupsWithStudents, error: checkError } = await db
       .from('groups_students')
       .select('group_id')
       .in('group_id', ids)
@@ -59,7 +59,7 @@ const bulkDelete = async (req, res, next) => {
       });
     }
 
-    const { data: deletedGroups, error: deleteError } = await supabaseAdmin
+    const { data: deletedGroups, error: deleteError } = await db
       .from('groups')
       .delete()
       .in('group_id', deletableIds)
@@ -71,7 +71,7 @@ const bulkDelete = async (req, res, next) => {
     }
 
     // Clean up instructor assignments for deleted groups
-    const { error: instructorCleanupError } = await supabaseAdmin
+    const { error: instructorCleanupError } = await db
       .from('groups_instructors')
       .delete()
       .in('group_id', deletableIds);

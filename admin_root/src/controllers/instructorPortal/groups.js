@@ -6,7 +6,7 @@
 
 const { requireRole } = require('../../middleware/requireRole');
 const { getInstructorFromUser } = require('../../services/instructor-helpers');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const listGroups = async (req, res, next) => {
   try {
@@ -17,7 +17,7 @@ const listGroups = async (req, res, next) => {
     const status = req.query.status || 'active';
 
     // Get instructor's group assignments
-    const assignQuery = supabaseAdmin
+    const assignQuery = db
       .from('groups_instructors')
       .select('group_id, status, assigned_date')
       .eq('instructor_id', instructor.id);
@@ -40,7 +40,7 @@ const listGroups = async (req, res, next) => {
     const groupIds = assignments.map(a => a.group_id);
 
     // Fetch group details
-    const { data: groups, error: groupError } = await supabaseAdmin
+    const { data: groups, error: groupError } = await db
       .from('groups')
       .select('group_id, group_name, time_period, start_date, end_date, status, max_capacity, location, cycle, phase')
       .in('group_id', groupIds);
@@ -53,7 +53,7 @@ const listGroups = async (req, res, next) => {
     // Count students per group using groups_students (matches admin pattern)
     const studentCounts = {};
     for (const gid of groupIds) {
-      const { count, error: countError } = await supabaseAdmin
+      const { count, error: countError } = await db
         .from('groups_students')
         .select('*', { count: 'exact', head: true })
         .eq('group_id', gid)

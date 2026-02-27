@@ -3,7 +3,7 @@
  * Shared utilities for instructor portal endpoints
  */
 
-const { supabaseAdmin } = require('./supabase');
+const { db } = require('./supabase');
 
 /**
  * Get instructor record from authenticated user via reverse lookup.
@@ -15,7 +15,7 @@ const { supabaseAdmin } = require('./supabase');
  * @throws {Error} 403 if instructor not found or inactive
  */
 async function getInstructorFromUser(user) {
-  const { data: instructor, error: dbError } = await supabaseAdmin
+  const { data: instructor, error: dbError } = await db
     .from('instructors')
     .select('id, instructor_name, email, is_active, auth_user_id, created_at, updated_at')
     .eq('auth_user_id', user.id)

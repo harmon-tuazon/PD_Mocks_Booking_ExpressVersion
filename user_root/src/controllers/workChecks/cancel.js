@@ -5,7 +5,7 @@
  * Body validated by validateBody(schemas.workCheckCancel) middleware in route
  */
 
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 const RedisLockService = require('../../services/redis');
 
 // Initialize Redis service
@@ -32,7 +32,7 @@ const cancel = async (req, res, next) => {
     console.log(`[WORK-CHECK] Cancelling booking: ${bookingId} for ${student_id}`);
 
     // 1. Validate contact
-    const { data: contact, error: contactError } = await supabaseAdmin
+    const { data: contact, error: contactError } = await db
       .from('hubspot_contact_credits')
       .select('id, student_id')
       .eq('student_id', student_id)
@@ -47,7 +47,7 @@ const cancel = async (req, res, next) => {
     }
 
     // 2. Get the booking and verify ownership
-    const { data: booking, error: bookingError } = await supabaseAdmin
+    const { data: booking, error: bookingError } = await db
       .from('work_check_bookings')
       .select(`
         id,
@@ -105,7 +105,7 @@ const cancel = async (req, res, next) => {
     }
 
     // 6. Update the booking status to cancelled
-    const { data: updatedBooking, error: updateError } = await supabaseAdmin
+    const { data: updatedBooking, error: updateError } = await db
       .from('work_check_bookings')
       .update({
         status: 'cancelled',

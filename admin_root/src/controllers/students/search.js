@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const search = async (req, res, next) => {
   console.log('[Students Search] Endpoint hit:', req.method, req.url);
@@ -22,7 +22,7 @@ const search = async (req, res, next) => {
 
     console.log(`[Students Search] Query: "${q}", limit: ${limit}, group_id: ${group_id || 'none'}`);
 
-    let query = supabaseAdmin
+    let query = db
       .from('hubspot_contact_credits')
       .select('id, student_id, firstname, lastname, email')
       .limit(parseInt(limit));
@@ -38,7 +38,7 @@ const search = async (req, res, next) => {
     // If group_id provided, filter by group membership
     if (group_id) {
       // First get student IDs that belong to the group
-      const { data: groupMembers, error: groupError } = await supabaseAdmin
+      const { data: groupMembers, error: groupError } = await db
         .from('group_students')
         .select('student_id')
         .eq('group_id', group_id);

@@ -10,7 +10,7 @@ const {
   createBookingAtomic,
   getContactCreditsFromSupabase,
   checkExistingBookingByMockType,
-  supabaseAdmin
+  db
 } = require('../../services/supabase-data');
 
 /**
@@ -135,7 +135,8 @@ const createBooking = async (req, res, next) => {
     redis = new RedisLockService();
 
     // Format cache key
-    const normalizedExamDate = exam_date.includes('T') ? exam_date.split('T')[0] : exam_date;
+    const examDateStr = String(exam_date);
+    const normalizedExamDate = examDateStr.includes('T') ? examDateStr.split('T')[0] : examDateStr;
     const mockType = 'Mock Discussion';
     const redisKey = `booking:${hubspot_id}:${normalizedExamDate}:${mockType}`;
     const cachedResult = await redis.get(redisKey);
@@ -234,7 +235,7 @@ const createBooking = async (req, res, next) => {
     let prerequisiteExamIds = [];
 
     try {
-      const { data: examData, error: examError } = await supabaseAdmin
+      const { data: examData, error: examError } = await db
         .from('hubspot_mock_exams')
         .select('prerequisite_exam_ids')
         .eq('hubspot_id', mock_exam_id)
@@ -296,7 +297,7 @@ const createBooking = async (req, res, next) => {
     const capacity = parseInt(mockDiscussion.properties.capacity) || 0;
     const propertyBookings = parseInt(mockDiscussion.properties.total_bookings) || 0;
 
-    const { count: actualBookingCount, error: countError } = await supabaseAdmin
+    const { count: actualBookingCount, error: countError } = await db
       .from('hubspot_bookings')
       .select('*', { count: 'exact', head: true })
       .eq('associated_mock_exam', mock_exam_id)

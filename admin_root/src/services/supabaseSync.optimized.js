@@ -11,20 +11,7 @@
  * 5. Batch contact credit updates efficiently
  */
 
-const { createClient } = require('@supabase/supabase-js');
-
-// Initialize Supabase
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-    db: { schema: process.env.SUPABASE_SCHEMA_NAME || 'hubspot_sync' }
-  }
-);
+const { db } = require('./supabase');
 
 // HubSpot API configuration
 const HUBSPOT_TOKEN = process.env.HS_PRIVATE_APP_TOKEN || '';
@@ -72,7 +59,7 @@ async function hubspotApiCall(method, endpoint, body = null) {
  */
 async function getLastSyncTimestamp(syncType) {
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('sync_metadata')
       .select('last_sync_timestamp')
       .eq('sync_type', syncType)
@@ -121,7 +108,7 @@ async function getLastSyncTimestamp(syncType) {
  */
 async function updateLastSyncTimestamp(syncType, timestamp) {
   try {
-    const { error } = await supabaseAdmin
+    const { error } = await db
       .from('sync_metadata')
       .upsert({
         sync_type: syncType,
@@ -332,7 +319,7 @@ async function syncExamToSupabase(exam) {
     synced_at: new Date().toISOString()
   };
 
-  const { error } = await supabaseAdmin
+  const { error } = await db
     .from('hubspot_mock_exams')
     .upsert(record, { onConflict: 'hubspot_id' });
 
@@ -405,7 +392,7 @@ async function syncBookingsToSupabase(bookings, examId) {
     };
   });
 
-  const { error } = await supabaseAdmin
+  const { error } = await db
     .from('hubspot_bookings')
     .upsert(records, { onConflict: 'hubspot_id' });
 
@@ -451,7 +438,7 @@ async function backfillBookingHubSpotIds(bookings) {
 
     try {
       // Find Supabase record by idempotency_key WITHOUT hubspot_id
-      const { data: existing, error: findError } = await supabaseAdmin
+      const { data: existing, error: findError } = await db
         .from('hubspot_bookings')
         .select('id, hubspot_id, booking_id')
         .eq('idempotency_key', idempotencyKey)
@@ -474,7 +461,7 @@ async function backfillBookingHubSpotIds(bookings) {
 
       // Match found! Backfill hubspot_id ONLY (preserve all other Supabase data)
       if (existing) {
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await db
           .from('hubspot_bookings')
           .update({
             hubspot_id: hubspotId,  // Only update hubspot_id

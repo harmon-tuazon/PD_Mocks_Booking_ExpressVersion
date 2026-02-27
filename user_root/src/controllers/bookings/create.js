@@ -8,7 +8,7 @@ const {
   checkIdempotencyKey,
   checkExistingBookingInSupabase,
   checkExistingBookingByMockType,
-  supabaseAdmin,
+  db,
   updateExamBookingCountInSupabase
 } = require('../../services/supabase-data');
 const { sanitizeInput } = require('../../services/auth');
@@ -67,7 +67,7 @@ const create = async (req, res, next) => {
     // ========================================================================
     console.log(`📋 [BOOKING-CREATE] Retrieving mock exam details for exam ID: ${mockExamId}`);
 
-    const { data: examData, error: examError } = await supabaseAdmin
+    const { data: examData, error: examError } = await db
       .from('hubspot_mock_exams')
       .select('*')
       .eq('hubspot_id', mockExamId)
@@ -100,7 +100,7 @@ const create = async (req, res, next) => {
     // ========================================================================
     console.log(`👤 [BOOKING-CREATE] Retrieving contact for student: ${studentId}`);
 
-    const { data: contacts, error: contactError } = await supabaseAdmin
+    const { data: contacts, error: contactError } = await db
       .from('hubspot_contact_credits')
       .select('*')
       .eq('student_id', studentId.toUpperCase())
@@ -138,7 +138,7 @@ const create = async (req, res, next) => {
     // ========================================================================
     // STEP 4: Check capacity using ACTUAL booking count (authoritative)
     // ========================================================================
-    const { count: actualBookingCount, error: countError } = await supabaseAdmin
+    const { count: actualBookingCount, error: countError } = await db
       .from('hubspot_bookings')
       .select('*', { count: 'exact', head: true })
       .eq('associated_mock_exam', mock_exam_id)
@@ -164,7 +164,8 @@ const create = async (req, res, next) => {
     // ========================================================================
     // STEP 5: Check for duplicate bookings (same date + same mock type)
     // ========================================================================
-    const normalizedExamDate = exam_date.includes('T') ? exam_date.split('T')[0] : exam_date;
+    const examDateStr = String(exam_date);
+    const normalizedExamDate = examDateStr.includes('T') ? examDateStr.split('T')[0] : examDateStr;
 
     // TIER 1: Redis cache check (fast path)
     const cacheKey = `booking:${contact_id}:${normalizedExamDate}:${mock_type}`;
@@ -308,7 +309,7 @@ const create = async (req, res, next) => {
     // ========================================================================
     console.log(`📝 [BOOKING-CREATE] Creating atomic booking in Supabase`);
 
-    const { data: bookingResult, error: bookingError } = await supabaseAdmin.rpc(
+    const { data: bookingResult, error: bookingError } = await db.rpc(
       'create_booking_atomic',
       {
         p_booking_id: bookingId,
@@ -377,7 +378,7 @@ const create = async (req, res, next) => {
     // ========================================================================
     // STEP 12: Get updated credits after deduction
     // ========================================================================
-    const { data: updatedContact, error: creditsFetchError } = await supabaseAdmin
+    const { data: updatedContact, error: creditsFetchError } = await db
       .from('hubspot_contact_credits')
       .select('*')
       .eq('hubspot_id', contact_id)

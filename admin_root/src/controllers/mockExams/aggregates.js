@@ -84,7 +84,7 @@ async function aggregates(req, res) {
 
         supabaseExams.forEach(exam => {
           // Ensure exam_date is in YYYY-MM-DD format (strip time if present)
-          const dateOnly = exam.exam_date ? exam.exam_date.split(' ')[0].split('T')[0] : null;
+          const dateOnly = exam.exam_date ? String(exam.exam_date).split(' ')[0].split('T')[0] : null;
           const mockSetSuffix = exam.mock_set ? `_${exam.mock_set.toLowerCase()}` : '';
           const key = `${exam.mock_type}_${dateOnly}_${exam.location}${mockSetSuffix}`;
 

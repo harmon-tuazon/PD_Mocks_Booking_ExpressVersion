@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { query: dbQuery, nestRow } = require('../../services/database');
 
 const getById = async (req, res, next) => {
   const { id } = req.params;
@@ -22,44 +22,44 @@ const getById = async (req, res, next) => {
   try {
     await requirePermission(req, 'workcheck.view');
 
-    const { data: booking, error } = await supabaseAdmin
-      .from('work_check_bookings')
-      .select(`
-        *,
-        slot:work_check_slots!work_check_bookings_slot_id_fkey (
-          id,
-          slot_date,
-          slot_time,
-          duration_minutes,
-          location,
-          group_id,
-          instructor_id,
-          is_active,
-          instructor:instructors!work_check_slots_instructor_id_fkey (
-            id,
-            instructor_name,
-            email
-          )
-        ),
-        student:hubspot_contact_credits!work_check_bookings_student_id_fkey (
-          student_id,
-          firstname,
-          lastname,
-          email
-        )
-      `)
-      .eq('id', id)
-      .single();
+    let booking, fetchErr;
+    try {
+      const { rows } = await dbQuery(`
+        SELECT b.*,
+               s.id AS s__id, s.slot_date AS s__slot_date, s.slot_time AS s__slot_time,
+               s.duration_minutes AS s__duration_minutes, s.location AS s__location,
+               s.group_id AS s__group_id, s.instructor_id AS s__instructor_id,
+               s.is_active AS s__is_active,
+               i.id AS i__id, i.instructor_name AS i__instructor_name, i.email AS i__email,
+               c.student_id AS c__student_id, c.firstname AS c__firstname,
+               c.lastname AS c__lastname, c.email AS c__email
+        FROM work_check_bookings b
+        LEFT JOIN work_check_slots s ON s.id = b.slot_id
+        LEFT JOIN instructors i ON i.id = s.instructor_id
+        LEFT JOIN hubspot_contact_credits c ON c.student_id = b.student_id
+        WHERE b.id = $1
+      `, [id]);
+      if (rows.length === 0) {
+        booking = null;
+        fetchErr = { code: 'PGRST116', message: 'Not found' };
+      } else {
+        booking = nestRow(rows[0], { s: 'slot', i: 'instructor', c: 'student' }, { i: 's' });
+        fetchErr = null;
+      }
+    } catch (err) {
+      booking = null;
+      fetchErr = { message: err.message, code: err.code || 'UNKNOWN' };
+    }
 
-    if (error) {
-      if (error.code === 'PGRST116') {
+    if (fetchErr) {
+      if (fetchErr.code === 'PGRST116') {
         return res.status(404).json({
           success: false,
           error: { code: 'NOT_FOUND', message: 'Booking not found' }
         });
       }
-      console.error('[Supabase ERROR] Failed to fetch booking:', error.message);
-      throw new Error(`Failed to fetch booking: ${error.message}`);
+      console.error('[DB ERROR] Failed to fetch booking:', fetchErr.message);
+      throw new Error(`Failed to fetch booking: ${fetchErr.message}`);
     }
 
     // Transform response

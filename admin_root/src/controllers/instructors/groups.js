@@ -6,7 +6,7 @@
  * No additional auth call needed here.
  */
 
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const groups = async (req, res, next) => {
   try {
@@ -22,7 +22,7 @@ const groups = async (req, res, next) => {
     const status = req.query.status || 'all';
 
     // Get instructor's group assignments
-    const assignQuery = supabaseAdmin
+    const assignQuery = db
       .from('groups_instructors')
       .select('group_id, status, assigned_date')
       .eq('instructor_id', id);
@@ -45,7 +45,7 @@ const groups = async (req, res, next) => {
     const groupIds = assignments.map(a => a.group_id);
 
     // Fetch group details
-    const { data: groups, error: groupError } = await supabaseAdmin
+    const { data: groups, error: groupError } = await db
       .from('groups')
       .select('group_id, group_name, time_period, start_date, end_date, status, max_capacity, location, cycle, phase')
       .in('group_id', groupIds);

@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const remove = async (req, res, next) => {
   const { id } = req.params;
@@ -25,7 +25,7 @@ const remove = async (req, res, next) => {
     console.log(`[Work Check Booking] Deleting booking ${id}`);
 
     // Check if booking exists
-    const { data: existingBooking, error: fetchError } = await supabaseAdmin
+    const { data: existingBooking, error: fetchError } = await db
       .from('work_check_bookings')
       .select('id')
       .eq('id', id)
@@ -39,7 +39,7 @@ const remove = async (req, res, next) => {
     }
 
     // Perform delete
-    const { error: deleteError } = await supabaseAdmin
+    const { error: deleteError } = await db
       .from('work_check_bookings')
       .delete()
       .eq('id', id);

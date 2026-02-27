@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const bulkToggle = async (req, res, next) => {
   console.log('[Work Check Bookings Bulk Toggle] Endpoint hit:', req.method);
@@ -19,7 +19,7 @@ const bulkToggle = async (req, res, next) => {
     console.log(`[Bulk Toggle Bookings] Setting ${ids.length} bookings to status: ${target_status}`);
 
     // Fetch current status of all bookings
-    const { data: bookings, error: fetchError } = await supabaseAdmin
+    const { data: bookings, error: fetchError } = await db
       .from('work_check_bookings')
       .select('id, status')
       .in('id', ids);
@@ -68,7 +68,7 @@ const bulkToggle = async (req, res, next) => {
     if (updates.length > 0) {
       for (const update of updates) {
         const { id, ...updateFields } = update;
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await db
           .from('work_check_bookings')
           .update(updateFields)
           .eq('id', id);

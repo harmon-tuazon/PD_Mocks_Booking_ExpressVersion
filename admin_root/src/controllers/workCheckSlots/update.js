@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const update = async (req, res, next) => {
   try {
@@ -34,7 +34,7 @@ const update = async (req, res, next) => {
     console.log(`[Update Work Check Slot] Updating slot ${id}:`, updates);
 
     // Check if slot exists
-    const { data: existingSlot, error: fetchError } = await supabaseAdmin
+    const { data: existingSlot, error: fetchError } = await db
       .from('work_check_slots')
       .select('id')
       .eq('id', id)
@@ -49,7 +49,7 @@ const update = async (req, res, next) => {
 
     // If group_id is being updated, verify all groups exist
     if (updates.group_id) {
-      const { data: groups, error: groupsError } = await supabaseAdmin
+      const { data: groups, error: groupsError } = await db
         .from('groups')
         .select('group_id')
         .in('group_id', updates.group_id);
@@ -73,7 +73,7 @@ const update = async (req, res, next) => {
     }
 
     // Update the slot
-    const { data: updatedSlot, error: updateError } = await supabaseAdmin
+    const { data: updatedSlot, error: updateError } = await db
       .from('work_check_slots')
       .update({
         ...updates,

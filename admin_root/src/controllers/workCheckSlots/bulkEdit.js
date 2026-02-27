@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const bulkEdit = async (req, res, next) => {
   try {
@@ -17,7 +17,7 @@ const bulkEdit = async (req, res, next) => {
     console.log(`[Bulk Edit Slots] Updating ${ids.length} slots with:`, Object.keys(updates));
 
     // Verify all slots exist
-    const { data: existingSlots, error: fetchError } = await supabaseAdmin
+    const { data: existingSlots, error: fetchError } = await db
       .from('work_check_slots')
       .select('id')
       .in('id', ids);
@@ -45,7 +45,7 @@ const bulkEdit = async (req, res, next) => {
 
     // If group_id is being updated, verify all groups exist
     if (updates.group_id) {
-      const { data: groups, error: groupsError } = await supabaseAdmin
+      const { data: groups, error: groupsError } = await db
         .from('groups')
         .select('group_id')
         .in('group_id', updates.group_id);
@@ -69,7 +69,7 @@ const bulkEdit = async (req, res, next) => {
     }
 
     // Perform bulk update
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await db
       .from('work_check_slots')
       .update({
         ...updates,

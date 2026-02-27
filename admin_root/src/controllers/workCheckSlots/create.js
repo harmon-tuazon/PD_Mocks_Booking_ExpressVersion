@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const create = async (req, res, next) => {
   try {
@@ -30,7 +30,7 @@ const create = async (req, res, next) => {
     });
 
     // Verify instructor exists
-    const { data: instructor, error: instructorError } = await supabaseAdmin
+    const { data: instructor, error: instructorError } = await db
       .from('instructors')
       .select('id, instructor_name')
       .eq('id', instructor_id)
@@ -47,7 +47,7 @@ const create = async (req, res, next) => {
     }
 
     // Verify all groups exist
-    const { data: groups, error: groupsError } = await supabaseAdmin
+    const { data: groups, error: groupsError } = await db
       .from('groups')
       .select('group_id')
       .in('group_id', group_id);
@@ -88,7 +88,7 @@ const create = async (req, res, next) => {
     };
 
     // Insert slot
-    const { data: newSlot, error: insertError } = await supabaseAdmin
+    const { data: newSlot, error: insertError } = await db
       .from('work_check_slots')
       .insert(slotData)
       .select()
@@ -116,7 +116,7 @@ const create = async (req, res, next) => {
     // Note: groups_instructors.group_id is now VARCHAR referencing groups(group_id)
 
     // Check which assignments already exist for this instructor/date combination
-    const { data: existingAssignments } = await supabaseAdmin
+    const { data: existingAssignments } = await db
       .from('groups_instructors')
       .select('group_id')
       .eq('instructor_id', instructor_id)
@@ -136,7 +136,7 @@ const create = async (req, res, next) => {
       }));
 
     if (newAssignments.length > 0) {
-      const { error: assignmentError } = await supabaseAdmin
+      const { error: assignmentError } = await db
         .from('groups_instructors')
         .insert(newAssignments);
 

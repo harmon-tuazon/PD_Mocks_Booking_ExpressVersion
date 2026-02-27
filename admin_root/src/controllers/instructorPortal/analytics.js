@@ -8,7 +8,7 @@
 const { requireRole } = require('../../middleware/requireRole');
 const { requireAuth } = require('../../middleware/requireAuth');
 const { getInstructorFromUser } = require('../../services/instructor-helpers');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 const { instructorAnalytics } = require('../../services/validation');
 
 const analytics = async (req, res, next) => {
@@ -31,7 +31,7 @@ const analytics = async (req, res, next) => {
       // Verify the caller is authenticated (admin-level)
       await requireAuth(req);
 
-      const { data: instructorData, error: instructorError } = await supabaseAdmin
+      const { data: instructorData, error: instructorError } = await db
         .from('instructors')
         .select('id, instructor_name, email, is_active')
         .eq('id', value.instructor_id)
@@ -61,7 +61,7 @@ const analytics = async (req, res, next) => {
     // ---- Cycle -> group_ids resolution ----
     let cycleGroupIds = null;
     if (filterCycle) {
-      const { data: cycleGroups, error: cycleErr } = await supabaseAdmin
+      const { data: cycleGroups, error: cycleErr } = await db
         .from('groups')
         .select('group_id')
         .eq('cycle', filterCycle);
@@ -82,7 +82,7 @@ const analytics = async (req, res, next) => {
     }
 
     // ---- Fetch instructor's slots ----
-    let slotsQuery = supabaseAdmin
+    let slotsQuery = db
       .from('work_check_slots')
       .select('id, slot_date, slot_time, group_id, duration_minutes, location, total_slots')
       .eq('instructor_id', instructor.id)
@@ -115,7 +115,7 @@ const analytics = async (req, res, next) => {
     const slotIds = slots.map(s => s.id);
 
     // ---- Fetch bookings for those slots ----
-    const { data: bookings, error: bookingsError } = await supabaseAdmin
+    const { data: bookings, error: bookingsError } = await db
       .from('work_check_bookings')
       .select('id, slot_id, student_id, status, type, created_at, confirmed_at, cancelled_at, marked_at')
       .in('slot_id', slotIds);
@@ -236,7 +236,7 @@ const analytics = async (req, res, next) => {
     }
 
     // Also fetch all groups assigned to this instructor (may include groups without slots)
-    const { data: instructorAssignments } = await supabaseAdmin
+    const { data: instructorAssignments } = await db
       .from('groups_instructors')
       .select('group_id')
       .eq('instructor_id', instructor.id)
@@ -251,7 +251,7 @@ const analytics = async (req, res, next) => {
       const groupIdArray = [...uniqueGroupIds];
 
       // Fetch group info
-      const { data: groupsData } = await supabaseAdmin
+      const { data: groupsData } = await db
         .from('groups')
         .select('group_id, group_name')
         .in('group_id', groupIdArray);
@@ -262,7 +262,7 @@ const analytics = async (req, res, next) => {
       }
 
       // Fetch enrolled student counts per group
-      const { data: enrollments } = await supabaseAdmin
+      const { data: enrollments } = await db
         .from('groups_students')
         .select('group_id, student_id')
         .in('group_id', groupIdArray)

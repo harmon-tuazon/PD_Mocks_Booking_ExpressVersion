@@ -17,7 +17,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 const { getCache } = require('../../services/cache');
 
 // ============== CONSTANTS ==============
@@ -336,7 +336,7 @@ async function bulkCreate(req, res) {
     const uniqueStudentIds = [...new Set(formatValidRows.map(r => r.row.student_id))];
     console.log(`[BULK-${modeLabel}] Fetching ${uniqueStudentIds.length} unique contacts...`);
 
-    const { data: contacts, error: contactError } = await supabaseAdmin
+    const { data: contacts, error: contactError } = await db
       .from('hubspot_contact_credits')
       .select('hubspot_id, student_id, email, firstname, lastname, sj_credits, cs_credits, sjmini_credits, mock_discussion_token, shared_mock_credits')
       .in('student_id', uniqueStudentIds);
@@ -356,7 +356,7 @@ async function bulkCreate(req, res) {
     const uniqueExamIds = [...new Set(formatValidRows.map(r => r.row.mock_exam_id))];
     console.log(`[BULK-${modeLabel}] Fetching ${uniqueExamIds.length} unique exams...`);
 
-    const { data: exams, error: examError } = await supabaseAdmin
+    const { data: exams, error: examError } = await db
       .from('hubspot_mock_exams')
       .select('hubspot_id, mock_type, mock_set, exam_date, start_time, end_time, location')
       .in('hubspot_id', uniqueExamIds);
@@ -380,7 +380,7 @@ async function bulkCreate(req, res) {
       return `${exam.mock_type}-${r.row.student_id}-${formattedDate}`;
     }).filter(Boolean);
 
-    const { data: existingBookings, error: existingError } = await supabaseAdmin
+    const { data: existingBookings, error: existingError } = await db
       .from('hubspot_bookings')
       .select('booking_id')
       .in('booking_id', potentialBookingIds)
@@ -604,7 +604,7 @@ async function bulkCreate(req, res) {
     // ========== STEP 6: Bulk insert bookings ==========
     let insertedBookings = [];
     if (bookingsToInsert.length > 0) {
-      const { data: inserted, error: insertError } = await supabaseAdmin
+      const { data: inserted, error: insertError } = await db
         .from('hubspot_bookings')
         .insert(bookingsToInsert)
         .select('id, booking_id, student_id, associated_mock_exam, token_used');
@@ -651,7 +651,7 @@ async function bulkCreate(req, res) {
         const newCredits = Math.max(0, currentCredits - update.count);
 
         try {
-          const { error: creditError } = await supabaseAdmin
+          const { error: creditError } = await db
             .from('hubspot_contact_credits')
             .update({ [update.token_type]: newCredits, updated_at: now })
             .eq('student_id', update.student_id);
@@ -676,7 +676,7 @@ async function bulkCreate(req, res) {
 
       for (const [examId, count] of Object.entries(examCounts)) {
         try {
-          const { error: rpcError } = await supabaseAdmin.rpc('increment_exam_bookings', {
+          const { error: rpcError } = await db.rpc('increment_exam_bookings', {
             p_exam_id: examId,
             p_delta: count
           });

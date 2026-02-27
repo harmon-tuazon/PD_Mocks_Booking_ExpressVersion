@@ -9,7 +9,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const resetPassword = async (req, res, next) => {
   try {
@@ -37,7 +37,7 @@ const resetPassword = async (req, res, next) => {
     }
 
     // Get instructor record
-    const { data: instructor, error: fetchError } = await supabaseAdmin
+    const { data: instructor, error: fetchError } = await db
       .from('instructors')
       .select('id, auth_user_id, instructor_name')
       .eq('id', id)
@@ -61,7 +61,7 @@ const resetPassword = async (req, res, next) => {
     }
 
     // Update password — Supabase handles hashing
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+    const { error: updateError } = await db.auth.admin.updateUserById(
       instructor.auth_user_id,
       { password: new_password }
     );

@@ -30,7 +30,7 @@ const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
 const { getCache } = require('../../services/cache');
 const hubspot = require('../../services/hubspot');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 const { getBookingCascading } = require('../../services/supabase-data');
 
 // HubSpot Object Type IDs
@@ -350,7 +350,7 @@ async function updateAttendance(req, res) {
 
       for (const update of supabaseDirectUpdates) {
         try {
-          const { error } = await supabaseAdmin
+          const { error } = await db
             .from('hubspot_bookings')
             .update({
               attendance: update.newAttendance,
@@ -417,7 +417,7 @@ async function updateAttendance(req, res) {
 
           // Prefer Supabase UUID for lookup, fallback to HubSpot ID
           if (result.supabaseId) {
-            return supabaseAdmin
+            return db
               .from('hubspot_bookings')
               .update({
                 attendance: newAttendance,
@@ -427,7 +427,7 @@ async function updateAttendance(req, res) {
               })
               .eq('id', result.supabaseId);
           } else {
-            return supabaseAdmin
+            return db
               .from('hubspot_bookings')
               .update({
                 attendance: newAttendance,

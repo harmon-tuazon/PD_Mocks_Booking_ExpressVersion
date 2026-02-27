@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const bulkToggle = async (req, res, next) => {
   try {
@@ -17,7 +17,7 @@ const bulkToggle = async (req, res, next) => {
     console.log(`[Bulk Toggle Slots] Action: ${action} for ${ids.length} slots`);
 
     // Fetch current status of all slots
-    const { data: slots, error: fetchError } = await supabaseAdmin
+    const { data: slots, error: fetchError } = await db
       .from('work_check_slots')
       .select('id, is_active')
       .in('id', ids);
@@ -68,7 +68,7 @@ const bulkToggle = async (req, res, next) => {
     if (updates.length > 0) {
       // Update each slot individually (Supabase doesn't support bulk updates with different values)
       for (const update of updates) {
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await db
           .from('work_check_slots')
           .update({
             is_active: update.is_active,

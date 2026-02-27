@@ -53,7 +53,7 @@ const { validationMiddleware } = require('../../services/validation');
 const { getCache } = require('../../services/cache');
 const hubspot = require('../../services/hubspot');
 const { deleteExamFromSupabase } = require('../../services/supabase-data');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 // HubSpot Object Type IDs
 const HUBSPOT_OBJECTS = {
@@ -217,7 +217,7 @@ const batchDelete = async (req, res) => {
         const bookingDeletes = results.deleted.map(async (sessionId) => {
           try {
             // Delete all bookings (including cancelled) for this exam session
-            const { error } = await supabaseAdmin
+            const { error } = await db
               .from('hubspot_bookings')
               .delete()
               .eq('associated_mock_exam', sessionId);

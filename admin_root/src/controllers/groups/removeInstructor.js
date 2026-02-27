@@ -6,7 +6,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { getCache } = require('../../services/cache');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const removeInstructor = async (req, res, next) => {
   try {
@@ -24,7 +24,7 @@ const removeInstructor = async (req, res, next) => {
     // Find the assignment - try by instructor_id first, then by assignment UUID
     let assignment;
 
-    const { data: byInstructorId } = await supabaseAdmin
+    const { data: byInstructorId } = await db
       .from('groups_instructors')
       .select('id, instructor_id, status')
       .eq('group_id', groupId)
@@ -35,7 +35,7 @@ const removeInstructor = async (req, res, next) => {
     if (byInstructorId) {
       assignment = byInstructorId;
     } else {
-      const { data: byAssignmentId } = await supabaseAdmin
+      const { data: byAssignmentId } = await db
         .from('groups_instructors')
         .select('id, instructor_id, status')
         .eq('group_id', groupId)
@@ -53,7 +53,7 @@ const removeInstructor = async (req, res, next) => {
     }
 
     // Soft delete
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await db
       .from('groups_instructors')
       .update({ status: 'removed', updated_at: new Date().toISOString() })
       .eq('id', assignment.id);

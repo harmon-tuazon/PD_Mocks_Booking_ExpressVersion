@@ -5,7 +5,8 @@
  * Body validated by validateBody(schemas.workCheckCreate) middleware in route
  */
 
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
+const { query: dbQuery, nestRow } = require('../../services/database');
 const RedisLockService = require('../../services/redis');
 
 // Initialize Redis service
@@ -26,7 +27,7 @@ const create = async (req, res, next) => {
     console.log(`[WORK-CHECK] Creating booking: ${student_id} -> ${slot_id} (${work_check_type})`);
 
     // 1. Validate contact
-    const { data: contact, error: contactError } = await supabaseAdmin
+    const { data: contact, error: contactError } = await db
       .from('hubspot_contact_credits')
       .select('id, hubspot_id, student_id, firstname, lastname')
       .eq('student_id', student_id)
@@ -40,16 +41,21 @@ const create = async (req, res, next) => {
       });
     }
 
-    // 2. Get slot details
-    const { data: slot, error: slotError } = await supabaseAdmin
-      .from('work_check_slots')
-      .select(`
-        *,
-        instructors (id, instructor_name)
-      `)
-      .eq('id', slot_id)
-      .eq('is_active', true)
-      .single();
+    // 2. Get slot details (raw SQL with LEFT JOIN for instructor)
+    let slot, slotError;
+    try {
+      const { rows } = await dbQuery(`
+        SELECT s.*, i.id AS i__id, i.instructor_name AS i__instructor_name
+        FROM work_check_slots s
+        LEFT JOIN instructors i ON i.id = s.instructor_id
+        WHERE s.id = $1 AND s.is_active = true
+      `, [slot_id]);
+      slot = rows.length > 0 ? nestRow(rows[0], { i: 'instructors' }) : null;
+      slotError = null;
+    } catch (err) {
+      slot = null;
+      slotError = { message: err.message };
+    }
 
     if (slotError || !slot) {
       return res.status(404).json({
@@ -72,7 +78,7 @@ const create = async (req, res, next) => {
     // 4. Verify trainee is in one of the slot's groups (group_id is array)
     const slotGroups = Array.isArray(slot.group_id) ? slot.group_id : [slot.group_id];
 
-    const { data: groupMembership } = await supabaseAdmin
+    const { data: groupMembership } = await db
       .from('groups_students')
       .select('id, group_id')
       .eq('student_id', contact.student_id)
@@ -101,7 +107,7 @@ const create = async (req, res, next) => {
     }
 
     // 6. Check slot capacity
-    const { count: bookedCount, error: countError } = await supabaseAdmin
+    const { count: bookedCount, error: countError } = await db
       .from('work_check_bookings')
       .select('*', { count: 'exact', head: true })
       .eq('slot_id', slot_id)
@@ -137,7 +143,7 @@ const create = async (req, res, next) => {
     }
 
     // TIER 2: Check for existing ACTIVE booking on the same SLOT
-    const { data: existingSlotBooking } = await supabaseAdmin
+    const { data: existingSlotBooking } = await db
       .from('work_check_bookings')
       .select('id, status')
       .eq('student_id', contact.student_id)
@@ -158,16 +164,19 @@ const create = async (req, res, next) => {
     }
 
     // TIER 3: Check for existing booking on the same DATE (different slot)
-    const { data: existingDateBooking } = await supabaseAdmin
-      .from('work_check_bookings')
-      .select(`
-        id,
-        work_check_slots!inner (slot_date)
-      `)
-      .eq('student_id', contact.student_id)
-      .eq('work_check_slots.slot_date', slot.slot_date)
-      .in('status', ['pending', 'confirmed'])
-      .maybeSingle();
+    let existingDateBooking;
+    try {
+      const { rows } = await dbQuery(`
+        SELECT b.id
+        FROM work_check_bookings b
+        INNER JOIN work_check_slots s ON s.id = b.slot_id
+        WHERE b.student_id = $1 AND s.slot_date = $2 AND b.status = ANY($3)
+        LIMIT 1
+      `, [contact.student_id, slot.slot_date, ['pending', 'confirmed']]);
+      existingDateBooking = rows.length > 0 ? rows[0] : null;
+    } catch (err) {
+      existingDateBooking = null;
+    }
 
     if (existingDateBooking) {
       if (redis) {
@@ -199,7 +208,7 @@ const create = async (req, res, next) => {
       ...(seat && { seat })
     };
 
-    const { data: booking, error: insertError } = await supabaseAdmin
+    const { data: booking, error: insertError } = await db
       .from('work_check_bookings')
       .insert(bookingData)
       .select()
@@ -241,7 +250,7 @@ const create = async (req, res, next) => {
     const endTimeStr = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
 
     // Get group name for response
-    const { data: groupInfo } = await supabaseAdmin
+    const { data: groupInfo } = await db
       .from('groups')
       .select('group_name')
       .eq('group_id', groupMembership.group_id)

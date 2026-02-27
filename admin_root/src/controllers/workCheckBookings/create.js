@@ -5,7 +5,8 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
+const { query: dbQuery, nestRow } = require('../../services/database');
 
 const create = async (req, res, next) => {
   console.log('[Work Check Booking Create] Endpoint hit:', req.method);
@@ -23,7 +24,7 @@ const create = async (req, res, next) => {
     console.log(`[Work Check Booking Create] Creating booking for student ${student_id} in slot ${slot_id}`);
 
     // Fetch the slot to check auto_approve setting and capacity
-    const { data: slot, error: slotError } = await supabaseAdmin
+    const { data: slot, error: slotError } = await db
       .from('work_check_slots')
       .select('id, auto_approve, slot_date, slot_time, location, is_active, group_id, total_slots')
       .eq('id', slot_id)
@@ -58,7 +59,7 @@ const create = async (req, res, next) => {
     }
 
     // Verify student exists
-    const { data: student, error: studentError } = await supabaseAdmin
+    const { data: student, error: studentError } = await db
       .from('hubspot_contact_credits')
       .select('id, student_id, firstname, lastname, email')
       .eq('id', student_id)
@@ -75,7 +76,7 @@ const create = async (req, res, next) => {
     // Verify student is in one of the slot's groups
     const slotGroups = Array.isArray(slot.group_id) ? slot.group_id : [slot.group_id];
 
-    const { data: groupMembership, error: groupError } = await supabaseAdmin
+    const { data: groupMembership, error: groupError } = await db
       .from('groups_students')
       .select('id, group_id')
       .eq('student_id', student.student_id)  // Use student_id string, not UUID
@@ -99,7 +100,7 @@ const create = async (req, res, next) => {
     }
 
     // Check slot capacity
-    const { count: bookedCount, error: countError } = await supabaseAdmin
+    const { count: bookedCount, error: countError } = await db
       .from('work_check_bookings')
       .select('*', { count: 'exact', head: true })
       .eq('slot_id', slot_id)
@@ -122,7 +123,7 @@ const create = async (req, res, next) => {
 
     // Check for existing booking (prevent duplicates)
     // Note: work_check_bookings.student_id is the string ID, not UUID
-    const { data: existingBooking, error: existingError } = await supabaseAdmin
+    const { data: existingBooking, error: existingError } = await db
       .from('work_check_bookings')
       .select('id')
       .eq('slot_id', slot_id)
@@ -162,29 +163,41 @@ const create = async (req, res, next) => {
       cancelled_at: null
     };
 
-    const { data: newBooking, error: insertError } = await supabaseAdmin
+    // Insert booking (shim handles simple INSERT fine)
+    const { data: insertedBooking, error: insertError } = await db
       .from('work_check_bookings')
       .insert(bookingData)
-      .select(`
-        *,
-        slot:work_check_slots!work_check_bookings_slot_id_fkey (
-          id,
-          slot_date,
-          slot_time,
-          duration_minutes,
-          location,
-          auto_approve,
-          instructor:instructors!work_check_slots_instructor_id_fkey (
-            id,
-            instructor_name
-          )
-        )
-      `)
+      .select('*')
       .single();
 
     if (insertError) {
-      console.error('[Supabase ERROR] Failed to create booking:', insertError.message);
+      console.error('[DB ERROR] Failed to create booking:', insertError.message);
       throw new Error(`Failed to create booking: ${insertError.message}`);
+    }
+
+    // Fetch the full booking with slot + instructor via raw SQL
+    let newBooking;
+    try {
+      const { rows } = await dbQuery(`
+        SELECT b.*,
+               s.id AS s__id, s.slot_date AS s__slot_date, s.slot_time AS s__slot_time,
+               s.duration_minutes AS s__duration_minutes, s.location AS s__location,
+               s.auto_approve AS s__auto_approve,
+               i.id AS i__id, i.instructor_name AS i__instructor_name
+        FROM work_check_bookings b
+        LEFT JOIN work_check_slots s ON s.id = b.slot_id
+        LEFT JOIN instructors i ON i.id = s.instructor_id
+        WHERE b.id = $1
+      `, [insertedBooking.id]);
+      newBooking = rows.length > 0 ? nestRow(rows[0], { s: 'slot', i: 'instructor' }, { i: 's' }) : insertedBooking;
+    } catch (err) {
+      // Fallback: use the basic inserted data with slot info we already have
+      newBooking = {
+        ...insertedBooking,
+        slot: { id: slot.id, slot_date: slot.slot_date, slot_time: slot.slot_time,
+                duration_minutes: null, location: slot.location, auto_approve: slot.auto_approve,
+                instructor: null }
+      };
     }
 
     // Transform response

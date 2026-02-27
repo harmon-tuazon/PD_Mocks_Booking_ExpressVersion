@@ -1,5 +1,5 @@
 const RedisLockService = require('./redis');
-const { supabaseAdmin } = require('./supabase');
+const { db } = require('./supabase');
 
 let redisInstance = null;
 
@@ -21,7 +21,7 @@ const initializeConnections = async () => {
   // Supabase client is already a singleton (imported from supabase.js)
   console.log('Supabase initialized');
 
-  return { redis: redisInstance, supabase: supabaseAdmin };
+  return { redis: redisInstance, supabase: db };
 };
 
 /**
@@ -47,7 +47,7 @@ const getRedis = () => {
   return redisInstance;
 };
 
-const getSupabase = () => supabaseAdmin;
+const getSupabase = () => db;
 
 module.exports = {
   initializeConnections,

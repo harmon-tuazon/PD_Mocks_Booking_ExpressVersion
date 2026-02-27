@@ -6,20 +6,8 @@
  * Security: Requires CRON_SECRET
  */
 
-const { createClient } = require('@supabase/supabase-js');
 const { HubSpotService } = require('../../services/hubspot');
-
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-    db: { schema: process.env.SUPABASE_SCHEMA_NAME || 'hubspot_sync' }
-  }
-);
+const { db } = require('../../services/supabase');
 
 // HubSpot object type IDs
 const OBJECT_TYPES = {
@@ -35,7 +23,7 @@ async function syncBookings(summary) {
   console.log('[BATCH SYNC] Syncing bookings...');
   const hubspot = new HubSpotService();
 
-  const { data: newBookings, error: newError } = await supabaseAdmin
+  const { data: newBookings, error: newError } = await db
     .from('hubspot_bookings')
     .select('*')
     .is('hubspot_id', null);
@@ -92,7 +80,7 @@ async function syncBookings(summary) {
         );
       }
 
-      await supabaseAdmin
+      await db
         .from('hubspot_bookings')
         .update({
           hubspot_id: hubspotBooking.id,

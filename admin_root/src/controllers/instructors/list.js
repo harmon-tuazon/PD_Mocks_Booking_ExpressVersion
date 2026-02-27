@@ -6,7 +6,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const list = async (req, res, next) => {
   try {
@@ -36,7 +36,7 @@ const list = async (req, res, next) => {
     });
 
     // Build Supabase query (using hubspot_sync.instructors table)
-    let query = supabaseAdmin
+    let query = db
       .from('instructors')
       .select('*', { count: 'exact' });
 

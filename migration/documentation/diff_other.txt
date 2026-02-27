@@ -1,0 +1,284 @@
+diff --git a/admin_root/ecosystem.config.js b/admin_root/ecosystem.config.js
+index c6f4884..e9bb7dd 100644
+--- a/admin_root/ecosystem.config.js
++++ b/admin_root/ecosystem.config.js
+@@ -2,11 +2,11 @@ module.exports = {
+   apps: [{
+     name: 'admin-app',
+     script: 'src/server.js',
+-    instances: 'max',
+-    exec_mode: 'cluster',
++    instances: 1,
++    exec_mode: 'fork',
+     env: {
+       NODE_ENV: 'production',
+-      PORT: 3001
++      PORT: 3002
+     },
+     // Logging
+     error_file: './logs/error.log',
+diff --git a/admin_root/package.json b/admin_root/package.json
+index e2840e6..85dfd36 100644
+--- a/admin_root/package.json
++++ b/admin_root/package.json
+@@ -26,6 +26,7 @@
+     "jsonwebtoken": "^9.0.2",
+     "node-cron": "^4.2.1",
+     "nodemon": "^3.1.14",
++    "pg": "^8.18.0",
+     "xss": "^1.0.15"
+   },
+   "devDependencies": {
+diff --git a/admin_root/src/controllers/auth/requestOtp.js b/admin_root/src/controllers/auth/requestOtp.js
+index 22593d5..3e2964e 100644
+--- a/admin_root/src/controllers/auth/requestOtp.js
++++ b/admin_root/src/controllers/auth/requestOtp.js
+@@ -6,9 +6,9 @@
+  */
+ 
+ const Joi = require('joi');
++const { supabaseAdmin } = require('../../services/supabase');
+ const RedisLockService = require('../../services/redis');
+ const axios = require('axios');
+-const { createClient } = require('@supabase/supabase-js');
+ 
+ // Validation schema
+ const requestOtpSchema = Joi.object({
+@@ -47,10 +47,7 @@ async function requestOtp(req, res) {
+     }
+ 
+     // Check if user exists in Supabase
+-    const supabaseAdmin = createClient(
+-      process.env.SUPABASE_URL,
+-      process.env.SUPABASE_SERVICE_ROLE_KEY
+-    );
++
+ 
+     const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+     const userExists = users?.users?.some(u => u.email === email);
+diff --git a/admin_root/src/controllers/auth/updatePassword.js b/admin_root/src/controllers/auth/updatePassword.js
+index 9abf333..5228d5e 100644
+--- a/admin_root/src/controllers/auth/updatePassword.js
++++ b/admin_root/src/controllers/auth/updatePassword.js
+@@ -6,8 +6,8 @@
+  */
+ 
+ const Joi = require('joi');
++const { supabaseAdmin } = require('../../services/supabase');
+ const RedisLockService = require('../../services/redis');
+-const { createClient } = require('@supabase/supabase-js');
+ 
+ const updatePasswordSchema = Joi.object({
+   email: Joi.string().email().required(),
+@@ -58,10 +58,7 @@ async function updatePassword(req, res) {
+     }
+ 
+     // Update password via Supabase Admin API
+-    const supabaseAdmin = createClient(
+-      process.env.SUPABASE_URL,
+-      process.env.SUPABASE_SERVICE_ROLE_KEY
+-    );
++
+ 
+     // Find user by email
+     const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+diff --git a/admin_root/src/controllers/cron/syncBookingsFromSupabase.js b/admin_root/src/controllers/cron/syncBookingsFromSupabase.js
+index 001955f..37e5dd8 100644
+--- a/admin_root/src/controllers/cron/syncBookingsFromSupabase.js
++++ b/admin_root/src/controllers/cron/syncBookingsFromSupabase.js
+@@ -6,20 +6,8 @@
+  * Security: Requires CRON_SECRET
+  */
+ 
+-const { createClient } = require('@supabase/supabase-js');
+ const { HubSpotService } = require('../../services/hubspot');
+-
+-const supabaseAdmin = createClient(
+-  process.env.SUPABASE_URL,
+-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+-  {
+-    auth: {
+-      persistSession: false,
+-      autoRefreshToken: false,
+-    },
+-    db: { schema: process.env.SUPABASE_SCHEMA_NAME || 'hubspot_sync' }
+-  }
+-);
++const { supabaseAdmin } = require('../../services/supabase');
+ 
+ // HubSpot object type IDs
+ const OBJECT_TYPES = {
+diff --git a/admin_root/src/controllers/sync/forceSupabase.js b/admin_root/src/controllers/sync/forceSupabase.js
+index 974357c..93f79b5 100644
+--- a/admin_root/src/controllers/sync/forceSupabase.js
++++ b/admin_root/src/controllers/sync/forceSupabase.js
+@@ -13,17 +13,7 @@ const { requirePermission } = require('../../middleware/requirePermission');
+ const hubspot = require('../../services/hubspot');
+ 
+ // Initialize Supabase client
+-const { createClient } = require('@supabase/supabase-js');
+-const supabaseAdmin = createClient(
+-  process.env.SUPABASE_URL || '',
+-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+-  {
+-    auth: {
+-      persistSession: false,
+-      autoRefreshToken: false,
+-    }
+-  }
+-);
++const { supabaseAdmin } = require('../../services/supabase');
+ 
+ async function forceSupabase(req, res) {
+   const startTime = Date.now();
+diff --git a/admin_root/src/jobs/syncBookings.job.js b/admin_root/src/jobs/syncBookings.job.js
+index 1addd84..7a45cc2 100644
+--- a/admin_root/src/jobs/syncBookings.job.js
++++ b/admin_root/src/jobs/syncBookings.job.js
+@@ -6,20 +6,8 @@
+  * Schedule: Every 15 minutes
+  */
+ 
+-const { createClient } = require('@supabase/supabase-js');
+ const { HubSpotService } = require('../services/hubspot');
+-
+-const supabaseAdmin = createClient(
+-  process.env.SUPABASE_URL,
+-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+-  {
+-    auth: {
+-      persistSession: false,
+-      autoRefreshToken: false,
+-    },
+-    db: { schema: process.env.SUPABASE_SCHEMA_NAME || 'hubspot_sync' }
+-  }
+-);
++const { supabaseAdmin } = require('../services/supabase');
+ 
+ const OBJECT_TYPES = {
+   CONTACTS: '0-1',
+diff --git a/admin_root/src/server.js b/admin_root/src/server.js
+index 221ce2b..b3af891 100644
+--- a/admin_root/src/server.js
++++ b/admin_root/src/server.js
+@@ -44,7 +44,7 @@ app.use('/api', routes);
+ app.use(express.static(path.join(__dirname, '../admin_frontend/dist')));
+ 
+ // SPA fallback - all non-API routes serve index.html for client-side routing
+-app.get('*', (req, res) => {
++app.get('/{*splat}', (req, res) => {
+   res.sendFile(path.join(__dirname, '../admin_frontend/dist/index.html'));
+ });
+ 
+diff --git a/admin_root/src/services/supabaseSync.optimized.js b/admin_root/src/services/supabaseSync.optimized.js
+index c90f249..a311725 100644
+--- a/admin_root/src/services/supabaseSync.optimized.js
++++ b/admin_root/src/services/supabaseSync.optimized.js
+@@ -11,20 +11,7 @@
+  * 5. Batch contact credit updates efficiently
+  */
+ 
+-const { createClient } = require('@supabase/supabase-js');
+-
+-// Initialize Supabase
+-const supabaseAdmin = createClient(
+-  process.env.SUPABASE_URL || '',
+-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+-  {
+-    auth: {
+-      persistSession: false,
+-      autoRefreshToken: false,
+-    },
+-    db: { schema: process.env.SUPABASE_SCHEMA_NAME || 'hubspot_sync' }
+-  }
+-);
++const { supabaseAdmin } = require('./supabase');
+ 
+ // HubSpot API configuration
+ const HUBSPOT_TOKEN = process.env.HS_PRIVATE_APP_TOKEN || '';
+diff --git a/user_root/ecosystem.config.js b/user_root/ecosystem.config.js
+index 32a6620..057108e 100644
+--- a/user_root/ecosystem.config.js
++++ b/user_root/ecosystem.config.js
+@@ -2,8 +2,8 @@ module.exports = {
+   apps: [{
+     name: 'user-app',
+     script: 'src/server.js',
+-    instances: 'max',
+-    exec_mode: 'cluster',
++    instances: 1,
++    exec_mode: 'fork',
+     env: {
+       NODE_ENV: 'production',
+       PORT: 3000
+diff --git a/user_root/package.json b/user_root/package.json
+index 9b9c781..1b9968a 100644
+--- a/user_root/package.json
++++ b/user_root/package.json
+@@ -15,12 +15,13 @@
+     "@supabase/supabase-js": "^2.49.4",
+     "axios": "^1.12.2",
+     "compression": "^1.8.1",
+-"dotenv": "^17.2.2",
++    "dotenv": "^17.2.2",
+     "express": "^5.1.0",
+     "express-rate-limit": "^8.2.1",
+     "helmet": "^8.1.0",
+     "ioredis": "^5.8.1",
+-    "joi": "^18.0.1"
++    "joi": "^18.0.1",
++    "pg": "^8.18.0"
+   },
+   "devDependencies": {
+     "nodemon": "^3.1.14"
+diff --git a/user_root/src/controllers/bookings/cancel.js b/user_root/src/controllers/bookings/cancel.js
+index a5e511f..0a659f9 100644
+--- a/user_root/src/controllers/bookings/cancel.js
++++ b/user_root/src/controllers/bookings/cancel.js
+@@ -180,15 +180,7 @@ const cancel = async (req, res, next) => {
+           restoredValue: restoredCreditValue
+         });
+       } else {
+-        const { createClient } = require('@supabase/supabase-js');
+-        const supabaseAdmin = createClient(
+-          process.env.SUPABASE_URL,
+-          process.env.SUPABASE_SERVICE_ROLE_KEY,
+-          {
+-            auth: { persistSession: false, autoRefreshToken: false },
+-            db: { schema: process.env.SUPABASE_SCHEMA_NAME || 'hubspot_sync' }
+-          }
+-        );
++        const { supabaseAdmin } = require('../../services/supabase');
+ 
+         const { data, error: updateError } = await supabaseAdmin
+           .from('hubspot_bookings')
+diff --git a/user_root/src/controllers/mockDiscussions/available.js b/user_root/src/controllers/mockDiscussions/available.js
+index 52e022f..4c8eadb 100644
+--- a/user_root/src/controllers/mockDiscussions/available.js
++++ b/user_root/src/controllers/mockDiscussions/available.js
+@@ -113,11 +113,7 @@ const available = async (req, res, next) => {
+         const discussionIds = searchResult.results.map(discussion => discussion.id);
+         console.log(`📋 Fetching prerequisites for ${discussionIds.length} discussions (Supabase-first)...`);
+ 
+-        const { createClient } = require('@supabase/supabase-js');
+-        const supabaseAdmin = createClient(
+-          process.env.SUPABASE_URL,
+-          process.env.SUPABASE_SERVICE_ROLE_KEY
+-        );
++        const { supabaseAdmin } = require('../../services/supabase');
+ 
+         const { data: supabaseExams, error: supabaseError } = await supabaseAdmin
+           .from('hubspot_mock_exams')
+diff --git a/user_root/src/server.js b/user_root/src/server.js
+index edd33b0..a03b8b3 100644
+--- a/user_root/src/server.js
++++ b/user_root/src/server.js
+@@ -44,7 +44,7 @@ app.use('/api', routes);
+ app.use(express.static(path.join(__dirname, '../frontend/dist')));
+ 
+ // SPA fallback - all non-API routes serve index.html for client-side routing
+-app.get('*', (req, res) => {
++app.get('/{*splat}', (req, res) => {
+   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+ });
+ 

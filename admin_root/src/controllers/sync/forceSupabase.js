@@ -13,17 +13,7 @@ const { requirePermission } = require('../../middleware/requirePermission');
 const hubspot = require('../../services/hubspot');
 
 // Initialize Supabase client
-const { createClient } = require('@supabase/supabase-js');
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    }
-  }
-);
+const { db } = require('../../services/supabase');
 
 async function forceSupabase(req, res) {
   const startTime = Date.now();
@@ -98,7 +88,7 @@ async function forceSupabase(req, res) {
         };
       });
 
-      const { error } = await supabaseAdmin
+      const { error } = await db
         .from('hubspot_bookings')
         .upsert(records, { onConflict: 'hubspot_id' });
 
@@ -150,7 +140,7 @@ async function forceSupabase(req, res) {
         };
       });
 
-      const { error } = await supabaseAdmin
+      const { error } = await db
         .from('hubspot_mock_exams')
         .upsert(records, { onConflict: 'hubspot_id' });
 

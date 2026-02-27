@@ -6,8 +6,8 @@
  */
 
 const Joi = require('joi');
+const { db } = require('../../services/supabase');
 const RedisLockService = require('../../services/redis');
-const { createClient } = require('@supabase/supabase-js');
 
 const updatePasswordSchema = Joi.object({
   email: Joi.string().email().required(),
@@ -58,13 +58,10 @@ async function updatePassword(req, res) {
     }
 
     // Update password via Supabase Admin API
-    const supabaseAdmin = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+
 
     // Find user by email
-    const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+    const { data: users } = await db.auth.admin.listUsers();
     const user = users?.users?.find(u => u.email === email);
 
     if (!user) {
@@ -76,7 +73,7 @@ async function updatePassword(req, res) {
     }
 
     // Update password
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+    const { error: updateError } = await db.auth.admin.updateUserById(
       user.id,
       { password: password }
     );

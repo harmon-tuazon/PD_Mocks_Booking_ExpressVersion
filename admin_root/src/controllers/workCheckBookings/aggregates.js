@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 /**
  * Sort aggregates by specified field and order
@@ -69,7 +69,7 @@ const aggregates = async (req, res, next) => {
       // Fetch for each status in parallel and merge
       const results = await Promise.all(
         resolvedStatuses.map(s =>
-          supabaseAdmin.rpc('get_booking_aggregates', {
+          db.rpc('get_booking_aggregates', {
             p_location: location || null,
             p_date_from: date_from || null,
             p_date_to: date_to || null,
@@ -113,7 +113,7 @@ const aggregates = async (req, res, next) => {
       }
     } else {
       // Single status or no status filter - direct RPC call
-      const result = await supabaseAdmin.rpc(
+      const result = await db.rpc(
         'get_booking_aggregates',
         {
           p_location: location || null,
@@ -141,7 +141,7 @@ const aggregates = async (req, res, next) => {
       // Count merged unique aggregates
       const countResults = await Promise.all(
         resolvedStatuses.map(s =>
-          supabaseAdmin.rpc('get_booking_aggregates_count', {
+          db.rpc('get_booking_aggregates_count', {
             p_location: location || null,
             p_date_from: date_from || null,
             p_date_to: date_to || null,
@@ -156,7 +156,7 @@ const aggregates = async (req, res, next) => {
         if (!r.error) totalAggregatesCount += (r.data || 0);
       }
     } else {
-      const { data: countResult, error: countError } = await supabaseAdmin.rpc(
+      const { data: countResult, error: countError } = await db.rpc(
         'get_booking_aggregates_count',
         {
           p_location: location || null,

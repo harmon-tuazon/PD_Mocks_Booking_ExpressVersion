@@ -12,7 +12,7 @@
 
 const { requirePermission } = require('../../middleware/requirePermission');
 const { validationMiddleware } = require('../../services/validation');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 const { sanitizeFields } = require('../../services/sanitize');
 
 const create = async (req, res, next) => {
@@ -38,7 +38,7 @@ const create = async (req, res, next) => {
     console.log('[Instructor Create] Creating instructor:', { instructor_name, email: normalizedEmail });
 
     // Check for duplicate email in instructors table
-    const { data: existingInstructor } = await supabaseAdmin
+    const { data: existingInstructor } = await db
       .from('instructors')
       .select('id, email')
       .eq('email', normalizedEmail)
@@ -58,7 +58,7 @@ const create = async (req, res, next) => {
     // Supabase handles password hashing (bcrypt) internally
     // NOTE: Do NOT set user_role or permissions in app_metadata — the custom_access_token_hook
     // injects these from the user_roles and role_permissions tables on login/refresh
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: authData, error: authError } = await db.auth.admin.createUser({
       email: normalizedEmail,
       password: password,
       email_confirm: true // Skip email verification — admin is vouching for the email
@@ -84,7 +84,7 @@ const create = async (req, res, next) => {
     const authUserId = authData.user.id;
 
     // Step 2: Insert instructor record with auth_user_id link
-    const { data: newInstructor, error: insertError } = await supabaseAdmin
+    const { data: newInstructor, error: insertError } = await db
       .from('instructors')
       .insert({
         instructor_name: instructor_name.trim(),
@@ -100,7 +100,7 @@ const create = async (req, res, next) => {
 
       // Rollback: delete the auth user we just created
       console.log('[Rollback] Deleting auth user:', authUserId);
-      await supabaseAdmin.auth.admin.deleteUser(authUserId);
+      await db.auth.admin.deleteUser(authUserId);
 
       if (insertError.code === '23505') {
         return res.status(400).json({
@@ -117,7 +117,7 @@ const create = async (req, res, next) => {
 
     // Step 3: Assign 'instructor' role via user_roles table
     // The custom_access_token_hook reads this table on login to inject user_role + permissions into JWT
-    const { error: roleError } = await supabaseAdmin
+    const { error: roleError } = await db
       .from('user_roles')
       .insert({
         user_id: authUserId,
@@ -130,8 +130,8 @@ const create = async (req, res, next) => {
       console.error('[RBAC ERROR] Failed to assign instructor role:', roleError.message);
       // Rollback: delete instructor record and auth user
       console.log('[Rollback] Cleaning up instructor record and auth user');
-      await supabaseAdmin.from('instructors').delete().eq('id', newInstructor.id);
-      await supabaseAdmin.auth.admin.deleteUser(authUserId);
+      await db.from('instructors').delete().eq('id', newInstructor.id);
+      await db.auth.admin.deleteUser(authUserId);
       throw new Error(`Failed to assign role: ${roleError.message}`);
     }
 

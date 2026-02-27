@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const getById = async (req, res, next) => {
   try {
@@ -31,7 +31,7 @@ const getById = async (req, res, next) => {
 
     console.log(`[Get Work Check Slot] Fetching slot ${id}`);
 
-    const { data: slot, error } = await supabaseAdmin
+    const { data: slot, error } = await db
       .from('work_check_slots')
       .select(`
         *,

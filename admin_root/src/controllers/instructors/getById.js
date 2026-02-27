@@ -5,7 +5,7 @@
  */
 
 const { requirePermission } = require('../../middleware/requirePermission');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
 
 const getById = async (req, res, next) => {
   try {
@@ -22,7 +22,7 @@ const getById = async (req, res, next) => {
       });
     }
 
-    const { data: instructor, error } = await supabaseAdmin
+    const { data: instructor, error } = await db
       .from('instructors')
       .select('*')
       .eq('id', id)

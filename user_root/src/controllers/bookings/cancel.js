@@ -180,17 +180,9 @@ const cancel = async (req, res, next) => {
           restoredValue: restoredCreditValue
         });
       } else {
-        const { createClient } = require('@supabase/supabase-js');
-        const supabaseAdmin = createClient(
-          process.env.SUPABASE_URL,
-          process.env.SUPABASE_SERVICE_ROLE_KEY,
-          {
-            auth: { persistSession: false, autoRefreshToken: false },
-            db: { schema: process.env.SUPABASE_SCHEMA_NAME || 'hubspot_sync' }
-          }
-        );
+        const { db } = require('../../services/supabase');
 
-        const { data, error: updateError } = await supabaseAdmin
+        const { data, error: updateError } = await db
           .from('hubspot_bookings')
           .update({
             is_active: 'Cancelled',
@@ -307,7 +299,7 @@ const cancel = async (req, res, next) => {
       }
 
       if (bookingData.associated_contact_id && bookingData.exam_date && bookingData.mock_type) {
-        const normalizedDate = bookingData.exam_date.split('T')[0];
+        const normalizedDate = String(bookingData.exam_date).split('T')[0];
 
         const duplicateKey = `booking:${bookingData.associated_contact_id}:${normalizedDate}:${bookingData.mock_type}`;
         console.log(`🔍 [DEBUG] Attempting to delete cache key: ${duplicateKey}`);

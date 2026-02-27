@@ -1,0 +1,406 @@
+name: Deploy & Create AMI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'documentation/**'
+      - '*.md'
+      - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip CI tests (use for hotfixes only)'
+        required: false
+        default: 'false'
+        type: boolean
+      skip_ami:
+        description: 'Skip AMI creation (deploy to dev only)'
+        required: false
+        default: 'false'
+        type: boolean
+
+concurrency:
+  group: deploy-ami-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '20'
+  AWS_REGION: ca-central-1
+  APP_DIR: /home/appuser/app
+
+jobs:
+  # ============================================
+  # Stage 1: CI Tests (reuse existing ci.yml logic)
+  # ============================================
+  ci-tests:
+    if: ${{ github.event.inputs.skip_tests != 'true' }}
+    uses: ./.github/workflows/ci.yml
+
+  # ============================================
+  # Stage 2: Deploy to Dev Instance
+  # ============================================
+  deploy-to-dev:
+    needs: [ci-tests]
+    if: always() && (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped')
+    runs-on: ubuntu-latest
+
+    outputs:
+      deploy_success: ${{ steps.health-check.outputs.healthy }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/dev-key.pem
+          chmod 600 ~/.ssh/dev-key.pem
+          ssh-keyscan -H ${{ secrets.DEV_INSTANCE_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy code to dev instance
+        run: |
+          ssh -i ~/.ssh/dev-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.DEV_INSTANCE_HOST }} << 'DEPLOY_SCRIPT'
+          set -e
+          echo "=== Deploying to Dev Instance - $(date) ==="
+
+          cd /home/appuser/app
+
+          # Pull latest code as appuser
+          sudo -u appuser git fetch origin main
+          sudo -u appuser git reset --hard origin/main
+
+          # Stop PM2 to free memory for build
+          sudo -u appuser pm2 stop all 2>/dev/null || true
+
+          # Install backend dependencies
+          echo "Installing backend dependencies..."
+          cd /home/appuser/app/backend
+          sudo -u appuser npm ci --omit=dev
+
+          # Install frontend dependencies and build
+          echo "Installing frontend dependencies..."
+          cd /home/appuser/app/frontend
+          sudo -u appuser npm ci
+          echo "Building frontend..."
+          sudo -u appuser bash -c "export NODE_OPTIONS=--max-old-space-size=1024 && export NEXT_PUBLIC_API_URL=/api && npm run build"
+
+          # Restart dev processes for testing
+          echo "Starting dev processes for health check..."
+          cd /home/appuser/app/backend
+          sudo -u appuser pm2 start ecosystem.config.js --only prepdoc-development
+          cd /home/appuser/app/frontend
+          sudo -u appuser pm2 start ecosystem.config.js --only prepdoc-frontend-development
+          sudo -u appuser pm2 save
+
+          echo "=== Deploy to Dev Complete ==="
+          DEPLOY_SCRIPT
+
+      - name: Wait for services to stabilize
+        run: sleep 15
+
+      - name: Health check
+        id: health-check
+        run: |
+          echo "Checking backend health..."
+          HEALTHY=false
+          for i in {1..12}; do
+            STATUS=$(ssh -i ~/.ssh/dev-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.DEV_INSTANCE_HOST }} \
+              'curl -s -o /dev/null -w "%{http_code}" http://localhost:5001/health 2>/dev/null || echo "000"')
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend health check passed (attempt $i)"
+              HEALTHY=true
+              break
+            fi
+            echo "Waiting for backend... (attempt $i/12, status: $STATUS)"
+            sleep 5
+          done
+
+          if [ "$HEALTHY" != "true" ]; then
+            echo "Backend health check failed!"
+            ssh -i ~/.ssh/dev-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.DEV_INSTANCE_HOST }} \
+              'sudo -u appuser pm2 logs prepdoc-development --lines 30 --nostream' || true
+            echo "healthy=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          echo "Checking frontend health..."
+          FRONTEND_STATUS=$(ssh -i ~/.ssh/dev-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.DEV_INSTANCE_HOST }} \
+            'curl -s -o /dev/null -w "%{http_code}" http://localhost:3001 2>/dev/null || echo "000"')
+          if [[ "$FRONTEND_STATUS" =~ ^(200|301|302)$ ]]; then
+            echo "Frontend health check passed (status: $FRONTEND_STATUS)"
+          else
+            echo "Frontend health check failed (status: $FRONTEND_STATUS)"
+            ssh -i ~/.ssh/dev-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.DEV_INSTANCE_HOST }} \
+              'sudo -u appuser pm2 logs prepdoc-frontend-development --lines 30 --nostream' || true
+            echo "healthy=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          echo "healthy=true" >> $GITHUB_OUTPUT
+          echo "All health checks passed!"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/dev-key.pem
+
+  # ============================================
+  # Stage 3: Create AMI from Dev Instance
+  # ============================================
+  create-ami:
+    needs: [deploy-to-dev]
+    if: ${{ github.event.inputs.skip_ami != 'true' && needs.deploy-to-dev.outputs.deploy_success == 'true' }}
+    runs-on: ubuntu-latest
+
+    outputs:
+      ami_id: ${{ steps.create-ami.outputs.ami_id }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/dev-key.pem
+          chmod 600 ~/.ssh/dev-key.pem
+
+      - name: Prepare instance for AMI
+        run: |
+          ssh -i ~/.ssh/dev-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.DEV_INSTANCE_HOST }} << 'PREPARE_SCRIPT'
+          set -e
+          echo "=== Preparing Dev Instance for AMI Creation ==="
+
+          # Stop all PM2 processes
+          sudo -u appuser pm2 stop all
+          sudo -u appuser pm2 delete all
+          sudo -u appuser pm2 save --force
+
+          # Remove production env files (secrets fetched at boot)
+          rm -f /home/appuser/app/backend/.env.production
+          rm -f /home/appuser/app/frontend/.env.production
+
+          # Clean temporary files
+          sudo rm -rf /tmp/npm-*
+          sudo rm -rf /home/appuser/.npm/_cacache
+          sudo -u appuser npm cache clean --force 2>/dev/null || true
+
+          # Clean system caches
+          sudo rm -rf /var/log/user-data.log
+          sudo journalctl --vacuum-time=1d 2>/dev/null || true
+
+          echo "=== Instance ready for AMI creation ==="
+          PREPARE_SCRIPT
+
+      - name: Create AMI
+        id: create-ami
+        run: |
+          GIT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          AMI_NAME="prepdoc-${TIMESTAMP}-${GIT_SHA}"
+
+          echo "Creating AMI: $AMI_NAME"
+
+          AMI_ID=$(aws ec2 create-image \
+            --instance-id ${{ secrets.DEV_INSTANCE_ID }} \
+            --name "$AMI_NAME" \
+            --description "PrepDoctors app - commit ${GIT_SHA} - $(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --no-reboot \
+            --tag-specifications \
+              "ResourceType=image,Tags=[
+                {Key=Name,Value=$AMI_NAME},
+                {Key=Project,Value=PrepDoctors},
+                {Key=Environment,Value=production},
+                {Key=GitSHA,Value=${{ github.sha }}},
+                {Key=GitBranch,Value=main},
+                {Key=CreatedBy,Value=CI-CD-Pipeline},
+                {Key=Version,Value=$TIMESTAMP},
+                {Key=Status,Value=active}
+              ]" \
+              "ResourceType=snapshot,Tags=[
+                {Key=Project,Value=PrepDoctors},
+                {Key=CreatedBy,Value=CI-CD-Pipeline},
+                {Key=DeleteWithAMI,Value=true}
+              ]" \
+            --query ImageId --output text)
+
+          echo "AMI ID: $AMI_ID"
+          echo "ami_id=$AMI_ID" >> $GITHUB_OUTPUT
+
+      - name: Wait for AMI to be available
+        run: |
+          echo "Waiting for AMI ${{ steps.create-ami.outputs.ami_id }} to become available..."
+          aws ec2 wait image-available \
+            --image-ids ${{ steps.create-ami.outputs.ami_id }}
+          echo "AMI is now available!"
+
+      - name: Restart dev processes
+        run: |
+          ssh -i ~/.ssh/dev-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.DEV_INSTANCE_HOST }} << 'RESTART_SCRIPT'
+          cd /home/appuser/app/backend
+          sudo -u appuser pm2 start ecosystem.config.js --only prepdoc-development
+          cd /home/appuser/app/frontend
+          sudo -u appuser pm2 start ecosystem.config.js --only prepdoc-frontend-development
+          sudo -u appuser pm2 save
+          echo "Dev processes restarted"
+          RESTART_SCRIPT
+
+      - name: Cleanup old AMIs (keep last 3)
+        run: |
+          echo "Cleaning up old AMIs..."
+          AMI_LIST=$(aws ec2 describe-images \
+            --owners self \
+            --filters "Name=tag:Project,Values=PrepDoctors" \
+            --query "Images | sort_by(@, &CreationDate) | reverse(@) | [*].[ImageId,CreationDate]" \
+            --output text)
+
+          COUNT=0
+          while IFS=$'\t' read -r AMI_ID CREATED; do
+            COUNT=$((COUNT + 1))
+            if [ $COUNT -le 3 ]; then
+              # Tag with status
+              if [ $COUNT -eq 1 ]; then STATUS="active";
+              elif [ $COUNT -eq 2 ]; then STATUS="previous";
+              else STATUS="backup"; fi
+              aws ec2 create-tags --resources $AMI_ID --tags Key=Status,Value=$STATUS
+              echo "KEEPING ($STATUS): $AMI_ID ($CREATED)"
+            else
+              echo "DELETING: $AMI_ID ($CREATED)"
+              # Get snapshots before deregistering
+              SNAPSHOTS=$(aws ec2 describe-images \
+                --image-ids $AMI_ID \
+                --query "Images[0].BlockDeviceMappings[*].Ebs.SnapshotId" \
+                --output text 2>/dev/null || echo "")
+              # Deregister AMI
+              aws ec2 deregister-image --image-id $AMI_ID 2>/dev/null || true
+              # Delete snapshots
+              for SNAP in $SNAPSHOTS; do
+                [ "$SNAP" != "None" ] && aws ec2 delete-snapshot --snapshot-id $SNAP 2>/dev/null || true
+                echo "  Deleted snapshot: $SNAP"
+              done
+            fi
+          done <<< "$AMI_LIST"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/dev-key.pem
+
+  # ============================================
+  # Stage 4: Deploy to Production (ASG Refresh)
+  # ============================================
+  deploy-to-production:
+    needs: [create-ami]
+    if: ${{ needs.create-ami.outputs.ami_id != '' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update Launch Template with new AMI
+        id: update-lt
+        run: |
+          NEW_AMI="${{ needs.create-ami.outputs.ami_id }}"
+          TEMPLATE_ID="${{ secrets.LAUNCH_TEMPLATE_ID }}"
+
+          echo "Creating new Launch Template version with AMI: $NEW_AMI"
+
+          NEW_VERSION=$(aws ec2 create-launch-template-version \
+            --launch-template-id $TEMPLATE_ID \
+            --source-version '$Latest' \
+            --launch-template-data "{\"ImageId\":\"$NEW_AMI\"}" \
+            --query 'LaunchTemplateVersion.VersionNumber' \
+            --output text)
+
+          echo "New Launch Template version: $NEW_VERSION"
+
+          # Set as default version
+          aws ec2 modify-launch-template \
+            --launch-template-id $TEMPLATE_ID \
+            --default-version $NEW_VERSION
+
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Start ASG Instance Refresh
+        id: instance-refresh
+        run: |
+          ASG_NAME="${{ secrets.ASG_NAME }}"
+
+          echo "Starting instance refresh for ASG: $ASG_NAME"
+
+          REFRESH_ID=$(aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name $ASG_NAME \
+            --preferences '{
+              "MinHealthyPercentage": 100,
+              "InstanceWarmup": 300,
+              "SkipMatching": true
+            }' \
+            --query 'InstanceRefreshId' \
+            --output text)
+
+          echo "Instance refresh started: $REFRESH_ID"
+          echo "refresh_id=$REFRESH_ID" >> $GITHUB_OUTPUT
+
+      - name: Wait for Instance Refresh to complete
+        run: |
+          ASG_NAME="${{ secrets.ASG_NAME }}"
+          REFRESH_ID="${{ steps.instance-refresh.outputs.refresh_id }}"
+
+          echo "Monitoring instance refresh: $REFRESH_ID"
+
+          for i in $(seq 1 60); do
+            STATUS=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name $ASG_NAME \
+              --instance-refresh-ids $REFRESH_ID \
+              --query 'InstanceRefreshes[0].Status' \
+              --output text)
+
+            PROGRESS=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name $ASG_NAME \
+              --instance-refresh-ids $REFRESH_ID \
+              --query 'InstanceRefreshes[0].PercentageComplete' \
+              --output text 2>/dev/null || echo "0")
+
+            echo "Status: $STATUS | Progress: ${PROGRESS}% (check $i/60)"
+
+            case $STATUS in
+              Successful)
+                echo "Instance refresh completed successfully!"
+                exit 0
+                ;;
+              Failed|Cancelled|RollbackSuccessful|RollbackFailed)
+                echo "Instance refresh failed with status: $STATUS"
+                aws autoscaling describe-instance-refreshes \
+                  --auto-scaling-group-name $ASG_NAME \
+                  --instance-refresh-ids $REFRESH_ID \
+                  --query 'InstanceRefreshes[0].StatusReason' \
+                  --output text
+                exit 1
+                ;;
+            esac
+
+            sleep 30
+          done
+
+          echo "Timeout waiting for instance refresh"
+          exit 1
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "============================================"
+          echo "Production Deployment Complete!"
+          echo "============================================"
+          echo "AMI: ${{ needs.create-ami.outputs.ami_id }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Launch Template Version: ${{ steps.update-lt.outputs.version }}"
+          echo "Instance Refresh: ${{ steps.instance-refresh.outputs.refresh_id }}"
+          echo "============================================"

@@ -4,7 +4,8 @@
  */
 
 const { schemas } = require('../../services/validation');
-const { supabaseAdmin } = require('../../services/supabase');
+const { db } = require('../../services/supabase');
+const { query: dbQuery, nestRow } = require('../../services/database');
 
 const list = async (req, res, next) => {
   try {
@@ -22,7 +23,7 @@ const list = async (req, res, next) => {
     console.log(`[WORK-CHECK] Listing bookings for: ${student_id}, filter: ${filter}`);
 
     // 1. Validate contact
-    const { data: contact, error: contactError } = await supabaseAdmin
+    const { data: contact, error: contactError } = await db
       .from('hubspot_contact_credits')
       .select('id, student_id')
       .eq('student_id', student_id)
@@ -36,52 +37,47 @@ const list = async (req, res, next) => {
       });
     }
 
-    // 2. Build base query
-    let query = supabaseAdmin
-      .from('work_check_bookings')
-      .select(`
-        id,
-        slot_id,
-        student_id,
-        status,
-        lab,
-        seat,
-        created_at,
-        confirmed_at,
-        cancelled_at,
-        work_check_slots (
-          id,
-          slot_date,
-          slot_time,
-          duration_minutes,
-          location,
-          group_id,
-          instructors (
-            id,
-            instructor_name
-          )
-        )
-      `, { count: 'exact' })
-      .eq('student_id', contact.student_id);
+    // 2. Build raw SQL query with JOINs
+    const today = new Date().toISOString().split('T')[0];
+    const offset = (page - 1) * limit;
+
+    let sql = `
+      SELECT b.id, b.slot_id, b.student_id, b.status, b.lab, b.seat,
+             b.created_at, b.confirmed_at, b.cancelled_at,
+             s.id AS s__id, s.slot_date AS s__slot_date, s.slot_time AS s__slot_time,
+             s.duration_minutes AS s__duration_minutes, s.location AS s__location,
+             s.group_id AS s__group_id,
+             i.id AS i__id, i.instructor_name AS i__instructor_name,
+             COUNT(*) OVER() AS __total_count
+      FROM work_check_bookings b
+      LEFT JOIN work_check_slots s ON s.id = b.slot_id
+      LEFT JOIN instructors i ON i.id = s.instructor_id
+      WHERE b.student_id = $1
+    `;
+    const params = [contact.student_id];
+    let paramIdx = 2;
 
     // 3. Apply filter
-    const today = new Date().toISOString().split('T')[0];
-
     switch (filter) {
       case 'upcoming':
-        query = query
-          .in('status', ['pending', 'confirmed'])
-          .gte('work_check_slots.slot_date', today);
+        sql += ` AND b.status = ANY($${paramIdx}) AND s.slot_date >= $${paramIdx + 1}`;
+        params.push(['pending', 'confirmed'], today);
+        paramIdx += 2;
         break;
       case 'pending':
-        query = query.eq('status', 'pending');
+        sql += ` AND b.status = $${paramIdx}`;
+        params.push('pending');
+        paramIdx++;
         break;
       case 'completed':
-        query = query
-          .in('status', ['marked', 'completed']);
+        sql += ` AND b.status = ANY($${paramIdx})`;
+        params.push(['marked', 'completed']);
+        paramIdx++;
         break;
       case 'cancelled':
-        query = query.in('status', ['cancelled', 'rejected']);
+        sql += ` AND b.status = ANY($${paramIdx})`;
+        params.push(['cancelled', 'rejected']);
+        paramIdx++;
         break;
       case 'all':
       default:
@@ -89,12 +85,23 @@ const list = async (req, res, next) => {
     }
 
     // 4. Apply pagination
-    const offset = (page - 1) * limit;
-    query = query
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    sql += ` ORDER BY b.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    params.push(limit, offset);
 
-    const { data: bookings, error: bookingsError, count } = await query;
+    let bookings, bookingsError, count;
+    try {
+      const { rows } = await dbQuery(sql, params);
+      count = rows.length > 0 ? parseInt(rows[0].__total_count) : 0;
+      bookings = rows.map(r => {
+        const { __total_count, ...rest } = r;
+        return nestRow(rest, { s: 'work_check_slots', i: 'instructors' }, { i: 's' });
+      });
+      bookingsError = null;
+    } catch (err) {
+      bookings = null;
+      bookingsError = { message: err.message };
+      count = 0;
+    }
 
     if (bookingsError) {
       console.error('[WORK-CHECK] List error:', bookingsError);
@@ -110,7 +117,7 @@ const list = async (req, res, next) => {
 
     let groupNames = {};
     if (groupIds.length > 0) {
-      const { data: groupsData } = await supabaseAdmin
+      const { data: groupsData } = await db
         .from('groups')
         .select('group_id, group_name')
         .in('group_id', groupIds);
