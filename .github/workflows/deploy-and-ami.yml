@@ -67,7 +67,7 @@ jobs:
           set -e
           echo "=== Deploying to Dev Instance - $(date) ==="
 
-          APP_DIR="/home/appuser/PD_Mocks_Booking_ExpressVersion"
+          APP_DIR="/home/appuser/app"
           cd $APP_DIR
 
           # Pull latest code as appuser
@@ -117,7 +117,7 @@ jobs:
           echo "Checking admin app health..."
           ADMIN_HEALTHY=false
           for i in {1..12}; do
-            STATUS=$($SSH_CMD 'curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/health 2>/dev/null || echo "000"')
+            STATUS=$($SSH_CMD 'curl -s -o /dev/null -w "%{http_code}" http://localhost:3002/api/health 2>/dev/null || echo "000"')
             if [ "$STATUS" = "200" ]; then
               echo "Admin health check passed (attempt $i)"
               ADMIN_HEALTHY=true
@@ -193,7 +193,7 @@ jobs:
           set -e
           echo "=== Preparing Dev Instance for AMI Creation ==="
 
-          APP_DIR="/home/appuser/PD_Mocks_Booking_ExpressVersion"
+          APP_DIR="/home/appuser/app"
 
           # Stop all PM2 processes
           sudo -u appuser pm2 stop all
@@ -272,7 +272,7 @@ jobs:
       - name: Restart dev processes
         run: |
           ssh -i ~/.ssh/dev-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.DEV_INSTANCE_HOST }} << 'RESTART_SCRIPT'
-          APP_DIR="/home/appuser/PD_Mocks_Booking_ExpressVersion"
+          APP_DIR="/home/appuser/app"
           cd $APP_DIR/admin_root
           sudo -u appuser pm2 start ecosystem.config.js --only admin-app
           cd $APP_DIR/user_root

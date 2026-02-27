@@ -26,7 +26,7 @@ jobs:
             set -e
             echo "=== SSH Direct Deploy - $(date) ==="
 
-            APP_DIR="/home/appuser/PD_Mocks_Booking_ExpressVersion"
+            APP_DIR="/home/appuser/app"
             cd $APP_DIR
 
             # Pull latest
@@ -62,7 +62,7 @@ jobs:
             # Health checks
             echo "Checking admin app..."
             for i in {1..12}; do
-              if curl -sf http://localhost:3001/api/health > /dev/null; then
+              if curl -sf http://localhost:3002/api/health > /dev/null; then
                 echo "Admin health check passed"
                 break
               fi
