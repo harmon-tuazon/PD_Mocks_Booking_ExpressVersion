@@ -3,7 +3,7 @@
 # EC2 User Data — Admin App (admin_root)
 #
 # Paste this into your Launch Template (or append to existing user data).
-# Assumes the app is pre-baked into the AMI at /home/appuser/app/admin_root/
+# Assumes the app is pre-baked into the AMI at /home/appuser/PD_Mocks_Booking_ExpressVersion/admin_root/
 #
 # Fetches secrets from AWS Secrets Manager, writes .env, starts PM2.
 # All output is logged to /var/log/user-data.log for debugging.
@@ -55,7 +55,7 @@ EDGE_FUNC_URL=$(echo $ADMIN_SECRET | jq -r '.SUPABASE_EDGE_FUNCTION_URL // ""')
 # -----------------------------------------------------------------------------
 # 2. Write backend .env
 # -----------------------------------------------------------------------------
-APP_DIR="/home/appuser/app/admin_root"
+APP_DIR="/home/appuser/PD_Mocks_Booking_ExpressVersion/admin_root"
 
 cat > ${APP_DIR}/.env << ENVEOF
 NODE_ENV=production
