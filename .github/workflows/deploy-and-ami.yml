@@ -269,16 +269,20 @@ jobs:
             --image-ids ${{ steps.create-ami.outputs.ami_id }}
           echo "AMI is now available!"
 
-      - name: Restart dev processes
+      - name: Restore env and restart dev processes
         run: |
           ssh -i ~/.ssh/dev-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.DEV_INSTANCE_HOST }} << 'RESTART_SCRIPT'
           APP_DIR="/home/appuser/app"
+
+          # Restore .env files from Secrets Manager (removed during AMI prep)
+          sudo bash $APP_DIR/scripts/restore-dev-env.sh $APP_DIR
+
           cd $APP_DIR/admin_root
           sudo -u appuser pm2 start ecosystem.config.js --only admin-app
           cd $APP_DIR/user_root
           sudo -u appuser pm2 start ecosystem.config.js --only user-app
           sudo -u appuser pm2 save
-          echo "Dev processes restarted"
+          echo "Dev processes restarted with env restored"
           RESTART_SCRIPT
 
       - name: Cleanup old AMIs (keep last 3)
