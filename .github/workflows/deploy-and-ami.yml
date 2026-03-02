@@ -113,11 +113,11 @@ jobs:
         run: |
           SSH_CMD="ssh -i ~/.ssh/dev-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.DEV_INSTANCE_HOST }}"
 
-          # Check Admin App (port 3001)
+          # Check Admin App (port 5000)
           echo "Checking admin app health..."
           ADMIN_HEALTHY=false
           for i in {1..12}; do
-            STATUS=$($SSH_CMD 'curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/health 2>/dev/null || echo "000"')
+            STATUS=$($SSH_CMD 'curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null || echo "000"')
             if [ "$STATUS" = "200" ]; then
               echo "Admin health check passed (attempt $i)"
               ADMIN_HEALTHY=true

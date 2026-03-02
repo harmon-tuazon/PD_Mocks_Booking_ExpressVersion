@@ -3,7 +3,7 @@
 # EC2 User Data — Admin App (admin_root)
 #
 # Paste this into your Launch Template (or append to existing user data).
-# Assumes the app is pre-baked into the AMI at /home/appuser/app/admin_root/
+# Assumes the app is pre-baked into the AMI at /home/appuser/PD_Mocks_Booking_ExpressVersion/admin_root/
 #
 # Fetches secrets from AWS Secrets Manager, writes .env, starts PM2.
 # All output is logged to /var/log/user-data.log for debugging.
@@ -55,11 +55,11 @@ EDGE_FUNC_URL=$(echo $ADMIN_SECRET | jq -r '.SUPABASE_EDGE_FUNCTION_URL // ""')
 # -----------------------------------------------------------------------------
 # 2. Write backend .env
 # -----------------------------------------------------------------------------
-APP_DIR="/home/appuser/app/admin_root"
+APP_DIR="/home/appuser/PD_Mocks_Booking_ExpressVersion/admin_root"
 
 cat > ${APP_DIR}/.env << ENVEOF
 NODE_ENV=production
-PORT=3002
+PORT=5000
 
 # Database (AWS RDS)
 DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@prepdoc-db-production.cpaeeycwemvb.ca-central-1.rds.amazonaws.com:5432/prepdocrhaws?sslmode=require
@@ -120,7 +120,7 @@ chmod 600 ${APP_DIR}/admin_frontend/.env
 # 4. Install dependencies and build frontend
 # -----------------------------------------------------------------------------
 cd ${APP_DIR}
-sudo -u appuser npm ci --only=production
+sudo -u appuser npm ci --omit=dev
 mkdir -p ${APP_DIR}/logs
 
 cd ${APP_DIR}/admin_frontend
@@ -149,7 +149,7 @@ sleep 5
 
 RETRIES=10
 for i in $(seq 1 $RETRIES); do
-  if curl -sf http://localhost:3002/api/health > /dev/null; then
+  if curl -sf http://localhost:5000/api/health > /dev/null; then
     echo "Admin health check passed on attempt $i"
     break
   fi

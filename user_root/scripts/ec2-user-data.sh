@@ -3,7 +3,7 @@
 # EC2 User Data — User App (user_root)
 #
 # Paste this into your Launch Template (or append to existing user data).
-# Assumes the app is pre-baked into the AMI at /home/appuser/app/user_root/
+# Assumes the app is pre-baked into the AMI at /home/appuser/PD_Mocks_Booking_ExpressVersion/user_root/
 #
 # Fetches secrets from AWS Secrets Manager, writes .env, starts PM2.
 # All output is logged to /var/log/user-data.log for debugging.
@@ -50,7 +50,7 @@ CRON_SECRET_VAL=$(echo $USER_SECRET | jq -r '.CRON_SECRET // ""')
 # -----------------------------------------------------------------------------
 # 2. Write backend .env
 # -----------------------------------------------------------------------------
-APP_DIR="/home/appuser/app/user_root"
+APP_DIR="/home/appuser/PD_Mocks_Booking_ExpressVersion/user_root"
 
 cat > ${APP_DIR}/.env << ENVEOF
 NODE_ENV=production
@@ -82,8 +82,7 @@ ENVEOF
 # 3. Write frontend .env
 # -----------------------------------------------------------------------------
 cat > ${APP_DIR}/frontend/.env << ENVEOF
-NEXT_PUBLIC_API_URL=/api
-NEXT_PUBLIC_API_BASE_URL=/api
+VITE_API_URL=/api
 NODE_ENV=production
 ENVEOF
 
@@ -96,7 +95,7 @@ chmod 600 ${APP_DIR}/frontend/.env
 # 4. Install dependencies and build frontend
 # -----------------------------------------------------------------------------
 cd ${APP_DIR}
-sudo -u appuser npm ci --only=production
+sudo -u appuser npm ci --omit=dev
 mkdir -p ${APP_DIR}/logs
 
 cd ${APP_DIR}/frontend
