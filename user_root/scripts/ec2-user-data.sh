@@ -82,8 +82,7 @@ ENVEOF
 # 3. Write frontend .env
 # -----------------------------------------------------------------------------
 cat > ${APP_DIR}/frontend/.env << ENVEOF
-NEXT_PUBLIC_API_URL=/api
-NEXT_PUBLIC_API_BASE_URL=/api
+VITE_API_URL=/api
 NODE_ENV=production
 ENVEOF
 
@@ -96,7 +95,7 @@ chmod 600 ${APP_DIR}/frontend/.env
 # 4. Install dependencies and build frontend
 # -----------------------------------------------------------------------------
 cd ${APP_DIR}
-sudo -u appuser npm ci --only=production
+sudo -u appuser npm ci --omit=dev
 mkdir -p ${APP_DIR}/logs
 
 cd ${APP_DIR}/frontend

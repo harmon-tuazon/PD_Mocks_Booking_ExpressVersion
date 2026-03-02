@@ -1,7 +1,7 @@
 # CI/CD Pipeline Setup — GitHub Actions + AMI-Based Deployment
 
 **Date:** 2026-02-26
-**Status:** Complete — full 4-stage pipeline passing end-to-end
+**Status:** Complete — full 4-stage pipeline passing, branch protections configured, old app removed from dev instance
 
 ---
 
@@ -104,10 +104,10 @@ Key deployment details:
 
 | App | Port | PM2 Process | Ecosystem Config |
 |-----|------|-------------|------------------|
-| Admin | 3001 | `admin-app` | `admin_root/ecosystem.config.js` |
+| Admin | 5000 | `admin-app` | `admin_root/ecosystem.config.js` |
 | User | 3000 | `user-app` | `user_root/ecosystem.config.js` |
 
-Application directory: `/home/appuser/PD_Mocks_Booking_ExpressVersion`
+Application directory: `/home/appuser/app`
 
 ## Issues Encountered & Resolved
 
@@ -178,10 +178,26 @@ All thresholds set to 0 temporarily:
 - `admin_root/src/server.js` — Express 5 wildcard fix
 - `package-lock.json` — Regenerated
 
+## Branch Protections
+
+Configured by repo owner (`harmon-tuazon`) on 2026-02-26.
+
+| Branch | Protected | Status Checks Required | Enforcement |
+|--------|-----------|----------------------|-------------|
+| `main` | Yes | Enabled | Non-admins |
+| `develop` | Yes | `ci-success` | Non-admins |
+
+## Old App Cleanup
+
+The legacy Next.js app (2.2 GB) was removed from the dev instance on 2026-02-26:
+
+- Deleted the old application files and `.env` with secrets
+- Deleted stale `/home/appuser/package-lock.json`
+- No other references found (no crontabs, nginx, or systemd configs pointing to old app)
+- Verified no old PM2 processes (`prepdoc-development`, `prepdoc-frontend-development`) remain
+
+The new Express app is deployed at `/home/appuser/app` (git clone of this repo).
+
 ## Remaining Tasks
 
-- [ ] Configure branch protections (requires repo admin access):
-  - `main`: Require PR + `ci-success` check, no force push, no deletion
-  - `develop`: Require `ci-success` check, allow direct push, no force push
 - [ ] Increase test coverage thresholds as more tests are written
-- [ ] Remove old `/home/appuser/app` directory and related PM2 processes from dev instance
