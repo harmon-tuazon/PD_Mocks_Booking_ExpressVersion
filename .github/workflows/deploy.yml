@@ -26,7 +26,7 @@ jobs:
             set -e
             echo "=== SSH Direct Deploy - $(date) ==="
 
-            APP_DIR="/home/appuser/PD_Mocks_Booking_ExpressVersion"
+            APP_DIR="/home/appuser/app"
             cd $APP_DIR
 
             # Pull latest
