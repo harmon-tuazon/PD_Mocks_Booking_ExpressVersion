@@ -12,8 +12,8 @@ const http = require('http');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const ADMIN_PORT = 3000;
-const USER_PORT = 3001;
+const ADMIN_PORT = 5000;
+const USER_PORT = 3000;
 const STARTUP_TIMEOUT_MS = 15000;
 const HEALTH_RETRY_INTERVAL_MS = 1000;
 
