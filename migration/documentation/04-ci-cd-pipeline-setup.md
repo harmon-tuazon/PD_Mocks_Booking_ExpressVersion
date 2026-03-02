@@ -104,10 +104,10 @@ Key deployment details:
 
 | App | Port | PM2 Process | Ecosystem Config |
 |-----|------|-------------|------------------|
-| Admin | 3001 | `admin-app` | `admin_root/ecosystem.config.js` |
+| Admin | 5000 | `admin-app` | `admin_root/ecosystem.config.js` |
 | User | 3000 | `user-app` | `user_root/ecosystem.config.js` |
 
-Application directory: `/home/appuser/PD_Mocks_Booking_ExpressVersion`
+Application directory: `/home/appuser/app`
 
 ## Issues Encountered & Resolved
 
@@ -189,14 +189,14 @@ Configured by repo owner (`harmon-tuazon`) on 2026-02-26.
 
 ## Old App Cleanup
 
-The legacy app at `/home/appuser/app` (2.2 GB) was removed from the dev instance on 2026-02-26:
+The legacy Next.js app (2.2 GB) was removed from the dev instance on 2026-02-26:
 
-- Deleted `/home/appuser/app` directory (including `.env` with secrets)
+- Deleted the old application files and `.env` with secrets
 - Deleted stale `/home/appuser/package-lock.json`
 - No other references found (no crontabs, nginx, or systemd configs pointing to old app)
 - Verified no old PM2 processes (`prepdoc-development`, `prepdoc-frontend-development`) remain
 
-Only `/home/appuser/PD_Mocks_Booking_ExpressVersion` remains on the instance.
+The new Express app is deployed at `/home/appuser/app` (git clone of this repo).
 
 ## Remaining Tasks
 
